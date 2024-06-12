@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <title>Classroom Options</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Font Awesome -->
+    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Tabulator CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    {% load static %}
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <style>
+        h1 {
+            margin-top: 20px;
+            margin-left: 10px;
+            font-weight: 400;
+            line-height: 1.2;
+            font-weight: bold;
+            font-size: 40px;
+        }
+
+        .btn-primary {
+            margin-left: 27px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            margin-right: 15px;
+        }
+
+        .btn.deleteRecipeBtn {
+            margin-bottom: 6px;   
+        }
+        
+        .recipe-buttons {
+            float: right;
+        }
+        
+        .classrooms, .students, .teachers {
+            width: 280px; /* Adjust the width as needed */
+            margin-left: 27px; /* Adjust the margin as needed */
+            margin-top: 30px;
+            font-size: larger;
+        }
+
+        .classrooms .list-group-item, .students .list-group-item, .teachers .list-group-item {
+            width: 220px;
+            background-color: white; /* Set background color to white */
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            list-style-type: none; /* Remove bullet points */
+           
+            font-size: larger;
+        }
+
+        .bg-faded-red {
+            background-color: rgba(59, 58, 58, 0.788); /* Adjust the alpha value (last parameter) for the desired opacity */
+        }
+        
+    </style>
+</head>
+<body class="sb-nav-fixed">
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <!-- Navbar Brand-->
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
+        
+        <a class="navbar-brand ps-3" href="{% url 'index' %}">Tracker</a>
+        <!-- Navbar-->
+        <div class="ms-auto">
+            <ul class="navbar-nav me-lg-4">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        {% if user.is_authenticated %}
+                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                        {% else %}
+                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="#!">Account Settings</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+                        <div class="sb-sidenav-menu-heading">Main</div>
+                        
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Attendance
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'sign_in' %}">Sign In</a>
+                                <a class="nav-link" href="{% url 'daily_attendance' %}">Daily Attendance</a>
+                                <a class="nav-link" href="{% url 'rosters' %}">Rosters</a>
+                            </nav>
+                        </div>
+                        
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Food Program
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'inventory_list' %}">Inventory</a>
+                                <a class="nav-link" href="{% url 'menu' %}">Weekly Menu</a>
+                                <a class="nav-link" href="{% url 'milk_count' %}">Milk Inventory</a>
+                                <a class="nav-link" href="{% url 'meal_count' %}">Meal Count</a>
+                            </nav>
+                        </div>
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Settings
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'classroom_options' %}">Classroom Options</a>
+                                <a class="nav-link" href="{% url 'recipes' %}">Recipe Options</a>
+                                <a class="nav-link" href="{% url 'menu_rules' %}">Menu Rules</a>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                <div class="sb-sidenav-footer">
+                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
+                </div>
+            </nav>
+
+        </div>
+        <div id="layoutSidenav_content">
+            <main>
+                <div class="container-fluid px-4">
+                    <h1>Classroom Options</h1>
+                    <div class="row">
+                        <div class="card mb-4 classrooms bg-faded-red">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div class="col">
+                                    <i class="fas fa-chalkboard me-1 text-white"></i>
+                                    <strong class="text-white">Classrooms</strong>
+                                </div>
+                                <div class="col-auto">
+                                    <button id="classroomListButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#addClassroomModal"><i class="fas fa-plus"></i></button>
+                                    <button id="classroomDelButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#deleteClassroomModal"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group" id="classroomList">
+                                    {% for classroom in classrooms %}
+                                        <li class="list-group-item">{{ classroom.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="card mb-4 students bg-faded-red">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div class="col">
+                                    <i class="fas fa-chalkboard me-1 text-white"></i>
+                                    <strong class="text-white">Students</strong>
+                                </div>
+                                <div class="col-auto">
+                                    <button id="studentListButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="fas fa-plus"></i></button>
+                                    <button id="studentDelButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#deleteStudentModal"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group" id="studentList">
+                                    {% for classroom in classrooms %}
+                                        {% for student in classroom.students %}
+                                            <li class="list-group-item">{{ student.first_name }} {{ student.last_name }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="card mb-4 teachers bg-faded-red">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div class="col">
+                                    <i class="fas fa-chalkboard me-1 text-white"></i>
+                                    <strong class="text-white">Teachers</strong>
+                                </div>
+                                <div class="col-auto">
+                                    <button id="teacherListButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#addTeacherModal"><i class="fas fa-plus"></i></button>
+                                    <button id="teacherDelButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#deleteTeacherModal"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                               <!-- u1 body-->
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+            
+                <!-- Add Classroom Modal -->
+                <div class="modal fade" id="addClassroomModal" tabindex="-1" aria-labelledby="addClassroomModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="addClassroomModalLabel">Add Classroom</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Form to add a classroom -->
+                                <form id="addClassroomForm">
+                                    <div class="mb-3">
+                                        <label for="className" class="form-label">Classroom Name</label>
+                                        <input type="text" class="form-control" id="className" name="className">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Add</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="deleteClassroomModal" tabindex="-1" aria-labelledby="deleteClassroomModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="deleteClassroomModalLabel">Select Classroom(s) to Delete</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="deleteClassroomForm">
+                                    <ul class="list-group">
+                                        {% for classroom in classrooms %}
+                                            <li class="list-group-item">
+                                                <input type="checkbox" class="form-check-input" name="classroomCheckbox" value="{{ classroom.id }}">
+                                                {{ classroom.name }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                    <button type="submit" class="btn btn-danger mt-3">Delete Selected</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="addStudentModalLabel">Add Student</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form id="addStudentForm">
+                          <div class="modal-body">
+                            <div class="mb-3">
+                              <label for="firstName" class="form-label">First Name</label>
+                              <input type="text" class="form-control" id="firstName" name="firstName" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="lastName" class="form-label">Last Name</label>
+                              <input type="text" class="form-control" id="lastName" name="lastName" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="dob" class="form-label">Date of Birth</label>
+                              <input type="date" class="form-control" id="dob" name="dob" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="code" class="form-label">Code</label>
+                              <input type="text" class="form-control" id="code" name="code" required>
+                            </div>
+                            <div class="mb-3">
+                              <label for="classroom" class="form-label">Classroom</label>
+                              <select class="form-select" id="classroom" name="classroom" required>
+                                <option selected disabled>Select Classroom</option>
+                                {% for classroom in classrooms %}
+                                    <option value="{{ classroom.name }}">{{ classroom.name }}</option>
+                                {% endfor %}
+                            </select>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Add Student</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>     
+
+            </main>
+    <!-- JavaScript imports and custom scripts -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <!-- Your custom JavaScript -->
+    <script src="{% static 'js/scripts.js' %}"></script>
+    <script>
+     $(document).ready(function() {
+    $('#addClassroomForm').submit(function(e) {
+        e.preventDefault(); // Prevent the form from submitting normally
+
+        // Get the classroom name from the form
+        var classroomName = $('#className').val();
+
+        // Send an AJAX request to the Django view
+        $.ajax({
+            type: 'POST',
+            url: '{% url "add_classroom" %}',
+            data: {
+                'className': classroomName,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Reload the page or update the classroom list as needed
+                    location.reload();
+                } else {
+                    // Handle error (if any)
+                    console.log('Failed to add classroom');
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // Log any errors to the console
+            }
+        });
+    });
+    $(document).ready(function() {
+    $('#deleteClassroomForm').submit(function(e) {
+        e.preventDefault(); // Prevent the form from submitting normally
+
+        // Get the selected classroom IDs
+        var selectedClassrooms = [];
+        $('input[name="classroomCheckbox"]:checked').each(function() {
+            selectedClassrooms.push($(this).val());
+        });
+
+        // Send an AJAX request to delete the selected classrooms
+        $.ajax({
+            type: 'POST',
+            url: '{% url "delete_classrooms" %}',
+            data: {
+                'classroomIds': selectedClassrooms,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Reload the page or update the classroom list as needed
+                    location.reload();
+                } else {
+                    // Handle error (if any)
+                    console.log('Failed to delete classrooms');
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // Log any errors to the console
+            }
+        });
+    });
+});
+});
+    </script>
+     <script>
+        $(document).ready(function() {
+          // Get CSRF token
+          var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
+      
+          $('#addStudentForm').submit(function(e) {
+            e.preventDefault();
+            $.ajax({
+              type: 'POST',
+              url: '{% url "add_student" %}',
+              headers: { "X-CSRFToken": csrftoken }, // Include CSRF token in headers
+              data: $(this).serialize(),
+              success: function(response) {
+                // Handle success
+                $('#addStudentModal').modal('hide');
+                location.reload();
+              },
+              error: function(xhr, status, error) {
+                // Handle errors
+                console.error(xhr.responseText);
+              }
+            });
+          });
+        });
+      </script>
+</body>
+</html>

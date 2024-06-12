@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <title>Recipes</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Font Awesome -->
+    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Tabulator CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    {% load static %}
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <style>
+        h1 {
+    margin-top: 20px;
+    margin-left: 27px;
+    font-weight: 400;
+    line-height: 1.2;
+    font-weight: bold;
+    font-size: 40px;
+}
+h2{
+    margin-left: 27px;
+}
+.list-group {
+    padding: 20px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    margin-left: 27px;
+    margin-right: 27px;
+}
+
+.btn-primary {
+    margin-left: 27px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    margin-right: 15px;
+}
+
+.btn.deleteRecipeBtn {
+    
+    margin-bottom: 6px;   
+    
+}
+.recipe-buttons {
+        float: right;
+    }
+    </style>
+</head>
+<body class="sb-nav-fixed">
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <!-- Navbar Brand-->
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
+        
+        <a class="navbar-brand ps-3" href="{% url 'index' %}">Tracker</a>
+        <!-- Navbar-->
+        <div class="ms-auto">
+            <ul class="navbar-nav me-lg-4">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        {% if user.is_authenticated %}
+                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                        {% else %}
+                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="#!">Account Settings</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+                        <div class="sb-sidenav-menu-heading">Main</div>
+                        
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Attendance
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'sign_in' %}">Sign In</a>
+                                <a class="nav-link" href="{% url 'daily_attendance' %}">Daily Attendance</a>
+                                <a class="nav-link" href="{% url 'rosters' %}">Rosters</a>
+                            </nav>
+                        </div>
+                        
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Food Program
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'inventory_list' %}">Inventory</a>
+                                <a class="nav-link" href="{% url 'menu' %}">Weekly Menu</a>
+                                <a class="nav-link" href="{% url 'milk_count' %}">Milk Inventory</a>
+                                <a class="nav-link" href="{% url 'meal_count' %}">Meal Count</a>
+                            </nav>
+                        </div>
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Settings
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'classroom_options' %}">Classroom Options</a>
+                                <a class="nav-link" href="{% url 'recipes' %}">Recipe Options</a>
+                                <a class="nav-link" href="{% url 'menu_rules' %}">Menu Rules</a>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                <div class="sb-sidenav-footer">
+                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
+                </div>
+            </nav>
+
+        </div>
+        <div id="layoutSidenav_content">
+            <main>
+                <div class="mt-4">
+                    <h1>Recipe Lists</h1>
+                    <!-- Buttons for creating recipes -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBreakfastRecipeModal">
+                            Create Breakfast Recipe
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAMRecipeModal">
+                            Create AM Snack Recipe
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
+                            Create Lunch Recipe
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPMRecipeModal">
+                            Create PM Snack Recipe
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#fruitRecipeModal">
+                            Add Fruit to Menu Rules
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#vegRecipeModal">
+                            Add Vegetables to Menu Rules
+                        </button>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#wgRecipeModal">
+                            Add Whole Grains to Menu Rules
+                        </button>
+                    </div>
+                </div>
+                <div class="row mt-4" id="recipeListsContainer">
+                    <div class="col">
+                        <h2>Breakfast Recipes</h2>
+                        <!-- List for displaying breakfast recipes -->
+                        <ul id="breakfastRecipeList" class="list-group">
+                            <!-- Breakfast recipes will be populated dynamically here -->
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <h2>AM Snack Recipes</h2>
+                        <!-- List for displaying AM snack recipes -->
+                        <ul id="amRecipeList" class="list-group">
+                            <!-- AM snack recipes will be populated dynamically here -->
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <h2>Lunch Recipes</h2>
+                        <!-- List for displaying lunch recipes -->
+                        <ul id="recipeList" class="list-group">
+                            <!-- Recipes will be populated dynamically here -->
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <h2>PM Snack Recipes</h2>
+                        <!-- List for displaying PM snack recipes -->
+                        <ul id="pmRecipeList" class="list-group">
+                            <!-- PM snack recipes will be populated dynamically here -->
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <h2>Fruits with Rules</h2>
+                        <!-- List for displaying PM snack recipes -->
+                        <ul id="fruitRecipeList" class="list-group">
+                            <!-- PM snack recipes will be populated dynamically here -->
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <h2>Veg. with Rules</h2>
+                        <!-- List for displaying PM snack recipes -->
+                        <ul id="vegRecipeList" class="list-group">
+                            <!-- PM snack recipes will be populated dynamically here -->
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <h2>Grains with Rules</h2>
+                        <!-- List for displaying PM snack recipes -->
+                        <ul id="wgRecipeList" class="list-group">
+                            <!-- PM snack recipes will be populated dynamically here -->
+                        </ul>
+                    </div>
+                </div>
+            </main>
+            
+            
+
+            <div class="modal fade" id="fruitRecipeModal" tabindex="-1" aria-labelledby="fruitRecipeModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="fruitRecipeModalLabel">Create Fruit Recipe</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="createFruitRecipeForm" method="post" action="{% url 'create_fruit_recipe' %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="fruitName" class="form-label">Fruit Name</label>
+                                    <input type="text" class="form-control" id="fruitName" name="fruitName">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fruitMainIngredient1" class="form-label">Main Ingredient #1</label>
+                                    <select class="form-select" id="fruitMainIngredient1" name="fruitMainIngredient1" aria-describedby="fruitIngredientsHelp1">
+                                        <!-- Ingredients will be populated dynamically here -->
+                                    </select>
+                                    <input type="number" class="form-control mt-2" id="fruitQtyMainIngredient1" name="fruitQtyMainIngredient1" min="1" placeholder="Quantity">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fruitRule" class="form-label">Rule</label>
+                                    <select class="form-select" id="fruitRule" name="fruitRule">
+                                        <!-- Rules will be populated dynamically -->
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create Fruit Recipe</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal fade" id="vegRecipeModal" tabindex="-1" aria-labelledby="vegRecipeModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="vegRecipeModalLabel">Create Veg Recipe</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="createVegRecipeForm" method="post" action="{% url 'create_veg_recipe' %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="vegName" class="form-label">Veg Name</label>
+                                    <input type="text" class="form-control" id="vegName" name="vegName">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="vegMainIngredient1" class="form-label">Main Ingredient #1</label>
+                                    <select class="form-select" id="vegMainIngredient1" name="vegMainIngredient1" aria-describedby="vegIngredientsHelp1">
+                                        <!-- Ingredients will be populated dynamically here -->
+                                    </select>
+                                    <input type="number" class="form-control mt-2" id="vegQtyMainIngredient1" name="vegQtyMainIngredient1" min="1" placeholder="Quantity">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="vegRule" class="form-label">Rule</label>
+                                    <select class="form-select" id="vegRule" name="vegRule">
+                                        <!-- Rules will be populated dynamically -->
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create Veg Recipe</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal fade" id="wgRecipeModal" tabindex="-1" aria-labelledby="wgRecipeModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="wgRecipeModalLabel">Create Wg Recipe</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="createWgRecipeForm" method="post" action="{% url 'create_wg_recipe' %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="wgName" class="form-label">Wg Name</label>
+                                    <input type="text" class="form-control" id="wgName" name="wgName">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="wgMainIngredient1" class="form-label">Main Ingredient #1</label>
+                                    <select class="form-select" id="wgMainIngredient1" name="wgMainIngredient1" aria-describedby="wgIngredientsHelp1">
+                                        <!-- Ingredients will be populated dynamically here -->
+                                    </select>
+                                    <input type="number" class="form-control mt-2" id="wgQtyMainIngredient1" name="wgQtyMainIngredient1" min="1" placeholder="Quantity">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="wgRule" class="form-label">Rule</label>
+                                    <select class="form-select" id="wgRule" name="wgRule">
+                                        <!-- Rules will be populated dynamically -->
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create Wg Recipe</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+
+            <!-- Modal for creating recipe -->
+<div class="modal fade" id="createRecipeModal" tabindex="-1" aria-labelledby="createRecipeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createRecipeModalLabel">Create Recipe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createRecipeForm">
+                    <div class="mb-3">
+                        <label for="mealName" class="form-label">Meal Name</label>
+                        <input type="text" class="form-control" id="mealName" name="mealName">
+                    </div>
+
+                    <!-- Input fields for main ingredients and their quantities -->
+                    <div class="mb-3">
+                        <label for="mainIngredient1" class="form-label">Main Ingredient #1</label>
+                        <select class="form-select" id="mainIngredient1" name="mainIngredient1" aria-describedby="ingredientsHelp1">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="qtyMainIngredient1" name="qtyMainIngredient1" min="1" placeholder="Quantity">
+                    </div>
+                    <!-- Repeat this block for mainIngredient2, mainIngredient3, mainIngredient4, and mainIngredient5 -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient2">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="mainIngredient2Container">
+                        <!-- Main Ingredient #2 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for Main Ingredient #2 -->
+                        <label for="mainIngredient2" class="form-label">Main Ingredient #2</label>
+                        <select class="form-select" id="mainIngredient2" name="mainIngredient2" aria-describedby="ingredientsHelp2">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="qtyMainIngredient2" name="qtyMainIngredient2" min="1" placeholder="Quantity">
+                    </div>
+                
+                    <!-- Minimize buttons for additional main ingredients -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient3">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="mainIngredient3Container">
+                        <!-- Main Ingredient #3 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for Main Ingredient #3 -->
+                        <label for="mainIngredient3" class="form-label">Main Ingredient #3</label>
+                        <select class="form-select" id="mainIngredient3" name="mainIngredient3" aria-describedby="ingredientsHelp3">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="qtyMainIngredient3" name="qtyMainIngredient3" min="1" placeholder="Quantity">
+                    </div>
+                
+                    <!-- Minimize buttons for additional main ingredients -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient4">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="mainIngredient4Container">
+                        <!-- Main Ingredient #4 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for Main Ingredient #4 -->
+                        <label for="mainIngredient4" class="form-label">Main Ingredient #4</label>
+                        <select class="form-select" id="mainIngredient4" name="mainIngredient4" aria-describedby="ingredientsHelp4">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="qtyMainIngredient4" name="qtyMainIngredient4" min="1" placeholder="Quantity">
+                    </div>
+                
+                    <!-- Minimize buttons for additional main ingredients -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient5">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="mainIngredient5Container">
+                        <!-- Main Ingredient #5 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for Main Ingredient #5 -->
+                        <label for="mainIngredient5" class="form-label">Main Ingredient #5</label>
+                        <select class="form-select" id="mainIngredient5" name="mainIngredient5" aria-describedby="ingredientsHelp5">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="qtyMainIngredient5" name="qtyMainIngredient5" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <label for="grain" class="form-label">Grain</label>
+                        <input type="text" class="form-control" id="grain" name="grain" placeholder="Grain">
+                    </div>
+                    
+                    <!-- Input field for Meat/Meat Alternate -->
+                    <div class="mb-3">
+                        <label for="meatAlternate" class="form-label">Meat/Meat Alternate</label>
+                        <input type="text" class="form-control" id="meatAlternate" name="meatAlternate" placeholder="Meat/Meat Alternate">
+                    </div>
+                    <!-- Dropdown for Rule -->
+                    <div class="mb-3">
+                        <label for="rule" class="form-label">Rule</label>
+                        <select class="form-select" id="rule" name="rule">
+                            <!-- Rules will be populated dynamically -->
+                        </select>
+                    </div>
+                    <!-- Instructions text area -->
+                    <div class="mb-3">
+                        <label for="instructions" class="form-label">Instructions</label>
+                        <textarea class="form-control" id="instructions" name="instructions" rows="4"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Recipe</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="createBreakfastRecipeModal" tabindex="-1" aria-labelledby="createBreakfastRecipeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createBreakfastRecipeModalLabel">Create Breakfast Recipe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createBreakfastRecipeForm">
+                    <div class="mb-3">
+                        <label for="breakfastMealName" class="form-label">Meal Name</label>
+                        <input type="text" class="form-control" id="breakfastMealName" name="breakfastMealName">
+                    </div>
+
+                    <!-- Input fields for main ingredients and their quantities -->
+                    <div class="mb-3">
+                        <label for="breakfastMainIngredient1" class="form-label">Main Ingredient #1</label>
+                        <select class="form-select" id="breakfastMainIngredient1" name="breakfastMainIngredient1" aria-describedby="breakfastIngredientsHelp1">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient1" name="breakfastQtyMainIngredient1" min="1" placeholder="Quantity">
+                    </div>
+                    <!-- Repeat this block for breakfastMainIngredient2, breakfastMainIngredient3, breakfastMainIngredient4, and breakfastMainIngredient5 -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient2">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="breakfastMainIngredient2Container">
+                        <!-- breakfastMainIngredient2 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for breakfastMainIngredient2 -->
+                        <label for="breakfastMainIngredient2" class="form-label">Main Ingredient #2</label>
+                        <select class="form-select" id="breakfastMainIngredient2" name="breakfastMainIngredient2" aria-describedby="breakfastIngredientsHelp2">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient2" name="breakfastQtyMainIngredient2" min="1" placeholder="Quantity">
+                    </div>
+                
+                    <!-- Minimize buttons for additional main ingredients -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient3">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="breakfastMainIngredient3Container">
+                        <!-- breakfastMainIngredient3 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for breakfastMainIngredient3 -->
+                        <label for="breakfastMainIngredient3" class="form-label">Main Ingredient #3</label>
+                        <select class="form-select" id="breakfastMainIngredient3" name="breakfastMainIngredient3" aria-describedby="breakfastIngredientsHelp3">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient3" name="breakfastQtyMainIngredient3" min="1" placeholder="Quantity">
+                    </div>
+                
+                    <!-- Minimize buttons for additional main ingredients -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient4">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="breakfastMainIngredient4Container">
+                        <!-- breakfastMainIngredient4 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for breakfastMainIngredient4 -->
+                        <label for="breakfastMainIngredient4" class="form-label">Main Ingredient #4</label>
+                        <select class="form-select" id="breakfastMainIngredient4" name="breakfastMainIngredient4" aria-describedby="breakfastIngredientsHelp4">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient4" name="breakfastQtyMainIngredient4" min="1" placeholder="Quantity">
+                    </div>
+                
+                    <!-- Minimize buttons for additional main ingredients -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient5">Add Ingredient</button>
+                    </div>
+                
+                    <div class="mb-3" id="breakfastMainIngredient5Container">
+                        <!-- breakfastMainIngredient5 input fields -->
+                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
+                        <!-- Input fields for breakfastMainIngredient5 -->
+                        <label for="breakfastMainIngredient5" class="form-label">Main Ingredient #5</label>
+                        <select class="form-select" id="breakfastMainIngredient5" name="breakfastMainIngredient5" aria-describedby="breakfastIngredientsHelp5">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient5" name="breakfastQtyMainIngredient5" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <label for="additionalFood" class="form-label">Additional Food</label>
+                        <input type="text" class="form-control" id="additionalFood" name="additionalFood">
+                    </div>
+                    
+                    <!-- Rule dropdown -->
+                    <div class="mb-3">
+                        <label for="breakfastRule" class="form-label">Rule</label>
+                        <select class="form-select" id="breakfastRule" name="breakfastRule">
+                            <!-- Rules will be populated dynamically here -->
+                        </select>
+                    </div>
+                    <!-- Instructions text area -->
+                    <div class="mb-3">
+                        <label for="breakfastInstructions" class="form-label">Instructions</label>
+                        <textarea class="form-control" id="breakfastInstructions" name="breakfastInstructions" rows="4"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Breakfast Recipe</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createAMRecipeModal" tabindex="-1" aria-labelledby="createAMRecipeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createAMRecipeModalLabel">Create AM Snack Recipe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createAMRecipeForm">
+                    <div class="mb-3">
+                        <label for="amRecipeName" class="form-label">Recipe Name</label>
+                        <input type="text" class="form-control" id="amRecipeName" name="amRecipeName">
+                    </div>
+
+                    <!-- Input fields for main ingredients and their quantities -->
+                    <!-- Repeat this block for ingredient2, ingredient3, ingredient4, and ingredient5 -->
+                    <div class="mb-3">
+                        <label for="amIngredient1" class="form-label">Ingredient #1</label>
+                        <select class="form-select" id="amIngredient1" name="amIngredient1">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="amQty1" name="amQty1" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient2">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amIngredient2" class="form-label">Ingredient #2</label>
+                        <select class="form-select" id="amIngredient2" name="amIngredient2">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="amQty2" name="amQty2" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient3">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amIngredient3" class="form-label">Ingredient #3</label>
+                        <select class="form-select" id="amIngredient3" name="amIngredient3">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="amQty3" name="amQty3" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient4">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amIngredient4" class="form-label">Ingredient #4</label>
+                        <select class="form-select" id="amIngredient4" name="amIngredient4">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="amQty4" name="amQty4" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient5">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amIngredient5" class="form-label">Ingredient #5</label>
+                        <select class="form-select" id="amIngredient5" name="amIngredient5">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="amQty5" name="amQty5" min="1" placeholder="Quantity">
+                    </div>
+                    
+                    <!-- Fluid input field -->
+                    <div class="mb-3">
+                        <label for="amFluid" class="form-label">Fluid</label>
+                        <input type="text" class="form-control" id="amFluid" name="amFluid">
+                    </div>
+
+                    <!-- Fruit/Vegetable input field -->
+                    <div class="mb-3">
+                        <label for="amFruitVeg" class="form-label">Fruit/Vegetable</label>
+                        <input type="text" class="form-control" id="amFruitVeg" name="amFruitVeg">
+                    </div>
+
+                    <!-- Meat input field -->
+                    <div class="mb-3">
+                        <label for="amMeat" class="form-label">Meat</label>
+                        <input type="text" class="form-control" id="amMeat" name="amMeat">
+                    </div>
+                    <div class="mb-3">
+                        <label for="amRule" class="form-label">Rule</label>
+                        <select class="form-select" id="amRule" name="amRule">
+                            <!-- Rules will be populated dynamically here -->
+                        </select>
+                    </div>
+                    <!-- Instructions text area -->
+                    <div class="mb-3">
+                        <label for="amInstructions" class="form-label">Instructions</label>
+                        <textarea class="form-control" id="amInstructions" name="amInstructions" rows="4"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create AM Snack Recipe</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="createPMRecipeModal" tabindex="-1" aria-labelledby="createPMRecipeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPMRecipeModalLabel">Create PM Snack Recipe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createPMRecipeForm">
+                    <div class="mb-3">
+                        <label for="pmRecipeName" class="form-label">Recipe Name</label>
+                        <input type="text" class="form-control" id="pmRecipeName" name="pmRecipeName">
+                    </div>
+
+                    <!-- Input fields for main ingredients and their quantities -->
+                    <!-- Repeat this block for ingredient2, ingredient3, ingredient4, and ingredient5 -->
+                    <div class="mb-3">
+                        <label for="pmIngredient1" class="form-label">Ingredient #1</label>
+                        <select class="form-select" id="pmIngredient1" name="pmIngredient1">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="pmQty1" name="pmQty1" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient2">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pmIngredient2" class="form-label">Ingredient #2</label>
+                        <select class="form-select" id="pmIngredient2" name="pmIngredient2">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="pmQty2" name="pmQty2" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient3">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pmIngredient3" class="form-label">Ingredient #3</label>
+                        <select class="form-select" id="pmIngredient3" name="pmIngredient3">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="pmQty3" name="pmQty3" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient4">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pmIngredient4" class="form-label">Ingredient #4</label>
+                        <select class="form-select" id="pmIngredient4" name="pmIngredient4">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="pmQty4" name="pmQty4" min="1" placeholder="Quantity">
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-secondary" id="minimizeIngredient5">Add Ingredient</button>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pmIngredient5" class="form-label">Ingredient #5</label>
+                        <select class="form-select" id="pmIngredient5" name="pmIngredient5">
+                            <!-- Ingredients will be populated dynamically here -->
+                        </select>
+                        <input type="number" class="form-control mt-2" id="pmQty5" name="pmQty5" min="1" placeholder="Quantity">
+                    </div>
+                    
+                    <!-- Fluid input field -->
+                    <div class="mb-3">
+                        <label for="pmFluid" class="form-label">Fluid</label>
+                        <input type="text" class="form-control" id="pmFluid" name="pmFluid">
+                    </div>
+
+                    <!-- Fruit/Vegetable input field -->
+                    <div class="mb-3">
+                        <label for="pmFruitVeg" class="form-label">Fruit/Vegetable</label>
+                        <input type="text" class="form-control" id="pmFruitVeg" name="pmFruitVeg">
+                    </div>
+
+                    <!-- Meat input field -->
+                    <div class="mb-3">
+                        <label for="pmMeat" class="form-label">Meat</label>
+                        <input type="text" class="form-control" id="pmMeat" name="pmMeat">
+                    </div>
+                    <div class="mb-3">
+                        <label for="pmRule" class="form-label">Rule</label>
+                        <select class="form-select" id="pmRule" name="pmRule">
+                            <!-- Rules will be populated dynamically here -->
+                        </select>
+                    </div>
+                    <!-- Instructions text area -->
+                    <div class="mb-3">
+                        <label for="pmInstructions" class="form-label">Instructions</label>
+                        <textarea class="form-control" id="pmInstructions" name="pmInstructions" rows="4"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create PM Snack Recipe</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- JavaScript imports and custom scripts -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <!-- Your custom JavaScript -->
+    <script src="{% static 'js/scripts.js' %}"></script>
+  
+    <script>
+      $(document).ready(function() {
+    // Function to get CSRF token from cookies
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Function to populate dropdown with rules
+    function populateRulesDropdown() {
+        $.ajax({
+            url: '/fetch-rules/', // Update with your backend endpoint for fetching rules
+            method: 'GET',
+            success: function(response) {
+                var rulesSelect = $('#rule');
+                rulesSelect.empty(); // Clear previous options
+
+                // Add an empty option
+                rulesSelect.append($('<option>', {
+                    value: '',
+                    text: 'Select Rule'
+                }));
+
+                // Add rules
+                $.each(response.rules, function(index, rule) {
+                    rulesSelect.append($('<option>', {
+                        value: rule.id,
+                        text: rule.rule
+                    }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Function to populate dropdown with ingredients
+    function populateIngredientsDropdown(selectId) {
+        $.ajax({
+            url: '/fetch-ingredients/', // Update this with your backend endpoint for fetching ingredients
+            method: 'GET',
+            success: function(response) {
+                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+                var ingredientsSelect = $('#' + selectId);
+                ingredientsSelect.empty();
+                ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
+                $.each(response.ingredients, function(index, ingredient) {
+                    ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Clear form fields when the modal is shown
+    $('#createRecipeModal').on('show.bs.modal', function(e) {
+        $('#createRecipeForm').trigger('reset');
+        populateIngredientsDropdown('mainIngredient1');
+        populateIngredientsDropdown('mainIngredient2');
+        populateIngredientsDropdown('mainIngredient3');
+        populateIngredientsDropdown('mainIngredient4');
+        populateIngredientsDropdown('mainIngredient5');
+        populateRulesDropdown(); // Populate the rules dropdown
+        $("#mainIngredient2Container").hide();
+        $("#mainIngredient3Container").hide();
+        $("#mainIngredient4Container").hide();
+        $("#mainIngredient5Container").hide();
+    });
+
+    // Handle form submission
+    $('#createRecipeForm').submit(function(e) {
+        e.preventDefault();
+        var formData = $(this).serialize();
+        var csrfToken = getCookie('csrftoken');
+        $.ajax({
+            url: '/create-recipe/', // Update this with your backend endpoint for creating recipe
+            method: 'POST',
+            data: formData,
+            headers: { 'X-CSRFToken': csrfToken },
+            success: function(response) {
+                $('#createRecipeModal').modal('hide');
+                fetchRecipesAndUpdateList();
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    });
+
+    // Fetch recipes from the backend and update the list
+    function fetchRecipesAndUpdateList() {
+        $.ajax({
+            url: '/fetch-recipes/', // Replace with your backend endpoint for fetching recipes
+            method: 'GET',
+            success: function(response) {
+                var recipeList = $('#recipeList');
+                recipeList.empty();
+                $.each(response.recipes, function(index, recipe) {
+                    var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
+                    var buttonsContainer = $('<div class="recipe-buttons"></div>');
+                    var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
+                    editButton.data('recipe-id', recipe.id);
+                    buttonsContainer.append(editButton);
+                    var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
+                    deleteButton.data('recipe-id', recipe.id);
+                    buttonsContainer.append(deleteButton);
+                    listItem.append(buttonsContainer);
+                    recipeList.append(listItem);
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Initial fetch of recipes when the document is ready
+    fetchRecipesAndUpdateList();
+
+    // Add click event to minimize buttons
+    $("#minimizeIngredient2").click(function() {
+        $("#mainIngredient2Container").toggle();
+    });
+    $("#minimizeIngredient3").click(function() {
+        $("#mainIngredient3Container").toggle();
+    });
+    $("#minimizeIngredient4").click(function() {
+        $("#mainIngredient4Container").toggle();
+    });
+    $("#minimizeIngredient5").click(function() {
+        $("#mainIngredient5Container").toggle();
+    });
+});
+
+    </script>
+ <script>
+    function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            // Check if the cookie name matches the provided name
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+$(document).ready(function() {
+    // Function to populate dropdown with ingredients for breakfast recipe
+    function populateBreakfastIngredientsDropdown(selectId) {
+        $.ajax({
+            url: '/fetch-ingredients/',
+            method: 'GET',
+            success: function(response) {
+                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+                var ingredientsSelect = $('#' + selectId);
+                ingredientsSelect.empty();
+                ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
+                $.each(response.ingredients, function(index, ingredient) {
+                    ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Function to populate dropdown with rules
+    function populateBreakfastRulesDropdown() {
+        $.ajax({
+            url: '/fetch-rules/',
+            method: 'GET',
+            success: function(response) {
+                var rulesSelect = $('#breakfastRule');
+                rulesSelect.empty();
+                rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
+                $.each(response.rules, function(index, rule) {
+                    rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Clear form fields and populate dropdowns when the breakfast recipe modal is shown
+    $('#createBreakfastRecipeModal').on('show.bs.modal', function(e) {
+        $('#createBreakfastRecipeForm').trigger('reset');
+        populateBreakfastIngredientsDropdown('breakfastMainIngredient1');
+        populateBreakfastIngredientsDropdown('breakfastMainIngredient2');
+        populateBreakfastIngredientsDropdown('breakfastMainIngredient3');
+        populateBreakfastIngredientsDropdown('breakfastMainIngredient4');
+        populateBreakfastIngredientsDropdown('breakfastMainIngredient5');
+        populateBreakfastRulesDropdown();
+        $("#breakfastMainIngredient2Container").hide();
+        $("#breakfastMainIngredient3Container").hide();
+        $("#breakfastMainIngredient4Container").hide();
+        $("#breakfastMainIngredient5Container").hide();
+    });
+
+    $('#createBreakfastRecipeForm').submit(function(e) {
+        e.preventDefault();
+        var formData = $(this).serialize();
+        formData += '&additionalFood=' + $('#additionalFood').val();
+        var csrfToken = getCookie('csrftoken');
+        $.ajax({
+            url: '/create-breakfast-recipe/',
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            data: formData,
+            success: function(response) {
+                $('#createBreakfastRecipeModal').modal('hide');
+                alert('Breakfast recipe created successfully!');
+                location.reload();
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                alert('Error creating breakfast recipe: ' + error);
+            }
+        });
+    });
+
+    // Add show and hide functionality for additional ingredient inputs
+    $('#minimizeBreakfastIngredient2').click(function() {
+        $("#breakfastMainIngredient2Container").toggle();
+    });
+    $('#minimizeBreakfastIngredient3').click(function() {
+        $("#breakfastMainIngredient3Container").toggle();
+    });
+    $('#minimizeBreakfastIngredient4').click(function() {
+        $("#breakfastMainIngredient4Container").toggle();
+    });
+    $('#minimizeBreakfastIngredient5').click(function() {
+        $("#breakfastMainIngredient5Container").toggle();
+    });
+
+function deleteBreakfastRecipe(recipeId) {
+        // Get CSRF token
+        var csrfToken = getCookie('csrftoken');
+        // Submit AJAX request to delete the breakfast recipe
+        $.ajax({
+            url: `/delete-breakfast-recipe/${recipeId}/`, // Replace with your backend endpoint for deleting a breakfast recipe
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            success: function(response) {
+                // Handle success response
+                console.log(response);
+                // Refresh breakfast recipe list
+                fetchBreakfastRecipesAndUpdateList(); // Call function to fetch and update breakfast recipe list
+                // Optionally, you can perform additional actions like showing a success message
+            },
+            error: function(xhr, status, error) {
+                // Handle error
+                console.error(error);
+            }
+        });
+    }
+
+    // Add click event to delete button for each breakfast recipe
+    $(document).on('click', '.deleteBreakfastRecipeBtn', function() {
+        // Get the recipe ID from the button's data attribute
+        var recipeId = $(this).data('recipe-id');
+        // Confirm with the user before deleting
+        if (confirm("Are you sure you want to delete this breakfast recipe?")) {
+            // Call the deleteBreakfastRecipe function
+            deleteBreakfastRecipe(recipeId);
+        }
+    });
+
+    // Function to fetch breakfast recipes from the backend and update the list
+    function fetchBreakfastRecipesAndUpdateList() {
+        $.ajax({
+            url: '/fetch-breakfast-recipes/', // Replace with your backend endpoint for fetching breakfast recipes
+            method: 'GET',
+            success: function(response) {
+                // Populate the breakfast recipe list
+                var recipeList = $('#breakfastRecipeList');
+                recipeList.empty(); // Clear previous list items
+
+                // Iterate through each breakfast recipe and create list items with edit and delete buttons
+                $.each(response.recipes, function(index, recipe) {
+                    // Create list item for each breakfast recipe
+                    var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
+
+                    // Create a container for buttons and align it to the right
+                    var buttonsContainer = $('<div class="recipe-buttons"></div>');
+
+                    // Create edit button for the breakfast recipe
+                    var editButton = $('<button type="button" class="btn btn-primary btn-sm editBreakfastRecipeBtn">Edit</button>');
+                    editButton.data('recipe-id', recipe.id);
+                    buttonsContainer.append(editButton);
+
+                    // Create delete button for the breakfast recipe
+                    var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteBreakfastRecipeBtn">Delete</button>');
+                    deleteButton.data('recipe-id', recipe.id);
+                    buttonsContainer.append(deleteButton);
+
+                    // Append buttons container to list item
+                    listItem.append(buttonsContainer);
+
+                    // Append list item to breakfast recipe list
+                    recipeList.append(listItem);
+                });
+            },
+            error: function(xhr, status, error) {
+                // Handle error
+                console.error(error);
+            }
+        });
+    }
+
+    // Initial fetch of breakfast recipes when the document is ready
+    fetchBreakfastRecipesAndUpdateList();
+    });
+
+</script>
+<script>
+    function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            // Check if the cookie name matches the provided name
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+   $(document).ready(function() {
+    // Function to populate dropdown with ingredients for AM snack recipe
+    function populateAMIngredientsDropdown(selectId) {
+        // Fetch ingredients dynamically when the modal is shown
+        $.ajax({
+            url: '/fetch-ingredients/', // Update this with your backend endpoint for fetching AM snack ingredients
+            method: 'GET',
+            success: function(response) {
+                // Sort ingredients alphabetically
+                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+                
+                // Populate the select dropdown with ingredients
+                var ingredientsSelect = $('#' + selectId);
+                ingredientsSelect.empty(); // Clear previous options
+
+                // Add an empty option
+                ingredientsSelect.append($('<option>', {
+                    value: '',
+                    text: 'Select Ingredient'
+                }));
+
+                // Add sorted ingredients
+                $.each(response.ingredients, function(index, ingredient) {
+                    ingredientsSelect.append($('<option>', {
+                        value: ingredient.id,
+                        text: ingredient.item
+                    }));
+                });
+            },
+            error: function(xhr, status, error) {
+                // Handle error
+                console.error(error);
+            }
+        });
+    }
+
+    // Clear form fields when the AM snack recipe modal is shown
+    $('#createAMRecipeModal').on('show.bs.modal', function(e) {
+        // Clear input fields
+        $('#createAMRecipeForm').trigger('reset');
+        // Repopulate dropdowns with AM snack ingredients
+        populateAMIngredientsDropdown('amIngredient1');
+        populateAMIngredientsDropdown('amIngredient2');
+        populateAMIngredientsDropdown('amIngredient3');
+        populateAMIngredientsDropdown('amIngredient4');
+        populateAMIngredientsDropdown('amIngredient5');
+        populateAMRulesDropdown();
+    });
+
+    // Handle form submission for creating AM snack recipe
+    $('#createAMRecipeForm').submit(function(e) {
+        e.preventDefault(); // Prevent default form submission
+        var formData = $(this).serialize(); // Serialize form data
+        // Get CSRF token
+        var csrfToken = getCookie('csrftoken');
+        // Submit form data via AJAX to your backend endpoint for creating AM snack recipe
+        $.ajax({
+            url: '/create-am-recipe/', // Update this with your backend endpoint for creating AM snack recipe
+            method: 'POST',
+            data: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            success: function(response) {
+                // Handle success response
+                console.log(response);
+                // Close the modal
+                $('#createAMRecipeModal').modal('hide');
+                // Optionally, you can perform additional actions like showing a success message
+            },
+            error: function(xhr, status, error) {
+                // Handle error
+                console.error(error);
+            }
+        });
+    });
+});
+  // Function to populate dropdown with rules
+  function populateAMRulesDropdown() {
+        $.ajax({
+            url: '/fetch-rules/',
+            method: 'GET',
+            success: function(response) {
+                var rulesSelect = $('#amRule');
+                rulesSelect.empty();
+                rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
+                $.each(response.rules, function(index, rule) {
+                    rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+</script>
+<script>
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                // Check if the cookie name matches the provided name
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    $(document).ready(function() {
+        // Function to populate dropdown with ingredients for PM snack recipe
+        function populatePMIngredientsDropdown(selectId) {
+            // Fetch ingredients dynamically when the modal is shown
+            $.ajax({
+                url: '/fetch-ingredients/', // Update this with your backend endpoint for fetching PM snack ingredients
+                method: 'GET',
+                success: function(response) {
+                    // Sort ingredients alphabetically
+                    response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+
+                    // Populate the select dropdown with ingredients
+                    var ingredientsSelect = $('#' + selectId);
+                    ingredientsSelect.empty(); // Clear previous options
+
+                    // Add an empty option
+                    ingredientsSelect.append($('<option>', {
+                        value: '',
+                        text: 'Select Ingredient'
+                    }));
+
+                    // Add sorted ingredients
+                    $.each(response.ingredients, function(index, ingredient) {
+                        ingredientsSelect.append($('<option>', {
+                            value: ingredient.id,
+                            text: ingredient.item
+                        }));
+                    });
+                },
+                error: function(xhr, status, error) {
+                    // Handle error
+                    console.error(error);
+                }
+            });
+        }
+
+        // Clear form fields when the PM snack recipe modal is shown
+        $('#createPMRecipeModal').on('show.bs.modal', function(e) {
+            // Clear input fields
+            $('#createPMRecipeForm').trigger('reset');
+            // Repopulate dropdowns with PM snack ingredients
+            populatePMIngredientsDropdown('pmIngredient1');
+            populatePMIngredientsDropdown('pmIngredient2');
+            populatePMIngredientsDropdown('pmIngredient3');
+            populatePMIngredientsDropdown('pmIngredient4');
+            populatePMIngredientsDropdown('pmIngredient5');
+            populatePMRulesDropdown();
+        });
+
+        // Handle form submission for creating PM snack recipe
+        $('#createPMRecipeForm').submit(function(e) {
+            e.preventDefault(); // Prevent default form submission
+            var formData = $(this).serialize(); // Serialize form data
+            // Get CSRF token
+            var csrfToken = getCookie('csrftoken');
+            // Submit form data via AJAX to your backend endpoint for creating PM snack recipe
+            $.ajax({
+                url: '/create-pm-recipe/', // Update this with your backend endpoint for creating PM snack recipe
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                success: function(response) {
+                    // Handle success response
+                    console.log(response);
+                    // Close the modal
+                    $('#createPMRecipeModal').modal('hide');
+                    // Optionally, you can perform additional actions like showing a success message
+                },
+                error: function(xhr, status, error) {
+                    // Handle error
+                    console.error(error);
+                }
+            });
+        });
+         // Function to populate dropdown with rules
+  function populatePMRulesDropdown() {
+        $.ajax({
+            url: '/fetch-rules/',
+            method: 'GET',
+            success: function(response) {
+                var rulesSelect = $('#pmRule');
+                rulesSelect.empty();
+                rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
+                $.each(response.rules, function(index, rule) {
+                    rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+    });
+</script>
+<script>
+    $(document).ready(function() {
+    // Function to get CSRF token from cookies
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Function to populate dropdown with rules
+    function populateRulesDropdown(selectId) {
+        $.ajax({
+            url: '/fetch-rules/',
+            method: 'GET',
+            success: function(response) {
+                var rulesSelect = $('#' + selectId);
+                rulesSelect.empty(); // Clear previous options
+
+                // Add an empty option
+                rulesSelect.append($('<option>', {
+                    value: '',
+                    text: 'Select Rule'
+                }));
+
+                // Add rules
+                $.each(response.rules, function(index, rule) {
+                    rulesSelect.append($('<option>', {
+                        value: rule.id,
+                        text: rule.rule
+                    }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Function to populate dropdown with ingredients
+    function populateIngredientsDropdown(selectId) {
+        $.ajax({
+            url: '/fetch-ingredients/',
+            method: 'GET',
+            success: function(response) {
+                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+                var ingredientsSelect = $('#' + selectId);
+                ingredientsSelect.empty();
+                ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
+                $.each(response.ingredients, function(index, ingredient) {
+                    ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Clear form fields when the modal is shown
+    $('#fruitRecipeModal').on('show.bs.modal', function(e) {
+        $('#createFruitRecipeForm').trigger('reset');
+        populateIngredientsDropdown('fruitMainIngredient1');
+        populateRulesDropdown('fruitRule'); // Populate the rules dropdown
+    });
+
+    // Handle form submission for fruit recipes
+    $('#createFruitRecipeForm').submit(function(e) {
+        e.preventDefault();
+        var formData = $(this).serialize();
+        var csrfToken = getCookie('csrftoken');
+        $.ajax({
+            url: '/create-fruit-recipe/', // Update this with your backend endpoint for creating fruit recipe
+            method: 'POST',
+            data: formData,
+            headers: { 'X-CSRFToken': csrfToken },
+            success: function(response) {
+                $('#fruitRecipeModal').modal('hide');
+                fetchFruitRecipesAndUpdateList();
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    });
+
+    // Fetch fruit recipes from the backend and update the list
+    function fetchFruitRecipesAndUpdateList() {
+        $.ajax({
+            url: '/fetch-fruit-recipes/', // Replace with your backend endpoint for fetching fruit recipes
+            method: 'GET',
+            success: function(response) {
+                var fruitRecipeList = $('#fruitRecipeList');
+                fruitRecipeList.empty();
+                $.each(response.recipes, function(index, recipe) {
+                    var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
+                    var buttonsContainer = $('<div class="recipe-buttons"></div>');
+                    var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
+                    editButton.data('recipe-id', recipe.id);
+                    buttonsContainer.append(editButton);
+                    var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
+                    deleteButton.data('recipe-id', recipe.id);
+                    buttonsContainer.append(deleteButton);
+                    listItem.append(buttonsContainer);
+                    fruitRecipeList.append(listItem);
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // Initial fetch of fruit recipes when the document is ready
+    fetchFruitRecipesAndUpdateList();
+});
+</script>
+<script>
+    $(document).ready(function() {
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    
+        function populateRulesDropdown(selectId) {
+            $.ajax({
+                url: '/fetch-rules/',
+                method: 'GET',
+                success: function(response) {
+                    var rulesSelect = $('#' + selectId);
+                    rulesSelect.empty();
+                    rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
+                    $.each(response.rules, function(index, rule) {
+                        rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+    
+        function populateIngredientsDropdown(selectId) {
+            $.ajax({
+                url: '/fetch-ingredients/',
+                method: 'GET',
+                success: function(response) {
+                    response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+                    var ingredientsSelect = $('#' + selectId);
+                    ingredientsSelect.empty();
+                    ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
+                    $.each(response.ingredients, function(index, ingredient) {
+                        ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+    
+        $('#vegRecipeModal').on('show.bs.modal', function(e) {
+            $('#createVegRecipeForm').trigger('reset');
+            populateIngredientsDropdown('vegMainIngredient1');
+            populateRulesDropdown('vegRule');
+        });
+    
+        $('#createVegRecipeForm').submit(function(e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            var csrfToken = getCookie('csrftoken');
+            $.ajax({
+                url: '/create-veg-recipe/',
+                method: 'POST',
+                data: formData,
+                headers: { 'X-CSRFToken': csrfToken },
+                success: function(response) {
+                    $('#vegRecipeModal').modal('hide');
+                    fetchVegRecipesAndUpdateList();
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        });
+    
+        function fetchVegRecipesAndUpdateList() {
+            $.ajax({
+                url: '/fetch-veg-recipes/',
+                method: 'GET',
+                success: function(response) {
+                    var vegRecipeList = $('#vegRecipeList');
+                    vegRecipeList.empty();
+                    $.each(response.recipes, function(index, recipe) {
+                        var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
+                        var buttonsContainer = $('<div class="recipe-buttons"></div>');
+                        var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
+                        editButton.data('recipe-id', recipe.id);
+                        buttonsContainer.append(editButton);
+                        var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
+                        deleteButton.data('recipe-id', recipe.id);
+                        buttonsContainer.append(deleteButton);
+                        listItem.append(buttonsContainer);
+                        vegRecipeList.append(listItem);
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+    
+        fetchVegRecipesAndUpdateList();
+    });
+    </script>
+    <script>
+        $(document).ready(function() {
+            function getCookie(name) {
+                var cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    var cookies = document.cookie.split(';');
+                    for (var i = 0; i < cookies.length; i++) {
+                        var cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+        
+            function populateRulesDropdown(selectId) {
+                $.ajax({
+                    url: '/fetch-rules/',
+                    method: 'GET',
+                    success: function(response) {
+                        var rulesSelect = $('#' + selectId);
+                        rulesSelect.empty();
+                        rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
+                        $.each(response.rules, function(index, rule) {
+                            rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            }
+        
+            function populateIngredientsDropdown(selectId) {
+                $.ajax({
+                    url: '/fetch-ingredients/',
+                    method: 'GET',
+                    success: function(response) {
+                        response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+                        var ingredientsSelect = $('#' + selectId);
+                        ingredientsSelect.empty();
+                        ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
+                        $.each(response.ingredients, function(index, ingredient) {
+                            ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            }
+        
+            $('#wgRecipeModal').on('show.bs.modal', function(e) {
+                $('#createWgRecipeForm').trigger('reset');
+                populateIngredientsDropdown('wgMainIngredient1');
+                populateRulesDropdown('wgRule');
+            });
+        
+            $('#createWgRecipeForm').submit(function(e) {
+                e.preventDefault();
+                var formData = $(this).serialize();
+                var csrfToken = getCookie('csrftoken');
+                $.ajax({
+                    url: '/create-wg-recipe/',
+                    method: 'POST',
+                    data: formData,
+                    headers: { 'X-CSRFToken': csrfToken },
+                    success: function(response) {
+                        $('#wgRecipeModal').modal('hide');
+                        fetchWgRecipesAndUpdateList();
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            });
+        
+            function fetchWgRecipesAndUpdateList() {
+                $.ajax({
+                    url: '/fetch-wg-recipes/',
+                    method: 'GET',
+                    success: function(response) {
+                        var wgRecipeList = $('#wgRecipeList');
+                        wgRecipeList.empty();
+                        $.each(response.recipes, function(index, recipe) {
+                            var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
+                            var buttonsContainer = $('<div class="recipe-buttons"></div>');
+                            var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
+                            editButton.data('recipe-id', recipe.id);
+                            buttonsContainer.append(editButton);
+                            var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
+                            deleteButton.data('recipe-id', recipe.id);
+                            buttonsContainer.append(deleteButton);
+                            listItem.append(buttonsContainer);
+                            wgRecipeList.append(listItem);
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            }
+        
+            fetchWgRecipesAndUpdateList();
+        });
+        </script>
+</body>
+</html>

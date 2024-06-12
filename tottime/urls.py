@@ -1,0 +1,76 @@
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib.auth.decorators import login_required  # Import login_required
+from django.views.generic import RedirectView
+from tottimeapp import views
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', login_required(views.index), name='index'),  
+    path('index.html', login_required(views.index), name='index'),  
+    path('login/', views.user_login, name='login'),  # Unprotected view
+    path('signup/', views.user_signup, name='signup'),  # Unprotected view
+    path('logout/', login_required(views.logout_view), name='logout'),  
+    path('inventory/', login_required(views.inventory_list), name='inventory_list'),  
+    path('app/', include('tottimeapp.urls')),  
+    path('recipes/', login_required(views.recipes), name='recipes'),  
+    path('rosters/', login_required(views.rosters), name='rosters'),  
+    path('weekly-menu/', login_required(views.menu), name='menu'),  
+    path('menu_rules/', login_required(views.menu_rules), name='menu_rules'),
+    path('add_rule/', login_required(views.add_rule), name='add_rule'),
+    path('milk_count/', login_required(views.milk_count), name='milk_count'),  
+    path('inventory/add/', login_required(views.add_item), name='add_item'),  
+    path('edit_quantity/<int:item_id>/', login_required(views.edit_quantity), name='edit_quantity'),  
+    path('remove_item/<int:item_id>/', login_required(views.remove_item), name='remove_item'),  
+    path('api/out-of-stock-items/', login_required(views.get_out_of_stock_items), name='out_of_stock_items'),     
+    path('api/order-soon-items/', login_required(views.order_soon_items_view), name='order_soon_items'),  
+    path('fetch-ingredients/', login_required(views.fetch_ingredients), name='fetch_ingredients'),  
+    path('create-recipe/', login_required(views.create_recipe), name='create_recipe'),  
+    path('create-fruit-recipe/', login_required(views.create_fruit_recipe), name='create_fruit_recipe'),
+    path('create-veg-recipe/', login_required(views.create_veg_recipe), name='create_veg_recipe'),
+    path('create-wg-recipe/', login_required(views.create_wg_recipe), name='create_wg_recipe'),
+    path('fetch-recipes/', login_required(views.fetch_recipes), name='fetch_recipes'), 
+    path('fetch-fruit-recipes/', login_required(views.fetch_fruit_recipes), name='fetch_fruit_recipes'),  
+    path('fetch-veg-recipes/', login_required(views.fetch_veg_recipes), name='fetch_veg_recipes'),  
+    path('fetch-wg-recipes/', login_required(views.fetch_wg_recipes), name='fetch_wg_recipes'),  
+    path('fetch-rules/', login_required(views.fetch_rules), name='fetch_rules'),
+    path('save_menu/', login_required(views.save_menu), name='save_menu'),  
+    path('get-recipe/<int:recipe_id>/', login_required(views.get_recipe), name='get_recipe'),  
+    path('delete-recipe/<int:recipe_id>/', login_required(views.delete_recipe), name='delete_recipe'),  
+    path('classroom_options/', login_required(views.classroom_options), name='classroom_options'),  
+    path('401/', login_required(views.error401), name='error401'),  
+    path('404/', login_required(views.error404), name='error404'),  
+    path('500/', login_required(views.error500), name='error500'),  
+    path('create-breakfast-recipe/', login_required(views.create_breakfast_recipe), name='create_breakfast_recipe'), 
+    path('fetch-breakfast-recipes/', login_required(views.fetch_breakfast_recipes), name='fetch_breakfast_recipes'),  
+    path('delete-breakfast-recipe/<int:recipe_id>/', login_required(views.delete_breakfast_recipe), name='delete_breakfast_recipe'),  
+    path('create-am-recipe/', login_required(views.create_am_recipe), name='create_am_recipe'),  
+    path('fetch-am-recipes/', login_required(views.fetch_am_recipes), name='fetch_am_recipes'),  
+    path('delete-am-recipe/<int:recipe_id>/', login_required(views.delete_am_recipe), name='delete_am_recipe'),  
+    path('create-pm-recipe/', login_required(views.create_pm_recipe), name='create_pm_recipe'),  
+    path('fetch-pm-recipes/', login_required(views.fetch_pm_recipes), name='fetch_pm_recipes'),  
+    path('delete-pm-recipe/<int:recipe_id>/', login_required(views.delete_pm_recipe), name='delete_pm_recipe'),  
+    path('order-list/', login_required(views.order_list), name='order_list'), 
+    path('api/shopping-list', login_required(views.shopping_list_api), name='shopping_list_api'), 
+    path('update-orders/', login_required(views.update_orders), name='update_orders'), 
+    path('delete-shopping-items/', login_required(views.delete_shopping_items), name='delete_shopping_items'),
+    path('sign-in/', login_required(views.sign_in), name='sign_in'),
+    path('process_code/', login_required(views.process_code), name='process_code'),
+    path('daily-attendance/', login_required(views.daily_attendance), name='daily_attendance'),
+    path('add_student/', login_required(views.add_student), name='add_student'),
+    path('add_classroom/', login_required(views.add_classroom), name='add_classroom'),
+    path('delete_classrooms/', login_required(views.delete_classrooms), name='delete_classrooms'),
+    path('update_milk_count/', login_required(views.update_milk_count), name='update_milk_count'),
+    path('milk-count/', login_required(views.milk_count_view), name='milk_count'),
+    path('meal_count/', login_required(views.meal_count), name='meal_count'),
+    path('generate_breakfast_menu/', login_required(views.generate_breakfast_menu), name='generate_breakfast_menu'),
+    path('generate_pm_menu/', login_required(views.generate_pm_menu), name='generate_pm_menu'),
+    path('generate_am_menu/', login_required(views.generate_am_menu), name='generate_am_menu'),
+    path('generate_vegetable_menu/', login_required(views.generate_vegetable_menu), name='generate_vegetable_menu'),
+    path('generate_fruit_menu/', login_required(views.generate_fruit_menu), name='generate_fruit_menu'),
+     path('generate_menu/', login_required(views.generate_menu), name='generate_menu'),
+
+
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
