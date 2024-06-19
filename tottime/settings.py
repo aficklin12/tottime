@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['54.84.254.106', 'localhost']
 
 
 # Application definition
@@ -131,7 +131,7 @@ STATIC_URL = '/static/'
 
 # Additional locations of static files
 STATICFILES_DIRS = [
-    'C:\\Users\\afick\\OneDrive\\Python Scripts\\tottime\\tottimeapp\\static',  # Additional static directory
+    os.path.join(BASE_DIR, 'tottimeapp', 'static'),  # Additional static directory
 ]
 
 # The absolute path to the directory where collectstatic will collect static files for deployment.
