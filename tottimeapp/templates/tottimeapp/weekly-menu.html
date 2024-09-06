@@ -129,6 +129,7 @@ th, td {
     
 </head>
 <body class="sb-nav-fixed">
+   
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <!-- Navbar Brand-->
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
@@ -773,43 +774,66 @@ function updateBean(response) {
 
 
 
-         // Handle Save Menu button click event
-         $('#saveMenuBtn').click(function() {
-             // Create an array to store selected meals
-             var selectedMeals = [];
- 
-             // Loop through each table cell containing meal names
-             $('td[id$="Meals"]').each(function() {
-                 // Get the text content of the table cell
-                 var mealsText = $(this).text().trim();
-                 
-                 // Split the text content by comma to get individual meal names
-                 var meals = mealsText.split(',');
-                 
-                 // Add each meal to the selectedMeals array
-                 selectedMeals = selectedMeals.concat(meals);
-             });
- 
-             // AJAX request to save the menu
-             $.ajax({
-                 url: '/save_menu/',  // URL to your Django view for saving menu
-                 type: 'POST',
-                 data: { 'selected_meals': selectedMeals },  // Pass the selected meals as an array
-                 beforeSend: function(xhr, settings) {
-                     // Include CSRF token in request headers
-                     xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
-                 },
-                 success: function(response) {
-                     console.log(response); // Log the response
-                     // Handle success if necessary
-                 },
-                 error: function(xhr, status, error) {
-                     console.error('Error:', error);
-                     // Handle error if necessary
-                 }
-             });
-         });
- 
+    function replaceDuplicateJuice() {
+    var days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    var fruits = ['fruit', 'fruit2', 'fruit3', 'fruit4'];
+    var juiceKeyword = "juice"; // The keyword to search for in the fruit names
+
+    days.forEach(function(day) {
+        var seenJuices = new Set(); // To track if "Juice" has already been encountered
+
+        fruits.forEach(function(fruit) {
+            var cellID = '#' + day + fruit;
+            var cellText = $(cellID).text().trim();
+            var cellTextLower = cellText.toLowerCase();
+
+            // If the cell contains "Juice"
+            if (cellTextLower.includes(juiceKeyword)) {
+                if (seenJuices.has(juiceKeyword)) {
+                    // Replace the duplicate with "APPLE"
+                    $(cellID).text("APPLE");
+                } else {
+                    seenJuices.add(juiceKeyword);
+                }
+            }
+        });
+    });
+}
+function replaceDuplicateJuice() {
+    var days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    var fruits = ['fruit', 'fruit2', 'fruit3', 'fruit4'];
+    var juiceKeyword = "juice"; // The keyword to search for in the fruit names
+    var replacementFruits = []; // Array to be populated dynamically
+
+    // Fetch the list of fruits from the server
+    $.get('/api/fruits/', function(data) {
+        replacementFruits = data;
+
+        days.forEach(function(day) {
+            var seenJuices = new Set(); // To track if "Juice" has already been encountered
+
+            fruits.forEach(function(fruit) {
+                var cellID = '#' + day + fruit;
+                var cellText = $(cellID).text().trim();
+                var cellTextLower = cellText.toLowerCase();
+
+                // If the cell contains "Juice"
+                if (cellTextLower.includes(juiceKeyword)) {
+                    if (seenJuices.has(juiceKeyword)) {
+                        // Replace the duplicate with a random item from replacementFruits
+                        var randomFruit = replacementFruits[Math.floor(Math.random() * replacementFruits.length)];
+                        $(cellID).text(randomFruit);
+                    } else {
+                        seenJuices.add(juiceKeyword);
+                    }
+                }
+            });
+        });
+    });
+}
+
+
+         
 // Function to update the table with meals for each day
 function updateTable(response) {
     // Days of the week
@@ -885,6 +909,7 @@ function updateTable(response) {
     updateLeafyGreen(response);
     updateYellowVeg(response);
     updateBean(response);
+    replaceDuplicateJuice();
 }
 
  function updateAMTable(response) {
@@ -968,8 +993,9 @@ function updateTable(response) {
          // If the element corresponds to 'fruit3', update it with a different fruit
          if (fruitData.fruit3) {
              $('#' + day.toLowerCase() + 'fruit3').text(fruitData.fruit3);
-             makeEditable($('#' + day.toLowerCase() + 'fruit3'));
+             
          }
+        makeEditable($('#' + day.toLowerCase() + 'fruit3'));
      });
  }
  
@@ -1022,50 +1048,38 @@ function updateTable(response) {
          }
          function updateDates() {
      var today = new Date(); // Get today's date
-     var currentDayIndex = today.getDay(); // Get the index of today's day (0: Sunday, 1: Monday, ..., 6: Saturday)
-     var monday = new Date(today); // Clone today's date for Monday
-     var friday = new Date(today); // Clone today's date for Friday
- 
-     // Calculate Monday by subtracting days based on the current day index
-     monday.setDate(today.getDate() - currentDayIndex + (currentDayIndex === 0 ? -6 : 1));
-     
-     // Calculate Friday by adding days to reach Friday
-     friday.setDate(today.getDate() + (5 - currentDayIndex));
- 
-     // Format start date (Monday) and end date (Friday)
-     var startDateString = ('0' + (monday.getMonth() + 1)).slice(-2) + '/' + ('0' + monday.getDate()).slice(-2);
-     var endDateString = ('0' + (friday.getMonth() + 1)).slice(-2) + '/' + ('0' + friday.getDate()).slice(-2);
- 
-     // Update the "Weekly Menu: Date - Date" header
-     $('#weeklyMenuHeader').text('Weekly Menu: ' + startDateString + ' - ' + endDateString);
- 
-     // Loop through each weekday and update the date
-     $('.weekday-date').each(function(index) {
-         var date = monday.getDate() + index; // Calculate the date for the weekday
-         var month = monday.getMonth() + 1; // Get the month for Monday
-         var year = monday.getFullYear(); // Get the year for Monday
- 
-         // Check if the date exceeds the number of days in the month
-         if (date > new Date(year, month, 0).getDate()) {
-             date = date - new Date(year, month, 0).getDate(); // Subtract the number of days in the month
-             month++; // Increment the month
-             if (month > 12) { // If month exceeds December, reset to January of next year
-                 month = 1;
-                 year++;
-             }
-         }
- 
-         // Format the date as MM/DD
-         var formattedDate = ('0' + month).slice(-2) + '/' + ('0' + date).slice(-2);
- 
-         // Update the date under the weekday
-         $(this).text(formattedDate);
-     });
+    var currentDayIndex = today.getDay(); // Get the index of today's day (0: Sunday, 1: Monday, ..., 6: Saturday)
+    var daysUntilNextMonday = (currentDayIndex === 0) ? 1 : (8 - currentDayIndex); // Calculate days until next Monday
+
+    var nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysUntilNextMonday); // Set next Monday's date
+
+    var nextFriday = new Date(nextMonday);
+    nextFriday.setDate(nextMonday.getDate() + 4); // Set next Friday's date by adding 4 days to next Monday
+
+    // Format start date (Monday) and end date (Friday)
+    var startDateString = ('0' + (nextMonday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextMonday.getDate()).slice(-2);
+    var endDateString = ('0' + (nextFriday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextFriday.getDate()).slice(-2);
+
+    // Update the "Weekly Menu: Date - Date" header
+    $('#weeklyMenuHeader').text('Weekly Menu: ' + startDateString + ' - ' + endDateString);
+
+    // Loop through each weekday and update the date
+    $('.weekday-date').each(function(index) {
+        var date = new Date(nextMonday);
+        date.setDate(nextMonday.getDate() + index); // Calculate the date for the weekday
+
+        // Format the date as MM/DD
+        var formattedDate = ('0' + (date.getMonth() + 1)).slice(-2) + '/' + ('0' + date.getDate()).slice(-2);
+
+        // Update the date under the weekday
+        $(this).text(formattedDate);
+    });
  }
  
  
-     
-     });
+});
+
  </script>
 </main>
 

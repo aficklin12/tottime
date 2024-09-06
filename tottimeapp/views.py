@@ -586,6 +586,7 @@ def check_ingredients_availability(recipe, user):
                 return False
     return True
 
+
 @login_required
 def save_menu(request):
     if request.method == 'POST':
@@ -693,25 +694,30 @@ def delete_pm_recipe(request, recipe_id):
             return JsonResponse({'status': 'error', 'message': 'PM Recipe not found'})
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-    
+
 @login_required
 def order_list(request):
     if request.method == 'POST':
-        order = request.POST.get('order', '')
-        if order:
-            OrderList.objects.create(user=request.user, order=order)
-            return redirect('order_list')  # Redirect to a different page or provide a message
+        item = request.POST.get('item', '')
+        quantity = request.POST.get('quantity', 1)  # Default to 1 if not provided
+        category = request.POST.get('category', 'Other')  # Default to 'Other' if not provided
+
+        if item:
+            OrderList.objects.create(user=request.user, item=item, quantity=quantity, category=category)
+            return redirect('order_list')
         else:
             return HttpResponseBadRequest('Invalid form submission')
     else:
         order_items = OrderList.objects.filter(user=request.user)
         return render(request, 'index.html', {'order_items': order_items})
 
+
+
 @login_required
 def shopping_list_api(request):
     if request.method == 'GET':
         shopping_list_items = OrderList.objects.filter(user=request.user)
-        serialized_items = [{'name': item.order} for item in shopping_list_items]
+        serialized_items = [{'name': item.item} for item in shopping_list_items]
         return JsonResponse(serialized_items, safe=False)
     else:
         return HttpResponseNotAllowed(['GET'])
@@ -1137,17 +1143,27 @@ def meal_count(request):
     return render(request, 'meal_count.html', {'am_count': am_count, 'lunch_count': lunch_count, 'pm_count': pm_count, 'months':months, 'years': years, 'selected_month':selected_month, 'selected_year': selected_year})
 
 
-
 def select_meals_for_days(recipes, user):
-    """Select available meals for each day from the given recipes."""
+    """Select available meals for each day from the given recipes, accounting for inventory usage."""
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     menu_data = {}
 
+    # Get a copy of the user's inventory to simulate inventory changes
+    inventory = {item.id: item for item in Inventory.objects.filter(user=user)}
+
     for day in days_of_week:
-        available_meals = [r for r in recipes if check_ingredients_availability(r, user)]
+        # For Monday and Tuesday, exclude meals if any ingredient has quantity = 0
+        if day in ["Monday", "Tuesday"]:
+            available_meals = [r for r in recipes if check_ingredients_availability(r, user, inventory, exclude_zero_quantity=True)]
+        else:
+            available_meals = [r for r in recipes if check_ingredients_availability(r, user, inventory)]
+        
         if available_meals:
             selected_meal = random.choice(available_meals)
             recipes = [r for r in recipes if r != selected_meal]
+            
+            # Subtract used ingredients from inventory
+            subtract_ingredients_from_inventory(selected_meal, inventory)
         else:
             selected_meal = None
 
@@ -1165,6 +1181,49 @@ def select_meals_for_days(recipes, user):
             }
 
     return menu_data
+
+def check_ingredients_availability(recipe, user, inventory, exclude_zero_quantity=False):
+    """Check if the ingredients for a recipe are available in the inventory.
+    
+    Args:
+        exclude_zero_quantity (bool): If True, exclude ingredients with quantity = 0.
+    """
+    required_ingredients = [
+        (recipe.ingredient1, recipe.qty1),
+        (recipe.ingredient2, recipe.qty2),
+        (recipe.ingredient3, recipe.qty3),
+        (recipe.ingredient4, recipe.qty4),
+        (recipe.ingredient5, recipe.qty5)
+    ]
+
+    for ingredient, qty in required_ingredients:
+        if ingredient:
+            item = inventory.get(ingredient.id, None)
+            if item:
+                if exclude_zero_quantity and item.quantity == 0:
+                    return False
+                if item.total_quantity < qty:
+                    return False
+
+    return True
+
+def subtract_ingredients_from_inventory(recipe, inventory):
+    """Subtract the ingredients used in a recipe from the inventory."""
+    required_ingredients = [
+        (recipe.ingredient1, recipe.qty1),
+        (recipe.ingredient2, recipe.qty2),
+        (recipe.ingredient3, recipe.qty3),
+        (recipe.ingredient4, recipe.qty4),
+        (recipe.ingredient5, recipe.qty5)
+    ]
+
+    for ingredient, qty in required_ingredients:
+        if ingredient:
+            item = inventory.get(ingredient.id, None)
+            if item:
+                item.total_quantity -= qty
+                item.save()
+
 
 
 def generate_menu(request):
@@ -1230,57 +1289,138 @@ def generate_breakfast_menu(request):
 def generate_fruit_menu(request):
     fruit_menu_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    
+    # Retrieve available fruits for the entire week
+    all_fruits = list(
+        Inventory.objects.filter(
+            user=request.user,
+            category="Fruits",
+            total_quantity__gt=0
+        ).values_list('item', flat=True)
+    )
+    
+    # Retrieve available fruits with quantity > 0
+    fruits_with_quantity = list(
+        Inventory.objects.filter(
+            user=request.user,
+            category="Fruits",
+            quantity__gt=0
+        ).values_list('item', flat=True)
+    )
+    
+    # Separate fruits for Monday and Tuesday
+    fruits_for_monday_tuesday = [
+        fruit for fruit in fruits_with_quantity
+        if fruit in all_fruits
+    ]
+    
+    # Track used fruits to avoid repetition
+    used_fruits = set()
+    
+    # Helper function to select a fruit and update the used_fruits set
+    def select_fruit(fruit_list):
+        available_fruits = [fruit for fruit in fruit_list if fruit not in used_fruits]
+        if available_fruits:
+            selected_fruit = random.choice(available_fruits)
+            used_fruits.add(selected_fruit)
+            return selected_fruit
+        return "NO FRUIT AVAILABLE"
 
-    # Retrieve all available fruits from the inventory for the entire week
-    all_fruits = list(Inventory.objects.filter(user=request.user, category="Fruits", resupply__lte=F('quantity')).values_list('item', flat=True))
-
-    # Iterate over each day of the week
-    for day in days_of_week:
+    # Generate fruit menu for Monday and Tuesday
+    for day in ["Monday", "Tuesday"]:
         fruit_snack_data = {}
         
-        # If there are available fruits, randomly select one for this day
-        if all_fruits:
-            selected_fruit = random.choice(all_fruits)
-            fruit_snack_data['fruit'] = selected_fruit
-            all_fruits.remove(selected_fruit)  # Remove the selected fruit from the available fruits
-
-            # If there are remaining available fruits, randomly select another for 'fruit3'
-            if all_fruits:
-                selected_fruit_for_fruit3 = random.choice(all_fruits)
-                fruit_snack_data['fruit3'] = selected_fruit_for_fruit3
-                all_fruits.remove(selected_fruit_for_fruit3)
-            else:
-                fruit_snack_data['fruit3'] = ""  # No more fruits available, leave the cell blank
-        else:
-            fruit_snack_data['fruit'] = ""  # No more fruits available, leave the cell blank
-            fruit_snack_data['fruit3'] = ""  # No more fruits available, leave the cell blank
+        selected_fruit = select_fruit(fruits_for_monday_tuesday)
+        fruit_snack_data['fruit'] = selected_fruit
         
-        # Assign the fruit snack data to the corresponding day
+        # Filter out "Juice" and "Raisins" for the 'fruit3' selection
+        available_for_fruit3 = [
+            fruit for fruit in fruits_for_monday_tuesday
+            if "Juice" not in fruit and "Raisins" not in fruit
+        ]
+        
+        selected_fruit_for_fruit3 = select_fruit(available_for_fruit3)
+        fruit_snack_data['fruit3'] = selected_fruit_for_fruit3
+        
+        fruit_menu_data[day] = fruit_snack_data
+    
+    # Generate fruit menu for the remaining days
+    for day in ["Wednesday", "Thursday", "Friday"]:
+        fruit_snack_data = {}
+        
+        selected_fruit = select_fruit(all_fruits)
+        fruit_snack_data['fruit'] = selected_fruit
+        
+        # Filter out "Juice" and "Raisins" for the 'fruit3' selection
+        available_for_fruit3 = [
+            fruit for fruit in all_fruits
+            if "Juice" not in fruit and "Raisins" not in fruit
+        ]
+        
+        selected_fruit_for_fruit3 = select_fruit(available_for_fruit3)
+        fruit_snack_data['fruit3'] = selected_fruit_for_fruit3
+        
         fruit_menu_data[day] = fruit_snack_data
 
     return JsonResponse(fruit_menu_data)
+
+def get_fruits(request):
+    fruits = Inventory.objects.filter(category='Fruits').values_list('item', flat=True)
+    return JsonResponse(list(fruits), safe=False)
 
 def generate_vegetable_menu(request):
     user = request.user
     vegetable_menu_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
-    # Retrieve all available vegetables from the inventory for the entire week
-    all_vegetables = list(Inventory.objects.filter(user=user, category="Vegetables", resupply__lte=F('quantity')).values_list('item', flat=True))
+    # Retrieve available vegetables based on total_quantity
+    all_vegetables = list(Inventory.objects.filter(
+        user=user,
+        category="Vegetables",
+        total_quantity__gt=0
+    ).values_list('item', flat=True))
 
-    # Iterate over each day of the week
-    for day in days_of_week:
+    # Retrieve vegetables with quantity > 0
+    vegetables_with_quantity = list(Inventory.objects.filter(
+        user=user,
+        category="Vegetables",
+        quantity__gt=0
+    ).values_list('item', flat=True))
+
+    # Separate vegetables for Monday and Tuesday
+    vegetables_for_monday_tuesday = [
+        veg for veg in vegetables_with_quantity
+        if veg in all_vegetables
+    ]
+
+    # Track used vegetables to avoid repetition
+    used_vegetables = set()
+
+    # Helper function to select a vegetable and update the used_vegetables set
+    def select_vegetable(vegetable_list):
+        available_vegetables = [veg for veg in vegetable_list if veg not in used_vegetables]
+        if available_vegetables:
+            selected_vegetable = random.choice(available_vegetables)
+            used_vegetables.add(selected_vegetable)
+            return selected_vegetable
+        return "NO VEGETABLE AVAILABLE"
+
+    # Generate vegetable menu for Monday and Tuesday
+    for day in ["Monday", "Tuesday"]:
         vegetable_data = {}
         
-        # If there are available vegetables, randomly select one for this day
-        if all_vegetables:
-            selected_vegetable = random.choice(all_vegetables)
-            vegetable_data['vegetable'] = selected_vegetable
-            all_vegetables.remove(selected_vegetable)  # Remove the selected vegetable from the available vegetables
-        else:
-            vegetable_data['vegetable'] = ""  # No more vegetables available, leave the cell blank
+        selected_vegetable = select_vegetable(vegetables_for_monday_tuesday)
+        vegetable_data['vegetable'] = selected_vegetable
         
-        # Assign the vegetable data to the corresponding day
+        vegetable_menu_data[day] = vegetable_data
+
+    # Generate vegetable menu for the remaining days
+    for day in ["Wednesday", "Thursday", "Friday"]:
+        vegetable_data = {}
+        
+        selected_vegetable = select_vegetable(all_vegetables)
+        vegetable_data['vegetable'] = selected_vegetable
+        
         vegetable_menu_data[day] = vegetable_data
 
     return JsonResponse(vegetable_menu_data)

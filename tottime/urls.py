@@ -70,7 +70,7 @@ urlpatterns = [
     path('generate_am_menu/', login_required(views.generate_am_menu), name='generate_am_menu'),
     path('generate_vegetable_menu/', login_required(views.generate_vegetable_menu), name='generate_vegetable_menu'),
     path('generate_fruit_menu/', login_required(views.generate_fruit_menu), name='generate_fruit_menu'),
-     path('generate_menu/', login_required(views.generate_menu), name='generate_menu'),
-
+    path('generate_menu/', login_required(views.generate_menu), name='generate_menu'),
+    path('api/fruits/', login_required(views.get_fruits), name='get_fruits'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

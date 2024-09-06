@@ -33,6 +33,8 @@ class Inventory(models.Model):
     quantity = models.IntegerField()
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)  # Allow null and blank values permanently
     resupply = models.IntegerField()
+    total_quantity = models.IntegerField(default=0)
+    
 
     def __str__(self):
         return self.item
@@ -164,13 +166,29 @@ class LastInventoryUpdate(models.Model):
     def __str__(self):
         return f"Last inventory update for {self.user.username}"
     
+
 class OrderList(models.Model):
+    CATEGORY_CHOICES = [
+        ('Meat', 'Meat'),
+        ('Breakfast', 'Breakfast'),
+        ('Snacks', 'Snacks'),
+        ('Dairy', 'Dairy'),
+        ('Fruits', 'Fruits'),
+        ('Grains', 'Grains'),
+        ('Vegetables', 'Vegetables'),
+        ('Supplies', 'Supplies'),
+        ('Other', 'Other'),
+    ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    order = models.CharField(max_length=100) 
+    item = models.CharField(max_length=100, unique=True, default='default_item')
+    quantity = models.IntegerField(default=1)  # Add default value here
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='Other')
     ordered = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user.username}'s Order"
+        return self.item
+
+
     
 class Classroom(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
