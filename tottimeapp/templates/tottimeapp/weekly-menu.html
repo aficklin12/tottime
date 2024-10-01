@@ -147,7 +147,7 @@ th, td {
                             <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
                         {% endif %}
                         <li><hr class="dropdown-divider" /></li>
-                        <li><a class="dropdown-item" href="#!">Account Settings</a></li>
+                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
                     </ul>
                 </li>
             </ul>
@@ -458,7 +458,7 @@ th, td {
              }
          });
  
-         // AJAX request to update fruit table
+         // AJAX request to update fruit table 1
          $.ajax({
              url: '/generate_fruit_menu/',  // URL for generating fruit menu
              type: 'POST',

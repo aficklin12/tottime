@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponse
 import random, logging, json
 import pytz
+from django.contrib.auth.forms import UserCreationForm
 from django.db import models
 from pytz import utc
 from datetime import datetime, timedelta, date, time
@@ -18,6 +19,10 @@ from django.apps import apps
 from django.db.models import F, Sum, Subquery, OuterRef, Max, Min
 from django.views.decorators.csrf import csrf_exempt
 from calendar import monthrange
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.conf import settings
+import uuid
 logger = logging.getLogger(__name__)
 
 def login_view(request):
@@ -33,6 +38,9 @@ def recipes(request):
 
 def menu(request):
     return render(request, 'weekly-menu.html')
+
+def account_settings(request):
+    return render(request, 'account_settings.html')
 
 def menu_rules(request):
     form = RuleForm()
@@ -64,8 +72,15 @@ def user_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('login')
+            # Save the auth_user instance
+            user = form.save()
+            
+            # Create a MainUser instance for the new user
+            MainUser.objects.create(user=user)
+            
+            # Log in the user and redirect
+            login(request, user)
+            return redirect('some_success_url')  # Replace with the name of the view to redirect after signup
     else:
         form = SignupForm()
     return render(request, 'signup.html', {'form': form})
@@ -118,6 +133,8 @@ def add_item(request):
         category = request.POST.get('category')
         quantity = request.POST.get('quantity')
         resupply = request.POST.get('resupply')
+        units = request.POST.get('units')  # Now this will directly capture the user's input
+
 
         rule_id = request.POST.get('rule')  # Get the rule value from the form
         if rule_id:
@@ -131,7 +148,8 @@ def add_item(request):
             category=category,
             quantity=quantity,
             resupply=resupply,
-            rule=rule
+            rule=rule,
+            units=units
         )
         
         # Redirect to the inventory list after adding the item
@@ -1424,3 +1442,4 @@ def generate_vegetable_menu(request):
         vegetable_menu_data[day] = vegetable_data
 
     return JsonResponse(vegetable_menu_data)
+

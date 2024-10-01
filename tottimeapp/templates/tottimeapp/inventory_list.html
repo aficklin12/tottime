@@ -217,22 +217,50 @@ button:hover {
     z-index: 1000;
     text-align: center;
     display: none; /* Hide by default */
-    height: 100%; 
-    max-height: 500px; 
+    width: 90%; /* Adjust width for responsiveness */
+    max-width: 600px; /* Limit maximum width */
+    height: auto; /* Allow height to adjust based on content */
+    max-height: 80vh; /* Limit maximum height to 80% of the viewport height */
+    overflow-y: auto; /* Allow scrolling if content exceeds height */
+}
+
+/* Title Styles */
+.popup-form h2 {
+    margin-top: 0; /* Remove top margin to avoid overlap */
+    margin-bottom: 20px; /* Add space below the title */
+    font-size: 22px; /* Font size for the title */
 }
 
 /* Popup Form Styles */
 .popup-form label {
-    padding-bottom: 5px; /* Add padding to the bottom to separate from input fields */
+    display: block;
+    text-align: left; /* Align label text to the left */
+    font-weight: bold;
+    margin-top: 10px; /* Add margin between label and input */
 }
 .popup-form input[type="text"],
-.popup-form input[type="number"],
-.popup-form button {
-    font-weight: bold; /* Bold all text */
-    margin-top: 30px;
-    
+.popup-form input[type="number"] {
+    width: 100%; /* Make input fields full-width */
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-sizing: border-box;
+    font-size: 14px; /* Adjust font size */
 }
-
+.popup-form button[type="submit"] {
+    width: 100%; /* Make submit button full-width */
+    padding: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 16px; /* Adjust font size */
+}
+.popup-form button[type="submit"]:hover {
+    background-color: #0056b3;
+}
 /* Close Button Styles */
 .close-button {
     position: absolute;
@@ -319,7 +347,7 @@ tr:nth-child(odd) {
                             <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
                         {% endif %}
                         <li><hr class="dropdown-divider" /></li>
-                        <li><a class="dropdown-item" href="#!">Account Settings</a></li>
+                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
                     </ul>
                 </li>
             </ul>
@@ -421,6 +449,9 @@ tr:nth-child(odd) {
                     <tr>
                         <td style="width: 150px;">
                             {{ item.item }}
+                            {% if item.units %}
+                            <div style="color: grey; font-size: smaller;">({{ item.units }})</div>
+                            {% endif %}
                             {% if "Milk" in item.item %}
                             <div style="color: red; font-size: smaller;">Total received this week:</div>
                             {% endif %}
@@ -445,7 +476,7 @@ tr:nth-child(odd) {
                     </tr>
                     {% endif %}
                     {% endfor %}
-                </tbody>
+                </tbody>                
             </table>
             
         </div>
@@ -463,7 +494,20 @@ tr:nth-child(odd) {
                                 <label for="item">Item:</label>
                                 <input type="text" id="item" name="item" required><br>
                                 <label for="category">Category:</label>
-                                <input type="text" id="category" name="category" required><br>
+                                <select id="category" name="category" required>
+                                    <option value="" disabled selected>Select category</option>
+                                    <option value="Meat">Meat</option>
+                                    <option value="Breakfast">Breakfast</option>
+                                    <option value="Snacks">Snacks</option>
+                                    <option value="Dairy">Dairy</option>
+                                    <option value="Fruits">Fruits</option>
+                                    <option value="Vegetables">Vegetables</option>
+                                    <option value="Grains">Grains</option>
+                                    <option value="Supplies">Supplies</option>
+                                    <option value="Misc/Other">Misc/Other</option>
+                                </select><br>
+                                <label for="units">Units:</label>
+                                <input type="text" id="units" name="units" placeholder="Enter unit (e.g., Indv., Case, etc.)" required><br>                        
                                 <label for="quantity">Quantity:</label>
                                 <input type="number" id="quantity" name="quantity" required><br>
                                 <label for="resupply">Resupply Threshold:</label>
@@ -492,6 +536,16 @@ tr:nth-child(odd) {
     <!-- Your custom JavaScript -->
     <script src="{% static 'js/scripts.js' %}"></script>
     <script>
+        // Flag to track if there are unsaved changes
+        let isFormChanged = false;
+    
+        // Mark the form as changed when any input field is modified
+        document.querySelectorAll('form[id^="updateForm_"] input').forEach(function(input) {
+            input.addEventListener('change', function() {
+                isFormChanged = true;
+            });
+        });
+    
         // Function to toggle the visibility of the popup form and background
         function togglePopup() {
             var popupBackground = document.getElementById('popupBackground');
@@ -506,87 +560,91 @@ tr:nth-child(odd) {
                 popupForm.style.display = 'none';
             }
         }
-    </script>
-  <script>
-    var messageDisplayed = false; 
-// Update the updateInventory function
-function updateInventory() {
-    // Show "Inventory submitting" message
-    $('#updateMessage').text('Inventory submitting to server database...this may take a few minutes to complete.').fadeIn();
-
-    // Iterate over each form and perform AJAX request
-    $('form[id^="updateForm_"]').each(function() {
-        var form = $(this);
-        var itemId = form.attr('id').split('_')[1];
-        var newQuantity = form.find('#new_quantity_' + itemId).val();
-        var extraMilkQuantity = form.find('#extra_milk_quantity_' + itemId).val();
-
-        // Perform AJAX request to update inventory
-        $.ajax({
-            url: form.attr('action'),
-            type: form.attr('method'),
-            data: {
-                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
-                new_quantity: newQuantity,
-                extra_milk_quantity: extraMilkQuantity,
-                inventory_item_id: itemId
-            },
-            success: function(response) {
-                console.log('Inventory updated successfully');
-                // Show success message
-                $('#updateMessage').text('Inventory updated successfully').fadeIn().delay(2000).fadeOut();
-                
-                // Check if the item is a milk item
-                if (form.find('[name="extra_milk_quantity"]').length > 0) {
-                    // If it's a milk item, update milk count
-                    $.ajax({
-                        url: '/update_milk_count/',  
-                        type: 'POST',
-                        data: {
-                            csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
-                            inventory_item_id: itemId,
-                            extra_milk_quantity: extraMilkQuantity
-                        },
-                        success: function(response) {
-                            console.log('Milk count updated successfully');
-                        },
-                        error: function() {
-                            console.error('Failed to update milk count');
+    
+        // Update the updateInventory function
+        function updateInventory() {
+            // Show "Inventory submitting" message
+            $('#updateMessage').text('Inventory submitting to server database...this may take a few minutes to complete.').fadeIn();
+    
+            // Reset the unsaved changes flag (indicating changes are saved)
+            isFormChanged = false;
+    
+            // Iterate over each form and perform AJAX request
+            $('form[id^="updateForm_"]').each(function() {
+                var form = $(this);
+                var itemId = form.attr('id').split('_')[1];
+                var newQuantity = form.find('#new_quantity_' + itemId).val();
+                var extraMilkQuantity = form.find('#extra_milk_quantity_' + itemId).val();
+    
+                // Perform AJAX request to update inventory
+                $.ajax({
+                    url: form.attr('action'),
+                    type: form.attr('method'),
+                    data: {
+                        csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
+                        new_quantity: newQuantity,
+                        extra_milk_quantity: extraMilkQuantity,
+                        inventory_item_id: itemId
+                    },
+                    success: function(response) {
+                        console.log('Inventory updated successfully');
+                        // Show success message
+                        $('#updateMessage').text('Inventory updated successfully').fadeIn().delay(2000).fadeOut();
+                        
+                        // Check if the item is a milk item
+                        if (form.find('[name="extra_milk_quantity"]').length > 0) {
+                            // If it's a milk item, update milk count
+                            $.ajax({
+                                url: '/update_milk_count/',  
+                                type: 'POST',
+                                data: {
+                                    csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
+                                    inventory_item_id: itemId,
+                                    extra_milk_quantity: extraMilkQuantity
+                                },
+                                success: function(response) {
+                                    console.log('Milk count updated successfully');
+                                },
+                                error: function() {
+                                    console.error('Failed to update milk count');
+                                }
+                            });
                         }
-                    });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Failed to update inventory', error);
+                        $('#updateMessage').text('Error updating inventory').fadeIn().delay(5000).fadeOut();
+                    }
+                });
+            });
+        }
+    
+        // Before the user leaves the page, show a confirmation dialog if there are unsaved changes
+        window.addEventListener('beforeunload', function(event) {
+            if (isFormChanged) {
+                event.preventDefault();
+                event.returnValue = 'You have unsaved changes. Are you sure you want to leave without saving?';
+            }
+        });
+    
+        // Toggle visibility of delete columns
+        function toggleDeleteColumn() {
+            var deleteColumnElements = document.querySelectorAll('.delete-column');
+            deleteColumnElements.forEach(function(element) {
+                if (element.style.display === 'none') {
+                    element.style.display = 'table-cell';
+                } else {
+                    element.style.display = 'none';
                 }
-            },
-            error: function(xhr, status, error) {
-                console.error('Failed to update inventory', error);
-                $('#updateMessage').text('Error updating inventory').fadeIn().delay(5000).fadeOut();
-            }
-        });
-    });
-}
-
-</script>
-
-
-<script>
-
-    function toggleDeleteColumn() {
-        var deleteColumnElements = document.querySelectorAll('.delete-column');
-
-        // Toggle visibility of delete column elements
-        deleteColumnElements.forEach(function(element) {
-            if (element.style.display === 'none') {
-                element.style.display = 'table-cell';
-            } else {
-                element.style.display = 'none';
-            }
-        });
-    }
-
-    // Function to run when the page loads
-    window.onload = function() {
-        // Toggle the visibility of the delete items column
-        toggleDeleteColumn();
-    };
-</script>
+            });
+        }
+    
+        // Function to run when the page loads
+        window.onload = function() {
+            // Toggle the visibility of the delete items column
+            toggleDeleteColumn();
+        };
+    </script>
+    
 </body>
 </html>

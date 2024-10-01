@@ -1,7 +1,7 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, AbstractUser, Group, Permission
 from django.utils import timezone
-
+import uuid
 
 class Location(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -30,6 +30,7 @@ class Inventory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     item = models.CharField(max_length=100, unique=True)
     category = models.CharField(max_length=100)
+    units = models.CharField(max_length=50, null=True, blank=True)
     quantity = models.IntegerField()
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)  # Allow null and blank values permanently
     resupply = models.IntegerField()

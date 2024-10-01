@@ -25,3 +25,4 @@ class RuleForm(forms.ModelForm):
         widgets = {
             'rule': forms.TextInput(attrs={'class': 'custom-input'}),
         }
+
