@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <title>Saved Weekly Menu</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Font Awesome -->
+    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Tabulator CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    {% load static %}
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <style>
+/* Remove bold font weight from specific rows by targeting their IDs */
+#grainRow th,
+#meatRow th {
+    font-weight: normal;
+}
+
+      
+.table input[type="text"] {
+    border: 1px solid #ced4da; /* Add border */
+    border-radius: .25rem; /* Add border-radius */
+    padding: .375rem .75rem; /* Add padding */
+    width: 100%; /* Ensure the input field takes up the entire width of the cell */
+}
+
+/* Style for editable cells */
+.input-box {
+    height: auto; /* Adjust height */
+}
+
+/* Style for the table */
+.table {
+    border-collapse: collapse; /* Collapse the borders of the table */
+    width: 100%; /* Make the table take up the entire width */
+    table-layout: auto;
+}
+
+h1 {
+    margin-top: 0;
+    margin-bottom: -35px;
+    margin-left: 27px;
+    font-weight: bold;
+    line-height: 1.2;
+    font-size: 40px;
+}
+
+.button-container {
+    margin-right: 10px; /* Adjust the margin as needed */
+}
+
+th, td {
+    border: 1px solid #dee2e6; /* Add border */
+    padding: .75rem; /* Add padding */
+    word-wrap: break-word;
+}
+
+/* Style for table header and body */
+.table thead th,
+.table tbody td {
+    text-align: left; /* Align text to the left */
+    font-weight: normal;
+}
+.table thead th,
+.table tbody tr:nth-child(-n+3) {
+    font-weight: bold;
+}
+
+/* Style for the table title */
+.table-title {
+    border: 1px solid #dee2e6; /* Add border */
+    padding: .75rem; /* Add padding */
+    text-align: center; /* Align text to the center */
+}
+
+.vertical-header {
+    writing-mode: vertical-rl; /* Set text to vertical writing mode */
+    transform: rotate(180deg); /* Rotate the text 180 degrees */
+    white-space: nowrap; /* Prevent text from wrapping */
+}
+
+
+    @media print {
+    h1,
+    .sb-topnav,
+    .sb-sidenav-footer,
+    .button-container,
+    #generateMenuBtn,
+    #saveMenuBtn {
+        display: none;
+    }
+    .vertical-header {
+        writing-mode: horizontal-tb; /* Set text to horizontal writing mode when printing */
+        transform: none; /* Remove rotation for horizontal text */
+    }
+    .table thead th,
+    .table tbody td {
+            word-wrap: break-word !important;
+            white-space: normal !important;
+            border: 1px solid #dee2e6; /* Add border */
+            padding: .5rem; /* Adjust padding for printing */
+            font-size: 0.8rem; /* Adjust font size for printing */
+        }
+    .table {
+        table-layout: fixed;
+        width: 200%;
+    }
+    .table tbody td:first-child {
+        width: 20px; /* Replace 100px with the width of your first column */
+    }
+    @page {
+        margin-top: -90px;
+    }
+    body {
+        margin: 0;
+        width: fit-content;
+    }
+}
+
+    </style>
+    
+</head>
+<body class="sb-nav-fixed">
+   
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <!-- Navbar Brand-->
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
+        
+        <a class="navbar-brand ps-3" href="{% url 'index' %}">Tracker</a>
+        <!-- Navbar-->
+        <div class="ms-auto">
+            <ul class="navbar-nav me-lg-4">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        {% if user.is_authenticated %}
+                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                        {% else %}
+                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+                        <div class="sb-sidenav-menu-heading">Main</div>
+                        <!--
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Attendance
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'sign_in' %}">Sign In</a>
+                                <a class="nav-link" href="{% url 'daily_attendance' %}">Daily Attendance</a>
+                                <a class="nav-link" href="{% url 'rosters' %}">Rosters</a>
+                            </nav>
+                        </div>
+                    -->
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Food Program
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'inventory_list' %}">Inventory</a>
+                                <a class="nav-link" href="{% url 'menu' %}">Weekly Menu</a>
+                               <!-- <a class="nav-link" href="{% url 'milk_count' %}">Milk Inventory</a>
+                                <a class="nav-link" href="{% url 'meal_count' %}">Meal Count</a>-->
+                            </nav>
+                        </div>
+                        <!--<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Settings
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'classroom_options' %}">Classroom Options</a>
+                                <a class="nav-link" href="{% url 'recipes' %}">Recipe Options</a>
+                                <a class="nav-link" href="{% url 'menu_rules' %}">Menu Rules</a>
+                            </nav>
+                        </div>-->
+                    </div>
+                </div>
+                <div class="sb-sidenav-footer">
+                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
+                </div>
+            </nav>
+
+        </div>
+        <div id="layoutSidenav_content">
+            <main> 
+                <h1 class="mt-4">Saved Weekly Menu</h1>
+                <div class="container mt-5" id="printableTable">
+                    <form id="menuForm" method="post"> 
+                        {% csrf_token %}
+                        <div class="row mt-3">
+                            <div class="col">
+                                <label for="dateRangeSelect">Date:</label>
+                                <select name="dateRangeSelect" required>
+                                    <option value="">-- Select a Date Range --</option>
+                                    {% for date_range in date_ranges %}
+                                        <option value="{{ date_range }}" {% if date_range == selected_range %}selected{% endif %}>{{ date_range }}</option>
+                                    {% empty %}
+                                        <option value="">No date ranges available</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" id="goButton" class="btn btn-primary mt-2">Go</button>
+                                <a href="{% url 'menu' %}" class="text-primary font-weight-bold" style="text-decoration: underline;">Back to Weekly Menu</a>
+                            </div>
+                        </div>
+                    </form>
+        
+                  <!-- Display the selected Weekly Menu data -->
+{% if selected_menu_data %}
+<div class="mt-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">
+                    Weekly Menu: {{ selected_range }}  <!-- This will now display the selected date range -->
+                </th>
+            </tr>
+        <tbody>
+            <tr>
+                <th scope="col" colspan="2">Facility:</th>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.get_day_of_week_display }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <th scope="col" colspan="2">Sponsor:</th>
+                {% for menu in selected_menu_data %}
+                    <th>{{ menu.date|date:"m/d" }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">Breakfast</td>
+                <td>Fluid Milk</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.am_fluid_milk }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Fruit, Vegetable, or Full Strength Juice</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.am_fruit_veg }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Bread or Bread Alternate(s)</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.am_bread }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Additional Food (Optional)</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.am_additional }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">AM Snack</td>
+                <td>Choose 2 of these 5: Fluid Milk</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.ams_fluid_milk }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Fruit, Vegetable, or Full Strength Juice</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.ams_fruit_veg }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Bread or Bread Alternate(s)</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.ams_bread }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Meat or Meat Alternate</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.ams_meat }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td class="vertical-header" rowspan="7" style="font-weight: bold; text-align: center;">Lunch</td>
+                <td>Main Dish</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.lunch_main_dish }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Fluid Milk</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.lunch_fluid_milk }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Vegetable</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.lunch_vegetable }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Fruit</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.lunch_fruit }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Grain</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.lunch_grain }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Meat or Meat Alternate</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.lunch_meat }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Additional Food (Optional)</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.lunch_additional }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">PM Snack</td>
+                <td>Choose 2 of these 5: Fluid Milk</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.pm_fluid_milk }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Fruit, Vegetable, or Full Strength Juice</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.pm_fruit_veg }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Bread or Bread Alternate(s)</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.pm_bread }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td>Meat or Meat Alternate</td>
+                {% for menu in selected_menu_data %}
+                    <td>{{ menu.pm_meat }}</td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="mt-4">No menu data available for the selected date range.</p>
+{% endif %}
+
+                    <!-- jQuery -->
+                    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                    <!-- Bootstrap Bundle JS -->
+                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+                    <!-- Tabulator JS -->
+                    <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/js/tabulator.min.js"></script>
+                    <!-- Your custom JavaScript -->
+                    <script src="{% static 'js/scripts.js' %}"></script>
+                    <script>
+                        function getCookie(name) {
+                            let cookieValue = null;
+                            if (document.cookie && document.cookie !== '') {
+                                const cookies = document.cookie.split(';');
+                                for (let i = 0; i < cookies.length; i++) {
+                                    const cookie = cookies[i].trim();
+                                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                        break;
+                                    }
+                                }
+                            }
+                            return cookieValue;
+                        }
+        
+                        const csrftoken = getCookie('csrftoken');
+        
+                        window.onload = function() {
+                            const today = new Date();
+                            const pastWeekdays = [];
+                            let count = 0;
+        
+                            for (let i = 1; count < 5; i++) {
+                                const day = new Date(today);
+                                day.setDate(today.getDate() - i);
+                                if (day.getDay() !== 0 && day.getDay() !== 6) { // 0 = Sunday, 6 = Saturday
+                                    pastWeekdays.push(day.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }));
+                                    count++;
+                                }
+                            }
+        
+                            const dateRangeSelect = document.getElementById('dateRangeSelect');
+                            for (let i = 0; i < pastWeekdays.length - 1; i++) {
+                                const option = document.createElement('option');
+                                option.value = `${pastWeekdays[i]} - ${pastWeekdays[i + 1]}`;
+                                option.text = `${pastWeekdays[i]} - ${pastWeekdays[i + 1]}`;
+                                dateRangeSelect.add(option);
+                            }
+                        }
+                    </script>
+                </main>
+            </div>
+        </body>
+        </html>

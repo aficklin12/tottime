@@ -209,19 +209,23 @@ th, td {
         <div id="layoutSidenav_content">
             <main> 
                 <h1 class="mt-4">Weekly Menu</h1>
-                <div class="container mt-5" id="printableTable">
-                    <div class="row">
-                        <div class="col">
-                            <div class="mb-3">
-                                <button id="generateMenuBtn" class="btn btn-primary mr-2">Generate Weekly Menu</button>
-                                <button id="saveMenuBtn" class="btn btn-success">Save Menu</button>
-                            </div>
+        <div class="container mt-5" id="printableTable">
+            <form onsubmit="event.preventDefault(); checkMenuExistsAndSave();" id="menuForm"> <!-- Start of the form -->
+                <div class="row">
+                    <div class="col">
+                        <div class="mb-3">
+                            <button id="generateMenuBtn" class="btn btn-primary mr-2">Generate Weekly Menu</button>
+                            <button id="saveMenuBtn" type="submit" class="btn btn-success">Save Menu</button> <!-- Button type set to submit -->
+                            <a href="{% url 'past_menus' %}" class="text-primary font-weight-bold" style="text-decoration: underline;">Saved Weekly Menus</a>
+
                         </div>
                     </div>
-                    <div class="row mt-3">
-                        <div class="col">
-                            <table id="weeklyMenuTable" class="table">
-                    <thead>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col">
+                        <table id="weeklyMenuTable" class="table">
+                            <thead>
                         <tr>
                             <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">Weekly Menu: Date - Date</th>
                         </tr>
@@ -1046,7 +1050,7 @@ function updateTable(response) {
              return cookieValue;
          }
          function updateDates() {
-     var today = new Date(); // Get today's date
+    var today = new Date(); // Get today's date
     var currentDayIndex = today.getDay(); // Get the index of today's day (0: Sunday, 1: Monday, ..., 6: Saturday)
     var daysUntilNextMonday = (currentDayIndex === 0) ? 1 : (8 - currentDayIndex); // Calculate days until next Monday
 
@@ -1074,12 +1078,217 @@ function updateTable(response) {
         // Update the date under the weekday
         $(this).text(formattedDate);
     });
- }
- 
- 
+
+    // Store the next Monday date in a global variable or data attribute
+    window.nextMondayDate = nextMonday; // Store for later use
+}
+async function checkMenuExistsAndSave() {
+    // Create an array of dates to check based on stored next Monday
+    const datesToCheck = [];
+    const nextMonday = window.nextMondayDate; // Get the stored next Monday date
+
+    for (let i = 0; i < 5; i++) {
+        const date = new Date(nextMonday);
+        date.setDate(nextMonday.getDate() + i);
+        // Format date as YYYY-MM-DD
+        const formattedDate = date.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+        datesToCheck.push(formattedDate);
+    }
+
+    // Fetch existing menu data to check for entries
+    const response = await fetch('/api/check_menu/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dates: datesToCheck })
+    });
+
+    const result = await response.json();
+
+    // If the menu already exists for those dates
+    if (result.exists) {
+        const userConfirmed = confirm("There is already a menu saved for these dates. Saving will override previous entries.");
+        // Only call saveMenu if the user confirmed
+        if (userConfirmed) {
+            saveMenu(); // Call the function that actually submits the form
+        } else {
+            alert("Menu not saved."); // Optional: Inform the user that the menu was not saved
+        }
+    } else {
+        saveMenu(); // No existing entries, proceed to save
+    }
+}
+ function saveMenu() {
+ let menuData = {
+    monday: {
+        am_fluid_milk: document.getElementById('mondayMilk').innerText,
+        am_fruit_veg: document.getElementById('mondayfruit').innerText,
+        am_bread: document.getElementById('mondaybread').innerText,
+        am_additional: document.getElementById('mondayadd1').innerText,
+        ams_fluid_milk: document.getElementById('mondaychoose1').innerText,
+        ams_fruit_veg: document.getElementById('mondayfruit2').innerText,
+        ams_bread: document.getElementById('mondaybread2').innerText,
+        ams_meat: document.getElementById('mondaymeat1').innerText,
+        lunch_main_dish: document.getElementById('mondayMeals').innerText,
+        lunch_fluid_milk: document.getElementById('mondayLunchMilk').innerText,
+        lunch_vegetable: document.getElementById('mondayvege').innerText,
+        lunch_fruit: document.getElementById('mondayfruit3').innerText,
+        lunch_grain: document.getElementById('mondayGrain').innerText,
+        lunch_meat: document.getElementById('mondayMeatAlternate').innerText,
+        lunch_additional: document.getElementById('mondayadd2').innerText,
+        pm_fluid_milk: document.getElementById('mondaychoose2').innerText,
+        pm_fruit_veg: document.getElementById('mondayfruit4').innerText,
+        pm_bread: document.getElementById('mondaybread3').innerText,
+        pm_meat: document.getElementById('mondaymeat3').innerText
+    },
+    tuesday: {
+        am_fluid_milk: document.getElementById('tuesdayMilk').innerText,
+        am_fruit_veg: document.getElementById('tuesdayfruit').innerText,
+        am_bread: document.getElementById('tuesdaybread').innerText,
+        am_additional: document.getElementById('tuesdayadd1').innerText,
+        ams_fluid_milk: document.getElementById('tuesdaychoose1').innerText,
+        ams_fruit_veg: document.getElementById('tuesdayfruit2').innerText,
+        ams_bread: document.getElementById('tuesdaybread2').innerText,
+        ams_meat: document.getElementById('tuesdaymeat1').innerText,
+        lunch_main_dish: document.getElementById('tuesdayMeals').innerText,
+        lunch_fluid_milk: document.getElementById('tuesdayLunchMilk').innerText,
+        lunch_vegetable: document.getElementById('tuesdayvege').innerText,
+        lunch_fruit: document.getElementById('tuesdayfruit3').innerText,
+        lunch_grain: document.getElementById('tuesdayGrain').innerText,
+        lunch_meat: document.getElementById('tuesdayMeatAlternate').innerText,
+        lunch_additional: document.getElementById('tuesdayadd2').innerText,
+        pm_fluid_milk: document.getElementById('tuesdaychoose2').innerText,
+        pm_fruit_veg: document.getElementById('tuesdayfruit4').innerText,
+        pm_bread: document.getElementById('tuesdaybread3').innerText,
+        pm_meat: document.getElementById('tuesdaymeat3').innerText
+    },
+    wednesday: {
+        am_fluid_milk: document.getElementById('wednesdayMilk').innerText,
+        am_fruit_veg: document.getElementById('wednesdayfruit').innerText,
+        am_bread: document.getElementById('wednesdaybread').innerText,
+        am_additional: document.getElementById('wednesdayadd1').innerText,
+        ams_fluid_milk: document.getElementById('wednesdaychoose1').innerText,
+        ams_fruit_veg: document.getElementById('wednesdayfruit2').innerText,
+        ams_bread: document.getElementById('wednesdaybread2').innerText,
+        ams_meat: document.getElementById('wednesdaymeat1').innerText,
+        lunch_main_dish: document.getElementById('wednesdayMeals').innerText,
+        lunch_fluid_milk: document.getElementById('wednesdayLunchMilk').innerText,
+        lunch_vegetable: document.getElementById('wednesdayvege').innerText,
+        lunch_fruit: document.getElementById('wednesdayfruit3').innerText,
+        lunch_grain: document.getElementById('wednesdayGrain').innerText,
+        lunch_meat: document.getElementById('wednesdayMeatAlternate').innerText,
+        lunch_additional: document.getElementById('wednesdayadd2').innerText,
+        pm_fluid_milk: document.getElementById('wednesdaychoose2').innerText,
+        pm_fruit_veg: document.getElementById('wednesdayfruit4').innerText,
+        pm_bread: document.getElementById('wednesdaybread3').innerText,
+        pm_meat: document.getElementById('wednesdaymeat3').innerText
+    },
+    thursday: {
+        am_fluid_milk: document.getElementById('thursdayMilk').innerText,
+        am_fruit_veg: document.getElementById('thursdayfruit').innerText,
+        am_bread: document.getElementById('thursdaybread').innerText,
+        am_additional: document.getElementById('thursdayadd1').innerText,
+        ams_fluid_milk: document.getElementById('thursdaychoose1').innerText,
+        ams_fruit_veg: document.getElementById('thursdayfruit2').innerText,
+        ams_bread: document.getElementById('thursdaybread2').innerText,
+        ams_meat: document.getElementById('thursdaymeat1').innerText,
+        lunch_main_dish: document.getElementById('thursdayMeals').innerText,
+        lunch_fluid_milk: document.getElementById('thursdayLunchMilk').innerText,
+        lunch_vegetable: document.getElementById('thursdayvege').innerText,
+        lunch_fruit: document.getElementById('thursdayfruit3').innerText,
+        lunch_grain: document.getElementById('thursdayGrain').innerText,
+        lunch_meat: document.getElementById('thursdayMeatAlternate').innerText,
+        lunch_additional: document.getElementById('thursdayadd2').innerText,
+        pm_fluid_milk: document.getElementById('thursdaychoose2').innerText,
+        pm_fruit_veg: document.getElementById('thursdayfruit4').innerText,
+        pm_bread: document.getElementById('thursdaybread3').innerText,
+        pm_meat: document.getElementById('thursdaymeat3').innerText
+    },
+    friday: {
+        am_fluid_milk: document.getElementById('fridayMilk').innerText,
+        am_fruit_veg: document.getElementById('fridayfruit').innerText,
+        am_bread: document.getElementById('fridaybread').innerText,
+        am_additional: document.getElementById('fridayadd1').innerText,
+        ams_fluid_milk: document.getElementById('fridaychoose1').innerText,
+        ams_fruit_veg: document.getElementById('fridayfruit2').innerText,
+        ams_bread: document.getElementById('fridaybread2').innerText,
+        ams_meat: document.getElementById('fridaymeat1').innerText,
+        lunch_main_dish: document.getElementById('fridayMeals').innerText,
+        lunch_fluid_milk: document.getElementById('fridayLunchMilk').innerText,
+        lunch_vegetable: document.getElementById('fridayvege').innerText,
+        lunch_fruit: document.getElementById('fridayfruit3').innerText,
+        lunch_grain: document.getElementById('fridayGrain').innerText,
+        lunch_meat: document.getElementById('fridayMeatAlternate').innerText,
+        lunch_additional: document.getElementById('fridayadd2').innerText,
+        pm_fluid_milk: document.getElementById('fridaychoose2').innerText,
+        pm_fruit_veg: document.getElementById('fridayfruit4').innerText,
+        pm_bread: document.getElementById('fridaybread3').innerText,
+        pm_meat: document.getElementById('fridaymeat3').innerText
+    }
+};
+
+$.ajax({
+        url: '/save-menu/',
+        type: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(menuData),  // menuData being the object with the menu details
+        success: function(response) {
+            alert('Menu saved successfully!');
+        },
+        error: function(error) {
+            alert('Error saving menu: ' + error.statusText);
+        }
+    });
+}
+
+// Bind the event correctly to call the check function
+document.getElementById('saveMenuBtn').addEventListener('click', function(event) {
+    event.preventDefault(); // Prevent the default form submission
+    console.log('Save Menu button clicked');
+    checkMenuExistsAndSave(); // Call the check function when the button is clicked
+});
 });
 
+
+
+function updateMenuTable() {
+    const selectedRange = document.getElementById("dateRangeSelect").value;
+    // Logic to update the menu table based on selected date range
+    // You may want to perform an AJAX request to fetch the specific weekly menu data
+}
+
+
+
  </script>
+ <script>
+    window.onload = function() {
+        const today = new Date();
+        const pastWeekdays = [];
+        let count = 0;
+
+        for (let i = 1; count < 5; i++) {
+            const day = new Date(today);
+            day.setDate(today.getDate() - i);
+            if (day.getDay() !== 0 && day.getDay() !== 6) { // 0 = Sunday, 6 = Saturday
+                pastWeekdays.push(day.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }));
+                count++;
+            }
+        }
+
+        const dateRangeSelect = document.getElementById('dateRangeSelect');
+        for (let i = 0; i < pastWeekdays.length - 1; i++) {
+            const option = document.createElement('option');
+            option.value = `${pastWeekdays[i]} - ${pastWeekdays[i + 1]}`;
+            option.text = `${pastWeekdays[i]} - ${pastWeekdays[i + 1]}`;
+            dateRangeSelect.add(option);
+        }
+    }
+</script>
+
 </main>
 
 

@@ -530,7 +530,37 @@ $(document).ready(function() {
         toggleDropdownForm();
     });
 });
+$(document).ready(function() {
+    // Hide the order form overlay initially
+    $("#orderFormOverlay").hide();
 
+    // Function to toggle the display of the popup form
+    window.toggleOrderForm = function() {
+        $("#orderFormOverlay").toggle();
+    };
+
+    // Function to close the order form
+    window.closeOrderForm = function() {
+        $("#orderFormOverlay").hide();
+    };
+
+    // Function to handle form submission and clean input
+    $("form").on("submit", function(e) {
+        // Get the input fields for item and quantity
+        var itemInput = $("#item");
+        var quantityInput = $("#quantity");
+
+        // Clean the item input: capitalize the first letter of each word
+        var cleanedItem = itemInput.val().trim().toLowerCase().replace(/\b\w/g, function(match) {
+            return match.toUpperCase();
+        });
+        itemInput.val(cleanedItem); // Set the cleaned value back to the input
+
+        // Optionally, you can add more validation here, e.g., ensuring quantity is valid
+
+        // Allow the form to be submitted
+    });
+});
 </script>
 
 </body>

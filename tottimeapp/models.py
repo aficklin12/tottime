@@ -234,6 +234,20 @@ class MilkCount(models.Model):
 class WeeklyMenu(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
+     # Days of the week choices
+    DAYS_OF_WEEK = [
+        ('Mon', 'Monday'),
+        ('Tue', 'Tuesday'),
+        ('Wed', 'Wednesday'),
+        ('Thu', 'Thursday'),
+        ('Fri', 'Friday'),
+        ('Sat', 'Saturday'),
+        ('Sun', 'Sunday'),
+    ]
+    
+    day_of_week = models.CharField(max_length=3, choices=DAYS_OF_WEEK)  # Make sure this is included
+
+   
     facility = models.CharField(max_length=255)
     sponsor = models.CharField(max_length=255)
     am_fluid_milk = models.CharField(max_length=255, blank=True)

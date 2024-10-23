@@ -8,6 +8,7 @@ from .models import MilkCount, WeeklyMenu, Location, Rule, FruitRecipe, VegRecip
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponse
 import random, logging, json
+from django.views.decorators.csrf import csrf_protect
 import pytz
 from django.contrib.auth.forms import UserCreationForm
 from django.db import models
@@ -75,12 +76,10 @@ def user_signup(request):
             # Save the auth_user instance
             user = form.save()
             
-            # Create a MainUser instance for the new user
-            MainUser.objects.create(user=user)
-            
+           
             # Log in the user and redirect
             login(request, user)
-            return redirect('some_success_url')  # Replace with the name of the view to redirect after signup
+            return redirect('index.html')  # Replace with the name of the view to redirect after signup
     else:
         form = SignupForm()
     return render(request, 'signup.html', {'form': form})
@@ -606,66 +605,99 @@ def check_ingredients_availability(recipe, user):
 
 
 @login_required
+@csrf_exempt
+def check_menu(request):
+    if request.method == 'POST':
+        try:
+            raw_body = request.body.decode('utf-8')
+            data = json.loads(raw_body)
+            dates_to_check = data.get('dates', [])
+
+            # Check if any of the dates have existing menu entries
+            exists = WeeklyMenu.objects.filter(date__in=dates_to_check, user=request.user).exists()
+
+            return JsonResponse({'exists': exists}, status=200)
+
+        except Exception as e:
+            return JsonResponse({'status': 'fail', 'error': 'Unexpected error occurred'}, status=500)
+
+    return JsonResponse({'status': 'fail', 'error': 'Invalid request method'}, status=400)
+
+
+
+@login_required
+@csrf_protect
+@csrf_exempt
 def save_menu(request):
     if request.method == 'POST':
         try:
-            if request.body:
-                body_unicode = request.body.decode('utf-8')
-                logger.debug(f"Request body: {body_unicode}")
-                data = json.loads(body_unicode)
-                logger.debug(f"Decoded JSON: {data}")
-            else:
-                raise ValueError("Request body is empty")
+            # Log the raw body of the request (consider removing this as well if not needed)
+            raw_body = request.body.decode('utf-8')
+            
+            # Parse JSON data from the request body
+            data = json.loads(raw_body)
 
-            # Extract user
-            user = request.user
+            # Get today's date
+            today = datetime.now()
 
-            # Find the location based on user
-            location = Location.objects.get(user=user)
+            # Calculate the next Monday
+            next_monday = today + timedelta(days=(7 - today.weekday()))
+            # Create a list of the next week dates (Monday to Friday)
+            week_dates = [(next_monday + timedelta(days=i)).date() for i in range(5)]
 
-            # Create and save the weekly menu
-            weekly_menu = WeeklyMenu(
-                user=user,
-                date=data.get('date'),
-                facility=location.facility,
-                sponsor=location.sponsor,
-                am_fluid_milk=data.get('am_fluid_milk', ''),
-                am_fruit_veg=data.get('am_fruit_veg', ''),
-                am_bread=data.get('am_bread', ''),
-                am_additional=data.get('am_additional', ''),
-                ams_fluid_milk=data.get('ams_fluid_milk', ''),
-                ams_fruit_veg=data.get('ams_fruit_veg', ''),
-                ams_bread=data.get('ams_bread', ''),
-                ams_meat=data.get('ams_meat', ''),
-                lunch_main_dish=data.get('lunch_main_dish', ''),
-                lunch_fluid_milk=data.get('lunch_fluid_milk', ''),
-                lunch_vegetable=data.get('lunch_vegetable', ''),
-                lunch_fruit=data.get('lunch_fruit', ''),
-                lunch_grain=data.get('lunch_grain', ''),
-                lunch_meat=data.get('lunch_meat', ''),
-                lunch_additional=data.get('lunch_additional', ''),
-                pm_fluid_milk=data.get('pm_fluid_milk', ''),
-                pm_fruit_veg=data.get('pm_fruit_veg', ''),
-                pm_bread=data.get('pm_bread', ''),
-                pm_meat=data.get('pm_meat', ''),
-            )
-            weekly_menu.save()
+            # Define the days of the week
+            days_of_week = {
+                'monday': 'Mon',
+                'tuesday': 'Tue',
+                'wednesday': 'Wed',
+                'thursday': 'Thu',
+                'friday': 'Fri'
+            }
 
-            return JsonResponse({'message': 'Menu saved successfully!'})
-        except Location.DoesNotExist:
-            logger.error("Location for user does not exist")
-            return JsonResponse({'error': 'Location not found for user.'}, status=404)
-        except ValueError as e:
-            logger.error(f"ValueError: {e}")
-            return JsonResponse({'error': str(e)}, status=400)
+            # Loop through each day to save menu data
+            for day_key, day_abbr in days_of_week.items():
+                day_data = data.get(day_key, {})
+
+                # Create or update the WeeklyMenu for each day
+                WeeklyMenu.objects.update_or_create(
+                    user=request.user,
+                    date=week_dates[list(days_of_week.keys()).index(day_key)],  # Use calculated date
+                    day_of_week=day_abbr,
+                    defaults={
+                        'am_fluid_milk': day_data.get('am_fluid_milk', ''),
+                        'am_fruit_veg': day_data.get('am_fruit_veg', ''),
+                        'am_bread': day_data.get('am_bread', ''),
+                        'am_additional': day_data.get('am_additional', ''),
+                        'ams_fluid_milk': day_data.get('ams_fluid_milk', ''),
+                        'ams_fruit_veg': day_data.get('ams_fruit_veg', ''),
+                        'ams_bread': day_data.get('ams_bread', ''),
+                        'ams_meat': day_data.get('ams_meat', ''),
+                        'lunch_main_dish': day_data.get('lunch_main_dish', ''),
+                        'lunch_fluid_milk': day_data.get('lunch_fluid_milk', ''),
+                        'lunch_vegetable': day_data.get('lunch_vegetable', ''),
+                        'lunch_fruit': day_data.get('lunch_fruit', ''),
+                        'lunch_grain': day_data.get('lunch_grain', ''),
+                        'lunch_meat': day_data.get('lunch_meat', ''),
+                        'lunch_additional': day_data.get('lunch_additional', ''),
+                        'pm_fluid_milk': day_data.get('pm_fluid_milk', ''),
+                        'pm_fruit_veg': day_data.get('pm_fruit_veg', ''),
+                        'pm_bread': day_data.get('pm_bread', ''),
+                        'pm_meat': day_data.get('pm_meat', '')
+                    }
+                )
+
+            # Log success and return a success response
+            return JsonResponse({'status': 'success'}, status=200)
+
         except json.JSONDecodeError as e:
-            logger.error(f"JSONDecodeError: {e}")
-            return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
+            # Log decoding errors
+            return JsonResponse({'status': 'fail', 'error': 'Invalid JSON'}, status=400)
+
         except Exception as e:
-            logger.error(f"Error saving menu: {e}")
-            return JsonResponse({'error': 'Error saving menu.'}, status=500)
-    else:
-        return JsonResponse({'error': 'Only POST requests are allowed.'}, status=405)
+            # Log any other errors
+            return JsonResponse({'status': 'fail', 'error': 'Unexpected error occurred'}, status=500)
+
+    return JsonResponse({'status': 'fail', 'error': 'Invalid request method'}, status=400)
 
 def delete_recipe(request, recipe_id):
     if request.method == 'DELETE':
@@ -1443,3 +1475,47 @@ def generate_vegetable_menu(request):
 
     return JsonResponse(vegetable_menu_data)
 
+def past_menus(request):
+    # Fetch all unique Monday dates from the WeeklyMenu model, ordered by date in descending order
+    monday_dates = WeeklyMenu.objects.filter(day_of_week='Mon').values_list('date', flat=True).distinct().order_by('-date')
+
+    # Generate date ranges only for valid Mondays
+    date_ranges = []
+    for monday in monday_dates:
+        # Calculate the corresponding Friday for each Monday
+        friday = monday + timedelta(days=4)
+
+        # Ensure that the Monday-Friday range is valid (avoid reversing dates)
+        if friday > monday:
+            date_range_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d')}"
+            date_ranges.append(date_range_str)
+
+    # Initialize selected range and menu data
+    selected_menu_data = None
+    selected_range = None
+
+    # Check if a date range was selected
+    if request.method == 'POST':
+        selected_range = request.POST.get('dateRangeSelect')
+        if selected_range:
+            # Parse the date range
+            start_date_str, end_date_str = selected_range.split(' - ')
+            start_date = datetime.strptime(start_date_str, '%b %d')
+            end_date = datetime.strptime(end_date_str, '%b %d')
+
+            # Adjust the year based on the current year's Mondays
+            current_year = datetime.now().year
+            start_date = start_date.replace(year=current_year)
+            end_date = end_date.replace(year=current_year)
+
+            # Fetch WeeklyMenu entries within the selected range, sorted by date
+            selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date]).order_by('date')
+
+    # Pass the date ranges, selected menu data, and selected range to the template
+    context = {
+        'date_ranges': date_ranges,
+        'selected_menu_data': selected_menu_data,
+        'selected_range': selected_range  # Add this line
+    }
+
+    return render(request, 'past-menus.html', context)
