@@ -76,6 +76,6 @@ urlpatterns = [
     path('api/save_menu/', login_required(views.save_menu), name='save_menu'),
     path('api/check_menu/', login_required(views.check_menu), name='check_menu'),
     path('past-menus/', login_required(views.past_menus), name='past_menus'),
-
+  
     
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

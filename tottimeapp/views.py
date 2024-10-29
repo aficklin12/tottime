@@ -1475,6 +1475,7 @@ def generate_vegetable_menu(request):
 
     return JsonResponse(vegetable_menu_data)
 
+
 def past_menus(request):
     # Fetch all unique Monday dates from the WeeklyMenu model, ordered by date in descending order
     monday_dates = WeeklyMenu.objects.filter(day_of_week='Mon').values_list('date', flat=True).distinct().order_by('-date')
@@ -1510,6 +1511,38 @@ def past_menus(request):
 
             # Fetch WeeklyMenu entries within the selected range, sorted by date
             selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date]).order_by('date')
+
+        # Handle form submission to save menu changes
+        # Assuming each menu entry has a unique identifier
+        if 'save_changes' in request.POST:
+            for i, menu in enumerate(selected_menu_data):
+                
+                # Retrieve input values from the form for the current menu entry
+                menu.am_fluid_milk = request.POST.get(f'am_fluid_milk_{i}')
+                menu.am_fruit_veg = request.POST.get(f'am_fruit_veg_{i}')
+                menu.am_bread = request.POST.get(f'am_bread_{i}')
+                menu.am_additional = request.POST.get(f'am_additional_{i}')
+                menu.ams_fluid_milk = request.POST.get(f'ams_fluid_milk_{i}')
+                menu.ams_fruit_veg = request.POST.get(f'ams_fruit_veg_{i}')
+                menu.ams_bread = request.POST.get(f'ams_bread_{i}')
+                menu.ams_meat = request.POST.get(f'ams_meat_{i}')
+                menu.lunch_main_dish = request.POST.get(f'lunch_main_dish_{i}')
+                menu.lunch_fluid_milk = request.POST.get(f'lunch_fluid_milk_{i}')
+                menu.lunch_vegetable = request.POST.get(f'lunch_vegetable_{i}')
+                menu.lunch_fruit = request.POST.get(f'lunch_fruit_{i}')
+                menu.lunch_grain = request.POST.get(f'lunch_grain_{i}')
+                menu.lunch_meat = request.POST.get(f'lunch_meat_{i}')
+                menu.lunch_additional = request.POST.get(f'lunch_additional_{i}')
+                menu.pm_fluid_milk = request.POST.get(f'pm_fluid_milk_{i}')
+                menu.pm_fruit_veg = request.POST.get(f'pm_fruit_veg_{i}')
+                menu.pm_bread = request.POST.get(f'pm_bread_{i}')
+                menu.pm_meat = request.POST.get(f'pm_meat_{i}')
+                
+                # Save the updated menu entry
+                menu.save()
+
+            # Redirect to the same page to refresh the data
+            return redirect('past_menus')  # Make sure this name matches your URL pattern
 
     # Pass the date ranges, selected menu data, and selected range to the template
     context = {

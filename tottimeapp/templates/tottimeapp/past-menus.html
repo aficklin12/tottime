@@ -19,29 +19,19 @@
     <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
     <style>
 /* Remove bold font weight from specific rows by targeting their IDs */
-#grainRow th,
-#meatRow th {
-    font-weight: normal;
-}
 
-      
-.table input[type="text"] {
-    border: 1px solid #ced4da; /* Add border */
-    border-radius: .25rem; /* Add border-radius */
-    padding: .375rem .75rem; /* Add padding */
-    width: 100%; /* Ensure the input field takes up the entire width of the cell */
-}
 
-/* Style for editable cells */
-.input-box {
-    height: auto; /* Adjust height */
-}
 
-/* Style for the table */
-.table {
-    border-collapse: collapse; /* Collapse the borders of the table */
-    width: 100%; /* Make the table take up the entire width */
-    table-layout: auto;
+
+.table textarea {
+    border: none; /* Add border */
+    text-align: center; /* Center text */
+    white-space: normal; /* Allows text to wrap */
+    overflow-wrap: break-word; /* Break words to the next line */
+    resize: none; /* Prevents resizing */
+    width: 100%; /* Ensures it takes full width */
+    box-sizing: border-box; /* Include padding and border in element's total width and height */
+    min-height: auto; /* Minimum height to show */
 }
 
 h1 {
@@ -60,18 +50,8 @@ h1 {
 th, td {
     border: 1px solid #dee2e6; /* Add border */
     padding: .75rem; /* Add padding */
-    word-wrap: break-word;
-}
-
-/* Style for table header and body */
-.table thead th,
-.table tbody td {
-    text-align: left; /* Align text to the left */
-    font-weight: normal;
-}
-.table thead th,
-.table tbody tr:nth-child(-n+3) {
-    font-weight: bold;
+    word-wrap: break-word; /* Break words to the next line */
+    vertical-align: top; /* Align content to the top */
 }
 
 /* Style for the table title */
@@ -88,42 +68,6 @@ th, td {
 }
 
 
-    @media print {
-    h1,
-    .sb-topnav,
-    .sb-sidenav-footer,
-    .button-container,
-    #generateMenuBtn,
-    #saveMenuBtn {
-        display: none;
-    }
-    .vertical-header {
-        writing-mode: horizontal-tb; /* Set text to horizontal writing mode when printing */
-        transform: none; /* Remove rotation for horizontal text */
-    }
-    .table thead th,
-    .table tbody td {
-            word-wrap: break-word !important;
-            white-space: normal !important;
-            border: 1px solid #dee2e6; /* Add border */
-            padding: .5rem; /* Adjust padding for printing */
-            font-size: 0.8rem; /* Adjust font size for printing */
-        }
-    .table {
-        table-layout: fixed;
-        width: 200%;
-    }
-    .table tbody td:first-child {
-        width: 20px; /* Replace 100px with the width of your first column */
-    }
-    @page {
-        margin-top: -90px;
-    }
-    body {
-        margin: 0;
-        width: fit-content;
-    }
-}
 
     </style>
     
@@ -225,158 +169,199 @@ th, td {
                                 </select>
                                 <button type="submit" id="goButton" class="btn btn-primary mt-2">Go</button>
                                 <a href="{% url 'menu' %}" class="text-primary font-weight-bold" style="text-decoration: underline;">Back to Weekly Menu</a>
+                                <button type="submit" name="save_changes" class="btn btn-primary mt-3">Save Changes</button>
                             </div>
                         </div>
-                    </form>
-        
-                  <!-- Display the selected Weekly Menu data -->
-{% if selected_menu_data %}
-<div class="mt-4">
-    <table class="table">
-        <thead>
-            <tr>
-                <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">
-                    Weekly Menu: {{ selected_range }}  <!-- This will now display the selected date range -->
-                </th>
-            </tr>
-        <tbody>
-            <tr>
-                <th scope="col" colspan="2">Facility:</th>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.get_day_of_week_display }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <th scope="col" colspan="2">Sponsor:</th>
-                {% for menu in selected_menu_data %}
-                    <th>{{ menu.date|date:"m/d" }}</th>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">Breakfast</td>
-                <td>Fluid Milk</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.am_fluid_milk }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Fruit, Vegetable, or Full Strength Juice</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.am_fruit_veg }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Bread or Bread Alternate(s)</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.am_bread }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Additional Food (Optional)</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.am_additional }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">AM Snack</td>
-                <td>Choose 2 of these 5: Fluid Milk</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.ams_fluid_milk }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Fruit, Vegetable, or Full Strength Juice</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.ams_fruit_veg }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Bread or Bread Alternate(s)</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.ams_bread }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Meat or Meat Alternate</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.ams_meat }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td class="vertical-header" rowspan="7" style="font-weight: bold; text-align: center;">Lunch</td>
-                <td>Main Dish</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.lunch_main_dish }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Fluid Milk</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.lunch_fluid_milk }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Vegetable</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.lunch_vegetable }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Fruit</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.lunch_fruit }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Grain</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.lunch_grain }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Meat or Meat Alternate</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.lunch_meat }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Additional Food (Optional)</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.lunch_additional }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">PM Snack</td>
-                <td>Choose 2 of these 5: Fluid Milk</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.pm_fluid_milk }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Fruit, Vegetable, or Full Strength Juice</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.pm_fruit_veg }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Bread or Bread Alternate(s)</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.pm_bread }}</td>
-                {% endfor %}
-            </tr>
-            <tr>
-                <td>Meat or Meat Alternate</td>
-                {% for menu in selected_menu_data %}
-                    <td>{{ menu.pm_meat }}</td>
-                {% endfor %}
-            </tr>
-        </tbody>
-    </table>
-</div>
-{% else %}
-<p class="mt-4">No menu data available for the selected date range.</p>
-{% endif %}
+                    
+                    {% if selected_menu_data %}
+                    <div class="mt-4">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">
+                                        Weekly Menu: {{ selected_range }}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th scope="col" colspan="2">Facility:</th>
+                                    <th scope="col" style="text-align: center;">Monday</th>
+                                    <th scope="col" style="text-align: center;">Tuesday</th>
+                                    <th scope="col" style="text-align: center;">Wednesday</th>
+                                    <th scope="col" style="text-align: center;">Thursday</th>
+                                    <th scope="col" style="text-align: center;">Friday</th>
+                                </tr>
+                                <tr>
+                                    <th scope="col" colspan="2">Sponsor:</th>
+                                    {% for menu in selected_menu_data %}
+                                        <th style="text-align: center;">{{ menu.date|date:"m/d" }}</th>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">Breakfast</td>
+                                    <td>Fluid Milk</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="am_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fluid_milk }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Fruit, Vegetable, or Full Strength Juice</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="am_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fruit_veg }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Bread or Bread Alternate(s)</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="am_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.am_bread }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Additional Food (Optional)</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="am_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.am_additional }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">AM Snack</td>
+                                    <td>Choose 2 of these 5: Fluid Milk</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="ams_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fluid_milk }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Fruit, Vegetable, or Full Strength Juice</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="ams_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fruit_veg }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Bread or Bread Alternate(s)</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="ams_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_bread }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Meat or Meat Alternate</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="ams_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_meat }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td class="vertical-header" rowspan="7" style="font-weight: bold; text-align: center;">Lunch</td>
+                                    <td>Main Dish</td>
+                                    {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="lunch_main_dish_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_main_dish }}</textarea>
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Fluid Milk</td>
+                                {% for menu in selected_menu_data %}
+                                    <td>
+                                        <textarea name="lunch_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fluid_milk }}</textarea>
+                                    </td>
+                                {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Vegetable</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="lunch_vegetable_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_vegetable }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Fruit</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="lunch_fruit_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fruit }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Grain</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="lunch_grain_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_grain }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Meat or Meat Alternate</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="lunch_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_meat }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Additional Food (Optional)</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="lunch_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_additional }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">PM Snack</td>
+                                    <td>Choose 2 of these 5: Fluid Milk</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="pm_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fluid_milk }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Fruit, Vegetable, or Full Strength Juice</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="pm_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fruit_veg }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Bread or Bread Alternate(s)</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="pm_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_bread }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <td>Meat or Meat Alternate</td>
+                                    {% for menu in selected_menu_data %}
+                                        <td>
+                                            <textarea name="pm_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_meat }}</textarea>
+                                        </td>
+                                    {% endfor %}
+                                </tr>
 
+                                                            </tbody>
+                                                        </table>
+                                </div>
+                                {% else %}
+                                <p class="mt-4">No menu data available for the selected date range.</p>
+                                {% endif %}
+                                </form>
                     <!-- jQuery -->
                     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
                     <!-- Bootstrap Bundle JS -->
@@ -425,6 +410,22 @@ th, td {
                                 dateRangeSelect.add(option);
                             }
                         }
+                    </script>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const textareas = document.querySelectorAll('.table textarea');
+                    
+                            textareas.forEach(textarea => {
+                                textarea.addEventListener('input', autoResize);
+                                // Initial resize on page load
+                                autoResize.call(textarea);
+                            });
+                    
+                            function autoResize() {
+                                this.style.height = 'auto'; // Reset height
+                                this.style.height = this.scrollHeight + 'px'; // Set to the scroll height
+                            }
+                        });
                     </script>
                 </main>
             </div>
