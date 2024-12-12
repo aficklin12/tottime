@@ -334,14 +334,21 @@ tr:nth-child(odd) {
         <!-- Navbar Brand-->
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
-        <a class="navbar-brand ps-3" href="{% url 'index' %}">Tracker</a>
+        <a class="navbar-brand ps-3" href="{% url 'index' %}">Tot-Time</a>
         <!-- Navbar-->
         <div class="ms-auto">
             <ul class="navbar-nav me-lg-4">
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <!-- Profile Picture or Default Image -->
+                        <img 
+                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
+                            alt="Profile Picture" 
+                            style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                    </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         {% if user.is_authenticated %}
+                            <li><a class="dropdown-item" href="{% url 'message_inbox' %}">Inbox</a></li>  <!-- Link to Inbox -->
                             <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
                         {% else %}
                             <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
@@ -359,7 +366,7 @@ tr:nth-child(odd) {
                 <div class="sb-sidenav-menu">
                     <div class="nav">
                         <div class="sb-sidenav-menu-heading">Main</div>
-                        <!--
+                        {% if show_sign_in or show_daily_attendance or show_rosters %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance">
                             <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
                             Attendance
@@ -367,54 +374,116 @@ tr:nth-child(odd) {
                         </a>
                         <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_sign_in %}
                                 <a class="nav-link" href="{% url 'sign_in' %}">Sign In</a>
+                                {% endif %}
+                                {% if show_daily_attendance %}
                                 <a class="nav-link" href="{% url 'daily_attendance' %}">Daily Attendance</a>
+                                {% endif %}
+                                {% if show_rosters %}
                                 <a class="nav-link" href="{% url 'rosters' %}">Rosters</a>
+                                {% endif %}
                             </nav>
                         </div>
-                    -->
+                        {% endif %}
+
+                        {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div> <!-- Food-related icon -->
                             Food Program
                             <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                         </a>
                         <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link" href="{% url 'inventory_list' %}">Inventory</a>
-                                <a class="nav-link" href="{% url 'menu' %}">Weekly Menu</a>
-                               <!-- <a class="nav-link" href="{% url 'milk_count' %}">Milk Inventory</a>
-                                <a class="nav-link" href="{% url 'meal_count' %}">Meal Count</a>-->
+                                {% if show_inventory %}
+                                    <a class="nav-link" href="{% url 'inventory_list' %}">Inventory</a>
+                                {% endif %}
+                                {% if show_weekly_menu %}
+                                    <a class="nav-link" href="{% url 'menu' %}">Weekly Menu</a>
+                                {% endif %}
+                                {% if show_milk_inventory %}
+                                    <a class="nav-link" href="{% url 'milk_count' %}">Milk Inventory</a>
+                                {% endif %}
+                                {% if show_meal_count %}
+                                    <a class="nav-link" href="{% url 'meal_count' %}">Meal Count</a>
+                                {% endif %}
                             </nav>
                         </div>
-                        <!--<a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                        {% endif %}
+
+
+                        {% if show_billing or show_payment_setup %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment">
+                            <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> <!-- Settings-related icon (cog wheel) -->
+                            Payments
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_billing %}
+                                <a class="nav-link" href="{% url 'payment' %}">Billing</a> 
+                                {% endif %}
+                                {% if show_payment_setup %}
+                                <a class="nav-link" href="{% url 'stripe' %}">Payment Set-Up</a>
+                                {% endif %}
+                                
+                            </nav>
+                        </div>
+                        {% endif %}
+                        {% if show_clock_in %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees">
+                            <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> <!-- Settings-related icon (cog wheel) -->
+                            Employees
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsEmployees" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_clock_in %}
+                                <a class="nav-link" href="{% url 'clock_in' %}">Time Clock</a>
+                                {% endif %}
+                                {% if show_clock_in %}
+                                <a class="nav-link" href="{% url 'time_sheet' %}">Time Sheet</a>
+                                {% endif %}
+                            </nav>
+                        </div>  
+                        {% endif %}
+                        
+                        {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings">
+                            <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div> <!-- Settings-related icon (cog wheel) -->
                             Settings
                             <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                         </a>
                         <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_classroom_options %}
                                 <a class="nav-link" href="{% url 'classroom_options' %}">Classroom Options</a>
+                                {% endif %}
+                                {% if show_recipes %}
                                 <a class="nav-link" href="{% url 'recipes' %}">Recipe Options</a>
+                                {% endif %}
+                                {% if show_menu_rules %}
                                 <a class="nav-link" href="{% url 'menu_rules' %}">Menu Rules</a>
+                                {% endif %}
+                                {% if show_permissions %}
+                                <a class="nav-link" href="{% url 'permissions' %}">Permissions</a>
+                                {% endif %}                             
                             </nav>
-                        </div>-->
+                        </div>  
+                        {% endif %}
                     </div>
                 </div>
                 <div class="sb-sidenav-footer">
                     <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
                 </div>
             </nav>
-
         </div>
         <div id="layoutSidenav_content">
         <main> 
             <h1 class="mt-4">Inventory List</h1>
             
 <div class="d-flex justify-content-between align-items-center mt-4">
-   <!-- <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="{% url 'index' %}">Dashboard</a></li>
-        <li class="breadcrumb-item active">Weekly Menu</li>
-    </ol>-->
+  
     <div class="text-center">
         <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>   
     </div>

@@ -1,14 +1,14 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
-from .models import Rule
+from django.contrib.auth.models import User, Group
+from .models import Rule, MainUser, SubUser, Message
 
 class SignupForm(UserCreationForm):
     first_name = forms.CharField(max_length=30, required=False, help_text='Optional.')
     last_name = forms.CharField(max_length=30, required=False, help_text='Optional.')
     email = forms.EmailField(max_length=254, help_text='Required. Inform a valid email address.')
     class Meta:
-        model = User 
+        model = MainUser 
         fields = ['username', 'first_name', 'last_name', 'email', 'password1', 'password2']
 
 class LoginForm(forms.Form):
@@ -25,4 +25,18 @@ class RuleForm(forms.ModelForm):
         widgets = {
             'rule': forms.TextInput(attrs={'class': 'custom-input'}),
         }
+
+class InvitationForm(forms.Form):
+    email = forms.EmailField()
+    role = forms.ModelChoiceField(queryset=Group.objects.none(), label="Role")  # Start with an empty queryset
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set the queryset for the role field, excluding the "Owner" role (ID = 1)
+        self.fields['role'].queryset = Group.objects.exclude(id=1)
+
+class MessageForm(forms.ModelForm):
+    class Meta:
+        model = Message
+        fields = ['content']
 

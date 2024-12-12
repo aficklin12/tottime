@@ -10,6 +10,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', login_required(views.index), name='index'),  
     path('index.html', login_required(views.index), name='index'),  
+    path('index_director.html', login_required(views.index_director), name='index_director'),  
+    path('index_teacher.html', login_required(views.index_teacher), name='index_teacher'),  
+    path('index_cook.html', login_required(views.index_cook), name='index_cook'),  
+    path('index_parent.html', login_required(views.index_parent), name='index_parent'),  
+    path('index_free_user.html', login_required(views.index_free_user), name='index_free_user'),  
     path('login/', views.user_login, name='login'),  # Unprotected view
     path('signup/', views.user_signup, name='signup'),  # Unprotected view
     path('logout/', login_required(views.logout_view), name='logout'),  
@@ -76,6 +81,36 @@ urlpatterns = [
     path('api/save_menu/', login_required(views.save_menu), name='save_menu'),
     path('api/check_menu/', login_required(views.check_menu), name='check_menu'),
     path('past-menus/', login_required(views.past_menus), name='past_menus'),
-  
-    
+    path('permissions/', login_required(views.permissions), name='permissions'),
+    path('send-invitation/', login_required(views.send_invitation), name='send_invitation'),
+    path('accept-invitation/<str:token>/', views.accept_invitation, name='accept_invitation'),
+    path('invalid-invitation/', views.invalid_invitation, name='invalid_invitation'), 
+    path('no_access/', login_required(views.no_access), name='no_access'),
+    path('save_permissions/', login_required(views.save_permissions), name='save_permissions'),
+    path('inbox/', login_required(views.inbox), name='message_inbox'), 
+    path('conversation/<int:user_id>/', login_required(views.conversation), name='conversation'),
+    path('start_conversation/<int:user_id>/', login_required(views.start_conversation), name='start_conversation'),
+    path('payment/<int:subuser_id>/', login_required(views.payment_view), name='payment_detail'),
+    path('payments/', login_required(views.payment_view), name='payment'),
+    path('create-payment/', login_required(views.create_payment), name='create_payment'),
+    path('create-payment-intent/', views.create_payment_intent, name='create_payment_intent'),
+    path('update-payment-status/', views.update_payment_status, name='update_payment_status'),
+    path('record-payment/', views.record_payment, name='record_payment'),
+    path('stripe/', login_required(views.stripe_login), name='stripe'),
+    path("stripe/connect/", views.stripe_connect, name="stripe_connect"),
+    path("stripe/callback/", views.stripe_callback, name="stripe_callback"),
+    path('clock_in/', login_required(views.clock_in), name='clock_in'),
+    path('process_teacher_code/', login_required(views.clock_in), name='process_teacher_code'),
+    path('time-sheet/', login_required(views.time_sheet), name='time_sheet'),
+    path('employee-detail/', login_required(views.employee_detail), name='employee_detail'),
+    path('edit_time/', login_required(views.edit_time), name='edit_time'),
+    path('delete-time/', login_required(views.delete_time), name='delete_time'),
+    path('upload-profile-picture/', login_required(views.upload_profile_picture), name='upload_profile_picture'),
+
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+
+# Serve media files in development if DEBUG is True
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

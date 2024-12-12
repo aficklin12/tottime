@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <title>Time Sheet</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Font Awesome -->
+    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Tabulator CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
+    <!-- Custom CSS -->
+    {% load static %}
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <style>
+        h1 {
+            margin-top: 20px;
+            font-weight: bold;
+            line-height: 1.2;
+            font-size: 40px;
+        }
+    
+        form {
+            align-items: center;
+            margin-bottom: 20px;
+        }
+    
+        form label {
+            font-size: 16px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        .form-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            font-size: 16px;
+            font-weight: 600;
+            margin-right: 10px;
+            flex-basis: 30%; /* Adjusts the label width */
+        }
+
+        .form-group input {
+            width: auto;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        form input[type="date"] {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            width: auto;
+            margin-right: 10px;
+        }
+    
+        form button {
+            background-color: #272630;
+            color: #fff;
+            padding: 4px 11px; /* Adjusted padding for smaller height */
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-left: 10px; /* Added margin to the left */
+        }
+    
+        form button:hover {
+            background-color: #373752; /* Green background on hover */
+        }
+    
+        /* Modal */
+        .modal-content {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            margin:auto;
+        }
+    
+        /* Modal Header */
+        .modal-header {
+            background-color: #272630;
+            color: white;
+            border-bottom: 2px solid #ddd;
+        }
+    
+        .modal-header h5 {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+    
+        .modal-header .btn-close {
+            background-color: #fff; /* Set button background */
+            color: #000; /* Set button text color */
+            border: none; /* Remove default border */
+            font-size: 1rem; /* Adjust size */
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+    
+        .styled-table {
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+            text-align: left;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            table-layout: auto;
+            width: auto;
+        }
+    
+        .styled-table thead tr {
+            background-color: #272630;
+            color: #ffffff;
+            text-align: left;
+            font-weight: bold;
+        }
+    
+        .styled-table th,
+        .styled-table td {
+            padding: 12px 15px;
+            border: 1px solid #dddddd;
+            white-space: nowrap; /* Prevent wrapping of text */
+        }
+    
+        .styled-table tbody tr {
+            border-bottom: 1px solid #dddddd;
+        }
+    
+        .styled-table tbody tr:nth-of-type(even) {
+            background-color: #f3f3f3;
+        }
+    
+        .styled-table tbody tr:hover {
+            background-color: #f1f1f1;
+            cursor: pointer;
+        }
+    
+        .styled-table td[colspan="3"] {
+            text-align: center;
+            color: #999999;
+            font-style: italic;
+        }
+    
+        .large-font p {
+            font-size: 1.5em; /* Adjust as needed */
+        }
+    
+        /* Styling for select dropdown to match date input */
+        form select {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            width: auto; /* Adjusted width for consistency */
+            margin-right: 10px;
+        }
+    
+        form select:focus {
+            outline: none;
+            border-color: #272630; /* Optional: Highlight the border on focus */
+        }
+    
+        main {
+            padding-left: 20px; /* Push content inside the main area away from the sidebar */
+        }
+         /* Save Changes button styling */
+        #saveChanges {
+            background-color: #272630; /* Navy blue background */
+            color: #fff; /* White text */
+            padding: 8px 16px; /* Comfortable padding */
+            border: none; /* No border */
+            border-radius: 5px; /* Rounded corners */
+            font-size: 14px; /* Consistent font size */
+            cursor: pointer; /* Pointer cursor on hover */
+            transition: background-color 0.3s, transform 0.2s; /* Smooth transitions */
+        }
+
+        #saveChanges:hover {
+            background-color: #373752; /* Slightly lighter navy on hover */
+            transform: scale(1.05); /* Slight scaling effect */
+        }
+
+        #saveChanges:focus {
+            outline: none; /* Remove default focus outline */
+            background-color: #1a1a2e; /* Darker navy for focus */
+            box-shadow: 0 0 5px rgba(39, 38, 48, 0.7); /* Subtle glow */
+        }
+
+        /* Modal Footer */
+        .modal-footer {
+            display: flex;
+            justify-content: space-between; /* Push buttons to the sides */
+            
+        }
+        #deleteRecord {
+            background-color: rgba(255, 0, 0, 0.3); /* Faded red with 30% opacity */
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        #deleteRecord:hover {
+            background-color: rgba(255, 0, 0, 0.5); /* Slightly darker red on hover */
+        }
+
+        #deleteRecord:focus {
+            outline: none;
+            background-color: rgba(255, 0, 0, 0.7); /* Darker red for focus */
+            box-shadow: 0 0 5px rgba(255, 0, 0, 0.5); /* Subtle glow effect */
+        }
+        /* Style for confirmation delete modal */
+        #confirmDeleteModal .modal-dialog {
+            max-width: 300px; /* Set the maximum width for the delete confirmation modal */
+            margin: 10% auto; /* Center the modal vertically and horizontally */
+        }
+
+        #confirmDeleteModal .modal-content {
+            padding: 15px; /* Adjust the padding to make it more compact */
+            border-radius: 8px; /* Slightly smaller border radius for the confirmation modal */
+        }
+
+        #confirmDeleteModal .modal-header {
+            background-color: #630d0d; /* Optional: Red header for delete confirmation */
+        }
+
+
+
+
+    </style>
+</head>
+<body class="sb-nav-fixed">
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <!-- Navbar Brand-->
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
+        
+        <a class="navbar-brand ps-3" href="{% url 'index' %}">Tot-Time</a>
+        <!-- Navbar-->
+        <div class="ms-auto">
+            <ul class="navbar-nav me-lg-4">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <!-- Profile Picture or Default Image -->
+                        <img 
+                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
+                            alt="Profile Picture" 
+                            style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        {% if user.is_authenticated %}
+                            <li><a class="dropdown-item" href="{% url 'message_inbox' %}">Inbox</a></li>  <!-- Link to Inbox -->
+                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                        {% else %}
+                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+                        <div class="sb-sidenav-menu-heading">Main</div>
+                        {% if show_sign_in or show_daily_attendance or show_rosters %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance">
+                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                            Attendance
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_sign_in %}
+                                <a class="nav-link" href="{% url 'sign_in' %}">Sign In</a>
+                                {% endif %}
+                                {% if show_daily_attendance %}
+                                <a class="nav-link" href="{% url 'daily_attendance' %}">Daily Attendance</a>
+                                {% endif %}
+                                {% if show_rosters %}
+                                <a class="nav-link" href="{% url 'rosters' %}">Rosters</a>
+                                {% endif %}
+                            </nav>
+                        </div>
+                        {% endif %}
+
+                        {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood">
+                            <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div> <!-- Food-related icon -->
+                            Food Program
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_inventory %}
+                                    <a class="nav-link" href="{% url 'inventory_list' %}">Inventory</a>
+                                {% endif %}
+                                {% if show_weekly_menu %}
+                                    <a class="nav-link" href="{% url 'menu' %}">Weekly Menu</a>
+                                {% endif %}
+                                {% if show_milk_inventory %}
+                                    <a class="nav-link" href="{% url 'milk_count' %}">Milk Inventory</a>
+                                {% endif %}
+                                {% if show_meal_count %}
+                                    <a class="nav-link" href="{% url 'meal_count' %}">Meal Count</a>
+                                {% endif %}
+                            </nav>
+                        </div>
+                        {% endif %}
+
+
+                        {% if show_billing or show_payment_setup %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment">
+                            <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> <!-- Settings-related icon (cog wheel) -->
+                            Payments
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_billing %}
+                                <a class="nav-link" href="{% url 'payment' %}">Billing</a> 
+                                {% endif %}
+                                {% if show_payment_setup %}
+                                <a class="nav-link" href="{% url 'stripe' %}">Payment Set-Up</a>
+                                {% endif %}
+                                
+                            </nav>
+                        </div>
+                        {% endif %}
+
+                        {% if show_clock_in %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees">
+                            <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> <!-- Settings-related icon (cog wheel) -->
+                            Employees
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsEmployees" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_clock_in %}
+                                <a class="nav-link" href="{% url 'clock_in' %}">Time Clock</a>
+                                {% endif %}
+                                {% if show_clock_in %}
+                                <a class="nav-link" href="{% url 'time_sheet' %}">Time Sheet</a>
+                                {% endif %}
+                            </nav>
+                        </div>  
+                        {% endif %}
+
+                        {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings">
+                            <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div> <!-- Settings-related icon (cog wheel) -->
+                            Settings
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_classroom_options %}
+                                <a class="nav-link" href="{% url 'classroom_options' %}">Classroom Options</a>
+                                {% endif %}
+                                {% if show_recipes %}
+                                <a class="nav-link" href="{% url 'recipes' %}">Recipe Options</a>
+                                {% endif %}
+                                {% if show_menu_rules %}
+                                <a class="nav-link" href="{% url 'menu_rules' %}">Menu Rules</a>
+                                {% endif %}
+                                {% if show_permissions %}
+                                <a class="nav-link" href="{% url 'permissions' %}">Permissions</a>
+                                {% endif %}                             
+                            </nav>
+                        </div>  
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="sb-sidenav-footer">
+                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
+                </div>
+            </nav>
+        </div>
+        <div id="layoutSidenav_content">
+            <main>
+                <div class="mt-4">
+                    <h1>Employee Time Sheet</h1>
+        
+                    <form method="get" class="mb-4">
+                        <label for="start_date">Start Date:</label>
+                        <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}">
+        
+                        <label for="end_date">End Date:</label>
+                        <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}">
+        
+                        <button type="submit">Filter</button>
+                    </form>
+        
+                    <div class="date-range-summary mb-4 large-font">
+                        <p>
+                            <strong>Pay Period:</strong>
+                            <span>{{ start_date|date:"M j, Y" }}</span>
+                            to <span>{{ end_date|date:"M j, Y" }}</span>
+                        </p>
+                    </div>
+        
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>Employee Name</th>
+                                <th>Day of Week</th>
+                                <th>Date</th>
+                                <th>Clock-In Time</th>
+                                <th>Clock-Out Time</th>
+                                <th>Total Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                                <tr data-record-id="{{ record.id }}">
+                                    <td>{{ record.user.first_name }} {{ record.user.last_name }}</td>
+                                    <td>{{ record.sign_in_time|date:"l" }}</td>
+                                    <td>{{ record.sign_in_time|date:"m/d/y" }}</td>
+                                    <td class="sign-in">{{ record.sign_in_time|date:"h:i A" }}</td>
+                                    <td class="sign-out">{{ record.sign_out_time|date:"h:i A" }}</td>
+                                    <td>{{ record.formatted_total_time }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6">No records available for the selected date range.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <div class="modal" id="editTimeModal" tabindex="-1" role="dialog" aria-labelledby="editTimeModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Edit Clock In/Out</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="editTimeForm" method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" id="record_id" name="record_id" value="">
+                                        <div class="form-group">
+                                            <label for="date">Date:</label>
+                                            <input type="date" id="date" name="date" class="form-control">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="sign_in_time">Clock-In Time:</label>
+                                            <input type="time" id="sign_in_time" name="sign_in_time" class="form-control">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="sign_out_time">Clock-Out Time:</label>
+                                            <input type="time" id="sign_out_time" name="sign_out_time" class="form-control">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button class="btn btn-danger" id="deleteRecord" type="button">Delete</button>
+                                            <button class="btn" id="saveChanges">Save Changes</button>
+                                        </div>
+                                        
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Confirmation Modal -->
+                    <div class="modal" id="confirmDeleteModal" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Are you sure you want to delete this record?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Confirm Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+            
+  <!-- JavaScript imports and custom scripts -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'js/scripts.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+        $(document).ready(function() {
+            // Open the modal and populate the form with the selected record data
+            $('.styled-table tbody tr').click(function() {
+                var recordId = $(this).data('record-id');
+                var signInTime = $(this).find('.sign-in').text();
+                var signOutTime = $(this).find('.sign-out').text();
+                var date = $(this).find('td:nth-child(3)').text();
+
+                // Ensure the date format is in 'YYYY-MM-DD' for the input field
+                var dateFormatted = formatDateToInputFormat(date);
+                
+                $('#editTimeModal').modal('show');
+                $('#record_id').val(recordId);
+                $('#date').val(dateFormatted);
+                $('#sign_in_time').val(formatTo24Hour(signInTime));
+                $('#sign_out_time').val(formatTo24Hour(signOutTime));
+            });
+
+            // Function to format date from 'MM/DD/YY' to 'YYYY-MM-DD' for the input field
+            function formatDateToInputFormat(date) {
+                var dateParts = date.split('/');
+                // Assuming the format in the table is MM/DD/YY
+                var year = '20' + dateParts[2]; // Assuming 'YY' as the year
+                var month = dateParts[0];
+                var day = dateParts[1];
+                
+                return year + '-' + month + '-' + day;
+            }
+
+            // Format 12-hour time to 24-hour time
+            function formatTo24Hour(time) {
+                var timeParts = time.split(' ');
+                var timeStr = timeParts[0];
+                var ampm = timeParts[1];
+                var timeArr = timeStr.split(':');
+                var hours = parseInt(timeArr[0]);
+                if (ampm === 'PM' && hours !== 12) {
+                    hours += 12;
+                } else if (ampm === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+                timeArr[0] = ('0' + hours).slice(-2);
+                return timeArr.join(':');
+            }
+
+            // Open the confirmation modal when the delete button is clicked
+            $('#deleteRecord').click(function() {
+                var recordId = $('#record_id').val();
+                $('#confirmDeleteModal').modal('show');  // Show the confirmation modal
+
+                // Attach the record ID to the confirm button
+                $('#confirmDeleteBtn').data('record-id', recordId);
+            });
+
+            // Perform the delete action if confirmed
+            $('#confirmDeleteBtn').click(function() {
+                var recordId = $(this).data('record-id');
+                $.ajax({
+                    type: 'POST',
+                    url: '{% url "delete_time" %}',  // Update this URL to match your Django view
+                    data: {
+                        'record_id': recordId,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        $('#confirmDeleteModal').modal('hide');  // Hide the confirmation modal
+                        $('#editTimeModal').modal('hide');  // Close the edit modal
+                        location.reload();  // Reload the page to see updated data
+                    },
+                    error: function() {
+                        alert('Error deleting data!');
+                    }
+                });
+            });
+
+            // Submit the form and update the record
+            $('#editTimeForm').submit(function(event) {
+                event.preventDefault();
+
+                var formData = $(this).serialize();
+
+                $.ajax({
+                    type: 'POST',
+                    url: '{% url "edit_time" %}',  // Update this URL to match your Django view
+                    data: formData,
+                    success: function(response) {
+                        $('#editTimeModal').modal('hide');
+                        location.reload();  // Reload the page to see updated data
+                    },
+                    error: function() {
+                        alert('Error saving data!');
+                    }
+                });
+            });
+        });
+
+    </script>
+</body>
+</html>

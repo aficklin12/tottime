@@ -1,63 +1,1089 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.models import User
-from django.contrib import messages
+from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout
-from .forms import SignupForm, LoginForm, RuleForm
+from django.db.models import Q
+import stripe, requests
+from django.conf import settings
+from django_celery_beat.models import PeriodicTask, IntervalSchedule, CrontabSchedule
+from celery import shared_task
+stripe.api_key = settings#.STRIPE_SECRET_KEY
+from django.utils.timezone import now
+from django.db.models import Sum, F, ExpressionWrapper, DurationField
+from decimal import Decimal, InvalidOperation
+from django.db import transaction
+from django.contrib import messages
+from .forms import SignupForm, LoginForm, RuleForm, MessageForm
 from .models import Inventory, Recipe, BreakfastRecipe, Classroom, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord
-from .models import MilkCount, WeeklyMenu, Location, Rule, FruitRecipe, VegRecipe, WgRecipe
+from .models import MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Message, Conversation, Payment, TeacherAttendanceRecord
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponse
 import random, logging, json
 from django.views.decorators.csrf import csrf_protect
-import pytz
-from django.contrib.auth.forms import UserCreationForm
+import pytz, os
+from PIL import Image
+from io import BytesIO
+from .forms import InvitationForm
 from django.db import models
 from pytz import utc
 from datetime import datetime, timedelta, date, time
 from collections import defaultdict
 from django.utils import timezone
 from django.apps import apps
-from django.db.models import F, Sum, Subquery, OuterRef, Max, Min
+from django.db.models import F, Sum, Max, Min
 from django.views.decorators.csrf import csrf_exempt
 from calendar import monthrange
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import Group
+from django.shortcuts import render, redirect
 import uuid
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Classroom, MainUser, SubUser, RolePermission, Student
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 logger = logging.getLogger(__name__)
+
+def get_user_for_view(request):
+    try:
+        subuser = SubUser.objects.get(user=request.user)
+        return subuser.main_user  # Return the MainUser object
+    except SubUser.DoesNotExist:
+        return request.user  # This will return a MainUser object
 
 def login_view(request):
     return render(request, 'login.html')
 
 @login_required(login_url='/login/')
 def index(request):
-    order_items = OrderList.objects.filter(user=request.user)
+    # Get the main user or subuser
+    user = get_user_for_view(request)
+
+    # Check if the user is a SubUser
+    try:
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id_id  # Get group_id_id from SubUser table
+
+        # Redirect based on group_id_id
+        if group_id == 2:
+            return redirect('index_director')
+        elif group_id == 3:
+            return redirect('index_teacher')
+        elif group_id == 4:
+            return redirect('index_cook')
+        elif group_id == 5:
+            return redirect('index_parent')
+        elif group_id == 6:
+            return redirect('index_free_user')
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, assume they are the owner (ID 1)
+        pass
+
+    # Default to the owner view (ID 1) if no other redirection occurs
+    order_items = OrderList.objects.filter(user=user)
     return render(request, 'index.html', {'order_items': order_items})
 
+@login_required(login_url='/login/')
+def index_director(request):
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, default to no permissions (or set defaults as needed)
+        pass
+
+    # Render the index_director page without restricting access
+    return render(request, 'index_director.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+
+@login_required(login_url='/login/')
+def index_teacher(request):
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission 
+            except RolePermission.DoesNotExist:
+                continue
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, default to no permissions (or set defaults as needed)
+        pass
+
+    # Render the index_director page without restricting access
+    return render(request, 'index_teacher.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+@login_required(login_url='/login/')
+def index_cook(request):
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, default to no permissions (or set defaults as needed)
+        pass
+
+    # Render the index_director page without restricting access
+    return render(request, 'index_cook.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
+
+@login_required(login_url='/login/')
+def index_parent(request):
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission 
+            except RolePermission.DoesNotExist:
+                continue
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, default to no permissions (or set defaults as needed)
+        pass
+
+    # Render the index_director page without restricting access
+    return render(request, 'index_parent.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+        
+    })
+
+@login_required(login_url='/login/')
+def index_free_user(request):
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission 
+            except RolePermission.DoesNotExist:
+                continue
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, default to no permissions (or set defaults as needed)
+        pass
+
+    # Render the index_director page without restricting access
+    return render(request, 'index_free_user.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+@login_required
 def recipes(request):
-    return render(request, 'recipes.html')
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False  
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
 
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 267  # Permission ID for accessing recipes view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        # Check additional permissions based on the same group_id
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission 
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # If access is allowed, render the recipes page
+    return render(request, 'recipes.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
+
+
+
+@login_required
 def menu(request):
-    return render(request, 'weekly-menu.html')
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False   
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
 
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 271  # Permission ID for menu view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False  # No specific permission set for this role
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332, 
+            'clock_in': 337,  
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # If access is allowed, proceed with rendering the menu
+    context = {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    }
+
+    return render(request, 'weekly-menu.html', context)
+
+
+@login_required
 def account_settings(request):
-    return render(request, 'account_settings.html')
+    success_message = ""  
+    allow_access = True
 
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False  
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    sub_user = None
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+   
+    if not allow_access:
+            return redirect('no_access')
+
+    # Pass the permission flags and the balance to the template
+    return render(request, 'account_settings.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'sub_user': sub_user, 
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+
+@login_required
 def menu_rules(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False  
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 266  # Permission ID for accessing menu_rules view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # If access is allowed, proceed with the usual view logic
     form = RuleForm()
     rules = Rule.objects.all()  # Query all rules from the database
-    return render(request, 'menu_rules.html', {'form': form, 'rules': rules})
+    return render(request, 'menu_rules.html', {
+        'form': form,
+        'rules': rules,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,  # Corrected variable name
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
 
 @login_required
 def add_rule(request):
     if request.method == 'POST':
         form = RuleForm(request.POST)
         if form.is_valid():
-            # Assign the current user to the rule before saving
+            # Get the main user (either the logged-in user or the linked main user if they are a subuser)
+            user = get_user_for_view(request)
+            
+            # Assign the main user to the rule before saving
             rule = form.save(commit=False)
-            rule.user = request.user
+            rule.user = user
             rule.save()
+            
             return redirect('menu_rules')
+    
     return redirect('menu_rules')
 
 def error401(request):
@@ -79,7 +1105,7 @@ def user_signup(request):
            
             # Log in the user and redirect
             login(request, user)
-            return redirect('index.html')  # Replace with the name of the view to redirect after signup
+            return redirect('login')  # Replace with the name of the view to redirect after signup
     else:
         form = SignupForm()
     return render(request, 'signup.html', {'form': form})
@@ -105,11 +1131,118 @@ def logout_view(request):
 
 @login_required
 def inventory_list(request):
-    # Retrieve inventory data
-    inventory_items = Inventory.objects.filter(user_id=request.user.id)
+    allow_access = False
+
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False   
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 272  # Permission ID for inventory_list view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False  # No specific permission set for this role
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,
+            'clock_in': 337,   
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # Get the user (MainUser) for filtering
+    user = get_user_for_view(request)
+
+    # Retrieve inventory data for the user
+    inventory_items = Inventory.objects.filter(user_id=user.id)
 
     # Get unique categories for filtering options
-    categories = Inventory.objects.filter(user_id=request.user.id).values_list('category', flat=True).distinct()
+    categories = Inventory.objects.filter(user_id=user.id).values_list('category', flat=True).distinct()
 
     # Filter by category if selected
     category_filter = request.GET.get('category')
@@ -122,8 +1255,23 @@ def inventory_list(request):
     return render(request, 'inventory_list.html', {
         'inventory_items': inventory_items,
         'categories': categories,
-        'rules': rules
+        'rules': rules,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
     })
+
 
 @login_required
 def add_item(request):
@@ -132,17 +1280,17 @@ def add_item(request):
         category = request.POST.get('category')
         quantity = request.POST.get('quantity')
         resupply = request.POST.get('resupply')
-        units = request.POST.get('units')  # Now this will directly capture the user's input
-
+        units = request.POST.get('units')  # Capture the user's input
 
         rule_id = request.POST.get('rule')  # Get the rule value from the form
-        if rule_id:
-            rule = get_object_or_404(Rule, id=rule_id)
-        else:
-            rule = None
+        rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
+        # Get the main user (either the logged-in user or the main user if they are a subuser)
+        user = get_user_for_view(request)
+
+        # Create the inventory item for the main user
         Inventory.objects.create(
-            user_id=request.user.id,
+            user_id=user.id,
             item=item,
             category=category,
             quantity=quantity,
@@ -179,13 +1327,14 @@ def remove_item(request, item_id):
     return redirect('inventory_list')
 
 def get_out_of_stock_items(request):
-    out_of_stock_items = Inventory.objects.filter(user=request.user,quantity=0)
+    user = get_user_for_view(request)
+    out_of_stock_items = Inventory.objects.filter(user=user,quantity=0)
     data = [{'name': item.item} for item in out_of_stock_items]
     return JsonResponse(data, safe=False)
 
 def order_soon_items_view(request):
-    # Fetch items from the Inventory model where the quantity is less than the resupply threshold
-    order_soon_items = Inventory.objects.filter(user=request.user, quantity__lt=F('resupply'), quantity__gt=0)
+    user = get_user_for_view(request)
+    order_soon_items = Inventory.objects.filter(user=user, quantity__lt=F('resupply'), quantity__gt=0)
 
     # Convert queryset to a list of dictionaries containing item names
     order_soon_items_data = [{'name': item.item} for item in order_soon_items]
@@ -194,8 +1343,8 @@ def order_soon_items_view(request):
     return JsonResponse(order_soon_items_data, safe=False)
 
 def fetch_ingredients(request):
-    user_id = request.user.id  # Assuming you're using some form of user authentication
-    ingredients = Inventory.objects.filter(user_id=user_id).values('id', 'item')
+    user = get_user_for_view(request)
+    ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item')
     return JsonResponse({'ingredients': list(ingredients)})
 
 @login_required
@@ -222,11 +1371,11 @@ def create_recipe(request):
         meat_alternate = request.POST.get('meatAlternate')
         rule_id = request.POST.get('rule')  # Extract rule from form data
 
-        # Get the authenticated user
-        user = request.user
+        # Use get_user_for_view to get the main user (either logged-in user or main user if subuser)
+        user = get_user_for_view(request)
 
         # Get the rule object if rule_id is provided
-        rule = Rule.objects.get(id=rule_id) if rule_id else None
+        rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
         # Create recipe instance
         recipe = Recipe.objects.create(
@@ -239,16 +1388,17 @@ def create_recipe(request):
         )
 
         # Save main ingredients and their quantities to the recipe
-        for ingredient_id, quantity in zip(main_ingredient_ids, quantities):
+        for index, (ingredient_id, quantity) in enumerate(zip(main_ingredient_ids, quantities), start=1):
             if ingredient_id and quantity:
-                ingredient = Inventory.objects.get(id=ingredient_id)
-                setattr(recipe, f'ingredient{main_ingredient_ids.index(ingredient_id) + 1}', ingredient)
-                setattr(recipe, f'qty{main_ingredient_ids.index(ingredient_id) + 1}', quantity)
+                ingredient = get_object_or_404(Inventory, id=ingredient_id)
+                setattr(recipe, f'ingredient{index}', ingredient)
+                setattr(recipe, f'qty{index}', quantity)
         recipe.save()
 
         return JsonResponse({'success': True})
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
+
 
 @login_required
 def create_fruit_recipe(request):
@@ -269,11 +1419,11 @@ def create_fruit_recipe(request):
         if not rule_id:
             return JsonResponse({'error': 'Rule is required'}, status=400)
 
-        # Get the authenticated user
-        user = request.user
+        # Use get_user_for_view to get the main user (either logged-in user or main user if subuser)
+        user = get_user_for_view(request)
 
         # Get the rule object if rule_id is provided
-        rule = Rule.objects.get(id=rule_id) if rule_id else None
+        rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
         # Create fruit recipe instance
         fruit_recipe = FruitRecipe.objects.create(
@@ -284,7 +1434,7 @@ def create_fruit_recipe(request):
 
         # Save the ingredient and its quantity to the fruit recipe
         if ingredient_id and quantity:
-            ingredient = Inventory.objects.get(id=ingredient_id)
+            ingredient = get_object_or_404(Inventory, id=ingredient_id)
             fruit_recipe.ingredient1 = ingredient
             fruit_recipe.qty1 = quantity
         fruit_recipe.save()
@@ -296,11 +1446,13 @@ def create_fruit_recipe(request):
 @login_required
 def create_veg_recipe(request):
     if request.method == 'POST':
+        # Extract form data
         recipe_name = request.POST.get('vegName')
         ingredient_id = request.POST.get('vegMainIngredient1')
         quantity = request.POST.get('vegQtyMainIngredient1')
         rule_id = request.POST.get('vegRule')
 
+        # Validate form data
         if not recipe_name:
             return JsonResponse({'error': 'Recipe name is required'}, status=400)
         if not ingredient_id:
@@ -310,17 +1462,22 @@ def create_veg_recipe(request):
         if not rule_id:
             return JsonResponse({'error': 'Rule is required'}, status=400)
 
-        user = request.user
-        rule = Rule.objects.get(id=rule_id) if rule_id else None
+        # Use get_user_for_view to determine the main user (current user or main user if subuser)
+        user = get_user_for_view(request)
 
+        # Get the rule object if rule_id is provided
+        rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
+
+        # Create vegetable recipe instance
         veg_recipe = VegRecipe.objects.create(
             user=user,
             name=recipe_name,
             rule=rule
         )
 
+        # Save the ingredient and its quantity to the vegetable recipe
         if ingredient_id and quantity:
-            ingredient = Inventory.objects.get(id=ingredient_id)
+            ingredient = get_object_or_404(Inventory, id=ingredient_id)
             veg_recipe.ingredient1 = ingredient
             veg_recipe.qty1 = quantity
         veg_recipe.save()
@@ -332,11 +1489,13 @@ def create_veg_recipe(request):
 @login_required
 def create_wg_recipe(request):
     if request.method == 'POST':
+        # Extract form data
         recipe_name = request.POST.get('wgName')
         ingredient_id = request.POST.get('wgMainIngredient1')
         quantity = request.POST.get('wgQtyMainIngredient1')
         rule_id = request.POST.get('wgRule')
 
+        # Validate form data
         if not recipe_name:
             return JsonResponse({'error': 'Recipe name is required'}, status=400)
         if not ingredient_id:
@@ -346,17 +1505,22 @@ def create_wg_recipe(request):
         if not rule_id:
             return JsonResponse({'error': 'Rule is required'}, status=400)
 
-        user = request.user
-        rule = Rule.objects.get(id=rule_id) if rule_id else None
+        # Use get_user_for_view to determine the main user (either the current user or main user if subuser)
+        user = get_user_for_view(request)
 
+        # Get the rule object if rule_id is provided
+        rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
+
+        # Create WG recipe instance
         wg_recipe = WgRecipe.objects.create(
             user=user,
             name=recipe_name,
             rule=rule
         )
 
+        # Save the ingredient and its quantity to the WG recipe
         if ingredient_id and quantity:
-            ingredient = Inventory.objects.get(id=ingredient_id)
+            ingredient = get_object_or_404(Inventory, id=ingredient_id)
             wg_recipe.ingredient1 = ingredient
             wg_recipe.qty1 = quantity
         wg_recipe.save()
@@ -388,12 +1552,18 @@ def create_breakfast_recipe(request):
         additional_food = request.POST.get('additionalFood')
         rule_id = request.POST.get('breakfastRule')  # Extract rule from form data
 
-        # Get the authenticated user
-        user = request.user
+        # Use get_user_for_view to get the correct user (main user or subuser)
+        user = get_user_for_view(request)
 
         rule = Rule.objects.get(id=rule_id) if rule_id else None
         # Create breakfast recipe instance
-        breakfast_recipe = BreakfastRecipe.objects.create(user=user, name=recipe_name, instructions=instructions, addfood=additional_food, rule=rule)
+        breakfast_recipe = BreakfastRecipe.objects.create(
+            user=user,
+            name=recipe_name,
+            instructions=instructions,
+            addfood=additional_food,
+            rule=rule
+        )
 
         # Save main ingredients and their quantities to the breakfast recipe
         for ingredient_id, quantity in zip(main_ingredient_ids, quantities):
@@ -435,8 +1605,8 @@ def create_am_recipe(request):
         meat = request.POST.get('amMeat')
         rule_id = request.POST.get('amRule')  # Extract rule from form data
 
-        # Get the authenticated user
-        user = request.user
+        # Use get_user_for_view to get the correct user (main user or subuser)
+        user = get_user_for_view(request)
 
         rule = Rule.objects.get(id=rule_id) if rule_id else None
 
@@ -490,9 +1660,12 @@ def create_pm_recipe(request):
         fruit_veg = request.POST.get('pmFruitVeg')
         meat = request.POST.get('pmMeat')
         rule_id = request.POST.get('pmRule')
-        # Get the authenticated user
-        user = request.user
+
+        # Use get_user_for_view to get the correct user (main user or subuser)
+        user = get_user_for_view(request)
+
         rule = Rule.objects.get(id=rule_id) if rule_id else None
+
         # Create PM recipe instance
         pm_recipe = PMRecipe.objects.create(
             user=user,
@@ -502,7 +1675,6 @@ def create_pm_recipe(request):
             fruit_veg=fruit_veg,
             meat=meat,
             rule=rule  # Set rule
-            
         )
 
         # Save main ingredients and their quantities to the PM recipe
@@ -521,8 +1693,11 @@ def create_pm_recipe(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 def fetch_recipes(request):
-    # Retrieve all recipes from the database
-    recipes = Recipe.objects.filter(user=request.user).values('id', 'name')  
+    # Use get_user_for_view to get the correct user (main user or subuser)
+    user = get_user_for_view(request)
+
+    # Retrieve all recipes from the database for the identified user
+    recipes = Recipe.objects.filter(user=user).values('id', 'name')  
     return JsonResponse({'recipes': list(recipes)})
 
 @login_required
@@ -559,51 +1734,50 @@ def get_recipe(request, recipe_id):
 
 @login_required
 def fetch_veg_recipes(request):
-    veg_recipes = VegRecipe.objects.filter(user=request.user).values('id', 'name')
+    user = get_user_for_view(request)
+    veg_recipes = VegRecipe.objects.filter(user=user).values('id', 'name')
     return JsonResponse({'recipes': list(veg_recipes)})
 
 @login_required
 def fetch_wg_recipes(request):
-    wg_recipes = WgRecipe.objects.filter(user=request.user).values('id', 'name')
+    user = get_user_for_view(request)
+    wg_recipes = WgRecipe.objects.filter(user=user).values('id', 'name')
     return JsonResponse({'recipes': list(wg_recipes)})
 
 def fetch_fruit_recipes(request):
-    fruit_recipes = FruitRecipe.objects.filter(user=request.user).values('id', 'name')
+    user = get_user_for_view(request)
+    fruit_recipes = FruitRecipe.objects.filter(user=user).values('id', 'name')
     return JsonResponse({'recipes': list(fruit_recipes)})
 
 def fetch_breakfast_recipes(request):
-    # Fetch breakfast recipes for the current user from the database
-    breakfast_recipes = BreakfastRecipe.objects.filter(user=request.user).values('id', 'name')
+    user = get_user_for_view(request)
+    breakfast_recipes = BreakfastRecipe.objects.filter(user=user).values('id', 'name')
     return JsonResponse({'recipes': list(breakfast_recipes)})
 
 def fetch_am_recipes(request):
-    # Retrieve all AM recipes for the authenticated user from the database
-    am_recipes = AMRecipe.objects.filter(user=request.user).values('id', 'name')  
+    user = get_user_for_view(request)
+    am_recipes = AMRecipe.objects.filter(user=user).values('id', 'name')  
     return JsonResponse({'am_recipes': list(am_recipes)})
 
 def fetch_pm_recipes(request):
-    # Retrieve all AM recipes for the authenticated user from the database
-    am_recipes = PMRecipe.objects.filter(user=request.user).values('id', 'name')  
+    user = get_user_for_view(request)
+    am_recipes = PMRecipe.objects.filter(user=user).values('id', 'name')  
     return JsonResponse({'pm_recipes': list(am_recipes)})
 
-def get_filtered_recipes(user, model, recent_days=14):
-    """Filter recipes not used in the last `recent_days` days."""
-    all_recipes = list(model.objects.filter(user=user))
-    cutoff_date = timezone.now() - timedelta(days=recent_days)
-    recent_recipes = model.objects.filter(user=user, last_used__gte=cutoff_date)
-    return [recipe for recipe in all_recipes if recipe not in recent_recipes]
-
-def check_ingredients_availability(recipe, user):
+def check_ingredients_availability(request, recipe):
     """Check if all ingredients in a recipe are available in sufficient quantities."""
+    user = get_user_for_view(request)  # Get the user (main user or subuser)
+    
     for i in range(1, 6):
         ingredient_id = getattr(recipe, f"ingredient{i}_id")
         qty = getattr(recipe, f"qty{i}")
+        
         if ingredient_id and qty:
+            # Check if the ingredient is available in the user's inventory
             if not Inventory.objects.filter(user=user, id=ingredient_id, quantity__gte=qty).exists():
                 return False
     return True
-
-
+    
 @login_required
 @csrf_exempt
 def check_menu(request):
@@ -613,8 +1787,11 @@ def check_menu(request):
             data = json.loads(raw_body)
             dates_to_check = data.get('dates', [])
 
-            # Check if any of the dates have existing menu entries
-            exists = WeeklyMenu.objects.filter(date__in=dates_to_check, user=request.user).exists()
+            # Get the user using get_user_for_view
+            user = get_user_for_view(request)
+
+            # Check if any of the dates have existing menu entries for the user
+            exists = WeeklyMenu.objects.filter(date__in=dates_to_check, user=user).exists()
 
             return JsonResponse({'exists': exists}, status=200)
 
@@ -622,8 +1799,6 @@ def check_menu(request):
             return JsonResponse({'status': 'fail', 'error': 'Unexpected error occurred'}, status=500)
 
     return JsonResponse({'status': 'fail', 'error': 'Invalid request method'}, status=400)
-
-
 
 @login_required
 @csrf_protect
@@ -654,13 +1829,16 @@ def save_menu(request):
                 'friday': 'Fri'
             }
 
+            # Get the user using get_user_for_view
+            user = get_user_for_view(request)
+
             # Loop through each day to save menu data
             for day_key, day_abbr in days_of_week.items():
                 day_data = data.get(day_key, {})
 
                 # Create or update the WeeklyMenu for each day
                 WeeklyMenu.objects.update_or_create(
-                    user=request.user,
+                    user=user,  # Use the retrieved user
                     date=week_dates[list(days_of_week.keys()).index(day_key)],  # Use calculated date
                     day_of_week=day_abbr,
                     defaults={
@@ -753,20 +1931,24 @@ def order_list(request):
         category = request.POST.get('category', 'Other')  # Default to 'Other' if not provided
 
         if item:
-            OrderList.objects.create(user=request.user, item=item, quantity=quantity, category=category)
+            # Get the user using get_user_for_view
+            user = get_user_for_view(request)
+            OrderList.objects.create(user=user, item=item, quantity=quantity, category=category)
             return redirect('order_list')
         else:
             return HttpResponseBadRequest('Invalid form submission')
     else:
-        order_items = OrderList.objects.filter(user=request.user)
+        # Get the user using get_user_for_view
+        user = get_user_for_view(request)
+        order_items = OrderList.objects.filter(user=user)
         return render(request, 'index.html', {'order_items': order_items})
-
-
 
 @login_required
 def shopping_list_api(request):
     if request.method == 'GET':
-        shopping_list_items = OrderList.objects.filter(user=request.user)
+        # Get the user using get_user_for_view
+        user = get_user_for_view(request)
+        shopping_list_items = OrderList.objects.filter(user=user)
         serialized_items = [{'name': item.item} for item in shopping_list_items]
         return JsonResponse(serialized_items, safe=False)
     else:
@@ -776,8 +1958,10 @@ def update_orders(request):
     if request.method == 'POST':
         item_ids = request.POST.getlist('items')
         try:
+            # Get the user using get_user_for_view
+            user = get_user_for_view(request)
             for item_id in item_ids:
-                order_item = get_object_or_404(OrderList, id=item_id, user=request.user)
+                order_item = get_object_or_404(OrderList, id=item_id, user=user)
                 order_item.ordered = True
                 order_item.save()
             return JsonResponse({'success': True, 'message': 'Orders updated successfully'})
@@ -798,11 +1982,121 @@ def delete_shopping_items(request):
 
 @login_required
 def sign_in(request):
+    allow_access = False
+
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False  
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 273  # Permission ID for sign_in view
+
+        # Check if the SubUser has permission to access this view
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False  # No specific permission set for this role
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332, 
+            'clock_in': 337,  
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # Process sign-in if the request is POST and permission is granted
     if request.method == 'POST':
         code = request.POST['code']
-        student = Student.objects.get(code=code)
+        try:
+            student = Student.objects.get(code=code)
+        except Student.DoesNotExist:
+            return render(request, 'sign_in.html', {'error': 'Student not found.'})
+
         user = request.user  # Get the current user
 
+        # Create or update attendance record
         record, created = AttendanceRecord.objects.get_or_create(student=student, sign_out_time=None)
         record.sign_in_time = timezone.now()
         record.user = user  # Assign the current user to the attendance record
@@ -810,7 +2104,22 @@ def sign_in(request):
 
         return redirect('home')
     
-    return render(request, 'sign_in.html')
+    return render(request, 'sign_in.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
 
 @login_required
 def process_code(request):
@@ -818,15 +2127,13 @@ def process_code(request):
         try:
             data = json.loads(request.body)
             code = data.get('code')
-            user_id = data.get('user_id')  # Retrieve user_id from the request
-            if code and user_id:
+            user = get_user_for_view(request)  # Retrieve the user using get_user_for_view
+
+            if code and user:
                 timestamp = timezone.now()
 
                 # Retrieve student from the database using the code
                 student = Student.objects.get(code=code)
-
-                # Retrieve user from the database using the user_id
-                user = User.objects.get(id=user_id)
 
                 # Check if the student has an open attendance record (signed in but not signed out)
                 open_record = AttendanceRecord.objects.filter(student=student, sign_out_time__isnull=True).first()
@@ -841,11 +2148,9 @@ def process_code(request):
 
                 return JsonResponse({'success': True, 'message': message})
             else:
-                return JsonResponse({'success': False, 'message': 'Code and user ID are required.'})
+                return JsonResponse({'success': False, 'message': 'Code and user are required.'})
         except Student.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Invalid code. Please try again.'})
-        except User.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'Invalid user ID. Please try again.'})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
 
@@ -853,16 +2158,240 @@ def process_code(request):
 
 @login_required
 def daily_attendance(request):
-    # Get today's date
+    allow_access = False
+
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 274  # Permission ID for daily_attendance view
+
+        # Check if the SubUser has permission to access this view
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False  # No specific permission set for this role
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # Proceed with fetching attendance records if access is allowed
     today = date.today()
+    user = get_user_for_view(request)
+    attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=today, user=user)
 
-    # Retrieve attendance records for today
-    attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=today)
-
-    return render(request, 'daily_attendance.html', {'attendance_records': attendance_records})
+    return render(request, 'daily_attendance.html', {
+        'attendance_records': attendance_records,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
 
 @login_required
 def rosters(request):
+    allow_access = False
+
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False 
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 275  # Permission ID for rosters view
+
+        # Check if the SubUser has permission to access this view
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False  # No specific permission set for this role
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # Get current date information
     current_date = datetime.now()
     current_year = current_date.year
     current_month = current_date.month
@@ -934,9 +2463,24 @@ def rosters(request):
         'selected_year': selected_year,
         'months': months,
         'years': years,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
     }
     
     return render(request, 'rosters.html', context)
+
     
 @csrf_exempt
 def add_student(request):
@@ -951,8 +2495,8 @@ def add_student(request):
         # Fetch the corresponding Classroom instance
         classroom = Classroom.objects.get(name=classroom_name, user=request.user)
 
-        # Get the current user (assuming the user is logged in)
-        user = request.user
+        # Get the current user using get_user_for_view
+        user = get_user_for_view(request)
 
         # Save the student to the database
         student = Student.objects.create(
@@ -973,17 +2517,162 @@ def add_student(request):
         classrooms = Classroom.objects.filter(user=request.user)
         return render(request, 'rosters.html', {'classrooms': classrooms})
 
+@login_required
 def classroom_options(request):
-    classrooms = Classroom.objects.filter(user=request.user)
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 268  # Permission ID for accessing classroom_options view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        # Check additional permissions based on the same group_id
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332, 
+            'clock_in': 337,  
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # Use the get_user_for_view logic for filtering
+    user = get_user_for_view(request)
+
+    # Retrieve classrooms associated with the user
+    classrooms = Classroom.objects.filter(user=user)
+
+    # Attach students to each classroom
     for classroom in classrooms:
         classroom.students = Student.objects.filter(classroom=classroom)
-    return render(request, 'classroom_options.html', {'classrooms': classrooms})
+
+    # Retrieve the teachers linked to the current user
+    teachers = MainUser.objects.filter(id=user.id)  # Teachers related to the MainUser of the current user
+
+    # For subusers, include teachers under the same MainUser
+    if hasattr(user, 'subuser'):
+        teachers |= MainUser.objects.filter(subuser__main_user=user)
+
+    # For subusers under the same main user, include them as well
+    subusers = SubUser.objects.filter(main_user=user)
+    teachers |= MainUser.objects.filter(id__in=subusers.values('user_id'))  # Include all subusers' main users
+
+    # Filter out users with auth_group 5 (Parent) or 6 (Free User)
+    teachers = teachers.exclude(groups__id__in=[5, 6])
+
+    return render(request, 'classroom_options.html', {
+        'classrooms': classrooms,
+        'teachers': teachers,  # Add the filtered teachers list to the context
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
 
 @login_required 
 def add_classroom(request):
     if request.method == 'POST':
         classroom_name = request.POST.get('className')
-        user = request.user  # Get the current user
+        
+        # Get the current user using get_user_for_view
+        user = get_user_for_view(request)
 
         if classroom_name:
             new_classroom = Classroom(name=classroom_name, user=user)  # Assign the user to the classroom
@@ -1004,35 +2693,331 @@ def delete_classrooms(request):
     else:
         return JsonResponse({'success': False, 'error': 'Invalid request method'})
     
+@login_required
 def milk_count(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 270  # Permission ID for milk_count view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission 
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # If access is allowed, proceed with the usual view logic
     current_date = datetime.now()
     current_year = current_date.year
     current_month = current_date.month
     
-    # Get the selected month and year from the request.GET dictionary
     selected_month = int(request.GET.get('month', current_month))
     selected_year = int(request.GET.get('year', current_year))
     
-    # Prepare data for rendering in template
-    # Add your milk count related logic here
-    
-    # Prepare a list of months and years for the template
-    months = [
-        {'month': i, 'name': datetime.strptime(str(i), "%m").strftime("%B")}
-        for i in range(1, 13)
-    ]
+    months = [{'month': i, 'name': datetime.strptime(str(i), "%m").strftime("%B")} for i in range(1, 13)]
     years = list(range(2020, 2031))
     
     context = {
-        # Add your milk count related context data here
         'months': months,
         'years': years,
         'selected_month': selected_month,
         'selected_year': selected_year,
-        # Add other context variables as needed
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
     }
     
     return render(request, 'milk_count.html', context)
+
+@login_required
+def milk_count_view(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  # Initialize to False
+    show_menu_rules = False   # Initialize to False
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 270  # Permission ID for milk_count_view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False  # No specific permission set for this role
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission 
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # If access is allowed, proceed with the usual view logic
+    months = MilkCount.objects.dates('timestamp', 'month')
+    years = MilkCount.objects.dates('timestamp', 'year')
+
+    selected_month = request.GET.get('month')
+    selected_year = request.GET.get('year')
+
+    if selected_month and selected_year:
+        tz = timezone.get_current_timezone()
+        start_date = datetime(int(selected_year), int(selected_month), 1, tzinfo=tz)
+        end_date = start_date.replace(day=1, month=start_date.month % 12 + 1)
+
+        milk_counts = MilkCount.objects.filter(timestamp__gte=start_date, timestamp__lt=end_date)
+
+        first_entries = milk_counts.values('inventory_item').annotate(
+            min_timestamp=Min('timestamp')
+        ).values_list('min_timestamp', flat=True)
+
+        beginning_inventory_count = MilkCount.objects.filter(timestamp__in=first_entries).aggregate(
+            beginning_inventory_qty=Sum('current_qty')
+        )['beginning_inventory_qty'] or 0
+
+        last_entries = milk_counts.values('inventory_item').annotate(
+            max_timestamp=Max('timestamp')
+        ).values_list('max_timestamp', flat=True)
+
+        end_of_month_inventory = MilkCount.objects.filter(timestamp__in=last_entries).aggregate(
+            end_of_month_qty=Sum('current_qty')
+        )['end_of_month_qty'] or 0
+
+        total_received_qty = milk_counts.aggregate(total_qty=Sum('received_qty'))['total_qty'] or 0
+        total_available_qty = beginning_inventory_count + total_received_qty
+        total_used_qty = total_available_qty - end_of_month_inventory
+
+        context = {
+            'total_received_qty': total_received_qty,
+            'beginning_inventory_count': beginning_inventory_count,
+            'total_available_qty': total_available_qty,
+            'end_of_month_inventory': end_of_month_inventory,
+            'total_used_qty': total_used_qty,
+            'months': months,
+            'years': years,
+            'selected_month': selected_month,
+            'selected_year': selected_year,
+            'show_weekly_menu': show_weekly_menu,
+            'show_inventory': show_inventory,
+            'show_milk_inventory': show_milk_inventory,
+            'show_meal_count': show_meal_count,
+            'show_classroom_options': show_classroom_options,
+            'show_recipes': show_recipes,
+            'show_sign_in': show_sign_in,
+            'show_daily_attendance': show_daily_attendance,
+            'show_rosters': show_rosters,
+            'show_permissions': show_permissions,
+            'show_menu_rules': show_menu_rules,
+            'show_billing': show_billing,            
+            'show_payment_setup': show_payment_setup,
+            'show_clock_in': show_clock_in,
+         }
+    else:
+        context = {
+            'months': months,
+            'years': years,
+            'show_weekly_menu': show_weekly_menu,
+            'show_inventory': show_inventory,
+            'show_milk_inventory': show_milk_inventory,
+            'show_meal_count': show_meal_count,
+            'show_classroom_options': show_classroom_options,
+            'show_recipes': show_recipes,
+            'show_sign_in': show_sign_in,
+            'show_daily_attendance': show_daily_attendance,
+            'show_rosters': show_rosters,
+            'show_permissions': show_permissions,
+            'show_menu_rules': show_menu_rules,
+            'show_billing': show_billing,            
+            'show_payment_setup': show_payment_setup,
+            'show_clock_in': show_clock_in,
+        }
+
+    return render(request, 'milk_count.html', context)
+
 
 def update_milk_count(request):
     if request.method == 'POST' and request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -1045,152 +3030,194 @@ def update_milk_count(request):
         # Get the current date and time
         now = datetime.now()
 
+        # Get the current user using get_user_for_view
+        user = get_user_for_view(request)
+
         # Create a new MilkCount entry for the current update
         milk_count = MilkCount.objects.create(
             inventory_item=inventory_item,
             timestamp=now,
             current_qty=inventory_item.quantity,  # Set the current quantity
             received_qty=int(extra_milk_quantity) if extra_milk_quantity else 0,  # Set received quantity
-            user=request.user  # Assuming you have user authentication
+            user=user  # Use the retrieved user
         )
 
         return JsonResponse({'success': True})
     else:
         return JsonResponse({'success': False, 'error': 'Invalid request'})
 
-def milk_count_view(request):
-    # Get distinct months and years from the MilkCount entries
-    months = MilkCount.objects.dates('timestamp', 'month')
-    years = MilkCount.objects.dates('timestamp', 'year')
 
-    # Retrieve selected month and year from the request GET parameters
-    selected_month = request.GET.get('month')
-    selected_year = request.GET.get('year')
 
-    # If both month and year are provided, filter MilkCount objects based on them
-    if selected_month and selected_year:
-        # Get the current timezone
-        tz = timezone.get_current_timezone()
-
-        # Convert selected month and year to datetime object with the current timezone
-        start_date = datetime(int(selected_year), int(selected_month), 1, tzinfo=tz)
-        end_date = start_date.replace(day=1, month=start_date.month % 12 + 1)
-
-        # Filter MilkCount objects for the selected month and year
-        milk_counts = MilkCount.objects.filter(timestamp__gte=start_date, timestamp__lt=end_date)
-
-        # Get the first entry for each unique inventory_item_id within the selected month
-        first_entries = milk_counts.values('inventory_item').annotate(
-            min_timestamp=Min('timestamp')
-        ).values_list('min_timestamp', flat=True)
-
-        # Calculate the sum of current_qty for the first entries
-        beginning_inventory_count = MilkCount.objects.filter(timestamp__in=first_entries).aggregate(
-            beginning_inventory_qty=Sum('current_qty')
-        )['beginning_inventory_qty'] or 0
-
-        # Get the last entry for each unique inventory_item_id within the selected month
-        last_entries = milk_counts.values('inventory_item').annotate(
-            max_timestamp=Max('timestamp')
-        ).values_list('max_timestamp', flat=True)
-
-        # Calculate the sum of current_qty for the last entries
-        end_of_month_inventory = MilkCount.objects.filter(timestamp__in=last_entries).aggregate(
-            end_of_month_qty=Sum('current_qty')
-        )['end_of_month_qty'] or 0
-
-        # Calculate the total received quantity (received_qty)
-        total_received_qty = milk_counts.aggregate(total_qty=Sum('received_qty'))['total_qty'] or 0
-
-        # Calculate the total available quantity
-        total_available_qty = beginning_inventory_count + total_received_qty
-
-        # Calculate the total used during the month
-        total_used_qty = total_available_qty - end_of_month_inventory
-
-        context = {
-            'total_received_qty': total_received_qty,
-            'beginning_inventory_count': beginning_inventory_count,
-            'total_available_qty': total_available_qty,
-            'end_of_month_inventory': end_of_month_inventory,
-            'total_used_qty': total_used_qty,
-            'months': months,
-            'years': years,
-            'selected_month': selected_month,
-            'selected_year': selected_year
-        }
-    else:
-        # If month or year is not provided, return an empty context
-        context = {
-            'months': months,
-            'years': years
-        }
-
-    return render(request, 'milk_count.html', context)
-
+@login_required
 def meal_count(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False   
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
 
-     # Get distinct months and years from the MilkCount entries
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 269  # Permission ID for meal_count view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,  
+            'clock_in': 337, 
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # If access is allowed, proceed with the usual view logic
     months = MilkCount.objects.dates('timestamp', 'month', order='DESC')
     years = MilkCount.objects.dates('timestamp', 'year', order='DESC')
-    
-    # Retrieve selected month and year from the request GET parameters
+
     selected_month = request.GET.get('month')
     selected_year = request.GET.get('year')
 
-    # If both month and year are provided, filter AttendanceRecord objects based on them
     if selected_month and selected_year:
-        # Get the current timezone
         tz = timezone.get_current_timezone()
-
-        # Convert selected month and year to datetime object with the current timezone
         start_date = datetime(int(selected_year), int(selected_month), 1, tzinfo=tz)
         end_date = start_date.replace(day=1, month=start_date.month % 12 + 1)
-
-        # Filter AttendanceRecord objects for the selected month and year
         attendance_records = AttendanceRecord.objects.filter(sign_in_time__gte=start_date, sign_in_time__lt=end_date)
     else:
         attendance_records = AttendanceRecord.objects.all()
 
-    # Initialize counts for each time slot
     am_count = 0
     lunch_count = 0
     pm_count = 0
 
-    # Define time ranges in EST (hour, minute, hour, minute)
-    am_range = (4, 0, 9, 0)  # 4:00 AM - 9:00 AM EST
-    lunch_range = (10, 30, 12, 30)  # 10:30 AM - 12:30 PM EST
-    pm_range = (13, 0, 17, 0)  # 1:00 PM - 5:00 PM EST
+    am_range = (4, 0, 9, 0)
+    lunch_range = (10, 30, 12, 30)
+    pm_range = (13, 0, 17, 0)
 
-    # Get timezone object for US Eastern Time
     eastern = pytz.timezone('US/Eastern')
 
-    # Helper function to check if any part of the attendance record overlaps with a given time range
     def overlaps(time_range, sign_in_time, sign_out_time):
         start_hour, start_minute, end_hour, end_minute = time_range
         start_time = timezone.make_aware(timezone.datetime(2000, 1, 1, start_hour, start_minute), eastern).time()
         end_time = timezone.make_aware(timezone.datetime(2000, 1, 1, end_hour, end_minute), eastern).time()
         return (sign_in_time.time() < end_time and sign_out_time.time() > start_time)
 
-    # Iterate through attendance records
     for record in attendance_records:
-        # Convert sign-in and sign-out times to EST
         sign_in_time_est = record.sign_in_time.astimezone(eastern)
         sign_out_time_est = record.sign_out_time.astimezone(eastern) if record.sign_out_time else sign_in_time_est
 
-        # Check if any part of the attendance record overlaps with the AM, lunch, and PM time ranges
         if overlaps(am_range, sign_in_time_est, sign_out_time_est):
             am_count += 1
-           
         if overlaps(lunch_range, sign_in_time_est, sign_out_time_est):
             lunch_count += 1
-            
         if overlaps(pm_range, sign_in_time_est, sign_out_time_est):
             pm_count += 1
-            
 
-    # Render your HTML template with counts as context
-    return render(request, 'meal_count.html', {'am_count': am_count, 'lunch_count': lunch_count, 'pm_count': pm_count, 'months':months, 'years': years, 'selected_month':selected_month, 'selected_year': selected_year})
+    return render(request, 'meal_count.html', {
+        'am_count': am_count,
+        'lunch_count': lunch_count,
+        'pm_count': pm_count,
+        'months': months,
+        'years': years,
+        'selected_month': selected_month,
+        'selected_year': selected_year,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
 
 
 def select_meals_for_days(recipes, user):
@@ -1274,19 +3301,26 @@ def subtract_ingredients_from_inventory(recipe, inventory):
                 item.total_quantity -= qty
                 item.save()
 
-
+def get_filtered_recipes(user, model, recent_days=14):
+    """Filter recipes not used in the last `recent_days` days."""
+    all_recipes = list(model.objects.filter(user=user))
+    cutoff_date = timezone.now() - timedelta(days=recent_days)
+    recent_recipes = model.objects.filter(user=user, last_used__gte=cutoff_date)
+    return [recipe for recipe in all_recipes if recipe not in recent_recipes]
 
 def generate_menu(request):
-    user = request.user
+    user = get_user_for_view(request)  # Get the correct user context
     recipes = get_filtered_recipes(user, Recipe)
     menu_data = select_meals_for_days(recipes, user)
     return JsonResponse(menu_data)
 
+
+@login_required
 def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_key):
-    user = request.user
+    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
     snack_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    recipes = list(model.objects.filter(user=user))
+    recipes = list(model.objects.filter(user=user))  # Fetch recipes for the determined user
 
     for day in days_of_week:
         if recipes:
@@ -1306,7 +3340,7 @@ def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_ke
                 meat_key: ""
             }
 
-    return JsonResponse(snack_data)
+    return JsonResponse(snack_data)  # Return the snack data as a JSON response
 
 def generate_am_menu(request):
     return generate_snack_menu(request, AMRecipe, 'choose1', 'fruit2', 'bread2', 'meat1')
@@ -1314,11 +3348,12 @@ def generate_am_menu(request):
 def generate_pm_menu(request):
     return generate_snack_menu(request, PMRecipe, 'choose2', 'fruit4', 'bread3', 'meat3')
 
+@login_required
 def generate_breakfast_menu(request):
-    user = request.user
+    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
     breakfast_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    recipes = list(BreakfastRecipe.objects.filter(user=user))
+    recipes = list(BreakfastRecipe.objects.filter(user=user))  # Fetch recipes for the determined user
 
     for day in days_of_week:
         if recipes:
@@ -1334,16 +3369,18 @@ def generate_breakfast_menu(request):
                 'add1': ""
             }
 
-    return JsonResponse(breakfast_data)
+    return JsonResponse(breakfast_data)  # Return the breakfast data as a JSON response
 
+@login_required
 def generate_fruit_menu(request):
+    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
     fruit_menu_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     
     # Retrieve available fruits for the entire week
     all_fruits = list(
         Inventory.objects.filter(
-            user=request.user,
+            user=user,  # Use the retrieved user
             category="Fruits",
             total_quantity__gt=0
         ).values_list('item', flat=True)
@@ -1352,7 +3389,7 @@ def generate_fruit_menu(request):
     # Retrieve available fruits with quantity > 0
     fruits_with_quantity = list(
         Inventory.objects.filter(
-            user=request.user,
+            user=user,  # Use the retrieved user
             category="Fruits",
             quantity__gt=0
         ).values_list('item', flat=True)
@@ -1418,21 +3455,22 @@ def get_fruits(request):
     fruits = Inventory.objects.filter(category='Fruits').values_list('item', flat=True)
     return JsonResponse(list(fruits), safe=False)
 
+@login_required
 def generate_vegetable_menu(request):
-    user = request.user
+    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
     vegetable_menu_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
     # Retrieve available vegetables based on total_quantity
     all_vegetables = list(Inventory.objects.filter(
-        user=user,
+        user=user,  # Use the retrieved user
         category="Vegetables",
         total_quantity__gt=0
     ).values_list('item', flat=True))
 
     # Retrieve vegetables with quantity > 0
     vegetables_with_quantity = list(Inventory.objects.filter(
-        user=user,
+        user=user,  # Use the retrieved user
         category="Vegetables",
         quantity__gt=0
     ).values_list('item', flat=True))
@@ -1475,10 +3513,12 @@ def generate_vegetable_menu(request):
 
     return JsonResponse(vegetable_menu_data)
 
-
+@login_required
 def past_menus(request):
-    # Fetch all unique Monday dates from the WeeklyMenu model, ordered by date in descending order
-    monday_dates = WeeklyMenu.objects.filter(day_of_week='Mon').values_list('date', flat=True).distinct().order_by('-date')
+    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
+    
+    # Fetch all unique Monday dates from the WeeklyMenu model for the logged-in user, ordered by date in descending order
+    monday_dates = WeeklyMenu.objects.filter(day_of_week='Mon', user=user).values_list('date', flat=True).distinct().order_by('-date')
 
     # Generate date ranges only for valid Mondays
     date_ranges = []
@@ -1495,6 +3535,87 @@ def past_menus(request):
     selected_menu_data = None
     selected_range = None
 
+    # Permission check variables
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    # Check permissions for different links
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        permissions_ids = {
+            'weekly_menu': 271,  # Added permission for weekly_menu (for this page)
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission 
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        pass  # If the user is not a SubUser, proceed with default permissions
+
+    # Ensure user has access to this page
+    if not show_weekly_menu:
+        return redirect('no_access')  # Redirect to a no-permission page or another view
+
     # Check if a date range was selected
     if request.method == 'POST':
         selected_range = request.POST.get('dateRangeSelect')
@@ -1509,15 +3630,12 @@ def past_menus(request):
             start_date = start_date.replace(year=current_year)
             end_date = end_date.replace(year=current_year)
 
-            # Fetch WeeklyMenu entries within the selected range, sorted by date
-            selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date]).order_by('date')
+            # Fetch WeeklyMenu entries within the selected range for the logged-in user, sorted by date
+            selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date], user=user).order_by('date')
 
         # Handle form submission to save menu changes
-        # Assuming each menu entry has a unique identifier
-        if 'save_changes' in request.POST:
+        if 'save_changes' in request.POST and selected_menu_data:
             for i, menu in enumerate(selected_menu_data):
-                
-                # Retrieve input values from the form for the current menu entry
                 menu.am_fluid_milk = request.POST.get(f'am_fluid_milk_{i}')
                 menu.am_fruit_veg = request.POST.get(f'am_fruit_veg_{i}')
                 menu.am_bread = request.POST.get(f'am_bread_{i}')
@@ -1538,17 +3656,2177 @@ def past_menus(request):
                 menu.pm_bread = request.POST.get(f'pm_bread_{i}')
                 menu.pm_meat = request.POST.get(f'pm_meat_{i}')
                 
-                # Save the updated menu entry
                 menu.save()
 
-            # Redirect to the same page to refresh the data
-            return redirect('past_menus')  # Make sure this name matches your URL pattern
+            return redirect('past_menus')  # Redirect to refresh data
 
     # Pass the date ranges, selected menu data, and selected range to the template
     context = {
         'date_ranges': date_ranges,
         'selected_menu_data': selected_menu_data,
-        'selected_range': selected_range  # Add this line
+        'selected_range': selected_range,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
     }
 
     return render(request, 'past-menus.html', context)
+
+
+@login_required
+def assign_user_to_role(user, role_name):
+    role_group, created = Group.objects.get_or_create(name=role_name)
+    user.groups.add(role_group)
+
+@login_required
+def send_invitation(request):
+    success_message = ""  # Initialize success message
+    allow_access = False
+
+    # Check permissions for different links
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False 
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    if not allow_access:
+        return redirect('no_access')
+    
+    # Process the invitation form
+    if request.method == 'POST':
+        form = InvitationForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            role = form.cleaned_data['role']
+            token = str(uuid.uuid4())  # Generate a unique token
+
+            # Create the invitation instance
+            invitation = Invitation.objects.create(
+                email=email,
+                role=role,
+                invited_by=request.user,
+                token=token
+            )
+
+            # Create the invitation link
+            invitation_link = f"http://127.0.0.1:8000/accept-invitation/{token}/"
+
+            # Send the email
+            send_mail(
+                'Invitation to Join',
+                f'You have been invited to join with role: {role.name}. Click the link to accept: {invitation_link}',
+                'from@example.com',  # Replace with your sender email
+                [email],
+                fail_silently=False,
+            )
+
+            success_message = "Invitation email sent successfully."  # Set success message
+
+    else:
+        form = InvitationForm()  # Initialize the form if not a POST request
+
+    # Render the template with the form, success message, and permission flags
+    return render(request, 'send-invitations.html', {
+        'form': form,
+        'success_message': success_message,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+def accept_invitation(request, token):
+    User = get_user_model()
+
+    try:
+        invitation = Invitation.objects.get(token=token)
+        
+        if request.method == 'POST':
+            # Check if a user with the given email already exists
+            existing_user = User.objects.filter(email=invitation.email).first()
+            if existing_user:
+                return render(request, 'already_accepted.html', {'user': existing_user})
+
+            # Extract the form data
+            first_name = request.POST.get('first_name')
+            last_name = request.POST.get('last_name')
+            email = request.POST.get('email')
+            username = request.POST.get('username')
+            password = request.POST.get('password1')  # Use password1 as the password
+
+            # Create the user account for the invited user
+            user = User.objects.create_user(
+                username=username, 
+                email=email,  
+                password=password,
+                first_name=first_name,
+                last_name=last_name
+            )
+
+            # Assign the selected role to the new user
+            user.groups.add(invitation.role)
+
+            # Create a SubUser instance linking to the MainUser who sent the invitation and add the role
+            SubUser.objects.create(user=user, main_user=invitation.invited_by, role=invitation.role)
+
+            # Optionally, delete the invitation after it has been accepted
+            invitation.delete()
+            return redirect('login')  # Redirect to the login page
+
+    except Invitation.DoesNotExist:
+        return render(request, 'invalid_invitation.html')  # Handle invalid invitation
+
+    return render(request, 'accept_invitation.html', {'invitation': invitation})
+
+def invalid_invitation(request):
+    return render(request, 'invalid_invitation.html')
+
+@login_required
+def permissions(request):
+    allow_access = False
+
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False  
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 157  # Permission ID for permissions view
+
+        # Check if the SubUser has permission to access this view
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False  # No specific permission set for this role
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,  
+            'clock_in': 337, 
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    if request.method == "POST":
+        for group_id, permissions in request.POST.items():
+            if group_id.startswith("permission_"):
+                group_id, permission_id = group_id.split("_")[1], group_id.split("_")[2]
+                group_id, permission_id = int(group_id), int(permission_id)
+                try:
+                    role_permission = RolePermission.objects.get(role_id=group_id, permission_id=permission_id)
+                    role_permission.yes_no_permission = True if permissions == "on" else False
+                    role_permission.save()
+                except RolePermission.DoesNotExist:
+                    pass  # Silent fail, or consider adding a user-friendly message if needed
+
+        return redirect('permissions')
+
+    # Fetch groups and order them alphabetically by name
+    groups = Group.objects.exclude(name__in=["Owner", "Parent", "Free User"]).order_by('name')  # Order by name
+
+    role_permissions = defaultdict(list)
+
+    for group in groups:
+        # Fetch the permissions associated with each group, ordered by permission name
+        role_permissions_for_group = RolePermission.objects.filter(role_id=group.id).order_by('permission__name')  # Order by permission name
+        
+        for role_permission in role_permissions_for_group:
+            permission = role_permission.permission
+            # Filter out permissions not granted to the user's group
+            if role_permission.yes_no_permission:
+                role_permissions[group.id].append({
+                    'id': permission.id,
+                    'permission_name': permission.name,
+                    'has_permission': role_permission.yes_no_permission
+                })
+
+    return render(request, 'permissions.html', {
+        'groups': groups,
+        'role_permissions': json.dumps(role_permissions),
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+def save_permissions(request):
+    if request.method == "POST":
+        for key, value in request.POST.items():
+            if key.startswith("permission_"):
+                parts = key.split("_")
+                if len(parts) == 3:
+                    permission_id, group_id = int(parts[1]), int(parts[2])
+                    try:
+                        role_permission = RolePermission.objects.get(role_id=group_id, permission_id=permission_id)
+                        role_permission.yes_no_permission = True if value == "True" else False
+                        role_permission.save()
+                    except RolePermission.DoesNotExist:
+                        pass  # Silent fail
+
+    return redirect('permissions')
+
+@login_required
+def no_access(request):
+    success_message = "" 
+    allow_access = False
+
+    # Default all permissions to False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False  
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        allow_access = True
+        # If no SubUser is found, enable all permissions
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Remove this redirect as it causes the loop
+    # if not allow_access:
+    #     return redirect('no_access')
+
+    # Directly render the no_access.html template
+    return render(request, 'no_access.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+@login_required
+def inbox(request):
+    # Get all users excluding the logged-in user
+    all_users = MainUser.objects.exclude(id=request.user.id)
+
+    # Get all conversations where the logged-in user is either the sender or recipient
+    conversations = Conversation.objects.filter(
+        Q(sender=request.user) | Q(recipient=request.user)
+    )
+
+    # Annotate each conversation with the latest message timestamp
+    conversations = conversations.annotate(latest_message=Max('messages__timestamp')).order_by('-latest_message')
+
+    # Populate recipients: users the logged-in user hasn't had a conversation with
+    conversation_users = set()
+    for conversation in conversations:
+        conversation_users.add(conversation.sender)
+        conversation_users.add(conversation.recipient)
+
+    recipients = all_users.exclude(id__in=[user.id for user in conversation_users])
+
+    # Initialize permissions variables
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, assign default permissions or full access for MainUser
+        # For example, assuming MainUser should have full access, we assign all permissions:
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Render the inbox page, adding the permission variables
+    return render(request, 'messaging/inbox.html', {
+        'conversations': conversations,
+        'recipients': recipients,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
+
+@login_required
+def conversation(request, user_id):
+    # Retrieve the recipient's MainUser instance
+    recipient = get_object_or_404(MainUser, id=user_id)
+    
+    # Check if a conversation already exists between the logged-in user and the recipient
+    conversation = Conversation.objects.filter(
+        (Q(sender=request.user) & Q(recipient=recipient)) |
+        (Q(sender=recipient) & Q(recipient=request.user))
+    ).first()
+    
+    # If no conversation exists, create a new one
+    if not conversation:
+        conversation = Conversation.objects.create(sender=request.user, recipient=recipient)
+    
+    # Fetch all messages between the logged-in user and the recipient, ordered by timestamp
+    messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
+    
+    # Initialize permission variables
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, assign default permissions or full access for MainUser
+        # For example, assuming MainUser should have full access, we assign all permissions:
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            new_message = form.save(commit=False)
+            new_message.sender = request.user
+            new_message.recipient = recipient
+            new_message.conversation = conversation  # Ensure the message is linked to the correct conversation
+            new_message.save()
+            return redirect('conversation', user_id=recipient.id)  # Redirect to the same conversation
+
+    else:
+        form = MessageForm()
+
+    return render(request, 'messaging/conversation.html', {
+        'form': form,
+        'recipient': recipient,
+        'messages': messages,  # Pass the messages to the template
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
+
+def start_conversation(request, user_id):
+    User = get_user_model()
+    recipient = get_object_or_404(User, id=user_id)
+    conversation, created = Conversation.objects.get_or_create(
+        sender=request.user, recipient=recipient
+    )
+    return redirect('conversation', user_id=recipient.id)
+
+@login_required
+def payment_view(request, subuser_id=None):
+    # Initialize permissions
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 331  # Permission ID for "billing"
+
+        # Check for required permission
+        allow_access = RolePermission.objects.filter(role_id=group_id, permission_id=required_permission_id, yes_no_permission=True).exists()
+
+        # Check additional permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            has_permission = RolePermission.objects.filter(role_id=group_id, permission_id=perm_id, yes_no_permission=True).exists()
+            if perm_key == 'weekly_menu':
+                show_weekly_menu = has_permission
+            elif perm_key == 'inventory':
+                show_inventory = has_permission
+            elif perm_key == 'milk_inventory':
+                show_milk_inventory = has_permission
+            elif perm_key == 'meal_count':
+                show_meal_count = has_permission
+            elif perm_key == 'classroom_options':
+                show_classroom_options = has_permission
+            elif perm_key == 'recipes':
+                show_recipes = has_permission
+            elif perm_key == 'sign_in':
+                show_sign_in = has_permission
+            elif perm_key == 'daily_attendance':
+                show_daily_attendance = has_permission
+            elif perm_key == 'rosters':
+                show_rosters = has_permission
+            elif perm_key == 'permissions':
+                show_permissions = has_permission
+            elif perm_key == 'menu_rules':
+                show_menu_rules = has_permission
+            elif perm_key == 'billing':
+                show_billing = has_permission
+            elif perm_key == 'payment_setup':
+                show_payment_setup = has_permission
+            elif perm_key == 'clock_in':
+                show_clock_in = has_permission
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, assume it's a main user and allow access
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+
+    # Redirect if user does not have the required permission
+    if not allow_access:
+        return redirect('no_access')
+
+    # Core payment functionality
+    main_user = request.user  # Assume main user if not a SubUser
+    if not main_user.stripe_secret_key:
+        main_user.stripe_secret_key = settings.STRIPE_SECRET_KEY  # Fallback to default test key
+
+    stripe.api_key = main_user.stripe_secret_key
+
+    if request.method == "POST" and subuser_id:
+        subuser = get_object_or_404(SubUser, id=subuser_id, main_user=main_user)
+        amount = float(request.POST.get('amount'))  # Get amount from the form
+        payment_method = request.POST.get('payment_method')
+
+        existing_payment = Payment.objects.filter(subuser=subuser, amount=amount, status='pending').first()
+        if existing_payment:
+            return JsonResponse({'error': 'Payment intent already exists for this subuser and amount.'}, status=400)
+
+        if payment_method in ['cash', 'check']:
+            payment = Payment.objects.create(
+                subuser=subuser,
+                amount=amount,
+                status='paid',  # Mark as paid
+                payment_method=payment_method,
+            )
+            payment.save()
+            return JsonResponse({'success': 'Payment recorded successfully'})
+
+        try:
+            payment_intent = stripe.PaymentIntent.create(
+                amount=int(amount * 100),  # Convert to cents
+                currency="usd",
+                description=f"Payment for {subuser.user.first_name} {subuser.user.last_name}",
+                receipt_email=subuser.main_user.email,
+            )
+            return JsonResponse({'client_secret': payment_intent['client_secret']})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    subusers = SubUser.objects.filter(main_user=main_user, user__groups__id=5)
+    context = {
+        'stripe_public_key': main_user.stripe_public_key,
+        'subusers': subusers,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    }
+    return render(request, 'payment.html', context)
+
+@login_required
+def create_payment(request):
+    if request.method == 'POST':
+        try:
+            # Extract form data
+            subuser_id = request.POST.get('subuser')
+            frequency = request.POST.get('frequency')
+            rate = request.POST.get('rate')
+            start_date = request.POST.get('start_date')
+            due_date = request.POST.get('due_date')
+            end_date = request.POST.get('end_date')
+            notes = request.POST.get('notes')
+
+            # Get SubUser and validate
+            subuser = get_object_or_404(SubUser, id=subuser_id)
+
+            # Create Payment
+            payment = Payment.objects.create(
+                subuser=subuser,
+                amount=Decimal(rate),
+                frequency=frequency,
+                start_date=start_date,
+                due_date=due_date,
+                end_date=None if end_date == '' else end_date,
+                notes=notes,
+                balance=Decimal(rate),
+            )
+
+            # Create a periodic task based on frequency
+            if frequency != 'one-time':
+                schedule = None
+
+                if frequency == 'weekly':
+                    schedule, _ = IntervalSchedule.objects.get_or_create(
+                        every=1, period=IntervalSchedule.WEEKS
+                    )
+                elif frequency == 'monthly':
+                    schedule, _ = CrontabSchedule.objects.get_or_create(
+                        minute='0', hour='0', day_of_month='1', month_of_year='*'
+                    )
+                elif frequency == 'yearly':
+                    schedule, _ = CrontabSchedule.objects.get_or_create(
+                        minute='0', hour='0', day_of_month='1', month_of_year='1'
+                    )
+
+                # Create the periodic task
+                PeriodicTask.objects.create(
+                    name=f"Recurring Invoice for Payment {payment.id}",
+                    task="tottimeapp.tasks.generate_recurring_invoice",
+                    interval=schedule if frequency in ['weekly'] else None,
+                    crontab=schedule if frequency in ['monthly', 'yearly'] else None,
+                    args=json.dumps([payment.id]),  # Pass the payment ID
+                )
+
+            messages.success(request, 'Recurring invoice created successfully.')
+            return redirect('payment')
+        except Exception as e:
+            messages.error(request, f"Error creating payment: {e}")
+            return redirect('payment')
+
+    # Frequency choices from the Payment model
+    frequency_choices = Payment._meta.get_field('frequency').choices
+    subusers = SubUser.objects.filter(main_user=request.user.main_user)
+    context = {
+        'subusers': subusers,
+        'frequency_choices': frequency_choices,  # Pass frequency choices to the template
+    }
+    return render(request, 'payment.html', context)
+
+@csrf_exempt
+def create_payment_intent(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            amount = float(data.get('amount'))  # Get the amount from the request body
+            payment_intent = data.get('payment_intent')
+
+            # Check if the logged-in user is a SubUser
+            try:
+                subuser = request.user.subuser
+                main_user = subuser.main_user  # Access MainUser through SubUser
+                description = f"{subuser.user.username}'s payment for student attendance at {main_user.company_name}"
+            except SubUser.DoesNotExist:
+                # If not a SubUser, check if it's a MainUser
+                if isinstance(request.user, MainUser):
+                    main_user = request.user  # request.user is already a MainUser
+                    description = f"{main_user.company_name}'s payment for student attendance"
+                else:
+                    return JsonResponse({'error': 'User is neither a SubUser nor a MainUser'}, status=400)
+
+            stripe_secret_key = main_user.stripe_secret_key
+
+            if not stripe_secret_key:
+                return JsonResponse({'error': 'Stripe secret key is missing for the user.'}, status=400)
+
+            # Set Stripe API key dynamically
+            stripe.api_key = stripe_secret_key
+
+            # Create a Stripe Payment Intent
+            payment_intent = stripe.PaymentIntent.create(
+                amount=int(amount * 100),  # Convert to cents
+                currency="usd",
+                description=description,
+            )
+
+            return JsonResponse({'client_secret': payment_intent.client_secret})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@csrf_exempt
+def update_payment_status(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            payment_id = data.get('payment_id')
+            new_payment_amount = Decimal(data.get('amount_paid', '0'))
+
+            # Retrieve the payment object and validate
+            payment = Payment.objects.get(id=payment_id)
+            if new_payment_amount <= 0:
+                return JsonResponse({'error': 'Payment amount must be positive.'}, status=400)
+
+            # Begin transaction for consistency
+            with transaction.atomic():
+                # Add the new payment amount to the existing amount_paid
+                payment.amount_paid += new_payment_amount
+
+                # Calculate new balance based on the updated amount_paid
+                payment.balance = payment.amount - payment.amount_paid
+
+                # Prioritize "Paid in Full" status if payment is fully made
+                if payment.amount_paid >= payment.amount:
+                    payment.status = 'Paid in Full'
+                    payment.balance = Decimal(0)  # Fully paid, so no remaining balance
+                # Only set to "Overdue" if payment is not fully made and due date is past
+                elif payment.due_date < datetime.now().date() and payment.balance > 0:
+                    payment.status = 'Overdue'
+                # Preserve "Partial Payment" status if some amount is paid but not full
+                elif payment.amount_paid > 0:
+                    payment.status = 'Partial Payment'
+                else:
+                    payment.status = 'Pending'  # Ensure Pending for new invoices without payment
+
+                # Save the updated payment
+                payment.save()
+
+            return JsonResponse({'success': 'Payment status updated successfully'})
+
+        except Payment.DoesNotExist:
+            return JsonResponse({'error': 'Payment not found'}, status=404)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@csrf_exempt
+def record_payment(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            payment_id = data.get('payment_id')
+            amount = Decimal(data.get('amount', '0'))
+            payment_method = data.get('payment_method')
+            notes = data.get('notes')
+
+            # Retrieve the payment object
+            payment = Payment.objects.get(id=payment_id)
+
+            # Validate payment amount
+            if amount <= 0:
+                return JsonResponse({'error': 'Payment amount must be positive.'}, status=400)
+
+            # Begin transaction for consistency
+            with transaction.atomic():
+                # Add the new payment amount to the existing amount_paid
+                payment.amount_paid += amount
+
+                # Calculate the new balance based on the updated amount_paid
+                payment.balance = payment.amount - payment.amount_paid
+
+                # Update the payment method and notes
+                payment.payment_method = payment_method
+                payment.notes = notes
+
+                # Prioritize "Paid in Full" status if payment is fully made
+                if payment.amount_paid >= payment.amount:
+                    payment.status = 'Paid in Full'
+                    payment.balance = Decimal(0)  # Fully paid, no remaining balance
+                # Set "Overdue" if the payment is not fully made and the due date has passed
+                elif payment.due_date < datetime.now().date() and payment.balance > 0:
+                    payment.status = 'Overdue'
+                # Preserve "Partial Payment" status if some amount is paid but not full
+                elif payment.amount_paid > 0:
+                    payment.status = 'Partial Payment'
+                else:
+                    payment.status = 'Pending'  # Ensure Pending for new invoices without payment
+
+                # Save the updated payment
+                payment.save()
+
+            return JsonResponse({'success': 'Payment recorded and status updated successfully'})
+
+        except Payment.DoesNotExist:
+            return JsonResponse({'error': 'Payment not found'}, status=404)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+def apply_late_fee(request, payment_id):
+    if request.method == 'POST':
+        try:
+            # Fetch the Payment object by ID
+            payment = get_object_or_404(Payment, id=payment_id)
+
+            # Retrieve the late fee value from the request (default to 10.00)
+            late_fee = Decimal(request.POST.get('late_fee', '10.00'))
+
+            # Add the late fee to the balance and late fees
+            payment.late_fees += late_fee
+            payment.balance += late_fee
+
+            # Save the updated payment instance
+            payment.save()
+
+            return JsonResponse({'success': True, 'message': 'Late fee applied successfully!'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+def stripe_login(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 332
+
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        # Check additional permissions based on the same group_id
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332, 
+            'clock_in': 337,  
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    return render(request, 'stripe.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,            
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+def get_stripe_keys(user):
+    """
+    Return the appropriate Stripe keys based on user connection status.
+    """
+    if user and hasattr(user, 'stripe_secret_key') and user.stripe_secret_key:
+        return {
+            "public_key": user.stripe_public_key,
+            "secret_key": user.stripe_secret_key,
+            "account_id": user.stripe_account_id,
+        }
+    # Fallback to platform defaults
+    return {
+        "public_key": settings.STRIPE_PUBLIC_KEY,
+        "secret_key": settings.STRIPE_SECRET_KEY,
+        "account_id": None,  # No account_id for the platform keys
+    }
+
+def stripe_connect(request):
+    """Redirects the user to Stripe for account connection or creation."""
+    stripe_keys = get_stripe_keys(request.user)  # Fetch appropriate keys
+
+    stripe.api_key = stripe_keys["secret_key"]  # Set API key dynamically based on user keys or platform
+
+    main_user = request.user  # Assuming request.user is an instance of MainUser
+    
+    # If you need to ensure the request.user is a MainUser:
+    if isinstance(request.user, MainUser):
+        user_email = main_user.email
+    else:
+        # Handle case if it's not a MainUser instance
+        messages.error(request, "Invalid user. Please log in again.")
+        return redirect('stripe')  # Redirect to an error or appropriate page
+
+    if not main_user.stripe_account_id or "test_" in main_user.stripe_account_id:
+        # Create a new Stripe account in the correct mode if none exists or if it's a test account
+        try:
+            account = stripe.Account.create(
+                type="express",
+                email=user_email,  # Use the MainUser's email
+            )
+            main_user.stripe_account_id = account.id
+            main_user.save()
+        except stripe.error.StripeError as e:
+            error_message = e.error.message if hasattr(e, "error") else str(e)
+            messages.error(request, f"Error creating Stripe account: {error_message}")
+            return redirect('stripe')  # Redirect back to stripe.html
+
+    # Ensure success and failure URLs use HTTPS
+    base_url = 'https://23e4-174-93-62-247.ngrok-free.app'  # Replace this with your actual ngrok HTTPS URL
+    success_url = f'{base_url}/stripe/?status=success'
+    failure_url = f'{base_url}/stripe/?status=error'
+
+    # Generate account link for onboarding
+    try:
+        account_link = stripe.AccountLink.create(
+            account=main_user.stripe_account_id,
+            failure_url=failure_url,
+            success_url=success_url,
+            type="account_onboarding",
+        )
+        return redirect(account_link.url)
+    except stripe.error.StripeError as e:
+        error_message = e.error.message if hasattr(e, "error") else str(e)
+        messages.error(request, f"Error creating Stripe account link: {error_message}")
+        return redirect('stripe')
+    
+def stripe_callback(request):
+    """Handles the Stripe OAuth callback and stores the user's keys."""
+    status = request.GET.get("status")
+    if status == "success":
+        try:
+            # Retrieve the account details from Stripe
+            account = stripe.Account.retrieve(request.user.stripe_account_id)
+
+            # Optionally, fetch additional details if required
+            # E.g., You might need to retrieve API keys via a connected account flow
+            request.user.stripe_public_key = account.get('settings', {}).get('payouts', {}).get('debit_negative_balances')
+            # Stripe does not expose secret keys through the API; those are specific to the account creation flow.
+            request.user.save()
+
+            messages.success(request, "Your Stripe account has been successfully connected.")
+        except stripe.error.StripeError as e:
+            messages.error(request, f"Error retrieving Stripe account details: {str(e)}")
+    else:
+        messages.error(request, "There was an error connecting your Stripe account.")
+
+    return redirect('stripe')
+
+@login_required
+def clock_in(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 337  # Permission ID for clock_in view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337, 
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    # Process the clock-in/out if POST request
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        code = data.get('code')
+
+        # Find MainUser by the code
+        try:
+            main_user = MainUser.objects.get(code=code)
+        except MainUser.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Invalid code for MainUser'})
+
+        # Check if the code corresponds to a SubUser
+        sub_user = None
+        try:
+            sub_user = SubUser.objects.get(user__id=main_user.id)
+        except SubUser.DoesNotExist:
+            pass  # No need to log or handle this separately
+
+        # Look for the existing attendance record for the user
+        try:
+            record = TeacherAttendanceRecord.objects.get(user=main_user, subuser=sub_user, sign_out_time=None)
+            # If there's an existing record, it's a clock-out, so we set the sign-out time
+            record.sign_out_time = timezone.now()
+            record.save()
+            return JsonResponse({'success': True, 'message': f'{main_user.first_name} {main_user.last_name} clocked out successfully'})
+
+        except TeacherAttendanceRecord.DoesNotExist:
+            # If there's no open record, this is a clock-in
+            record = TeacherAttendanceRecord(user=main_user, subuser=sub_user)
+            record.save()
+            return JsonResponse({'success': True, 'message': f'{main_user.first_name} {main_user.last_name} clocked in successfully'})
+
+    return render(request, 'clock_in.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+    })
+
+@login_required
+def time_sheet(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 337  # Permission ID for time_sheet view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    user = get_user_for_view(request)
+
+
+    return render(request, 'time_sheet.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
+
+@login_required
+def time_sheet(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 337  # Permission ID for time_sheet view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337, 
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    user = get_user_for_view(request)
+    today = now().date()  # Define 'today' using Django's timezone-aware 'now'
+
+    # Calculate the previous Friday (the most recent Friday)
+    days_since_friday = today.weekday() - 4  # 4 corresponds to Friday
+    if days_since_friday < 0:
+        days_since_friday += 7
+    previous_friday = today - timedelta(days=days_since_friday)
+
+    # Calculate the previous Thursday (the day before the previous Friday)
+    previous_thursday = previous_friday + timedelta(days=6)
+
+        # Get date range from request or use defaults
+    start_date = request.GET.get('start_date', previous_friday.strftime('%Y-%m-%d'))
+    end_date = request.GET.get('end_date', previous_thursday.strftime('%Y-%m-%d'))  # Correct the variable name here
+
+    try:
+        start_date = datetime.strptime(str(start_date), '%Y-%m-%d').date()
+        end_date = datetime.strptime(str(end_date), '%Y-%m-%d').date()  # Ensure end_date is correctly set
+    except ValueError:
+        # Fallback in case of an invalid date format
+        start_date = previous_friday
+        end_date = previous_thursday
+
+        
+    # Get the employee filter from the GET request
+    employee_id = request.GET.get('employee', '')
+
+    # Fetch the records and filter by employee if selected
+    records = (
+        TeacherAttendanceRecord.objects.filter(
+            user__in=[user] + list(SubUser.objects.filter(main_user=user).values_list('user', flat=True)),
+            sign_in_time__date__gte=start_date,
+            sign_in_time__date__lte=end_date,
+            sign_out_time__isnull=False,
+        )
+        .annotate(
+            total_time=ExpressionWrapper(
+                F('sign_out_time') - F('sign_in_time'),
+                output_field=DurationField()
+            )
+        )
+        .values('user__id', 'user__first_name', 'user__last_name')
+        .annotate(
+            total_hours=Sum(F('total_time'))
+        )
+    )
+
+    # If an employee is selected, filter the records based on the selected employee
+    if employee_id:
+        records = records.filter(user_id=employee_id)
+
+    # Get a list of employees associated with the current MainUser, excluding users in auth_group IDs 5 and 6
+    employees = MainUser.objects.filter(
+        Q(id=user.id) | Q(id__in=SubUser.objects.filter(main_user=user).values_list('user', flat=True))
+    ).exclude(
+        id__in=MainUser.objects.filter(groups__id__in=[5, 6]).values_list('id', flat=True)
+    ).values('id', 'first_name', 'last_name')
+
+    # Format total hours for display
+    for record in records:
+        if record['total_hours']:
+            total_seconds = record['total_hours'].total_seconds()
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            record['total_hours'] = f"{hours}h {minutes}m"
+        else:
+            record['total_hours'] = "N/A"
+
+    return render(request, 'time_sheet.html', {
+        'records': records,
+        'start_date': start_date,
+        'end_date': end_date,
+        'employees': employees,  # Pass employees to the template
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
+
+
+@login_required
+def employee_detail(request):
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 337  # Permission ID for time_sheet view
+
+        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337, 
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission  
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
+
+    employee_id = request.GET.get('employee')
+    
+    if not employee_id:
+        return redirect('time_sheet')  # Redirect if no employee ID is provided
+
+    user = get_user_for_view(request)
+    today = now().date()
+    days_since_friday = today.weekday() - 4
+    if days_since_friday < 0:
+        days_since_friday += 7
+    previous_friday = today - timedelta(days=days_since_friday)
+    previous_thursday = previous_friday + timedelta(days=6)
+
+    start_date = request.GET.get('start_date', previous_friday.strftime('%Y-%m-%d'))
+    end_date = request.GET.get('end_date', previous_thursday.strftime('%Y-%m-%d'))
+
+    try:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    except ValueError:
+        start_date = previous_friday
+        end_date = previous_thursday
+
+    # Filter records by employee ID and date range
+    records = TeacherAttendanceRecord.objects.filter(
+        user_id=employee_id,
+        sign_in_time__date__gte=start_date,
+        sign_in_time__date__lte=end_date,
+        
+    ).annotate(
+        total_time=ExpressionWrapper(
+            F('sign_out_time') - F('sign_in_time'),
+            output_field=DurationField()
+        )
+    ).order_by('sign_in_time')
+
+    for record in records:
+        if record.total_time:
+            total_seconds = record.total_time.total_seconds()
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            record.formatted_total_time = f"{hours}h {minutes}m"
+        else:
+            record.formatted_total_time = "Please Clock-Out"
+
+
+    return render(request, 'employee_detail.html', {
+        'records': records,
+        'start_date': start_date,
+        'end_date': end_date,
+        'records': records,
+        'start_date': start_date,
+        'end_date': end_date,
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+    })
+
+@csrf_exempt
+def edit_time(request):
+    if request.method == 'POST':
+        record_id = request.POST.get('record_id')
+        date = request.POST.get('date')
+        sign_in_time = request.POST.get('sign_in_time')
+        sign_out_time = request.POST.get('sign_out_time')
+
+        try:
+            record = TeacherAttendanceRecord.objects.get(id=record_id)
+            record.sign_in_time = datetime.strptime(f"{date} {sign_in_time}", '%Y-%m-%d %H:%M')
+            record.sign_out_time = datetime.strptime(f"{date} {sign_out_time}", '%Y-%m-%d %H:%M')
+            record.save()
+
+            return JsonResponse({'status': 'success'})
+        except TeacherAttendanceRecord.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Record not found'}, status=404)
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+@csrf_exempt
+def delete_time(request):
+    if request.method == 'POST':
+        record_id = request.POST.get('record_id')
+
+        try:
+            record = TeacherAttendanceRecord.objects.get(id=record_id)
+            record.delete()
+            return JsonResponse({'status': 'success'})
+        except TeacherAttendanceRecord.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Record not found'}, status=404)
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@login_required
+def upload_profile_picture(request):
+    if request.method == 'POST' and request.FILES.get('profile_picture'):
+        # Get the user and uploaded file
+        user = request.user
+        profile_picture = request.FILES['profile_picture']
+        
+        # Check file size
+        if profile_picture.size > MAX_IMAGE_SIZE:
+            logger.error(f"File size exceeded: {profile_picture.size} bytes")
+            return JsonResponse({
+                'success': False,
+                'error': f"File size exceeds the limit of {MAX_IMAGE_SIZE / (1024 * 1024)} MB."
+            }, status=400)
+
+        # Check file extension
+        valid_extensions = ['.jpg', '.jpeg', '.png']
+        _, ext = os.path.splitext(profile_picture.name.lower())
+
+        # Validate file type
+        if ext not in valid_extensions:
+            logger.error(f"Invalid file extension: {ext}")
+            return JsonResponse({
+                'success': False,
+                'error': "Invalid file type. Only JPEG, JPG, and PNG are allowed."
+            }, status=400)
+
+        # Open the image to ensure proper format is assigned
+        try:
+            img = Image.open(profile_picture)
+
+            # Log the original size of the image
+            logger.debug(f"Original image size: {img.size}")
+
+            # Ensure the image is in a supported mode
+            if img.mode in ['P', 'PA']:  # Palette-based image or image with alpha
+                img = img.convert('RGBA')  # Convert to 'RGBA' mode to handle transparency
+            elif img.mode == 'LA':  # Luminance + Alpha (Grayscale with transparency)
+                img = img.convert('RGBA')
+
+            # Get original image size
+            width, height = img.size
+
+            # Resize image to one-third of its original size
+            img = img.resize((width // 3, height // 3), Image.Resampling.LANCZOS)
+
+            # Save the image to a BytesIO object
+            img_io = BytesIO()
+            img.save(img_io, format=img.format if img.format else 'PNG')  # Ensure format is set
+            img_io.seek(0)  # Reset the pointer to the start of the BytesIO buffer
+
+            # Save the image back to the user's profile picture
+            user.profile_picture.save(profile_picture.name, img_io, save=True)
+            
+            # Log the successful upload
+            logger.info(f"Profile picture uploaded successfully for user {user.id}")
+        except ValidationError as e:
+            logger.error(f"Image validation error: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f"Image validation error: {str(e)}"
+            }, status=400)
+        except Exception as e:
+            logger.error(f"Error processing the image: {str(e)}")
+            return JsonResponse({
+                'success': False,
+                'error': f"Error processing the image: {str(e)}"
+            }, status=500)
+
+        # Save the user object after updating the profile picture
+        user.save()
+
+        return JsonResponse({
+            'success': True,
+            'new_picture_url': user.profile_picture.url
+        })
+
+    # If the request is not a POST or no file is provided
+    logger.warning("No file provided or request method is not POST")
+    return JsonResponse({'success': False}, status=400)

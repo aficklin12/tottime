@@ -1,6 +1,7 @@
 import os
 import logging
 from pathlib import Path
+import stripe
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -8,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*"
 DEBUG = True
-ALLOWED_HOSTS = ['44.209.83.215', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['44.209.83.215', 'localhost', '127.0.0.1', 'tot-time.com']
 
 # Application definition
 INSTALLED_APPS = [
@@ -19,6 +20,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "tottimeapp",
+    'django_celery_beat',
+    'sslserver',
 ]
 
 MIDDLEWARE = [
@@ -118,3 +121,27 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'aficklin12@gmail.com'
 EMAIL_HOST_PASSWORD = 'vaep velk gjfi npxa'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+AUTH_USER_MODEL = 'tottimeapp.MainUser'
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Redis as Celery broker
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+
+# Celery accepts tasks
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+#remove these
+CSRF_TRUSTED_ORIGINS = [
+    'https://23e4-174-93-62-247.ngrok-free.app',
+]
+SECURE_SSL_REDIRECT = False
+
+
+
+STRIPE_REDIRECT_URI = "tot-time.com/stripe/callback/"
