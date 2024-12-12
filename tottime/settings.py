@@ -20,7 +20,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "tottimeapp",
-    'django_celery_beat',
     'sslserver',
 ]
 
@@ -123,15 +122,6 @@ EMAIL_HOST_PASSWORD = 'vaep velk gjfi npxa'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 AUTH_USER_MODEL = 'tottimeapp.MainUser'
-
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-
-# Redis as Celery broker
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
-
-# Celery accepts tasks
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

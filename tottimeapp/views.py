@@ -4,8 +4,6 @@ from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 import stripe, requests
 from django.conf import settings
-from django_celery_beat.models import PeriodicTask, IntervalSchedule, CrontabSchedule
-from celery import shared_task
 stripe.api_key = settings#.STRIPE_SECRET_KEY
 from django.utils.timezone import now
 from django.db.models import Sum, F, ExpressionWrapper, DurationField
@@ -4648,30 +4646,30 @@ def create_payment(request):
             )
 
             # Create a periodic task based on frequency
-            if frequency != 'one-time':
-                schedule = None
+            #if frequency != 'one-time':
+               # schedule = None
 
-                if frequency == 'weekly':
-                    schedule, _ = IntervalSchedule.objects.get_or_create(
-                        every=1, period=IntervalSchedule.WEEKS
-                    )
-                elif frequency == 'monthly':
-                    schedule, _ = CrontabSchedule.objects.get_or_create(
-                        minute='0', hour='0', day_of_month='1', month_of_year='*'
-                    )
-                elif frequency == 'yearly':
-                    schedule, _ = CrontabSchedule.objects.get_or_create(
-                        minute='0', hour='0', day_of_month='1', month_of_year='1'
-                    )
+               # if frequency == 'weekly':
+               #     schedule, _ = IntervalSchedule.objects.get_or_create(
+               #         every=1, period=IntervalSchedule.WEEKS
+               #     )
+               # elif frequency == 'monthly':
+                #    schedule, _ = CrontabSchedule.objects.get_or_create(
+                #        minute='0', hour='0', day_of_month='1', month_of_year='*'
+                #    )
+                #elif frequency == 'yearly':
+                #    schedule, _ = CrontabSchedule.objects.get_or_create(
+                #        minute='0', hour='0', day_of_month='1', month_of_year='1'
+                #    )
 
                 # Create the periodic task
-                PeriodicTask.objects.create(
-                    name=f"Recurring Invoice for Payment {payment.id}",
-                    task="tottimeapp.tasks.generate_recurring_invoice",
-                    interval=schedule if frequency in ['weekly'] else None,
-                    crontab=schedule if frequency in ['monthly', 'yearly'] else None,
-                    args=json.dumps([payment.id]),  # Pass the payment ID
-                )
+               # PeriodicTask.objects.create(
+                 #   name=f"Recurring Invoice for Payment {payment.id}",
+                 #   task="tottimeapp.tasks.generate_recurring_invoice",
+                 #   interval=schedule if frequency in ['weekly'] else None,
+                 #   crontab=schedule if frequency in ['monthly', 'yearly'] else None,
+                 #   args=json.dumps([payment.id]),  # Pass the payment ID
+                #)
 
             messages.success(request, 'Recurring invoice created successfully.')
             return redirect('payment')
