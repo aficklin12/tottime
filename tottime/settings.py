@@ -2,8 +2,6 @@ import os
 import logging
 from pathlib import Path
 import stripe
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
@@ -126,12 +124,12 @@ AUTH_USER_MODEL = 'tottimeapp.MainUser'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-#remove these
-CSRF_TRUSTED_ORIGINS = [
-    'https://23e4-174-93-62-247.ngrok-free.app',
-]
+
 SECURE_SSL_REDIRECT = False
 
 
 
+#STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "pk_live_CFhVogdafoLSvBgPbbRz6YhW00kDpD3Qg7")
+#STRIPE_SEC#RET_KEY = os.getenv("STRIPE_SEC#RET_KEY", "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")
+#STRIPE_CLIENT_ID = "ca_RKaqTYIkm4UM9fAhUXUs05oUAo5mo7Y8"  # Your platform's client ID
 STRIPE_REDIRECT_URI = "tot-time.com/stripe/callback/"

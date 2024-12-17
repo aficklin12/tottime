@@ -5,8 +5,10 @@ from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required  # Import login_required
 from django.views.generic import RedirectView
 from tottimeapp import views
+from pwa.views import service_worker
 
 urlpatterns = [
+    path('serviceworker.js', service_worker, name='service_worker'),
     path('admin/', admin.site.urls),
     path('', login_required(views.index), name='index'),  
     path('index.html', login_required(views.index), name='index'),  
