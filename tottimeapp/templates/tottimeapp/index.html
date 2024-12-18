@@ -610,19 +610,16 @@ $(document).ready(function() {
 });
 </script>
 <script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker
-        .register('/static/service-worker.js')  // Register from the root of static
-        .then((registration) => {
-            console.log('Service Worker registered with scope:', registration.scope);
-        })
-        .catch((error) => {
-            console.log('Service Worker registration failed:', error);
-        });
-    });
-}
-
-</script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register("{% static 'pwa/service-worker.js' %}")
+            .then(registration => {
+                console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+    }
+    </script>
+    
 </body>
 </html>

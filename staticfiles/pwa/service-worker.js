@@ -1,0 +1,23 @@
+const CACHE_NAME = 'tot-time-cache-v1';
+const urlsToCache = [
+    '/',
+    '/static/pwa/logo.png', // Add your static assets here
+    '/static/css/styles.css', // Example: CSS file
+    '/static/js/scripts.js', // Example: JS file
+];
+
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.addAll(urlsToCache);
+        })
+    );
+});
+
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        caches.match(event.request).then(response => {
+            return response || fetch(event.request);
+        })
+    );
+});
