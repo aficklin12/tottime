@@ -22,7 +22,7 @@
     <style>
         /* Container to center the form */
         .login-container {
-            min-height: 100vh;
+            
             display: flex;
             justify-content: center;
             align-items: flex-start; /* Align the form slightly higher than dead center */
@@ -49,7 +49,37 @@
             font-size: 1.5rem;
             margin-bottom: 15px;
         }
-  
+  /* Container for install button */
+.install-container {
+    padding-top: 40px;
+    max-width: 200px;
+    text-align: center; /* Center the text and button */
+    margin-top: 20px;    /* Add some space above */
+}
+
+/* Install text style */
+.install-text {
+    font-size: .95rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+/* Install button style */
+#installButton {
+    background-color: rgb(37, 37, 48);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#installButton:hover {
+    background-color: rgb(69, 69, 88); /* Darker blue on hover */
+}
+
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -87,10 +117,14 @@
                 <button type="submit" class="btn btn-primary btn-block">Login</button>
             </div>
         </form>
+        </div>
+    <div class="container install-container">
+     <!-- Install button and text -->
+     <div class="install-container mt-4">
+        <p class="install-text">Install for mobile devices:</p>
+        <button id="installButton" class="btn btn-info w-100" style="display:none;">Install App</button>
     </div>
-
-
-    <button id="installButton" style="display:none;">Install App</button>
+</div>
 
     <!-- <div class="card-footer text-center py-3">
         <div class="small"><a href="{% url 'signup' %}">Don't have an account? Sign Up</a></div>

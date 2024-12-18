@@ -2,7 +2,7 @@
   "name": "Tot-Time",
   "short_name": "Tot-Time",
   "description": "Childcare management software.",
-  "theme_color": "#373748",
+  "theme_color": "#333741",
   "background_color": "#ffffff",
   "start_url": "/",
   "display": "standalone",
