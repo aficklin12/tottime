@@ -126,11 +126,37 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
-SECURE_SSL_REDIRECT = False
+SECURE_SSL_REDIRECT = True
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 
+# Static files for PWA
+PWA_APP_NAME = 'Tot-Time'
+PWA_APP_DESCRIPTION = 'Childcare management software.'
+PWA_APP_THEME_COLOR = '#373748'
+PWA_APP_BACKGROUND_COLOR = '#ffffff'
+PWA_APP_DISPLAY = 'standalone'
+PWA_APP_SCOPE = '/'
+PWA_APP_START_URL = '/'
+PWA_APP_ORIENTATION = 'portrait'
+PWA_APP_LANG = 'en'
+
+# PWA Icons (ensure these paths are correct in your static files)
+PWA_APP_ICONS = [
+    {
+        'src': '/static/pwa/logo.png',
+        'sizes': '180x61',
+        'type': 'image/png'
+    }
+]
+
+# Service Worker and Manifest Paths
+PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 'service-worker.js')
+PWA_MANIFEST_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 'manifest.json')
 
 
 #STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "pk_live_CFhVogdafoLSvBgPbbRz6YhW00kDpD3Qg7")
 #STRIPE_SEC#RET_KEY = os.getenv("STRIPE_SEC#RET_KEY", "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")
 #STRIPE_CLIENT_ID = "ca_RKaqTYIkm4UM9fAhUXUs05oUAo5mo7Y8"  # Your platform's client ID
-STRIPE_REDIRECT_URI = "tot-time.com/stripe/callback/"
+STRIPE_REDIRECT_URI = "https://tot-time.com/stripe/callback/"
