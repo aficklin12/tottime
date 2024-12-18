@@ -136,7 +136,7 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <script>
         let deferredPrompt;
-        
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register("{% static 'pwa/service-worker.js' %}")
                 .then(registration => {
@@ -147,12 +147,25 @@
                 });
         }
 
+        // Hide install UI if the app is already installed
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            // If app is installed, hide the install prompt
+            document.querySelector('.install-container').style.display = 'none';
+        }
+
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('beforeinstallprompt event fired!');
             e.preventDefault();
             deferredPrompt = e;
+
             const installButton = document.getElementById('installButton');
-            installButton.style.display = 'block';
+            const installText = document.querySelector('.install-text');
+            
+            // Only show the install button and text if the app is not installed
+            if (!window.matchMedia('(display-mode: standalone)').matches && window.navigator.standalone !== true) {
+                installButton.style.display = 'block';
+                installText.style.display = 'block';
+            }
 
             installButton.addEventListener('click', () => {
                 deferredPrompt.prompt();

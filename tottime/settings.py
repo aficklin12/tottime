@@ -136,7 +136,7 @@ SECURE_SSL_REDIRECT = False
 # Static files for PWA
 PWA_APP_NAME = 'Tot-Time'
 PWA_APP_DESCRIPTION = 'Childcare management software.'
-PWA_APP_THEME_COLOR = '#373748'
+PWA_APP_THEME_COLOR = '#333741'
 PWA_APP_BACKGROUND_COLOR = '#ffffff'
 PWA_APP_DISPLAY = 'standalone'
 PWA_APP_SCOPE = '/'
