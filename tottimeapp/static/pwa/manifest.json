@@ -7,13 +7,6 @@
   "start_url": "/",
   "display": "standalone",
   "id": "2160",
-  "icons": [
-    {
-      "src": "/static/pwa/logo.png",
-      "sizes": "180x61",
-      "type": "image/png"
-    }
-  ],
   "scope": "/",
   "orientation": "portrait",
   "lang": "en"

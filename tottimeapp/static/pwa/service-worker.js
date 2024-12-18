@@ -1,7 +1,6 @@
 const CACHE_NAME = 'tot-time-cache-v1';
 const urlsToCache = [
     '/',
-    '/static/pwa/logo.png', // Add your static assets here
     '/static/css/styles.css', // Example: CSS file
     '/static/js/scripts.js', // Example: JS file
 ];

@@ -144,15 +144,6 @@ PWA_APP_START_URL = '/'
 PWA_APP_ORIENTATION = 'portrait'
 PWA_APP_LANG = 'en'
 
-# PWA Icons (ensure these paths are correct in your static files)
-PWA_APP_ICONS = [
-    {
-        'src': '/static/pwa/logo.png',
-        'sizes': '180x61',
-        'type': 'image/png'
-    }
-]
-
 # Service Worker and Manifest Paths
 PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 'service-worker.js')
 PWA_MANIFEST_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 'manifest.json')
