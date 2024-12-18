@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 import stripe, requests
 from django.conf import settings
-stripe.api_key = settings#.STRIPE_SECRET_KEY
+stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
 from django.db.models import Sum, F, ExpressionWrapper, DurationField
 from decimal import Decimal, InvalidOperation
