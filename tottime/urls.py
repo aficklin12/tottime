@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required  # Import login_required
 from django.views.generic import RedirectView
 from tottimeapp import views
-from django.views.generic import TemplateView
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -108,23 +108,6 @@ urlpatterns = [
     path('delete-time/', login_required(views.delete_time), name='delete_time'),
     path('upload-profile-picture/', login_required(views.upload_profile_picture), name='upload_profile_picture'),
 
-
-path(
-        'service-worker.js',
-        TemplateView.as_view(
-            template_name="service-worker.js",
-            content_type='application/javascript',
-        ),
-        name='service_worker',
-    ),
- path(
-        'manifest.json',
-        TemplateView.as_view(
-            template_name="manifest.json",
-            content_type='application/json',
-        ),
-        name='manifest',
-    ),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
