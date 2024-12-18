@@ -103,7 +103,6 @@
     <script>
         let deferredPrompt;
         
-        // Register the service worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register("{% static 'pwa/service-worker.js' %}")
                 .then(registration => {
@@ -113,22 +112,15 @@
                     console.log('Service Worker registration failed:', error);
                 });
         }
-    
-        // Listen for the beforeinstallprompt event
+
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent the default install prompt
+            console.log('beforeinstallprompt event fired!');
             e.preventDefault();
-            
-            // Save the event to trigger later
             deferredPrompt = e;
-            
-            // Display the install button
             const installButton = document.getElementById('installButton');
             installButton.style.display = 'block';
-            
-            // When the button is clicked, trigger the prompt
+
             installButton.addEventListener('click', () => {
-                // Show the install prompt
                 deferredPrompt.prompt();
                 deferredPrompt.userChoice.then((choiceResult) => {
                     console.log(choiceResult.outcome);
@@ -141,6 +133,7 @@
                 });
             });
         });
+
     </script>
         
 </body>

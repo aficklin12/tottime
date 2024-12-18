@@ -2,12 +2,24 @@
   "name": "Tot-Time",
   "short_name": "Tot-Time",
   "description": "Childcare management software.",
-  "theme_color": "#373748", 
+  "theme_color": "#373748",
   "background_color": "#ffffff",
   "start_url": "/",
   "display": "standalone",
   "id": "2160",
   "scope": "/",
   "orientation": "portrait",
-  "lang": "en"
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/static/pwa/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/pwa/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
