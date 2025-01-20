@@ -28,20 +28,96 @@
     font-weight: bold;
     font-size: 40px;
 }
+h2 {
+    margin-left: 27px;
+    font-weight: bold;
+
+}
 body {
             font-family: Arial, sans-serif;
         }
-.nav-link {
-            display: flex;
-            align-items: center; /* Vertically center content */
-        }
-
-.sb-nav-link-icon i {
+        .sb-nav-link-icon i {
+            color: rgb(57, 189, 180);
             font-size: 1.2rem; /* Icon size */
             vertical-align: middle; /* Adjust vertical alignment */
             line-height: 1; /* Prevent icon from being too high */
+            
+        }
+        /* Style for the link text */
+        .nav-link {
+            color: #ffffff !important; /* Ensure text is completely white */
         }
 
+        /* Style for the arrow after the link */
+        .sb-sidenav-collapse-arrow i {
+            color: rgb(228, 218, 79);
+        }
+
+        /* Optional: Hover effect for nav links */
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+            color: #ffffff !important; /* Retain white text on hover */
+        }
+
+        table {
+            width: 50%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            margin-left: 27px;
+            margin-right: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px; /* Add this for rounded corners */
+            overflow: hidden;
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #272630;
+            color: #ffffff;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+        .form-select {
+        margin-left: 27px;
+        width: 130px;
+    }
+ 
+.btn-primary {
+    margin-top: 0; /* Ensure no extra spacing */
+    width: 80px; /* Optional for better alignment */
+    font-weight: bold;
+}
+    .form-label {
+        margin-left: 27px;
+      
+    }
+    /* Style for the Apply Filter button */
+    .btn-primary {
+        margin-top: 32px;
+        max-height: 35px;
+        margin-left: 5px;
+        background-color: rgb(57, 189, 180);
+        border-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39);
+    }
+
+    .btn-primary:hover {
+        background-color: #007b8a;
+        border-color: #007b8a;
+    }
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -50,9 +126,7 @@ body {
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">
@@ -198,39 +272,65 @@ body {
                 <div class="container mt-4">
                     <h1 class="mb-4">Milk Inventory</h1>
                     <form method="GET" action="">
-                        <div class="row mb-3">
-                            <div class="col-md-4">
+                        <div class="row mb-3 form-section">
+                            <div class="col-auto">
                                 <label for="month-filter" class="form-label">Select Month:</label>
                                 <select class="form-select" id="month-filter" name="month">
                                     {% for month in months %}
-                                        <option value="{{ month.month }}" {% if month.month == selected_month %} selected {% endif %}>{{ month|date:"F" }}</option>
+                                        <option value="{{ month.month }}" {% if month.month == selected_month %} selected {% endif %}>
+                                            {{ month|date:"F" }}
+                                        </option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-auto">
                                 <label for="year-filter" class="form-label">Select Year:</label>
                                 <select class="form-select" id="year-filter" name="year">
                                     {% for year in years %}
-                                        <option value="{{ year|date:"Y" }}" {% if year|date:"Y" == selected_year %} selected {% endif %}>{{ year|date:"Y" }}</option>
+                                        <option value="{{ year|date:"Y" }}" {% if year|date:"Y" == selected_year %} selected {% endif %}>
+                                            {{ year|date:"Y" }}
+                                        </option>
                                     {% endfor %}
                                 </select>
                             </div>
-                        </div>
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary">Apply Filter</button>
-                        </div>
-                    </form>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h1>Milk Inventory for {{ selected_month }}-{{ selected_year }}:</h1>
-                                <h3>Inventory at beginning of month:   {{ beginning_inventory_count }}</h3> 
-                               <h3>How much milk was recieved during the month:   {{ total_received_qty }}</h3> 
-                               <h3>Total available during the month:   {{ total_available_qty }}</h3>
-                               <h3>Inventory at the end of the month:   {{ end_of_month_inventory }}</h3>
-                               <h3>Total used during the month:   {{ total_used_qty }}</h3>
+                            <div class="col-auto" style="margin-left: 15px;">
+                                <button type="submit" class="btn btn-primary">Filter</button>
                             </div>
                         </div>
-
+                    </form>
+                    
+        
+                    <h2 class="mt-4">Milk Inventory for {{ selected_month }}-{{ selected_year }}:</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Inventory Details</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Inventory at beginning of month</td>
+                                <td>{{ beginning_inventory_count }}</td>
+                            </tr>
+                            <tr>
+                                <td>Milk received during the month</td>
+                                <td>{{ total_received_qty }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total available during the month</td>
+                                <td>{{ total_available_qty }}</td>
+                            </tr>
+                            <tr>
+                                <td>Inventory at the end of the month</td>
+                                <td>{{ end_of_month_inventory }}</td>
+                            </tr>
+                            <tr>
+                                <td>Total used during the month</td>
+                                <td>{{ total_used_qty }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </main>
         </div>

@@ -22,7 +22,6 @@
     <style>
         h1 {
     margin-top: 20px;
-    margin-left: 27px;
     font-weight: 400;
     line-height: 1.2;
     font-weight: bold;
@@ -31,20 +30,51 @@
 body {
             font-family: Arial, sans-serif;
         }
+        .sb-nav-link-icon i {
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+/* Style for the link text */
 .nav-link {
-            display: flex;
-            align-items: center; /* Vertically center content */
+    color: #ffffff !important; /* Ensure text is completely white */
+}
+
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
+
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
+
+
+        table {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+        table thead th {
+    color: #ffffff !important;
+    background-color: #272630 !important;
+}
+.btn-apply-filter {
+        background-color: #32b69e; /* Set the background color */
+        color: #272630; /* Set the text color */
+        border: none; /* Remove the border */
+      
+        font-size: 18px; /* Set a font size */
+        font-weight: bold; /* Make the text bold */
+        border-radius: 5px; /* Rounded corners */
+    }
 
-.sb-nav-link-icon i {
-            font-size: 1.2rem; /* Icon size */
-            vertical-align: middle; /* Adjust vertical alignment */
-            line-height: 1; /* Prevent icon from being too high */
-        }
-
-
-
-
+    .btn-apply-filter:hover {
+        background-color: #28a09a; /* Darken the button on hover */
+        cursor: pointer; /* Show pointer cursor on hover */
+    }
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -53,9 +83,7 @@ body {
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">
@@ -229,7 +257,7 @@ body {
                             </div>
                         </div>
                         <div class="text-center">
-                            <button type="submit" class="btn btn-primary">Apply Filter</button>
+                            <button type="submit" class="btn btn-apply-filter">Filter</button>
                         </div>
                     </form>
                     <div class="table-responsive mt-4">

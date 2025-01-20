@@ -28,27 +28,40 @@
     font-weight: bold;
     font-size: 40px;
 }
+.sb-nav-link-icon i {
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+/* Style for the link text */
 .nav-link {
-            display: flex;
-            align-items: center; /* Vertically center content */
-        }
+    color: #ffffff !important; /* Ensure text is completely white */
+}
 
-        .sb-nav-link-icon i {
-            font-size: 1.2rem; /* Icon size */
-            vertical-align: middle; /* Adjust vertical alignment */
-            line-height: 1; /* Prevent icon from being too high */
-        }
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
 
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
 
 /* Ensure vertical centering of content in table cells */
 table th, table td {
     vertical-align: middle;
+    margin-left: 20px;
 }
 
 .add-invoice-btn {
     display: inline-block;
-    background-color: #132d61; /* Navy blue background */
-    color: white; /* White text */
+    font-weight: bold;
+    background-color: rgb(57, 189, 180);
+    color: rgb(33, 31, 39);
     padding: 10px 20px; /* Add more padding for width */
     font-size: 16px; /* Adjust font size for readability */
     border: none; /* Remove default border */
@@ -60,9 +73,11 @@ table th, table td {
 
 /* Hover effect for Add New Invoice button */
 .add-invoice-btn:hover {
-    background-color: #0d1f3f; /* Darker navy blue for hover */
+    background-color: #007b8a;
     color: #fff; /* Ensure text stays white on hover */
 }
+
+
 body {
     font-family: Arial, sans-serif;
 }
@@ -141,25 +156,37 @@ td button {
 }
 /* Change hover color for Record Payment button to green */
 .btn-secondary {
-    background-color: #28a745; /* Green background */
-    border-color: #28a745; /* Green border */
+    background-color: #44af5d; /* Green background */
+    border-color: #44af5d; /* Green border */
+    color:rgb(33, 31, 39);
 }
 
 .btn-secondary:hover {
     background-color: #218838; /* Darker green background on hover */
     border-color: #1e7e34; /* Darker green border on hover */
+    
 }
 
 /* Add hover effect for Late Fee button */
 .btn-warning:hover {
-    background-color: #e0a800; /* Darker yellow for Late Fee on hover */
-    border-color: #e0a800; /* Darker yellow border on hover */
+    background-color: #b4ad46;
+    border-color: #b4ad46;
+    color:rgb(255, 255, 255);
 }
-
-/* Hover color for Pay Now button */
+.btn-warning {
+    background-color: rgb(228, 218, 79); /* Darker yellow for Late Fee on hover */
+    border-color: rgb(228, 218, 79);
+    color:rgb(33, 31, 39);
+}
+.btn-primary {
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
+}
 .btn-primary:hover {
-    background-color: #0056b3; /* Darker blue for Pay Now on hover */
-    border-color: #0056b3; /* Darker blue border on hover */
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color:rgb(255, 255, 255);
 }
 
 /* Optional: Adjust border color on hover for all buttons */
@@ -167,8 +194,9 @@ td button {
     border-color: #ccc; /* Light gray border on hover */
 }
 #paymentModal .btn-primary {
-    background-color: #4CAF50; /* Example: Green button */
-    border-color: #4CAF50;
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
     font-size: 16px;
     padding: 10px 20px;
     transition: background-color 0.3s ease;
@@ -178,12 +206,15 @@ td button {
 }
 
 #paymentModal .btn-primary:hover {
-    background-color: #45a049;
-    border-color: #45a049;
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color: #fff;
+    
 }
 #recordPaymentModal .btn-primary {
-    background-color: #007bff; /* Example: Blue button */
-    border-color: #007bff;
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
     font-size: 16px;
     padding: 10px 20px;
     transition: background-color 0.3s ease;
@@ -193,8 +224,9 @@ td button {
 }
 
 #recordPaymentModal .btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color: #fff;
 }
 #recurringInvoiceModal .btn {
     font-size: 16px;
@@ -206,13 +238,15 @@ td button {
 }
 
 #recurringInvoiceModal .btn-primary {
-    background-color: #007bff; /* Blue button */
-    border-color: #007bff;
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
 }
 
 #recurringInvoiceModal .btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color: #fff;
 }
 
 #recurringInvoiceModal .btn-secondary {
@@ -223,6 +257,22 @@ td button {
 #recurringInvoiceModal .btn-secondary:hover {
     background-color: #5a6268;
     border-color: #545b62;
+    
+}
+
+#lateFeeModal .btn-warning{
+    background-color: rgb(228, 218, 79); /* Change primary button color */
+    border-color: rgb(228, 218, 79);
+    color:rgb(33, 31, 39);
+    min-width: 150px;
+    width: auto;
+
+}
+#lateFeeModal .btn-warning:hover{
+    background-color: #b4ad46;
+    border-color: #b4ad46;
+    color:#fff;
+
 }
     </style>
 </head>
@@ -232,9 +282,7 @@ td button {
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">

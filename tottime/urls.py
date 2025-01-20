@@ -87,6 +87,7 @@ urlpatterns = [
     path('accept-invitation/<str:token>/', views.accept_invitation, name='accept_invitation'),
     path('invalid-invitation/', views.invalid_invitation, name='invalid_invitation'), 
     path('no_access/', login_required(views.no_access), name='no_access'),
+    path('app_redirect/', login_required(views.app_redirect), name='app_redirect'),
     path('save_permissions/', login_required(views.save_permissions), name='save_permissions'),
     path('inbox/', login_required(views.inbox), name='message_inbox'), 
     path('conversation/<int:user_id>/', login_required(views.conversation), name='conversation'),

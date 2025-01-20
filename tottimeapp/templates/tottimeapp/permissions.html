@@ -23,60 +23,102 @@
         h1 {
             margin-top: 20px;
             margin-left: 10px;
-            font-weight: 400;
-            line-height: 1.2;
             font-weight: bold;
+            line-height: 1.2;
             font-size: 40px;
+            color: #212529;
         }
-        .nav-link {
-            display: flex;
-            align-items: center; /* Vertically center content */
-        }
-
+    
         .sb-nav-link-icon i {
+            color: rgb(57, 189, 180);
             font-size: 1.2rem; /* Icon size */
             vertical-align: middle; /* Adjust vertical alignment */
             line-height: 1; /* Prevent icon from being too high */
         }
-
+    
+        .nav-link {
+            color: #ffffff !important; /* Ensure text is completely white */
+        }
+    
+        .sb-sidenav-collapse-arrow i {
+            color: rgb(228, 218, 79);
+        }
+    
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+            color: #ffffff !important; /* Retain white text on hover */
+        }
+    
         .btn-primary {
-            margin-left: 27px;
-            margin-top: 5px;
-            margin-bottom: 10px;
-            margin-right: 15px;
+            background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+            margin-left: 15px;
+            margin-bottom: 25px;
         }
-
-        .btn.deleteRecipeBtn {
-            margin-bottom: 6px;   
+    
+        .btn-primary:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
         }
-        
-        .recipe-buttons {
-            float: right;
-        }
-        
-        .classrooms, .students, .teachers {
-            width: 280px; /* Adjust the width as needed */
-            margin-left: 27px; /* Adjust the margin as needed */
-            margin-top: 30px;
-            font-size: larger;
-        }
-
-        .classrooms .list-group-item, .students .list-group-item, .teachers .list-group-item {
-            width: 220px;
-            background-color: white; /* Set background color to white */
+    
+        .form-select {
+            width: 100%;
+            max-width: 400px;
             padding: 10px;
+            border: 1px solid #ced4da;
             border-radius: 5px;
-            margin-bottom: 5px;
-            list-style-type: none; /* Remove bullet points */
-           
-            font-size: larger;
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 20px;
         }
+    
+        #permissions-table {
+    width: 65%;
+    border-collapse: collapse; /* Ensures borders are neatly merged */
+    margin-top: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    overflow: hidden; /* Ensure rounded corners apply */
+}
 
-        .bg-faded-red {
-            background-color: rgba(59, 58, 58, 0.788); /* Adjust the alpha value (last parameter) for the desired opacity */
-        }
-        
+#permissions-table th, 
+#permissions-table td {
+    text-align: center;
+    vertical-align: middle; /* Ensures content is vertically centered */
+    padding: 5px; /* Minimal padding to control height */
+    border: 1px solid #dee2e6;
+    height: 50px; /* Fixed height */
+    line-height: 1.5; /* Adjust text spacing within the cell */
+}
+
+#permissions-table th {
+    background-color: #272630;
+    color: #ffffff;
+    font-weight: bold;
+    width: 300px;
+}
+
+#permissions-table tbody tr {
+    height: 50px; /* Ensure row height consistency */
+}
+
+#permissions-table tbody tr:nth-child(odd) {
+    background-color: #f8f9fa;
+}
+
+#permissions-table tbody tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+#permissions-table tbody tr:hover {
+    background-color: rgba(57, 189, 180, 0.1);
+}
+
     </style>
+    
 </head>
 <body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
@@ -84,9 +126,7 @@
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">

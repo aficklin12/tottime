@@ -55,52 +55,44 @@
             margin-bottom: 15px;
         }
 
-        /* Container for install button */
-        .install-container {
-            padding-top: 40px;
-            max-width: 250px;
-            text-align: center;
-            margin-top: 20px;
+        /* Custom button styles */
+        .btn-primary {
+            background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color:rgb(33, 31, 39);
+            font-weight: 555;
         }
 
-        /* Install text style */
-        .install-text {
-            font-size: 1.1rem;
-            color: #333;
-            margin-bottom: 10px;
+        /* Additional hover styles (optional) */
+        .btn-primary:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
         }
+  /* Container for the alert */
+.alert-container {
+    display: flex;
+    justify-content: center; /* Centers the alert horizontally */
+    align-items: center; /* Centers the alert vertically */
+    min-height: 100vh; /* Full viewport height to center vertically */
+    padding: 20px; /* Optional: adds padding around the container */
+}
 
-        /* Install button style */
-        #installButton {
-            background-color: rgb(37, 37, 48);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
+/* Style for the custom alert */
+.custom-alert {
+    width: 100%; /* Adjust the width to your preference */
+    max-width: 400px; /* Optional: sets a maximum width */
+    max-height: 45px; /* Optional: sets a maximum height */
+    margin-bottom: 10px;
+    margin-top: 10px;
+    text-align: center;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 8px;
+    background-color: #f8d7da;
+    color: #721c24;
+}
 
-        #installButton:hover {
-            background-color: rgb(69, 69, 88);
-        }
 
-        /* iOS Install instructions */
-        .ios-instructions {
-            font-size: 1rem;
-            color: #333;
-            margin-top: 20px;
-        }
-
-        .ios-instructions p {
-            margin-bottom: 10px;
-        }
-
-        .ios-instructions img {
-            width: 50px;
-            margin-right: 10px;
-        }
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -108,9 +100,7 @@
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
     </nav>
 
@@ -119,13 +109,38 @@
         <form method="POST" class="login-form">
             <div class="login-title">Login</div>
             {% csrf_token %}
+            
+            <!-- Display messages -->
+            {% if messages %}
+                <div class="alert alert-danger custom-alert">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Form Fields -->
             <div class="form-floating mb-3">
-                <input class="form-control w-100" id="inputUsername" type="text" name="username" placeholder="Username">
+                <input class="form-control w-100" id="inputUsername" type="text" name="username" placeholder="Username" value="{{ request.POST.username }}">
                 <label for="inputUsername">Username</label>
+                {% if form.username.errors %}
+                    <div class="alert alert-danger custom-alert">
+                        {% for error in form.username.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
             <div class="form-floating mb-3">
                 <input class="form-control w-100" id="inputPassword" type="password" name="password" placeholder="Password">
                 <label for="inputPassword">Password</label>
+                {% if form.password.errors %}
+                    <div class="alert alert-danger custom-alert">
+                        {% for error in form.password.errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
             <div class="d-grid">
                 <button type="submit" class="btn btn-primary btn-block">Login</button>
@@ -133,19 +148,9 @@
         </form>
     </div>
 
-    <div class="container install-container">
-        <p class="install-text">Install for mobile application for Android devices:</p>
-        <button id="installButton" class="btn btn-info w-100" style="display:none;">Install App</button>
-
-        <!-- iOS-specific instructions -->
-        <div class="ios-instructions" style="display: none;">
-            <p>To install the app on your iOS device:</p>
-            <p><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Share_Icon.svg/1200px-Share_Icon.svg.png" alt="Share Icon"> Tap the Share icon in Safari, then select "Add to Home Screen".</p>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="{% static 'js/scripts.js' %}"></script>
+</body>
 
     <script>
         let deferredPrompt;
@@ -164,40 +169,6 @@
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
             document.querySelector('.install-container').style.display = 'none'; // Hide install prompt
         }
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('beforeinstallprompt event fired!');
-            e.preventDefault();
-            deferredPrompt = e;
-
-            const installButton = document.getElementById('installButton');
-            const installText = document.querySelector('.install-text');
-
-            if (!window.matchMedia('(display-mode: standalone)').matches && window.navigator.standalone !== true) {
-                installButton.style.display = 'block';
-                installText.style.display = 'block';
-            }
-
-            installButton.addEventListener('click', () => {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    console.log(choiceResult.outcome);
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the A2HS prompt');
-                    } else {
-                        console.log('User dismissed the A2HS prompt');
-                    }
-                    deferredPrompt = null;
-                });
-            });
-        });
-
-        // iOS-specific install instructions
-        if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
-            const iosInstructions = document.querySelector('.ios-instructions');
-            iosInstructions.style.display = 'block';
-        }
-
     </script>
 </body>
 </html>

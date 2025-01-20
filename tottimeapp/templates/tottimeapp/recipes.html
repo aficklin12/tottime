@@ -21,52 +21,97 @@
     <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
     <style>
         h1 {
-    margin-top: 20px;
-    margin-left: 27px;
-    font-weight: 400;
-    line-height: 1.2;
-    font-weight: bold;
-    font-size: 40px;
-}
-h2{
-    margin-left: 27px;
-}
-
-.nav-link {
-            display: flex;
-            align-items: center; /* Vertically center content */
+            margin-top: 20px;
+            margin-left: 27px;
+            font-weight: 400;
+            line-height: 1.2;
+            font-weight: bold;
+            font-size: 40px;
         }
-
+    
         .sb-nav-link-icon i {
-            font-size: 1.2rem; /* Icon size */
-            vertical-align: middle; /* Adjust vertical alignment */
-            line-height: 1; /* Prevent icon from being too high */
+            color: rgb(57, 189, 180);
+            font-size: 1.2rem;
+            vertical-align: middle;
+            line-height: 1;
         }
-
-.list-group {
-    padding: 20px;
-    border: 1px solid #ced4da;
-    border-radius: 5px;
-    background-color: #f8f9fa;
-    margin-left: 27px;
-    margin-right: 27px;
-}
-
-.btn-primary {
-    margin-left: 27px;
-    margin-top: 5px;
-    margin-bottom: 10px;
-    margin-right: 15px;
-}
-
-.btn.deleteRecipeBtn {
     
-    margin-bottom: 6px;   
+        .nav-link {
+            color: #ffffff !important;
+        }
     
-}
-.recipe-buttons {
-        float: right;
+        .sb-sidenav-collapse-arrow i {
+            color: rgb(228, 218, 79);
+        }
+    
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ffffff !important;
+        }
+    
+        .btn-recipe {
+            margin-left: 27px;
+            margin-bottom: 5px;
+            margin-right: 5px;
+            background-color: rgb(57, 189, 180);
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+        }
+    
+        .btn-recipe:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
+    
+        .btn-primary {
+            margin-right: 5px;
+            background-color: rgb(57, 189, 180);
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+        }
+    
+        .btn-primary:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
+    
+        .btn.deleteRecipeBtn {
+            margin-bottom: 6px;
+        }
+    
+        .card-out-of-stock {
+            width: 280px; /* Adjust card width */
+            margin: 5px; /* Add margin for spacing */
+            color:#fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    
+        .card-out-of-stock .card-body {
+            height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    
+        .bg-faded-red {
+            background-color: #272630;
+        }
+    
+        #recipeListsContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px; /* Adjust spacing between cards */
+        }
+        .list-group-item {
+        width: 235px; /* Set a fixed width */
+        overflow: hidden; /* Hide overflow text */
+        
+        
     }
+    
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -75,9 +120,7 @@ h2{
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">
@@ -224,83 +267,98 @@ h2{
                     <h1>Recipe Lists</h1>
                     <!-- Buttons for creating recipes -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBreakfastRecipeModal">
+                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createBreakfastRecipeModal">
                             Create Breakfast Recipe
                         </button>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAMRecipeModal">
+                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createAMRecipeModal">
                             Create AM Snack Recipe
                         </button>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
+                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
                             Create Lunch Recipe
                         </button>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPMRecipeModal">
+                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createPMRecipeModal">
                             Create PM Snack Recipe
                         </button>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#fruitRecipeModal">
+                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#fruitRecipeModal">
                             Add Fruit to Menu Rules
                         </button>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#vegRecipeModal">
+                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#vegRecipeModal">
                             Add Vegetables to Menu Rules
                         </button>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#wgRecipeModal">
+                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#wgRecipeModal">
                             Add Whole Grains to Menu Rules
                         </button>
                     </div>
                 </div>
-                <div class="row mt-4" id="recipeListsContainer">
-                    <div class="col">
-                        <h2>Breakfast Recipes</h2>
-                        <!-- List for displaying breakfast recipes -->
-                        <ul id="breakfastRecipeList" class="list-group">
-                            <!-- Breakfast recipes will be populated dynamically here -->
-                        </ul>
-                    </div>
-                    <div class="col">
-                        <h2>AM Snack Recipes</h2>
-                        <!-- List for displaying AM snack recipes -->
-                        <ul id="amRecipeList" class="list-group">
-                            <!-- AM snack recipes will be populated dynamically here -->
-                        </ul>
-                    </div>
-                    <div class="col">
-                        <h2>Lunch Recipes</h2>
-                        <!-- List for displaying lunch recipes -->
-                        <ul id="recipeList" class="list-group">
-                            <!-- Recipes will be populated dynamically here -->
-                        </ul>
-                    </div>
-                    <div class="col">
-                        <h2>PM Snack Recipes</h2>
-                        <!-- List for displaying PM snack recipes -->
-                        <ul id="pmRecipeList" class="list-group">
-                            <!-- PM snack recipes will be populated dynamically here -->
-                        </ul>
-                    </div>
-                    <div class="col">
-                        <h2>Fruits with Rules</h2>
-                        <!-- List for displaying PM snack recipes -->
-                        <ul id="fruitRecipeList" class="list-group">
-                            <!-- PM snack recipes will be populated dynamically here -->
-                        </ul>
-                    </div>
-                    <div class="col">
-                        <h2>Veg. with Rules</h2>
-                        <!-- List for displaying PM snack recipes -->
-                        <ul id="vegRecipeList" class="list-group">
-                            <!-- PM snack recipes will be populated dynamically here -->
-                        </ul>
-                    </div>
-                    <div class="col">
-                        <h2>Grains with Rules</h2>
-                        <!-- List for displaying PM snack recipes -->
-                        <ul id="wgRecipeList" class="list-group">
-                            <!-- PM snack recipes will be populated dynamically here -->
-                        </ul>
+
+                <div class="container">
+                    <div id="recipeListsContainer">
+                        <div class="card mb-4 card-out-of-stock bg-faded-red">
+                            <div class="card-header">
+                                <i class="fas fa-ban me-1 text-danger"></i>
+                                <strong>Breakfast Recipes</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul id="breakfastRecipeList" class="list-group"></ul>
+                            </div>
+                        </div>
+                        <div class="card mb-4 card-out-of-stock bg-faded-red">
+                            <div class="card-header">
+                                <i class="fas fa-ban me-1 text-danger"></i>
+                                <strong>AM Snack Recipes</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul id="amRecipeList" class="list-group"></ul>
+                            </div>
+                        </div>
+                        <div class="card mb-4 card-out-of-stock bg-faded-red">
+                            <div class="card-header">
+                                <i class="fas fa-ban me-1 text-danger"></i>
+                                <strong>Lunch Recipes</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul id="recipeList" class="list-group"></ul>
+                            </div>
+                        </div>
+                        <div class="card mb-4 card-out-of-stock bg-faded-red">
+                            <div class="card-header">
+                                <i class="fas fa-ban me-1 text-danger"></i>
+                                <strong>PM Snack Recipes</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul id="pmRecipeList" class="list-group"></ul>
+                            </div>
+                        </div>
+                        <div class="card mb-4 card-out-of-stock bg-faded-red">
+                            <div class="card-header">
+                                <i class="fas fa-ban me-1 text-danger"></i>
+                                <strong>Fruits with Rules</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul id="fruitRecipeList" class="list-group"></ul>
+                            </div>
+                        </div>
+                        <div class="card mb-4 card-out-of-stock bg-faded-red">
+                            <div class="card-header">
+                                <i class="fas fa-ban me-1 text-danger"></i>
+                                <strong>Veg. with Rules</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul id="vegRecipeList" class="list-group"></ul>
+                            </div>
+                        </div>
+                        <div class="card mb-4 card-out-of-stock bg-faded-red">
+                            <div class="card-header">
+                                <i class="fas fa-ban me-1 text-danger"></i>
+                                <strong>Grains with Rules</strong>
+                            </div>
+                            <div class="card-body">
+                                <ul id="wgRecipeList" class="list-group"></ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
-            
-            
 
             <div class="modal fade" id="fruitRecipeModal" tabindex="-1" aria-labelledby="fruitRecipeModalLabel" aria-hidden="true">
                 <div class="modal-dialog">

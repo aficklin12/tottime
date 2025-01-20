@@ -130,7 +130,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 SECURE_SSL_REDIRECT = False
 
 
-
+MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 
 # Static files for PWA

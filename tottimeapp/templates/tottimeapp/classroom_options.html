@@ -22,7 +22,8 @@
     <style>
         h1 {
             margin-top: 20px;
-            margin-left: 10px;
+            margin-left: 15px;
+            margin-bottom: 30px;
             font-weight: 400;
             line-height: 1.2;
             font-weight: bold;
@@ -63,18 +64,45 @@
         }
 
         .bg-faded-red {
-            background-color: rgba(59, 58, 58, 0.788); /* Adjust the alpha value (last parameter) for the desired opacity */
+            background-color: #272630; /* Adjust the alpha value (last parameter) for the desired opacity */
         }
-        .nav-link {
-            display: flex;
-            align-items: center; /* Vertically center content */
-        }
-
         .sb-nav-link-icon i {
-            font-size: 1.2rem; /* Icon size */
-            vertical-align: middle; /* Adjust vertical alignment */
-            line-height: 1; /* Prevent icon from being too high */
-        }
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+/* Style for the link text */
+.nav-link {
+    color: #ffffff !important; /* Ensure text is completely white */
+}
+
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
+
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
+.btn-primary {
+  background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:#272630;
+    font-weight: bold;
+    margin-left: 15px;
+}
+
+/* Additional hover styles (optional) */
+.btn-primary:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color:#fff
+}
+
 
     </style>
 </head>
@@ -84,9 +112,7 @@
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">

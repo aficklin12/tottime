@@ -25,7 +25,11 @@
 #meatRow th {
     font-weight: normal;
 }
-
+#weeklyMenuHeader {
+    background-color: #272630;
+    color: #ffffff;
+    text-align: center;
+}
       
 .table input[type="text"] {
     border: 1px solid #ced4da; /* Add border */
@@ -44,6 +48,9 @@
     border-collapse: collapse; /* Collapse the borders of the table */
     width: 100%; /* Make the table take up the entire width */
     table-layout: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px; /* Add this for rounded corners */
+    overflow: hidden;
 }
 
 h1 {
@@ -59,10 +66,40 @@ h1 {
     margin-right: 10px; /* Adjust the margin as needed */
 }
 
+
+/* Custom button styles */
+.btn-primary {
+    background-color: rgb(228, 218, 79); /* Change primary button color */
+    border-color: rgb(228, 218, 79);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+    
+}
+
+.btn-success {
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+}
+
+/* Additional hover styles (optional) */
+.btn-primary:hover {
+    background-color: #b4ad46;
+    border-color: #b4ad46;
+}
+
+.btn-success:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+
+
 th, td {
     border: 1px solid #dee2e6; /* Add border */
     padding: .75rem; /* Add padding */
     word-wrap: break-word;
+    
 }
 
 /* Style for table header and body */
@@ -70,10 +107,13 @@ th, td {
 .table tbody td {
     text-align: left; /* Align text to the left */
     font-weight: normal;
+    
 }
 .table thead th,
 .table tbody tr:nth-child(-n+3) {
     font-weight: bold;
+    
+    
 }
 
 /* Style for the table title */
@@ -87,6 +127,7 @@ th, td {
     writing-mode: vertical-rl; /* Set text to vertical writing mode */
     transform: rotate(180deg); /* Rotate the text 180 degrees */
     white-space: nowrap; /* Prevent text from wrapping */
+   
 }
 
 
@@ -126,16 +167,28 @@ th, td {
         width: fit-content;
     }
 }
+.sb-nav-link-icon i {
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+/* Style for the link text */
 .nav-link {
-            display: flex;
-            align-items: center; /* Vertically center content */
-        }
+    color: #ffffff !important; /* Ensure text is completely white */
+}
 
-        .sb-nav-link-icon i {
-            font-size: 1.2rem; /* Icon size */
-            vertical-align: middle; /* Adjust vertical alignment */
-            line-height: 1; /* Prevent icon from being too high */
-        }
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
+
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
 
     </style>
     
@@ -146,9 +199,7 @@ th, td {
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <span style="font-size: 2rem; font-family: 'Comic Sans MS', cursive, sans-serif;">
-                T<span style="font-size: 1.5rem; vertical-align: middle; margin-left: -6px; margin-right: -6px;"> <i class="fas fa-clock"></i> </span>t-Time
-            </span>
+            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">

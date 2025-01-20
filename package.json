@@ -1,0 +1,17 @@
+{
+  "name": "tot-time",
+  "version": "1.0.0",
+  "description": "Childcare management software",
+  "main": "index.js",
+  "scripts": {
+    "build": "parcel build tottimeapp/templates/tottimeapp/index.html --dist-dir build",
+    "start": "parcel tottimeapp/templates/tottimeapp/index.html"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/ios": "^6.2.0"
+  },
+  "devDependencies": {
+    "parcel": "^2.13.3"
+  }
+}

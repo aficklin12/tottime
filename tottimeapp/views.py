@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 import stripe, requests
 from django.conf import settings
-stripe.api_key = settings#.STRIPE_SECRET_KEY
+#stripe.api_key = settings.#STRIPE_SECRET_KEY
 from django.utils.timezone import now
 from django.db.models import Sum, F, ExpressionWrapper, DurationField
 from decimal import Decimal, InvalidOperation
@@ -55,6 +55,10 @@ def get_user_for_view(request):
 
 def login_view(request):
     return render(request, 'login.html')
+
+
+def app_redirect(request):
+    return render(request, 'app_redirect.html')
 
 @login_required(login_url='/login/')
 def index(request):
@@ -692,10 +696,14 @@ def recipes(request):
         'show_clock_in': show_clock_in,
     })
 
-
-
 @login_required
 def menu(request):
+    # Check if the request is from a Cordova WebView
+    user_agent = request.META.get('HTTP_USER_AGENT', '')
+    if 'cordova' in user_agent.lower():
+        # Render the app_redirect.html template
+        return render(request, 'app_redirect.html')
+
     allow_access = False
     show_weekly_menu = False
     show_inventory = False
@@ -794,7 +802,6 @@ def menu(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
-
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -1115,11 +1122,18 @@ def user_login(request):
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
             user = authenticate(request, username=username, password=password)
-            if user:
-                login(request, user)    
-                return redirect('index')
+            if user is not None:
+                login(request, user)
+                return redirect('index')  # Redirect to the index page on successful login
+            else:
+                # If authentication fails, add an error message to the request
+                messages.error(request, "Invalid username or password.")
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         form = LoginForm()
+
+    # Render the login template with the form
     return render(request, 'login.html', {'form': form})
     
 def logout_view(request):
@@ -2285,6 +2299,10 @@ def daily_attendance(request):
 
 @login_required
 def rosters(request):
+    user_agent = request.META.get('HTTP_USER_AGENT', '')
+    if 'cordova' in user_agent.lower():
+        # Render the app_redirect.html template
+        return render(request, 'app_redirect.html')
     allow_access = False
 
     show_weekly_menu = False
@@ -3514,7 +3532,7 @@ def generate_vegetable_menu(request):
 @login_required
 def past_menus(request):
     user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
-    
+
     # Fetch all unique Monday dates from the WeeklyMenu model for the logged-in user, ordered by date in descending order
     monday_dates = WeeklyMenu.objects.filter(day_of_week='Mon', user=user).values_list('date', flat=True).distinct().order_by('-date')
 
@@ -3608,7 +3626,21 @@ def past_menus(request):
                 continue  
 
     except SubUser.DoesNotExist:
-        pass  # If the user is not a SubUser, proceed with default permissions
+        # If the user is not a SubUser, assume they are a MainUser with access to everything
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
 
     # Ensure user has access to this page
     if not show_weekly_menu:
@@ -3680,7 +3712,6 @@ def past_menus(request):
     }
 
     return render(request, 'past-menus.html', context)
-
 
 @login_required
 def assign_user_to_role(user, role_name):
@@ -4461,6 +4492,10 @@ def start_conversation(request, user_id):
 
 @login_required
 def payment_view(request, subuser_id=None):
+    user_agent = request.META.get('HTTP_USER_AGENT', '')
+    if 'cordova' in user_agent.lower():
+        # Render the app_redirect.html template
+        return render(request, 'app_redirect.html')
     # Initialize permissions
     allow_access = False
     show_weekly_menu = False
