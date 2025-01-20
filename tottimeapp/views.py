@@ -45,6 +45,8 @@ from .models import Classroom, MainUser, SubUser, RolePermission, Student
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 logger = logging.getLogger(__name__)
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 
 def get_user_for_view(request):
     try:
@@ -698,11 +700,11 @@ def recipes(request):
 
 @login_required
 def menu(request):
-    # Check if the request is from a Cordova WebView
-    user_agent = request.META.get('HTTP_USER_AGENT', '')
-    if 'cordova' in user_agent.lower():
-        # Render the app_redirect.html template
-        return render(request, 'app_redirect.html')
+    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in ['iphone', 'android', 'mobile','cordova', 'tablet'])
+    
+    # If it's a mobile request, redirect to app_redirect.html
+    if is_mobile:
+        return HttpResponseRedirect(reverse('app_redirect'))  # Assuming 'app_redirect' is the name of the redirect URL pattern
 
     allow_access = False
     show_weekly_menu = False
@@ -803,6 +805,7 @@ def menu(request):
         show_payment_setup = True
         show_clock_in = True
 
+
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
         return redirect('no_access')
@@ -826,7 +829,6 @@ def menu(request):
     }
 
     return render(request, 'weekly-menu.html', context)
-
 
 @login_required
 def account_settings(request):
@@ -2299,10 +2301,7 @@ def daily_attendance(request):
 
 @login_required
 def rosters(request):
-    user_agent = request.META.get('HTTP_USER_AGENT', '')
-    if 'cordova' in user_agent.lower():
-        # Render the app_redirect.html template
-        return render(request, 'app_redirect.html')
+    
     allow_access = False
 
     show_weekly_menu = False
@@ -4492,10 +4491,7 @@ def start_conversation(request, user_id):
 
 @login_required
 def payment_view(request, subuser_id=None):
-    user_agent = request.META.get('HTTP_USER_AGENT', '')
-    if 'cordova' in user_agent.lower():
-        # Render the app_redirect.html template
-        return render(request, 'app_redirect.html')
+ 
     # Initialize permissions
     allow_access = False
     show_weekly_menu = False
