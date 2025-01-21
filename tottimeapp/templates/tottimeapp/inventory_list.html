@@ -50,18 +50,26 @@ table {
     overflow: hidden;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 999px) {
     .inventory-tables {
-        justify-content: center; /* Center the grid container */
-        margin-left: auto;
-        margin-right: auto;
-        padding: 10px; /* Optional: add some padding for spacing */
+        justify-content: center;
+        margin: 0 auto; /* Center the entire grid */
+        padding: 10px;
+    }
+    th, td {
+        font-size: 12px; /* Adjust font size for smaller screens */
+        padding: 6px;
     }
 
-    .inventory-tables table {
-        margin: 0 auto; /* Center each table individually */
+    .inventory-tables {
+        grid-template-columns: 1fr; /* Display one column for small screens */
+    }
+
+    table {
+        width: 95%; /* Reduce table width slightly */
     }
 }
+
 .sb-nav-link-icon i {
     color: rgb(57, 189, 180);
     font-size: 1.2rem; /* Icon size */
