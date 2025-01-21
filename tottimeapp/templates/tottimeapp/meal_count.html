@@ -62,7 +62,7 @@
         }
 
         table {
-            width: 55%;
+           
             border-collapse: collapse;
             margin-top: 20px;
             margin-left: 27px;
@@ -73,8 +73,7 @@
         }
 
         th, td {
-            width: 100px; /* Fixed width for columns */
-            max-width: 100px;
+            width: 100px; 
             border: 1px solid #dddddd;
             padding: 8px;
             text-align: center;
@@ -124,11 +123,14 @@
             background-color: #007b8a;
             border-color: #007b8a;
         }
-        @media screen and (max-width: 999px) {
+        @media screen and (max-width: 768px) {
         table {
-            width: 75%;
             margin-left: auto;
             margin-right: auto;
+        }
+
+        th, td {
+            width: 100px; /* Allow columns to auto-size */
         }
     }
     </style>
