@@ -86,7 +86,12 @@
             text-align: center;
             font-weight: bold;
         }
-  
+  @media (max-width: 999px) { /* Adjust the max-width as needed for your definition of smaller screens */
+    table{
+        margin-left: auto; /* Center horizontally */
+        margin-right: auto;
+    }
+}
 
         tr:nth-child(even) {
             background-color: #f2f2f2;
