@@ -40,11 +40,21 @@ body {
 }
 @media (max-width: 991px) {
     .inventory-tables {
-    width: 280px; /* Adjust the width as needed */
-    height: 500px; /* Fixed height for consistency */
-    margin: 10px auto; /* Center horizontally with auto margins */
-
-}}
+        width: auto; /* Allow flexible width */
+        margin: 0 auto; /* Center horizontally */
+        grid-template-columns: 1fr; /* Single column layout for small screens */
+    }
+}
+table {
+    width: 100%;
+    margin: 0 auto; /* Center the table within the grid item */
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
 .sb-nav-link-icon i {
     color: rgb(57, 189, 180);
     font-size: 1.2rem; /* Icon size */

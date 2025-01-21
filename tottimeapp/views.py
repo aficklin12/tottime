@@ -5258,148 +5258,15 @@ def clock_in(request):
         'show_clock_in': show_clock_in, 
     })
 
+
 @login_required
 def time_sheet(request):
- # Detect if the request is from a mobile device
+     # Mobile device detection
     is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
         'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
     ])
     
-    # If it's a mobile request, redirect to the app_redirect page
-    if is_mobile:
-        return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
-
-    allow_access = False
-    show_weekly_menu = False
-    show_inventory = False
-    show_milk_inventory = False
-    show_meal_count = False
-    show_classroom_options = False
-    show_recipes = False
-    show_sign_in = False
-    show_daily_attendance = False
-    show_rosters = False
-    show_permissions = False
-    show_menu_rules = False
-    show_billing = False
-    show_payment_setup = False
-    show_clock_in = False
-
-    try:
-        # Check if the user is a SubUser
-        sub_user = SubUser.objects.get(user=request.user)
-        group_id = sub_user.group_id.id
-        required_permission_id = 337  # Permission ID for time_sheet view
-
-        # Check if there is a RolePermission entry with 'yes_no_permission' set to True for this permission
-        try:
-            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
-            allow_access = role_permission.yes_no_permission
-        except RolePermission.DoesNotExist:
-            allow_access = False
-
-        permissions_ids = {
-            'weekly_menu': 271,
-            'inventory': 272,
-            'milk_inventory': 270,
-            'meal_count': 269,
-            'classroom_options': 268,
-            'recipes': 267,
-            'sign_in': 273,
-            'daily_attendance': 274,
-            'rosters': 275,
-            'permissions': 157,
-            'menu_rules': 266,
-            'billing': 331,
-            'payment_setup': 332,
-            'clock_in': 337,
-        }
-
-        # Dynamically check each permission
-        for perm_key, perm_id in permissions_ids.items():
-            try:
-                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
-                if perm_key == 'weekly_menu':
-                    show_weekly_menu = role_permission.yes_no_permission
-                elif perm_key == 'inventory':
-                    show_inventory = role_permission.yes_no_permission
-                elif perm_key == 'milk_inventory':
-                    show_milk_inventory = role_permission.yes_no_permission
-                elif perm_key == 'meal_count':
-                    show_meal_count = role_permission.yes_no_permission
-                elif perm_key == 'permissions':
-                    show_permissions = role_permission.yes_no_permission
-                elif perm_key == 'menu_rules':
-                    show_menu_rules = role_permission.yes_no_permission
-                elif perm_key == 'classroom_options':
-                    show_classroom_options = role_permission.yes_no_permission
-                elif perm_key == 'recipes':
-                    show_recipes = role_permission.yes_no_permission
-                elif perm_key == 'sign_in':
-                    show_sign_in = role_permission.yes_no_permission
-                elif perm_key == 'daily_attendance':
-                    show_daily_attendance = role_permission.yes_no_permission
-                elif perm_key == 'rosters':
-                    show_rosters = role_permission.yes_no_permission
-                elif perm_key == 'billing':
-                    show_billing = role_permission.yes_no_permission
-                elif perm_key == 'payment_setup':
-                    show_payment_setup = role_permission.yes_no_permission
-                elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
-            except RolePermission.DoesNotExist:
-                continue
-
-    except SubUser.DoesNotExist:
-        # If user is not a SubUser, grant access by default (assuming main user)
-        allow_access = True
-        show_weekly_menu = True
-        show_inventory = True
-        show_milk_inventory = True
-        show_meal_count = True
-        show_classroom_options = True
-        show_recipes = True
-        show_sign_in = True
-        show_daily_attendance = True
-        show_rosters = True
-        show_permissions = True
-        show_menu_rules = True
-        show_billing = True
-        show_payment_setup = True
-        show_clock_in = True
-
-    # Redirect to 'no_access' page if access is not allowed
-    if not allow_access:
-        return redirect('no_access')
-
-    user = get_user_for_view(request)
-
-
-    return render(request, 'time_sheet.html', {
-        'show_weekly_menu': show_weekly_menu,
-        'show_inventory': show_inventory,
-        'show_milk_inventory': show_milk_inventory,
-        'show_meal_count': show_meal_count,
-        'show_classroom_options': show_classroom_options,
-        'show_recipes': show_recipes,
-        'show_sign_in': show_sign_in,
-        'show_daily_attendance': show_daily_attendance,
-        'show_rosters': show_rosters,
-        'show_permissions': show_permissions,
-        'show_menu_rules': show_menu_rules,
-        'show_billing': show_billing,
-        'show_payment_setup': show_payment_setup,
-        'show_clock_in': show_clock_in,
-    })
-
-@login_required
-def time_sheet(request):
-    # Detect if the request is from a mobile device
-    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
-        'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
-    ])
-    
-    # If it's a mobile request, redirect to the app_redirect page
+    # Redirect to 'app_redirect' if it's a mobile request
     if is_mobile:
         return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
 
