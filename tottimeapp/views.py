@@ -5260,7 +5260,7 @@ def clock_in(request):
 
 @login_required
 def time_sheet(request):
-    # Detect if the request is from a mobile device
+ # Detect if the request is from a mobile device
     is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
         'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
     ])
