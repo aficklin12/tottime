@@ -5394,6 +5394,15 @@ def time_sheet(request):
 
 @login_required
 def time_sheet(request):
+    # Detect if the request is from a mobile device
+    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
+        'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
+    ])
+    
+    # If it's a mobile request, redirect to the app_redirect page
+    if is_mobile:
+        return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
+
     allow_access = False
     show_weekly_menu = False
     show_inventory = False
