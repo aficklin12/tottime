@@ -5261,12 +5261,13 @@ def clock_in(request):
 
 @login_required
 def time_sheet(request):
-     # Mobile device detection
+
+    # Detect if the request is from a mobile device
     is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
         'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
     ])
     
-    # Redirect to 'app_redirect' if it's a mobile request
+    # If it's a mobile request, redirect to the app_redirect page
     if is_mobile:
         return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
 
