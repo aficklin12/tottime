@@ -60,37 +60,47 @@ body {
         }
 
         table {
-            width: 50%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            margin-left: 27px;
-            margin-right: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 10px; /* Add this for rounded corners */
-            overflow: hidden;
-        }
-       
-        th, td {
-            border: 1px solid #dddddd;
-            padding: 8px;
-            text-align: left;
-        }
+      
+        border-collapse: collapse;
+        margin-top: 20px;
+        margin-left: 27px;
+        margin-right: 20px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 10px; /* Add this for rounded corners */
+        overflow: hidden;
+    }
 
-        th {
-            background-color: #272630;
-            color: #ffffff;
-            text-align: left;
-            font-weight: bold;
-        }
+    th, td {
+        border: 1px solid #dddddd;
+        padding: 8px;
+        text-align: left;
+    }
 
-        tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
+    th {
+        background-color: #272630;
+        color: #ffffff;
+        text-align: left;
+        font-weight: bold;
+    }
 
-        tr:hover {
-            background-color: #ddd;
-        }
-        .form-select {
+    /* Set specific widths for the first and second columns */
+    th:nth-child(1), td:nth-child(1) {
+        width: 260px;
+    }
+
+    th:nth-child(2), td:nth-child(2) {
+        width: 10px; /* Updated width to match previous requirement */
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    tr:hover {
+        background-color: #ddd;
+    }
+
+    .form-select {
         margin-left: 27px;
         width: 130px;
     }
@@ -118,12 +128,13 @@ body {
         background-color: #007b8a;
         border-color: #007b8a;
     }
-    @media screen and (max-width: 999px) {
+    @media screen and (max-width: 768px) {
         table {
-            width: 75%;
             margin-left: auto;
             margin-right: auto;
         }
+
+        
     }
     </style>
 </head>
