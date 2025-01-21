@@ -49,6 +49,19 @@ table {
     border-radius: 10px;
     overflow: hidden;
 }
+
+@media (max-width: 768px) {
+    .inventory-tables {
+        justify-content: center; /* Center the grid container */
+        margin-left: auto;
+        margin-right: auto;
+        padding: 10px; /* Optional: add some padding for spacing */
+    }
+
+    .inventory-tables table {
+        margin: 0 auto; /* Center each table individually */
+    }
+}
 .sb-nav-link-icon i {
     color: rgb(57, 189, 180);
     font-size: 1.2rem; /* Icon size */
@@ -130,17 +143,7 @@ th, td {
     font-size: 11px; /* Adjust the font size as needed */
     padding: 3px 5px; /* Adjusted padding */
 }
-@media (max-width: 992px) {
-    .justify-content-center {
-        justify-content: center;
-    }
-}
 
-@media (min-width: 992px) {
-    .justify-content-lg-end {
-        justify-content: flex-end;
-    }
-}
 /* Center the "Update Inventory" button horizontally */
 .text-center {
     flex: 1;
@@ -382,6 +385,7 @@ button.btn-success {
     background-color: #007b8a;
     border-color: #007b8a;
 }
+
     </style>
 </head>
 <body class="sb-nav-fixed">
