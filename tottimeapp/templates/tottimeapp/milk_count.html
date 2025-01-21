@@ -82,12 +82,7 @@ body {
             text-align: left;
             font-weight: bold;
         }
-@media (max-width: 999px) { /* Adjust the max-width as needed for your definition of smaller screens */
-    table{
-        margin-left: auto; /* Center horizontally */
-        margin-right: auto;
-    }
-}
+
         tr:nth-child(even) {
             background-color: #f2f2f2;
         }
@@ -122,6 +117,13 @@ body {
     .btn-primary:hover {
         background-color: #007b8a;
         border-color: #007b8a;
+    }
+    @media screen and (max-width: 999px) {
+        table {
+            width: 75%;
+            margin-left: auto;
+            margin-right: auto;
+        }
     }
     </style>
 </head>
