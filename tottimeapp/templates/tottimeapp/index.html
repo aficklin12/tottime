@@ -20,7 +20,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
     <style>
-
+@media (min-width: 992px) {
 .card-out-of-stock {
     width: 280px; /* Adjust the width as needed */
     height: 500px;
@@ -36,7 +36,35 @@
     width: 220px;
     
     
+}}
+@media (max-width: 991px) {
+    .card-out-of-stock {
+    width: 280px; /* Adjust the width as needed */
+    height: 500px; /* Fixed height for consistency */
+    margin: 10px auto; /* Center horizontally with auto margins */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Vertically center content */
+    align-items: center; /* Horizontally center content */
+    text-align: center; /* Ensure text is centered */
 }
+
+.card-out-of-stock .card-body {
+    height: auto; /* Adjust height as needed */
+    overflow-y: auto; /* Enable vertical scrolling if content overflows */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Vertically center content */
+    align-items: center; /* Horizontally center content */
+    padding: 10px; /* Add padding for spacing */
+}
+
+.card-out-of-stock .list-group-item {
+    width: 220px;
+    margin: 0 auto; /* Center list items horizontally */
+}
+}
+
 .bg-faded-red {
     background-color:  #2d2c30; /* Adjust the alpha value (last parameter) for the desired opacity */
     

@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 import stripe, requests
 from django.conf import settings
-#stripe.api_key = settings.#STRIPE_SECRET_KEY
+stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
 from django.db.models import Sum, F, ExpressionWrapper, DurationField
 from decimal import Decimal, InvalidOperation
@@ -700,11 +700,15 @@ def recipes(request):
 
 @login_required
 def menu(request):
-    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in ['iphone', 'android', 'mobile','cordova', 'tablet'])
     
-    # If it's a mobile request, redirect to app_redirect.html
+    # Detect if the request is from a mobile device
+    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
+        'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
+    ])
+    
+    # If it's a mobile request, redirect to the app_redirect page
     if is_mobile:
-        return HttpResponseRedirect(reverse('app_redirect'))  # Assuming 'app_redirect' is the name of the redirect URL pattern
+        return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
 
     allow_access = False
     show_weekly_menu = False
@@ -4491,7 +4495,15 @@ def start_conversation(request, user_id):
 
 @login_required
 def payment_view(request, subuser_id=None):
- 
+ # Detect if the request is from a mobile device
+    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
+        'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
+    ])
+    
+    # If it's a mobile request, redirect to the app_redirect page
+    if is_mobile:
+        return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
+
     # Initialize permissions
     allow_access = False
     show_weekly_menu = False
@@ -5248,6 +5260,15 @@ def clock_in(request):
 
 @login_required
 def time_sheet(request):
+    # Detect if the request is from a mobile device
+    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
+        'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
+    ])
+    
+    # If it's a mobile request, redirect to the app_redirect page
+    if is_mobile:
+        return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
+
     allow_access = False
     show_weekly_menu = False
     show_inventory = False

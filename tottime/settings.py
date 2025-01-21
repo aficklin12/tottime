@@ -150,7 +150,7 @@ PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 
 PWA_MANIFEST_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 'manifest.json')
 
 
-#STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "pk_live_CFhVogdafoLSvBgPbbRz6YhW00kDpD3Qg7")
-#STRIPE_SEC#RET_KEY = os.getenv("STRIPE_SEC#RET_KEY", "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")
-#STRIPE_CLIENT_ID = "ca_RKaqTYIkm4UM9fAhUXUs05oUAo5mo7Y8"  # Your platform's client ID
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "pk_live_CFhVogdafoLSvBgPbbRz6YhW00kDpD3Qg7")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "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")
+STRIPE_CLIENT_ID = "ca_RKaqTYIkm4UM9fAhUXUs05oUAo5mo7Y8"  # Your platform's client ID
 STRIPE_REDIRECT_URI = "https://tot-time.com/stripe/callback/"
