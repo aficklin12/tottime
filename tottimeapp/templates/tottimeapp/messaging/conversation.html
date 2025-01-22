@@ -21,154 +21,82 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
     <style>
-       h1 {
-    margin-top: 20px;
-    margin-left: 27px;
-    font-weight: 400;
-    line-height: 1.2;
-    font-weight: bold;
-    font-size: 40px;
-}
-.sb-nav-link-icon i {
-    color: rgb(57, 189, 180);
-    font-size: 1.2rem; /* Icon size */
-    vertical-align: middle; /* Adjust vertical alignment */
-    line-height: 1; /* Prevent icon from being too high */
-    
-}
-/* Style for the link text */
-.nav-link {
-    color: #ffffff !important; /* Ensure text is completely white */
-}
-
-/* Style for the arrow after the link */
-.sb-sidenav-collapse-arrow i {
-    color: rgb(228, 218, 79);
-}
-
-/* Optional: Hover effect for nav links */
-.nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
-    color: #ffffff !important; /* Retain white text on hover */
-}
-/* Chat Container for Fixed Width and Height */
+    /* Chat Container to occupy the full screen */
 .chat-container {
-    width: 375px; /* Width similar to a smartphone */
-    max-width: 100%;
-    margin: 0 left; /* Center it on larger screens */
-    padding: 20px;
-    height: 50vh; /* Fixed height to mimic smartphone screen size */
+    width: 100vw; /* Full width */
+    height: 100vh; /* Full height */
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* Ensure the form stays at the bottom */
+    justify-content: space-between; /* Space between messages and input form */
+    padding: 20px;
+    box-sizing: border-box; /* Include padding in width/height */
 }
 
-/* Message container with scrollable area */
+/* Messages area to fill available space */
 .messages {
+    flex-grow: 1; /* Expand to take remaining space */
     display: flex;
-    flex-direction: column; /* Change this to column (not column-reverse) */
+    flex-direction: column;
     gap: 10px;
-    max-height: 100%;
     overflow-y: auto; /* Allow scrolling */
+    padding-bottom: 10px;
 }
 
-/* Style for sent messages (right alignment for the user) */
+/* Style for sent messages */
 .message.sent {
     align-self: flex-end;
     background-color: #d1f5d3;
     padding: 10px;
     border-radius: 10px;
-    max-width: 60%;
+    max-width: 80%;
     word-wrap: break-word;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Style for received messages (left alignment for the recipient) */
+/* Style for received messages */
 .message.received {
     align-self: flex-start;
     background-color: #f1f1f1;
     padding: 10px;
     border-radius: 10px;
-    max-width: 60%;
+    max-width: 80%;
     word-wrap: break-word;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Styling for the message timestamp */
-.message small {
-    display: block;
-    font-size: 0.8em;
-    color: #888;
-    margin-top: 5px;
-}
-
-/* Styling for the message input container */
+/* Message input area */
 .message-form {
     display: flex;
-    justify-content: center;
     align-items: center;
-    margin-top: 20px;
+    gap: 10px;
     padding: 10px;
     background-color: #f9f9f9;
     border-radius: 20px;
-    position: relative;
 }
 
-/* Style for the message input box */
+/* Message input box */
 .message-input {
-    width: 80%;  /* Smaller width for a more compact input box */
+    flex-grow: 1;
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 20px;
     font-size: 1em;
-    outline: none;
-    transition: border-color 0.3s;
 }
 
-/* Focus state for the input field */
-.message-input:focus {
-    border-color: #007bff;
-}
-
-/* Style for the send button */
+/* Send button */
 .send-btn {
-    background: none;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-    border-radius: 50%;
     background-color: #007bff;
     color: white;
-    font-size: 20px;
-    position: absolute;
-    right: 10px;  /* Position the button to the right of the input */
-    transition: background-color 0.3s;
+    border: none;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
-/* Change button color on hover */
 .send-btn:hover {
     background-color: #0056b3;
 }
 
-/* Icon styling */
-.send-btn i {
-    font-size: 20px;
-}
-
-/* Ensure proper layout on smaller screens */
-@media (max-width: 768px) {
-    .message-form {
-        flex-direction: row;
-    }
-
-    .message-input {
-        width: 70%;  /* Make the input box even smaller on mobile */
-    }
-
-    .send-btn {
-        padding: 10px;
-    }
-}
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -323,8 +251,16 @@
         <div id="layoutSidenav_content">
             <main>
                 {% block content %}
+                
                 <div class="chat-container">
-                    <h2>Chat with {{ recipient.first_name }} {{ recipient.last_name }}</h2>
+                    <h2>
+                        <!-- Display recipient's profile picture with their name -->
+                        <img 
+                            src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                            alt="Profile Picture" 
+                            style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 10px;">
+                        {{ recipient.first_name }} {{ recipient.last_name }}
+                    </h2>
                     <div class="messages">
                         {% for message in messages %}
                         <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
