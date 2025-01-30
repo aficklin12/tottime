@@ -235,76 +235,75 @@
                 font-weight: bold;
             }
             @media (max-width: 1000px) {
-            /* Full screen chat box */
-            .chat-box {
-                position: fixed;
-                top: 55px; /* Adjusted to account for the navbar height */
-                left: 0;
-                width: 100%;
-                height: calc(100% - 60px); /* Adjusted height to account for the navbar */
-                max-height: calc(100% - 60px); /* Adjusted height */
-                min-height: calc(100% - 60px); /* Adjusted height */
-                display: flex;
-                flex-direction: column;
-                border-radius: 0;
-                box-shadow: none;
-                background-color: #ffffff;
-                overflow: hidden;
-            }
+    /* Full screen chat box */
+    .chat-box {
+        position: fixed;
+        top: 55px; /* Adjusted to account for the navbar height */
+        left: 0;
+        width: 100%;
+        height: calc(100% - 60px); /* Adjusted height to account for the navbar */
+        max-height: calc(100% - 60px); /* Adjusted height */
+        min-height: calc(100% - 60px); /* Adjusted height */
+        display: flex;
+        flex-direction: column;
+        border-radius: 0;
+        box-shadow: none;
+        background-color: #ffffff;
+        overflow: hidden;
+    }
 
-            /* Back button */
-            .back-btn {
-                position: absolute;
-                top: 10px;
-                left: 10px;
-                background-color: rgb(228, 218, 79);
-                color: rgb(34, 32, 32);
-                border: none;
-                padding: 10px 15px;
-                border-radius: 8px;
-                font-size: 16px;
-                cursor: pointer;
-                z-index: 10;
-                display: block; /* Ensure it's visible */
-            }
+    /* Back button */
+    .back-btn {
+        background-color: rgb(228, 218, 79);
+        color: rgb(34, 32, 32);
+        border: none;
+        padding: 10px 15px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        z-index: 10;
+        display: block; /* Ensure it's visible */
+    }
 
-            .back-btn:hover {
-                background-color: rgb(155, 148, 55);
-            }
+    .back-btn:hover {
+        background-color: rgb(155, 148, 55);
+    }
 
-            .chat-header {
-                display: flex;
-                align-items: center;
-                padding: 10px;
-                background-color: rgba(57, 189, 180, 0.685);
-                border-bottom: 1px solid #ccc;
-                justify-content: flex-start;  /* Aligns all items to the left */
-            }
+    .chat-header {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background-color: rgba(57, 189, 180, 0.685);
+        border-bottom: 1px solid #ccc;
+        justify-content: flex-start;  /* Aligns all items to the left */
+    }
 
-            .chat-header img {
-                margin-left: 40px;
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                object-fit: cover;
-                margin-left: 10px;  /* Adds a bit of space between the profile picture and the back button */
-            }
+    .back-btn {
+        margin-right: 10px; /* Space between back button and profile picture */
+    }
 
-            .chat-header .user-name {
-                margin-left: 10px;
-                font-size: 16px;
-                font-weight: bold;
-            }
+    .chat-header img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 10px;  /* Adds a bit of space between the profile picture and the user name */
+    }
 
-            /* Optional: Adjust the font size of the input on mobile */
-            .message-input {
-                font-size: 0.9em;
-            }
+    .chat-header .user-name {
+        font-size: 16px;
+        font-weight: bold;
+    }
 
-            .send-btn i {
-                font-size: 18px;
-            }
-        }
+    /* Optional: Adjust the font size of the input on mobile */
+    .message-input {
+        font-size: 0.9em;
+    }
+
+    .send-btn i {
+        font-size: 18px;
+    }
+}
 
 </style>
 </head>
