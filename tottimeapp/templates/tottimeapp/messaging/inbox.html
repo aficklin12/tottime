@@ -64,7 +64,7 @@
             list-style: none;
             padding: 0;
         }
-   li1 {
+    section {
             margin-bottom: 10px;
             display: flex;
             align-items: center;
@@ -215,7 +215,7 @@
                     <h3></h3>
                     <ul>
                         {% for recipient in recipients %}
-                            <li1>
+                            <section>
                                 <!-- Use the recipient's profile picture as the button to start a conversation -->
                                 <a href="{% url 'conversation' recipient.id %}">
                                     <img 
@@ -225,14 +225,14 @@
                                 </a>
                                 <!-- Display recipient name next to the profile picture -->
                                 Chat with {{ recipient.first_name }} {{ recipient.last_name }}
-                            </li1>
+                            </section>
                         {% endfor %}
                     </ul>
                 
                   
                     <ul>
                         {% for conversation in conversations %}
-                            <li1>
+                            <section>
                                 {% if conversation.sender == request.user %}
                                     <!-- Use the sender's profile picture as the button to open conversation -->
                                     <a href="{% url 'conversation' conversation.recipient.id %}">
@@ -252,9 +252,9 @@
                                     </a>
                                     {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
                                 {% endif %}
-                            </li1>
+                            </section>
                         {% empty %}
-                            <li1>No conversations yet.</li1>
+                            <section>No conversations yet.</section>
                         {% endfor %}
                     </ul>          
                 {% endblock %}
