@@ -234,78 +234,77 @@
                 font-size: 20px;
                 font-weight: bold;
             }
-        @media (max-width: 1000px) {
-        /* Full screen chat box */
-        .chat-box {
-            position: fixed;
-            top: 60px; /* Adjusted to account for the navbar height */
-            left: 0;
-            width: 100%;
-            height: calc(100% - 60px); /* Adjusted height to account for the navbar */
-            max-height: calc(100% - 60px); /* Adjusted height */
-            min-height: calc(100% - 60px); /* Adjusted height */
-            display: flex;
-            flex-direction: column;
-            border-radius: 0;
-            box-shadow: none;
-            background-color: #ffffff;
-            overflow: hidden;
+            @media (max-width: 1000px) {
+            /* Full screen chat box */
+            .chat-box {
+                position: fixed;
+                top: 60px; /* Adjusted to account for the navbar height */
+                left: 0;
+                width: 100%;
+                height: calc(100% - 60px); /* Adjusted height to account for the navbar */
+                max-height: calc(100% - 60px); /* Adjusted height */
+                min-height: calc(100% - 60px); /* Adjusted height */
+                display: flex;
+                flex-direction: column;
+                border-radius: 0;
+                box-shadow: none;
+                background-color: #ffffff;
+                overflow: hidden;
+            }
+
+            /* Back button */
+            .back-btn {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background-color: rgb(228, 218, 79);
+                color: rgb(34, 32, 32);
+                border: none;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+                z-index: 10;
+                display: block; /* Ensure it's visible */
+            }
+
+            .back-btn:hover {
+                background-color: rgb(155, 148, 55);
+            }
+
+            .chat-header {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                background-color: rgba(57, 189, 180, 0.685);
+                border-bottom: 1px solid #ccc;
+                justify-content: flex-start;  /* Aligns all items to the left */
+            }
+
+            .chat-header img {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                object-fit: cover;
+                margin-left: 10px;  /* Adds a bit of space between the profile picture and the back button */
+            }
+
+            .chat-header .user-name {
+                margin-left: 10px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+
+            /* Optional: Adjust the font size of the input on mobile */
+            .message-input {
+                font-size: 0.9em;
+            }
+
+            .send-btn i {
+                font-size: 18px;
+            }
         }
 
-        /* Back button */
-        .back-btn {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgb(228, 218, 79);
-            color: rgb(34, 32, 32);
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            z-index: 10;
-            display: block; /* Ensure it's visible */
-        }
-
-        .back-btn:hover {
-            background-color: rgb(155, 148, 55);
-        }
-
-        .chat-header {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background-color: rgba(57, 189, 180, 0.685);
-            border-bottom: 1px solid #ccc;
-        }
-        .chat-header .navbar-profile-pic {
-        margin-left: auto;  /* Moves the profile pic to the right */
-    }
-        .chat-header img {
-            margin-left: auto;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: 10px;
-        }
-
-        .chat-header .user-name {
-            margin-left: 10px;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        /* Optional: Adjust the font size of the input on mobile */
-        .message-input {
-            font-size: 0.9em;
-        }
-
-        .send-btn i {
-            font-size: 18px;
-        }
-    }
 </style>
 </head>
 <body class="sb-nav-fixed">
@@ -497,11 +496,13 @@
                 
                 <div class="chat-box">
                     <div class="chat-header">
-                        <button class="back-btn" onclick="window.history.back()">
-                            <i class="fas fa-arrow-left"></i>
-                        </button><img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture">
+                        <ul class="navbar-nav ml-auto">
+                            <li><a class="back-btn" href="{% url 'message_inbox' %}"><i class="fas fa-arrow-left"></i></a></li>  <!-- Link to Inbox -->
+                        </ul>
+                        <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture">
                         <span class="user-name">{{ recipient.first_name }} {{ recipient.last_name }}</span>
                     </div>
+                    
                     <div class="chat-container">
                         <div class="messages">
                             {% for message in messages %}
