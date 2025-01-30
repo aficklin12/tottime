@@ -108,8 +108,7 @@ urlpatterns = [
     path('edit_time/', login_required(views.edit_time), name='edit_time'),
     path('delete-time/', login_required(views.delete_time), name='delete_time'),
     path('upload-profile-picture/', login_required(views.upload_profile_picture), name='upload_profile_picture'),
-
-
+    
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

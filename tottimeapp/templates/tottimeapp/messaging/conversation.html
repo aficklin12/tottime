@@ -21,80 +21,246 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
     <style>
-    /* Chat Container to occupy the full screen */
-.chat-container {
-    width: 100vw; /* Full width */
-    height: 100vh; /* Full height */
+    .back-btn {
+    display: none;
+}   
+    h1 {
+        margin-top: 20px;
+        margin-bottom:20px; /*conversation page only*/
+        margin-left: 27px;
+        font-weight: 400;
+        line-height: 1.2;
+        font-weight: bold;
+        font-size: 40px;
+    }
+    .sb-nav-link-icon i {
+        color: rgb(57, 189, 180);
+        font-size: 1.2rem; /* Icon size */
+        vertical-align: middle; /* Adjust vertical alignment */
+        line-height: 1; /* Prevent icon from being too high */
+        
+    }
+    /* Style for the link text */
+    .nav-link {
+        color: #ffffff !important; /* Ensure text is completely white */
+    }
+    
+    /* Style for the arrow after the link */
+    .sb-sidenav-collapse-arrow i {
+        color: rgb(228, 218, 79);
+    }
+    
+    /* Optional: Hover effect for nav links */
+    .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+        color: #ffffff !important; /* Retain white text on hover */
+    }
+/* Chat Box at the Bottom Right */
+.chat-box {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    max-height: 550px;
+    min-height: 550px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Space between messages and input form */
-    padding: 20px;
-    box-sizing: border-box; /* Include padding in width/height */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    overflow: hidden;
 }
 
-/* Messages area to fill available space */
-.messages {
-    flex-grow: 1; /* Expand to take remaining space */
+.chat-container {
+    height: 100%;
     display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Ensures the form stays at the bottom */
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.messages {
+    flex: 1; /* Takes up remaining space */
+    display: flex;
+    min-height: 425px;
     flex-direction: column;
     gap: 10px;
-    overflow-y: auto; /* Allow scrolling */
-    padding-bottom: 10px;
+    padding: 10px;
+    overflow-y: auto; /* Allows scrolling for messages */
+    background-color: #f5f5f5;
 }
 
-/* Style for sent messages */
 .message.sent {
     align-self: flex-end;
     background-color: #d1f5d3;
     padding: 10px;
     border-radius: 10px;
-    max-width: 80%;
+    max-width: 75%;
     word-wrap: break-word;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Style for received messages */
 .message.received {
     align-self: flex-start;
     background-color: #f1f1f1;
     padding: 10px;
     border-radius: 10px;
-    max-width: 80%;
+    max-width: 75%;
     word-wrap: break-word;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Message input area */
 .message-form {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    align-items: center; /* Keep input and button aligned */
     padding: 10px;
-    background-color: #f9f9f9;
-    border-radius: 20px;
+    background-color: #ffffff;
+    border-top: 1px solid #ccc;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-/* Message input box */
+.message-input-container {
+    display: flex;
+    flex: 1; /* Allows input to take available space */
+    align-items: center;
+    gap: 10px; /* Adds spacing between input and button */
+}
+
 .message-input {
-    flex-grow: 1;
+    flex: 1; /* Takes up remaining space */
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 20px;
     font-size: 1em;
+    outline: none;
+    transition: border-color 0.3s;
+    width: auto; /* Prevents shrinking */
 }
 
-/* Send button */
+.message-input:focus {
+    border-color: rgb(57, 189, 180);
+}
+
 .send-btn {
-    background-color: #007bff;
-    color: white;
+    flex-shrink: 0; /* Prevents button from shrinking */
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: none;
-    padding: 10px;
     border-radius: 50%;
+    background-color: rgb(57, 189, 180);
+    color: white;
+    font-size: 20px;
     cursor: pointer;
+    transition: background-color 0.3s;
 }
 
 .send-btn:hover {
-    background-color: #0056b3;
+    background-color: #007b8a;
+}
+
+.send-btn i {
+    font-size: 20px;
+}
+body {
+            font-family: Arial, sans-serif;
+        }
+    h3 {
+            font-size: 24px;
+            color: #495057;
+            margin-top: 20px;
+            margin-left: 20px;
+        }
+    ul {
+            list-style: none;
+            padding: 0;
+        }
+   li {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+    img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            margin-left: 20px;
+        }
+    /* Override styling for the logo image */
+.navbar-brand img {
+    height: 200px;
+    margin-left: -20px;
+    width: auto;  /* Make sure the width doesn't change the aspect ratio */
+}
+/* Override styles for the profile picture in the navbar */
+.navbar-profile-pic {
+    
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-top: 10px!important;
+    margin-right: -1px !important; 
+    margin-left: 0 !important;
+    display: inline-block;
+}
+.nav-link.dropdown-toggle::after {
+    margin-top: 5px; /* Move the dropdown arrow down */
+    display: inline-block;
+    vertical-align: middle; /* Ensure proper alignment */
+}
+
+@media (max-width: 1000px) {
+    /* Full screen chat box */
+    .chat-box {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        border-radius: 0;
+        box-shadow: none;
+        background-color: #ffffff;
+        overflow: hidden;
+    }
+
+    /* Back button */
+    .back-btn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background-color: rgb(57, 189, 180);
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+    .back-btn:hover {
+        background-color: #007b8a;
+    }
+
+    /* Optional: Adjust the font size of the input on mobile */
+    .message-input {
+        font-size: 0.9em;
+    }
+    .send-btn i {
+        font-size: 18px;
+    }
 }
 
     </style>
@@ -104,7 +270,6 @@
         <!-- Navbar Brand-->
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
-         
         <a class="navbar-brand ps-3" href="{% url 'index' %}">
             <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
         </a>
@@ -115,9 +280,9 @@
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <!-- Profile Picture or Default Image -->
                         <img 
-                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                        class="navbar-profile-pic"
+                        src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
+                        alt="Profile Picture">
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         {% if user.is_authenticated %}
@@ -246,13 +411,64 @@
                     <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
                 </div>
             </nav>
-
         </div>
         <div id="layoutSidenav_content">
             <main>
+                
                 {% block content %}
                 
-                <div class="chat-container">
+                <h1>Messages</h1>
+                <ul>
+                    {% for recipient in recipients %}
+                        <li>
+                            <!-- Use the recipient's profile picture as the button to start a conversation -->
+                            <a href="{% url 'conversation' recipient.id %}">
+                                <img 
+                                    src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                                    alt="Profile Picture" 
+                                    style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                            </a>
+                            <!-- Display recipient name next to the profile picture -->
+                            Chat with {{ recipient.first_name }} {{ recipient.last_name }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            
+                
+                <ul>
+                    {% for conversation in conversations %}
+                        <li>
+                            {% if conversation.sender == request.user %}
+                                <!-- Use the sender's profile picture as the button to open conversation -->
+                                <a href="{% url 'conversation' conversation.recipient.id %}">
+                                    <img 
+                                        src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                                        alt="Profile Picture" 
+                                        style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                                </a>
+                                {{ conversation.recipient.first_name }} {{ conversation.recipient.last_name }}
+                            {% else %}
+                                <!-- Use the recipient's profile picture as the button to open conversation -->
+                                <a href="{% url 'conversation' conversation.sender.id %}">
+                                    <img 
+                                        src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                                        alt="Profile Picture" 
+                                        style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                                </a>
+                                {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
+                            {% endif %}
+                        </li>
+                    {% empty %}
+                        <li>No conversations yet.</li>
+                    {% endfor %}
+                </ul>          
+                
+                <form action="{% url 'message_inbox' %}" method="get">
+                    <button type="submit" class="back-btn">Inbox</button>
+                </form>
+
+                <div class="chat-box">
+                    <div class="chat-container">
                     <h2>
                         <!-- Display recipient's profile picture with their name -->
                         <img 
@@ -269,13 +485,13 @@
                         </div>
                     {% endfor %}
                     </div>
-
+            
                     <form method="post" class="message-form">
                         {% csrf_token %}
                         <div class="message-input-container">
-                            <!-- Smaller Input Box -->
+                            <!-- Message Input -->
                             <input type="text" name="content" class="message-input" placeholder="Type a message..." required>
-                            <!-- Send Button with Icon -->
+                            <!-- Send Button -->
                             <button type="submit" class="send-btn">
                                 <i class="fa fa-paper-plane"></i>
                             </button>
@@ -285,11 +501,16 @@
                 {% endblock %}
             </main>
         </div>
-    <a href="{% url 'message_inbox' %}">Go to Inbox</a>
-            </div>
-        </div>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-        <script src="js/scripts.js"></script>
+
+    <!-- JavaScript imports and custom scripts -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <!-- Tabulator JS -->
+    <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/js/tabulator.min.js"></script>
+    <!-- Your custom JavaScript -->
+    <script src="{% static 'js/scripts.js' %}"></script>
         <script>
             
             // This function scrolls to the bottom of the messages container

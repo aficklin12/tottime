@@ -4221,8 +4221,10 @@ def inbox(request):
         Q(sender=request.user) | Q(recipient=request.user)
     )
 
-    # Annotate each conversation with the latest message timestamp
-    conversations = conversations.annotate(latest_message=Max('messages__timestamp')).order_by('-latest_message')
+    # Annotate each conversation with the latest message timestamp (fixing the ordering)
+    conversations = conversations.annotate(
+        latest_message_timestamp=Max('messages__timestamp')
+    ).order_by('-latest_message_timestamp')
 
     # Populate recipients: users the logged-in user hasn't had a conversation with
     conversation_users = set()
@@ -4361,6 +4363,17 @@ def conversation(request, user_id):
     # Fetch all messages between the logged-in user and the recipient, ordered by timestamp
     messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
     
+    # Fetch all conversations involving the logged-in user and sort by the other user's first name
+    conversations = Conversation.objects.filter(
+        Q(sender=request.user) | Q(recipient=request.user)
+    ).distinct()
+
+    # Sort conversations by the other user's first name
+    conversations = sorted(
+        conversations,
+        key=lambda conv: conv.recipient.first_name if conv.sender == request.user else conv.sender.first_name
+    )
+    
     # Initialize permission variables
     show_weekly_menu = False
     show_inventory = False
@@ -4458,17 +4471,30 @@ def conversation(request, user_id):
             new_message = form.save(commit=False)
             new_message.sender = request.user
             new_message.recipient = recipient
-            new_message.conversation = conversation  # Ensure the message is linked to the correct conversation
+            new_message.conversation = conversation
             new_message.save()
-            return redirect('conversation', user_id=recipient.id)  # Redirect to the same conversation
-
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'sender': new_message.sender.first_name,
+                    'content': new_message.content,
+                    'timestamp': new_message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                })
+            return redirect('conversation', user_id=recipient.id)
     else:
         form = MessageForm()
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, 'messaging/conversation.html', {
+            'form': form,
+            'recipient': recipient,
+            'messages': messages,
+        })
 
     return render(request, 'messaging/conversation.html', {
         'form': form,
         'recipient': recipient,
         'messages': messages,  # Pass the messages to the template
+        'conversations': conversations,  # Pass the sorted conversations to the template
         'show_weekly_menu': show_weekly_menu,
         'show_inventory': show_inventory,
         'show_milk_inventory': show_milk_inventory,
@@ -4492,6 +4518,7 @@ def start_conversation(request, user_id):
         sender=request.user, recipient=recipient
     )
     return redirect('conversation', user_id=recipient.id)
+
 
 @login_required
 def payment_view(request, subuser_id=None):
