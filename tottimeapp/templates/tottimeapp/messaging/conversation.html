@@ -180,7 +180,7 @@ body {
             list-style: none;
             padding: 0;
         }
-   li {
+   li1 {
             margin-bottom: 10px;
             display: flex;
             align-items: center;
@@ -206,15 +206,9 @@ body {
     height: 30px !important;
     border-radius: 50%;
     object-fit: cover;
-    margin-top: 10px!important;
     margin-right: -1px !important; 
     margin-left: 0 !important;
     display: inline-block;
-}
-.nav-link.dropdown-toggle::after {
-    margin-top: 5px; /* Move the dropdown arrow down */
-    display: inline-block;
-    vertical-align: middle; /* Ensure proper alignment */
 }
 
 @media (max-width: 1000px) {
@@ -254,15 +248,41 @@ body {
         background-color: #007b8a;
     }
 
+    /* Profile section */
+    .chat-header {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        position: absolute;
+        top: 0;
+        width: 100%;
+        background-color: #ffffff;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 9;
+    }
+
+    .chat-header img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 10px;
+    }
+
+    .chat-header .user-name {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
     /* Optional: Adjust the font size of the input on mobile */
     .message-input {
         font-size: 0.9em;
     }
+
     .send-btn i {
         font-size: 18px;
     }
 }
-
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -420,7 +440,7 @@ body {
                 <h1>Messages</h1>
                 <ul>
                     {% for recipient in recipients %}
-                        <li>
+                        <li1>
                             <!-- Use the recipient's profile picture as the button to start a conversation -->
                             <a href="{% url 'conversation' recipient.id %}">
                                 <img 
@@ -430,14 +450,14 @@ body {
                             </a>
                             <!-- Display recipient name next to the profile picture -->
                             Chat with {{ recipient.first_name }} {{ recipient.last_name }}
-                        </li>
+                        </li1>
                     {% endfor %}
                 </ul>
             
                 
                 <ul>
                     {% for conversation in conversations %}
-                        <li>
+                        <li1>
                             {% if conversation.sender == request.user %}
                                 <!-- Use the sender's profile picture as the button to open conversation -->
                                 <a href="{% url 'conversation' conversation.recipient.id %}">
@@ -457,15 +477,17 @@ body {
                                 </a>
                                 {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
                             {% endif %}
-                        </li>
+                        </li1>
                     {% empty %}
-                        <li>No conversations yet.</li>
+                        <li1>No conversations yet.</li1>
                     {% endfor %}
                 </ul>          
                 
-                <form action="{% url 'message_inbox' %}" method="get">
-                    <button type="submit" class="back-btn">Inbox</button>
-                </form>
+                <div class="chat-header">
+                    <button class="back-btn" onclick="window.history.back()">Back</button>
+                    <img src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture">
+                    <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
+                </div>
 
                 <div class="chat-box">
                     <div class="chat-container">
