@@ -21,171 +21,179 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
     <style>
-    .back-btn {
-    display: none;
-}   
-    h1 {
-        margin-top: 20px;
-        margin-bottom:20px; /*conversation page only*/
-        margin-left: 27px;
-        font-weight: 400;
-        line-height: 1.2;
-        font-weight: bold;
-        font-size: 40px;
-    }
-    .sb-nav-link-icon i {
-        color: rgb(57, 189, 180);
-        font-size: 1.2rem; /* Icon size */
-        vertical-align: middle; /* Adjust vertical alignment */
-        line-height: 1; /* Prevent icon from being too high */
-        
-    }
-    /* Style for the link text */
-    .nav-link {
-        color: #ffffff !important; /* Ensure text is completely white */
-    }
+        .back-btn {
+            display: none;
+        }
     
-    /* Style for the arrow after the link */
-    .sb-sidenav-collapse-arrow i {
-        color: rgb(228, 218, 79);
-    }
+        h1 {
+            margin-top: 20px;
+            margin-bottom: 20px; /* conversation page only */
+            margin-left: 27px;
+            font-weight: 400;
+            line-height: 1.2;
+            font-weight: bold;
+            font-size: 40px;
+        }
     
-    /* Optional: Hover effect for nav links */
-    .nav-link:hover {
-        background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
-        color: #ffffff !important; /* Retain white text on hover */
-    }
-/* Chat Box at the Bottom Right */
-.chat-box {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 350px;
-    max-height: 550px;
-    min-height: 550px;
-    display: flex;
-    flex-direction: column;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    background-color: #ffffff;
-    overflow: hidden;
-}
-
-.chat-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Ensures the form stays at the bottom */
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-}
-
-.messages {
-    flex: 1; /* Takes up remaining space */
-    display: flex;
-    min-height: 425px;
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px;
-    overflow-y: auto; /* Allows scrolling for messages */
-    background-color: #f5f5f5;
-}
-
-.message.sent {
-    align-self: flex-end;
-    background-color: #d1f5d3;
-    padding: 10px;
-    border-radius: 10px;
-    max-width: 75%;
-    word-wrap: break-word;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.message.received {
-    align-self: flex-start;
-    background-color: #f1f1f1;
-    padding: 10px;
-    border-radius: 10px;
-    max-width: 75%;
-    word-wrap: break-word;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.message-form {
-    display: flex;
-    align-items: center; /* Keep input and button aligned */
-    padding: 10px;
-    background-color: #ffffff;
-    border-top: 1px solid #ccc;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.message-input-container {
-    display: flex;
-    flex: 1; /* Allows input to take available space */
-    align-items: center;
-    gap: 10px; /* Adds spacing between input and button */
-}
-
-.message-input {
-    flex: 1; /* Takes up remaining space */
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    font-size: 1em;
-    outline: none;
-    transition: border-color 0.3s;
-    width: auto; /* Prevents shrinking */
-}
-
-.message-input:focus {
-    border-color: rgb(57, 189, 180);
-}
-
-.send-btn {
-    flex-shrink: 0; /* Prevents button from shrinking */
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    border-radius: 50%;
-    background-color: rgb(57, 189, 180);
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.send-btn:hover {
-    background-color: #007b8a;
-}
-
-.send-btn i {
-    font-size: 20px;
-}
-body {
+        .sb-nav-link-icon i {
+            color: rgb(57, 189, 180);
+            font-size: 1.2rem; /* Icon size */
+            vertical-align: middle; /* Adjust vertical alignment */
+            line-height: 1; /* Prevent icon from being too high */
+        }
+    
+        /* Style for the link text */
+        .nav-link {
+            color: #ffffff !important; /* Ensure text is completely white */
+        }
+    
+        /* Style for the arrow after the link */
+        .sb-sidenav-collapse-arrow i {
+            color: rgb(228, 218, 79);
+        }
+    
+        /* Optional: Hover effect for nav links */
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+            color: #ffffff !important; /* Retain white text on hover */
+        }
+    
+        /* Chat Box at the Bottom Right */
+        .chat-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            max-height: 560px;
+            min-height: 560px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+    
+        .chat-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* Ensures the form stays at the bottom */
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    
+        .messages {
+            flex: 1; /* Takes up remaining space */
+            display: flex;
+            min-height: 425px;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            overflow-y: auto; /* Allows scrolling for messages */
+            background-color: #f5f5f5;
+        }
+    
+        .message.sent {
+            align-self: flex-end;
+            background-color: rgba(57, 189, 180, 0.685);
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+    
+        .message.received {
+            align-self: flex-start;
+            background-color: rgb(228, 218, 79);
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+    
+        .message-form {
+            display: flex;
+            align-items: center; /* Keep input and button aligned */
+            padding: 10px;
+            background-color: #ffffff;
+            border-top: 1px solid #ccc;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    
+        .message-input-container {
+            display: flex;
+            flex: 1; /* Allows input to take available space */
+            align-items: center;
+            gap: 10px; /* Adds spacing between input and button */
+        }
+    
+        .message-input {
+            flex: 1; /* Takes up remaining space */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s;
+            width: auto; /* Prevents shrinking */
+        }
+    
+        .message-input:focus {
+            border-color: rgb(57, 189, 180);
+        }
+    
+        .send-btn {
+            flex-shrink: 0; /* Prevents button from shrinking */
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background-color: rgb(57, 189, 180);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+    
+        .send-btn:hover {
+            background-color: #007b8a;
+        }
+    
+        .send-btn i {
+            font-size: 20px;
+        }
+    
+        body {
             font-family: Arial, sans-serif;
         }
-    h3 {
+    
+        h3 {
             font-size: 24px;
             color: #495057;
             margin-top: 20px;
             margin-left: 20px;
         }
-    ul {
+    
+        ul {
             list-style: none;
             padding: 0;
         }
-    section {
+    
+        section {
             margin-bottom: 10px;
             display: flex;
             align-items: center;
         }
-    img {
+    
+        img {
             width: 50px;
             height: 50px;
             border-radius: 50%;
@@ -193,89 +201,113 @@ body {
             margin-right: 15px;
             margin-left: 20px;
         }
-    /* Override styling for the logo image */
-.navbar-brand img {
-    height: 200px;
-    margin-left: -20px;
-    width: auto;  /* Make sure the width doesn't change the aspect ratio */
-}
-/* Override styles for the profile picture in the navbar */
-.navbar-profile-pic {
     
-    width: 30px !important;
-    height: 30px !important;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-right: -1px !important; 
-    margin-left: 0 !important;
-    display: inline-block;
-}
-.mobile-inbox {
-    display: none;
-}
-@media (max-width: 1000px) {
-    /* Full screen chat box */
-    .chat-box {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        max-height: 100%;
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
-        border-radius: 0;
-        box-shadow: none;
-        background-color: #ffffff;
-        overflow: hidden;
-    }
-    .mobile-inbox {
-        display: block;
-        z-index: 1000;
-    }
-    /* Back button */
-    .back-btn {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        background-color: rgb(57, 189, 180);
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-        z-index: 10;
-    }
-
-    .back-btn:hover {
-        background-color: #007b8a;
-    }
-
-
-    .chat-header img {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 10px;
-    }
-
-    .chat-header .user-name {
-        font-size: 16px;
-        font-weight: bold;
-    }
-
-    /* Optional: Adjust the font size of the input on mobile */
-    .message-input {
-        font-size: 0.9em;
-    }
-
-    .send-btn i {
-        font-size: 18px;
-    }
-}
+        /* Override styling for the logo image */
+        .navbar-brand img {
+            height: 200px;
+            margin-left: -20px;
+            width: auto; /* Make sure the width doesn't change the aspect ratio */
+        }
+    
+        /* Override styles for the profile picture in the navbar */
+        .navbar-profile-pic {
+            width: 30px !important;
+            height: 30px !important;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: -1px !important;
+            margin-left: 0 !important;
+            display: inline-block;
+        }
+    
+        .mobile-inbox {
+            display: none;
+        }
+        .chat-header {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                background-color: rgba(57, 189, 180, 0.685);
+                border-bottom: 1px solid #ccc;
+            }
+            
+    
+            .chat-header .user-name {
+                font-size: 20px;
+                font-weight: bold;
+            }
+        @media (max-width: 1000px) {
+            /* Full screen chat box */
+            .chat-box {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                max-height: 100%;
+                min-height: 100%;
+                display: flex;
+                flex-direction: column;
+                border-radius: 0;
+                box-shadow: none;
+                background-color: #ffffff;
+                overflow: hidden;
+            }
+    
+            .mobile-inbox {
+                display: block;
+            }
+    
+            /* Back button */
+            .back-btn {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background-color: rgb(57, 189, 180);
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+                z-index: 10;
+                display: block; /* Ensure it's visible */
+            }
+    
+            .back-btn:hover {
+                background-color: #007b8a;
+            }
+    
+            .chat-header {
+                display: flex;
+                align-items: center;
+                padding: 10px;
+                background-color: rgba(57, 189, 180, 0.685);
+                border-bottom: 1px solid #ccc;
+            }
+    
+            .chat-header img {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                object-fit: cover;
+                margin-right: 10px;
+            }
+    
+            .chat-header .user-name {
+                font-size: 16px;
+                font-weight: bold;
+            }
+    
+            /* Optional: Adjust the font size of the input on mobile */
+            .message-input {
+                font-size: 0.9em;
+            }
+    
+            .send-btn i {
+                font-size: 18px;
+            }
+        }
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -427,46 +459,34 @@ body {
         </div>
         <div id="layoutSidenav_content">
             <main>
-                
                 {% block content %}
-                
                 <h1>Messages</h1>
                 <ul>
                     {% for recipient in recipients %}
                         <section>
                             <!-- Use the recipient's profile picture as the button to start a conversation -->
                             <a href="{% url 'conversation' recipient.id %}">
-                                <img 
-                                    src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
-                                    alt="Profile Picture" 
-                                    style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                                <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
                             </a>
                             <!-- Display recipient name next to the profile picture -->
                             Chat with {{ recipient.first_name }} {{ recipient.last_name }}
                         </section>
                     {% endfor %}
                 </ul>
-            
-                
+
                 <ul>
                     {% for conversation in conversations %}
                         <section>
                             {% if conversation.sender == request.user %}
                                 <!-- Use the sender's profile picture as the button to open conversation -->
                                 <a href="{% url 'conversation' conversation.recipient.id %}">
-                                    <img 
-                                        src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
-                                        alt="Profile Picture" 
-                                        style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                                    <img src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
                                 </a>
                                 {{ conversation.recipient.first_name }} {{ conversation.recipient.last_name }}
                             {% else %}
                                 <!-- Use the recipient's profile picture as the button to open conversation -->
                                 <a href="{% url 'conversation' conversation.sender.id %}">
-                                    <img 
-                                        src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
-                                        alt="Profile Picture" 
-                                        style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                                    <img src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
                                 </a>
                                 {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
                             {% endif %}
@@ -474,40 +494,38 @@ body {
                     {% empty %}
                         <section>No conversations yet.</section>
                     {% endfor %}
-                </ul>          
-                
+                </ul>
+
                 <li><a class="mobile-inbox" href="{% url 'message_inbox' %}">Inbox</a></li>
 
                 <div class="chat-box">
-                    <div class="chat-container">
-                    <h2>
-                        <!-- Display recipient's profile picture with their name -->
-                        <img 
-                            src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 10px;">
-                        {{ recipient.first_name }} {{ recipient.last_name }}
-                    </h2>
-                    <div class="messages">
-                        {% for message in messages %}
-                        <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
-                            <p>{{ message.content }}</p>
-                            <small>{{ message.timestamp }}</small>
-                        </div>
-                    {% endfor %}
+                    <div class="chat-header">
+                        <button class="back-btn" onclick="window.history.back()">Back</button>
+                        <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture">
+                        <span class="user-name">{{ recipient.first_name }} {{ recipient.last_name }}</span>
                     </div>
-            
-                    <form method="post" class="message-form">
-                        {% csrf_token %}
-                        <div class="message-input-container">
-                            <!-- Message Input -->
-                            <input type="text" name="content" class="message-input" placeholder="Type a message..." required>
-                            <!-- Send Button -->
-                            <button type="submit" class="send-btn">
-                                <i class="fa fa-paper-plane"></i>
-                            </button>
+                    <div class="chat-container">
+                        <div class="messages">
+                            {% for message in messages %}
+                            <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
+                                <p>{{ message.content }}</p>
+                                <small>{{ message.timestamp }}</small>
+                            </div>
+                            {% endfor %}
                         </div>
-                    </form>
+
+                        <form method="post" class="message-form">
+                            {% csrf_token %}
+                            <div class="message-input-container">
+                                <!-- Message Input -->
+                                <input type="text" name="content" class="message-input" placeholder="Type a message..." required>
+                                <!-- Send Button -->
+                                <button type="submit" class="send-btn">
+                                    <i class="fa fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
                 {% endblock %}
             </main>
