@@ -457,9 +457,8 @@ body {
                 
                 <ul>
                     {% for conversation in conversations %}
-                        <li1>
+                        <li>
                             {% if conversation.sender == request.user %}
-                                <!-- Use the sender's profile picture as the button to open conversation -->
                                 <a href="{% url 'conversation' conversation.recipient.id %}">
                                     <img 
                                         src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
@@ -468,7 +467,6 @@ body {
                                 </a>
                                 {{ conversation.recipient.first_name }} {{ conversation.recipient.last_name }}
                             {% else %}
-                                <!-- Use the recipient's profile picture as the button to open conversation -->
                                 <a href="{% url 'conversation' conversation.sender.id %}">
                                     <img 
                                         src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
@@ -477,9 +475,9 @@ body {
                                 </a>
                                 {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
                             {% endif %}
-                        </li1>
+                        </li>
                     {% empty %}
-                        <li1>No conversations yet.</li1>
+                        <li>No conversations yet.</li>
                     {% endfor %}
                 </ul>          
                 
@@ -488,38 +486,37 @@ body {
                     <img src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture">
                     <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
                 </div>
-
+                
                 <div class="chat-box">
                     <div class="chat-container">
-                    <h2>
-                        <!-- Display recipient's profile picture with their name -->
-                        <img 
-                            src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 10px;">
-                        {{ recipient.first_name }} {{ recipient.last_name }}
-                    </h2>
-                    <div class="messages">
-                        {% for message in messages %}
-                        <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
-                            <p>{{ message.content }}</p>
-                            <small>{{ message.timestamp }}</small>
+                        <h2>
+                            <img 
+                                src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                                alt="Profile Picture" 
+                                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 10px;">
+                            {{ recipient.first_name }} {{ recipient.last_name }}
+                        </h2>
+                        <div class="messages">
+                            {% for message in messages %}
+                                <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
+                                    <p>{{ message.content }}</p>
+                                    <small>{{ message.timestamp }}</small>
+                                </div>
+                            {% endfor %}
                         </div>
-                    {% endfor %}
+                
+                        <form method="post" class="message-form">
+                            {% csrf_token %}
+                            <div class="message-input-container">
+                                <input type="text" name="content" class="message-input" placeholder="Type a message..." required>
+                                <button type="submit" class="send-btn">
+                                    <i class="fa fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </form>
                     </div>
-            
-                    <form method="post" class="message-form">
-                        {% csrf_token %}
-                        <div class="message-input-container">
-                            <!-- Message Input -->
-                            <input type="text" name="content" class="message-input" placeholder="Type a message..." required>
-                            <!-- Send Button -->
-                            <button type="submit" class="send-btn">
-                                <i class="fa fa-paper-plane"></i>
-                            </button>
-                        </div>
-                    </form>
                 </div>
+                
                 {% endblock %}
             </main>
         </div>
