@@ -19,14 +19,26 @@
     <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
+    <style>
+        .navbar-brand img {
+    width: 100%; /* Ensure the logo takes up the full width of its container */
+    max-width: 200px; /* Set a max-width to control the size of the logo */
+    height: auto; /* Maintain aspect ratio */
+    object-fit: contain; /* Make sure the logo doesn't get distorted */
+    margin-left: 0; /* Reset any left margin if needed */
+    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
+    overflow: visible; /* Ensure no clipping occurs */
+}
+
+    </style>
 </head>
 <body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <!-- Navbar Brand-->
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
         
-        <a class="navbar-brand ps-3" href="{% url 'index' %}">
-            <img src="{% static 'images/logo.png' %}" alt="T-Time Logo" style="height: 200px; margin-left: -20px;">
+        <a class="navbar-brand" href="{% url 'index' %}">
+            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
         </a>
         <!-- Navbar-->
         <div class="ms-auto">
