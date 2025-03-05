@@ -288,7 +288,10 @@ td button {
     border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
     overflow: visible; /* Ensure no clipping occurs */
 }
-
+table.table-bordered tfoot {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -446,15 +449,7 @@ td button {
                     <button type="button" class="add-invoice-btn" data-bs-toggle="modal" data-bs-target="#recurringInvoiceModal">
                         Create Tuition Fee
                     </button>
-                    
-                    <div class="filter-container mb-3">
-                        <label for="statusFilter" class="form-label">Filter by Status</label>
-                        <select id="statusFilter" class="form-select">
-                            <option value="all">All Invoices</option>
-                            <option value="outstanding">Outstanding</option>
-                            <option value="paid_in_full">Paid in Full</option>
-                        </select>
-                    </div>
+                   
                     <table class="table table-striped table-bordered">
                         <thead class="table-dark">
                             <tr>
@@ -513,6 +508,25 @@ td button {
                                 {% endfor %}
                             {% endfor %}
                         </tbody>
+                        <tfoot class="table-dark">
+                            <tr>
+                              <!-- Columns 1-3 (Parent, Student, Frequency) -->
+                              <td colspan="3"><strong>Totals:</strong></td>
+                              <!-- Column 4 (Rate) -->
+                              <td id="total-rate">0.00</td>
+                              <!-- Columns 5-8 merged into one cell -->
+                              <td colspan="4"></td>
+                              <!-- Column 9 (Balance) -->
+                              <td id="total-balance">0.00</td>
+                              <!-- Column 10 (Amount Paid) -->
+                              <td id="total-amount-paid">0.00</td>
+                              <!-- Column 11 (Late Fees) -->
+                              <td id="total-late-fees">0.00</td>
+                              <!-- Column 12 (Action) -->
+                              <td></td>
+                            </tr>
+                        </tfoot>
+                        
                     </table>
                     <!-- Modal for Adding Late Fee -->
                     <div class="modal fade" id="lateFeeModal" tabindex="-1" aria-labelledby="lateFeeModalLabel" aria-hidden="true">

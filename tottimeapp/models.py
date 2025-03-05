@@ -204,6 +204,7 @@ class OrderList(models.Model):
 class Classroom(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
+    ratios = models.IntegerField(default=1)
 
     def __str__(self):
         return self.name
@@ -218,16 +219,51 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+    
+class IncidentReport(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    date_of_incident = models.DateField()
+    incident_description = models.TextField()
+    injury_description = models.TextField()
+    treatment_administered = models.TextField()
+
+    def __str__(self):
+        return f"{self.student_first_name} {self.student_last_name} on {self.date_of_incident}"
 
 class AttendanceRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     sign_in_time = models.DateTimeField(default=timezone.now)
     sign_out_time = models.DateTimeField(null=True, blank=True)
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, null=True, blank=True)
+    classroom_override = models.CharField(max_length=100, null=True, blank=True) 
+    ratios = models.IntegerField(null=True, blank=True)  # Field for storing ratios
+    outside_time_out_1 = models.DateTimeField(null=True, blank=True)
+    outside_time_out_2 = models.DateTimeField(null=True, blank=True)
+    outside_time_in_1 = models.DateTimeField(null=True, blank=True)
+    outside_time_in_2 = models.DateTimeField(null=True, blank=True)
+    meal_1 = models.DateTimeField(null=True, blank=True)
+    meal_2 = models.DateTimeField(null=True, blank=True)
+    meal_3 = models.DateTimeField(null=True, blank=True)
+    meal_4 = models.DateTimeField(null=True, blank=True)
+    meal_desc_1 = models.CharField(max_length=255, null=True, blank=True)
+    meal_desc_2 = models.CharField(max_length=255, null=True, blank=True)
+    meal_desc_3 = models.CharField(max_length=255, null=True, blank=True)
+    meal_desc_4 = models.CharField(max_length=255, null=True, blank=True)
+    incident_report = models.ForeignKey(IncidentReport, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.classroom:
+            self.classroom = self.student.classroom  # Default to student's classroom
+        if not self.classroom_override:
+            self.classroom_override = self.classroom.name  # Copy classroom name by default
+        if self.classroom:
+            self.ratios = self.classroom.ratios 
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.student} - {self.sign_in_time}"
-    
+
 class TeacherAttendanceRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # Referring to MainUser
     subuser = models.ForeignKey('SubUser', on_delete=models.SET_NULL, null=True, blank=True)  # Nullable for MainUser
@@ -410,10 +446,20 @@ class SubUser(models.Model):
     group_id = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="subusers", null=True, blank=True)
     classroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, null=True, blank=True, related_name='subusers')
     student = models.ForeignKey('Student', on_delete=models.CASCADE, null=True, blank=True)  # Linking to a Student
-    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # New balance field
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Acts as wallet (can be positive or negative)
 
     def __str__(self):
         return f"SubUser: {self.user.username} linked to MainUser: {self.main_user.username}"
+    
+    def deposit_funds(self, amount):
+        """Parent deposits money to their balance."""
+        self.balance += amount
+        self.save()
+    
+    def deduct_tuition(self, tuition_fee):
+        """Deduct weekly tuition and handle negative balances (amount owed)."""
+        self.balance -= tuition_fee
+        self.save()
     
 class Roster(models.Model):
     classroom = models.ForeignKey('Classroom', on_delete=models.CASCADE, related_name='rosters')
@@ -454,7 +500,7 @@ class Payment(models.Model):
     frequency = models.CharField(max_length=10, choices=[('weekly', 'Weekly'), ('monthly', 'Monthly'), ('yearly', 'Yearly')], default='weekly')
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)  # Optional end date for the recurring payment
-    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('paid', 'Paid'), ('overdue', 'Overdue'), ('partial_payment', 'Partial Payment')], default='Pending')
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('paid', 'Paid'), ('overdue', 'Overdue'), ('partial_payment', 'Partial Payment')], default='pending')
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Amount remaining to be paid
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Amount paid so far
     late_fees = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Any accumulated late fees
@@ -467,40 +513,72 @@ class Payment(models.Model):
         return f"Payment for {self.subuser.user.first_name} {self.subuser.user.last_name} due on {self.due_date}"
 
     def update_status(self):
+        # Ensure due_date is a date object
         if isinstance(self.due_date, str):
             self.due_date = datetime.strptime(self.due_date, '%Y-%m-%d').date()
 
         if self.amount_paid >= self.amount:
-            self.status = 'Paid in Full'
-        elif self.due_date < datetime.now().date() and self.balance > 0 and self.status != 'Paid in Full':
-            self.status = 'Overdue'
+            self.status = 'paid'
+        elif self.due_date < datetime.now().date() and self.balance > 0:
+            self.status = 'overdue'
         elif self.amount_paid > 0:
-            self.status = 'Partial Payment'
+            self.status = 'partial_payment'
         else:
-            self.status = 'Pending'
+            self.status = 'pending'
 
         self.save()
 
     def create_recurring_payments(self):
-        # Check if the current date is before the stop date (end_date)
-        if self.__class__.objects.filter(subuser=self.subuser, next_invoice_date=self.next_invoice_date).exists():
-            print("Invoice already exists for this week.")
-            return
-        # Logic for creating the new payment (invoice)
-        new_payment = self.__class__(amount=self.amount,
-                                    frequency=self.frequency,
-                                    start_date=self.start_date,
-                                    end_date=self.end_date,
-                                    subuser=self.subuser,
-                                    payment_method=self.payment_method)
-        
-        # Update the next invoice date to be 1 week later, ensuring we don't exceed the stop date
-        new_payment.next_invoice_date = self.next_invoice_date + timedelta(weeks=1)
-        
-        if new_payment.next_invoice_date <= self.end_date:
-            new_payment.save()  # Save the new payment only if within the valid period
+        # Check if the next invoice should be created based on next_invoice_date
+        if not self.next_invoice_date:
+            return  # No next invoice date set, cannot create
+
+        today = datetime.now().date()
+        if self.next_invoice_date > today:
+            return  # Not yet time to create the next invoice
+
+        # Check if an invoice for this period already exists
+        existing_invoice = Payment.objects.filter(
+            subuser=self.subuser,
+            due_date=self.next_invoice_date,
+            frequency=self.frequency
+        ).exists()
+
+        if existing_invoice:
+            return  # Invoice already exists
+
+        # Calculate the new due_date for the next payment
+        new_due_date = self.calculate_next_date()
+        if not new_due_date:
+            return  # Unable to calculate next date
+
+        # Create new payment with required fields
+        new_payment = Payment(
+            subuser=self.subuser,
+            student=self.student,
+            amount=self.amount,
+            frequency=self.frequency,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            due_date=new_due_date,
+            payment_method=self.payment_method,
+            status='pending',
+            balance=self.amount,
+            amount_paid=0,
+            late_fees=0,
+            notes=f"Recurring payment from #{self.id}",
+            next_invoice_date=new_due_date,
+        )
+
+        # INDENTATION FIX: This block was outside the method
+        # Check if end_date allows the new payment
+        if self.end_date is None or new_due_date <= self.end_date:
+            new_payment.save()
+            # Update the current payment's next_invoice_date
+            self.next_invoice_date = new_payment.calculate_next_date()
+            self.save()
         else:
-            print("Skipping invoice creation: next invoice date exceeds stop date.")
+            print("Skipping: Next due date exceeds end date.")
 
     def calculate_next_date(self):
         if self.frequency == 'weekly':
@@ -510,3 +588,4 @@ class Payment(models.Model):
         elif self.frequency == 'yearly':
             return self.due_date + timedelta(days=365)
         return None
+

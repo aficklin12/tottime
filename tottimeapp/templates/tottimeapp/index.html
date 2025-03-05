@@ -22,7 +22,7 @@
     <style>
 
 .card-out-of-stock {
-    width: 330px; /* Adjust the width as needed */
+    width: 335px; /* Adjust the width as needed */
     height: 500px;
     margin-left: 10px; /* Adjust the margin as needed */
     
@@ -129,7 +129,38 @@ h1 {
     border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
     overflow: visible; /* Ensure no clipping occurs */
 }
+.ratio-card {
+  width: 120px;                 
+  height: 120px;                
+  background-color: #272630;    
+  border: 2px solid transparent;
+  border-radius: 12px;         
+}
 
+/* Glowing border effects */
+.over-capacity {
+  border-color: #dc3545;        
+  box-shadow: 0 0 8px #dc3545;   
+}
+
+.under-capacity {
+  border-color: rgb(57, 189, 180);        
+  box-shadow: 0 0 8px rgb(57, 189, 180);   
+}
+
+/* Text styling */
+.ratio-card .card-title {
+  font-size: 1rem;     
+  color: #ffffff;
+  text-align: center;   
+}
+
+.ratio-card .card-text {
+  font-size: 1.25rem;   
+  font-weight: bold;
+  color: #ffffff;
+  text-align: center;    
+}
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -242,7 +273,22 @@ h1 {
         <div id="layoutSidenav_content">
             <main>
                 <div class="container-fluid px-4">
-                    <h1 class="mt-4">Dashboard</h1>
+                    <h1 class="mt-4">Ratios</h1>
+                    <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
+                      {% for classroom, data in classroom_cards.items %}
+                        <div class="card ratio-card mx-2 my-1 {% if data.ratio and data.count > data.ratio %}over-capacity{% else %}under-capacity{% endif %}">
+                          <div class="card-body d-flex flex-column justify-content-center align-items-center p-2">
+                            <h6 class="card-title mb-1">{{ classroom }}</h6>
+                            <p class="card-text mb-0">
+                              {{ data.count }} / {{ data.ratio|default:"–" }}
+                            </p>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                <div class="container-fluid px-4">
+                    <h1 class="mt-4">Food Program</h1>
     
                         <div class="row">
                             <div class="card mb-4 card-out-of-stock bg-faded-red">

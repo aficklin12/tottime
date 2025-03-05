@@ -15,6 +15,8 @@
     <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
     <!-- Custom CSS -->
     {% load static %}
+    {% load custom_filters %}
+    {% load dict_extras %}
     <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
     <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -28,12 +30,18 @@
     font-weight: bold;
     font-size: 40px;
 }
+h2 {
+    margin-top: 20px;
+    margin-bottom: -10px;
+    margin-left: 27px;
+    line-height: 1.2;
+    font-size: 25px;
+}
 body {
-            font-family: Arial, sans-serif;
+    font-family: Arial, sans-serif;
         }
 
-        table {
-    width: 50%;
+table {
     border-collapse: collapse;
     margin-top: 20px;
     margin-left: 27px;
@@ -41,16 +49,20 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     border-radius: 10px; /* Add this for rounded corners */
     overflow: hidden; /* Ensure the rounded corners are visible */
+    
 }
 
-        th, td {
+th, td {
+           
             border: 1px solid #dddddd;
             padding: 8px;
             text-align: center; /* Horizontally center the text */
             vertical-align: middle; 
         }
 
-        th {
+
+
+th {
             background-color: #272630;
             color: #ffffff;
             text-align: center;
@@ -58,25 +70,16 @@ body {
             font-weight: bold;
         }
 
-        tr:nth-child(even) {
+tr:nth-child(even) {
             background-color: #f2f2f2;
         }
 
-        tr:hover {
+tr:hover {
             background-color: #ddd;
         }
 
-        th:nth-child(1), td:nth-child(1) {
-    width: 30%; /* Adjust as needed */
-}
 
-th:nth-child(2), td:nth-child(2) {
-    width: 35%; /* Adjust as needed */
-}
 
-th:nth-child(3), td:nth-child(3) {
-    width: 35%; /* Adjust as needed */
-}
 .sb-nav-link-icon i {
     color: rgb(57, 189, 180);
     font-size: 1.2rem; /* Icon size */
@@ -108,6 +111,100 @@ th:nth-child(3), td:nth-child(3) {
     border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
     overflow: visible; /* Ensure no clipping occurs */
 }
+select.classroom-select {
+    width: auto;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    border-color: rgba(204, 204, 204, 0.03); /* Adjust opacity here (0.5 for 50% opacity) */
+    font-size: 14px;
+    color: #333;
+    background-size: 16px;
+    cursor: pointer;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    appearance: none; /* Remove default dropdown arrow */
+    background-image: url('path-to-your-icon.svg'); /* Custom arrow or icon */
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    text-align: center;
+}
+
+/* Change opacity of the dropdown arrow */
+select.classroom-select::after {
+    content: '\f0d7'; /* Unicode for dropdown arrow (FontAwesome example) */
+    font-family: 'FontAwesome'; /* FontAwesome or other icon font */
+    opacity: 0.5; /* Adjust opacity here */
+}
+
+/* Hover and focus states for dropdown */
+select.classroom-select:hover,
+select.classroom-select:focus {
+    border-color: #39bdb4;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
+}
+
+/* Style for the time inputs */
+input[type="time"].sign-in-time,
+input[type="time"].sign-out-time {
+   
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    border-color: rgba(204, 204, 204, 0.03);
+}
+input[type="time"].sign-in-time::-webkit-calendar-picker-indicator,
+input[type="time"].sign-out-time::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}
+
+
+/* Hover and focus states for time inputs */
+input[type="time"].sign-in-time:hover,
+input[type="time"].sign-in-time:focus,
+input[type="time"].sign-out-time:hover,
+input[type="time"].sign-out-time:focus {
+    border-color: #39bdb4;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
+}
+
+td {
+    padding: 8px !important; /* Ensure consistent padding */
+    text-align: center; /* Center the content horizontally */
+    vertical-align: middle; /* Center the content vertically */
+}
+.over-ratio {
+        color: red;
+    }
+.under-ratio {
+        color: rgb(57, 189, 180);
+    }
+.btn-primary {
+    margin-top: 12px;
+    margin-left: 27px;
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+}
+
+/* Additional hover styles (optional) */
+.btn-primary:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+
+.delete-column {
+    display: none;
+  }
+
 
     </style>
 </head>
@@ -260,38 +357,257 @@ th:nth-child(3), td:nth-child(3) {
         </div>
         <div id="layoutSidenav_content">
             <main>
-                
                 <div class="mt-4">
                     <h1>Daily Attendance</h1>
-                    
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Sign In Time</th>
-                            <th>Sign Out Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for record in attendance_records %}
-                        <tr>
-                            <td>{{ record.student }}</td>
-                            <td>{{ record.sign_in_time|time:"g:i A" }}</td> <!-- Display 12-hour time with AM/PM -->
-                            <td>{{ record.sign_out_time|time:"g:i A" }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
+                    Sign In
+                </button>
+                <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
+                    <i class="fas fa-trash-alt" style="color: red;"></i>
+                </button>
+                {% for classroom, records in attendance_data.items %}
+    <div>
+        <h2>
+            <strong>{{ classroom }}- Ratio: </strong> 
+            <span class="{% if relative_counts|get_item:classroom > classroom.ratios %}over-ratio{% else %}under-ratio{% endif %}">
+                <strong>{{ relative_counts|get_item:classroom }} / {{ classroom.ratios }}</strong>
+            </span>
+        </h2>
+    </div>
+    {% if records %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Sign In Time</th>
+                    <th>Sign Out Time</th>
+                    <th>Classroom</th>
+                    <th class="delete-column" id="deleteColumnHeader">
+                        <i class="fas fa-trash-alt" style="color: white;"></i>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                    <tr id="record-{{ record.id }}">
+                        <td>{{ record.student }}</td>
+                        <td>
+                            <input type="time" class="sign-in-time" data-id="{{ record.id }}" value="{{ record.sign_in_time|time:"H:i" }}">
+                        </td>
+                        <td>
+                            <input type="time" class="sign-out-time" data-id="{{ record.id }}" value="{{ record.sign_out_time|time:"H:i" }}">
+                        </td>
+                        <td>
+                            <select class="classroom-select" data-id="{{ record.id }}">
+                                {% for option in classroom_options %}
+                                    <option value="{{ option }}" {% if record.classroom_override == option %}selected{% endif %}>
+                                        {{ option }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td class="delete-column">
+                            <button type="button" class="btn btn-danger delete-record" data-id="{{ record.id }}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <!-- No records for this classroom -->
+        <div style="margin: 20px 27px; font-style: italic;">
+            Classroom currently empty.
+        </div>
+    {% endif %}
+{% empty %}
+    <div style="margin: 20px 27px;">
+        <p>No attendance records available for today.</p>
+    </div>
+{% endfor %}
             </main>
-     
-    <!-- JavaScript imports and custom scripts -->
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap Bundle JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <!-- Your custom JavaScript -->
-    <script src="{% static 'js/scripts.js' %}"></script>
-    
-</body>
-</html>
+           <!-- Manual Sign In Modal -->
+            <div class="modal fade" id="manualSignInModal" tabindex="-1" aria-labelledby="manualSignInModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="manualSignInForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="manualSignInModalLabel">Manual Student Sign In</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                        <label for="studentSelect" class="form-label">Select Student:</label>
+                        <select class="form-select" id="studentSelect" name="student">
+                            {% for student in students %}
+                            <option value="{{ student.id }}">{{ student }}</option>
+                            {% endfor %}
+                        </select>
+                        </div>
+                        <div class="mb-3">
+                        <label for="signInTime" class="form-label">Sign In Time:</label>
+                        <!-- 
+                            Option 1: Use a context variable "default_time" passed from your view (formatted as "HH:MM")
+                            Option 2: Set a default value via JavaScript on modal open (see script below)
+                        -->
+                        <input type="time" class="form-control" id="signInTime" name="sign_in_time" value="{{ default_time }}">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Sign In</button>
+                    </div>
+                    </form>
+                </div>
+                </div>
+            </div>
+            <!-- JavaScript imports and custom scripts -->
+            <!-- jQuery -->
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <!-- Bootstrap Bundle JS -->
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+            <!-- Your custom JavaScript -->
+            <script src="{% static 'js/scripts.js' %}"></script>
+            <script>
+                $(document).ready(function() {
+                    function updateAttendanceRecord(recordId, field, newValue) {
+                        $.ajax({
+                            url: '/update_attendance/',
+                            method: 'POST',
+                            data: {
+                                'id': recordId,
+                                'field': field,
+                                'new_value': newValue,
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            },
+                            success: function(response) {
+                                console.log('Attendance record updated successfully');
+                                if (field === 'classroom_override' || field === 'sign_in_time' || field === 'sign_out_time') {
+                                    location.reload();  // Refresh the page when any time field or classroom is changed
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.log('Error updating record:', error);
+                            }
+                        });
+                    }
+        
+                    // Handle clicks on sign-in time field
+                    $('.sign-in-time').on('click', function() {
+                        var recordId = $(this).data('id');
+                        var currentValue = $(this).val();
+                        $(this).on('change', function() {
+                            var newValue = $(this).val();
+                            if (newValue !== currentValue) {
+                                updateAttendanceRecord(recordId, 'sign_in_time', newValue);
+                            }
+                        });
+                    });
+        
+                    // Handle clicks on sign-out time field
+                    $('.sign-out-time').on('click', function() {
+                        var recordId = $(this).data('id');
+                        var currentValue = $(this).val();
+                        $(this).on('change', function() {
+                            var newValue = $(this).val();
+                            if (newValue !== currentValue) {
+                                updateAttendanceRecord(recordId, 'sign_out_time', newValue);
+                            }
+                        });
+                    });
+        
+                    // Handle changes to classroom override dropdown
+                    $('.classroom-select').on('change', function() {
+                        var recordId = $(this).data('id');
+                        var newValue = $(this).val();
+                        updateAttendanceRecord(recordId, 'classroom_override', newValue);
+                    });
+                });
+        
+                document.addEventListener("DOMContentLoaded", function () {
+                    document.querySelectorAll(".sign-in-time, .sign-out-time").forEach(input => {
+                        input.addEventListener("click", function () {
+                            this.showPicker(); // Opens the time picker when clicking anywhere on the input field
+                        });
+                    });
+                });
+            </script>
+            <script>
+                $('#manualSignInModal').on('show.bs.modal', function () {
+                  var now = new Date();
+                  var hours = now.getHours().toString().padStart(2, '0');
+                  var minutes = now.getMinutes().toString().padStart(2, '0');
+                  $('#signInTime').val(hours + ':' + minutes);
+                });
+              </script>
+                <script>
+                    $(document).ready(function(){
+                    $('#manualSignInForm').on('submit', function(e) {
+                        e.preventDefault();  // Prevent the default form submission
+                
+                        $.ajax({
+                        url: '{% url "manual_sign_in_ajax" %}',
+                        method: 'POST',
+                        data: $(this).serialize(),
+                        success: function(response) {
+                            if(response.success) {
+                            // Close the modal
+                            $('#manualSignInModal').modal('hide');
+                            // Optionally, refresh the page or update your attendance records via AJAX
+                            location.reload();
+                            } else {
+                            alert('Failed to sign in the student: ' + (response.error || 'Unknown error.'));
+                            }
+                        },
+                        error: function() {
+                            alert('An error occurred while signing in the student.');
+                        }
+                        });
+                    });
+                    });
+                </script>
+               <script>
+                $(document).ready(function() {
+                    // Delete attendance record
+                    $('.delete-record').on('click', function() {
+                        var recordId = $(this).data('id');
+                        // Confirm before deleting
+                        if (confirm('Are you sure you want to delete this attendance record?')) {
+                            $.ajax({
+                                url: '{% url "delete_attendance" %}',
+                                method: 'POST',
+                                data: {
+                                    'id': recordId,
+                                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                },
+                                success: function(response) {
+                                    if (response.success) {
+                                        // Refresh the page to update the list
+                                        location.reload();
+                                        console.log('Record deleted successfully.');
+                                    } else {
+                                        alert('Error deleting record: ' + (response.error || 'Unknown error.'));
+                                    }
+                                },
+                                error: function(xhr, status, error) {
+                                    console.log('Error deleting record:', error);
+                                    alert('An error occurred while deleting the record.');
+                                }
+                            });
+                        }
+                    });
+                });
+            </script>
+            
+  <script>
+    // Toggle the display of delete columns when the button is clicked
+    function toggleDeleteColumn() {
+      $('.delete-column').toggle();
+    }
+  </script>
+  
+        </body>
+        </html>

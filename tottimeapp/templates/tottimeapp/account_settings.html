@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="description" content="" />
     <meta name="author" content="" />
-    <title>Account Settings</title>
+    <title>Account</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
     <!-- Font Awesome -->
@@ -214,30 +214,32 @@
         <div id="layoutSidenav_content">
             <main>
                 <div class="container-fluid px-4">
-                    <h1>Account Options</h1>
+                    <h1>Account</h1>
                 </div>
-        
-              <!-- Profile Picture (or default grey image) -->
-            <div class="container-fluid px-4">
-                <label for="profilePictureInput" style="cursor: pointer;">
-                    <img 
-                        src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                        alt="Profile Picture" 
-                        id="profilePicture" 
-                        style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
-                </label>
-                <!-- Hidden file input to upload a new profile picture -->
-                <input 
-                    type="file" 
-                    id="profilePictureInput" 
-                    name="profile_picture" 
-                    accept="image/*" 
-                    style="display: none;" 
-                    onchange="uploadProfilePicture()">
-            </div>
-
-        
-                <!-- Balance info (existing code) -->
+    
+                <!-- Profile Picture Section -->
+                <div class="container-fluid px-4">
+                    <label for="profilePictureInput" style="cursor: pointer;">
+                        <img 
+                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
+                            alt="Profile Picture" 
+                            id="profilePicture" 
+                            style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                    </label>
+                    <!-- Hidden file input to upload a new profile picture -->
+                    <input 
+                        type="file" 
+                        id="profilePictureInput" 
+                        name="profile_picture" 
+                        accept="image/*" 
+                        style="display: none;" 
+                        onchange="uploadProfilePicture()">
+                </div>
+    
+                <!-- Wallet Section -->
+                <div class="container-fluid px-4">
+                    <h2>Add Funds to Wallet</h2>
+                </div>
                 <div class="container-fluid px-4">
                     {% if sub_user %}
                         <p>Current Balance: ${{ sub_user.balance }}</p>
@@ -245,51 +247,182 @@
                         <p>No balance available.</p>
                     {% endif %}
                 </div>
-        
+                <div class="container-fluid px-4 mb-4">
+                    <button id="card-deposit-button" type="button" class="btn btn-primary">
+                        Add Funds to your Wallet
+                    </button>
+                </div>
             </main>
-        </div>
-        
-    <!-- JavaScript imports and custom scripts -->
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap Bundle JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <!-- Your custom JavaScript -->
-    <script src="{% static 'js/scripts.js' %}"></script>
     
-<script>
-    // Function to handle profile picture upload
-    function uploadProfilePicture() {
-        const fileInput = document.getElementById('profilePictureInput');
-        const file = fileInput.files[0];
-
-        if (file) {
-            const formData = new FormData();
-            formData.append('profile_picture', file);
-
-            // Send the file to the server using fetch or AJAX
-            fetch('/upload-profile-picture/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'  // Ensure CSRF token is included
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Update the profile picture with the new image
-                if (data.success) {
-                    document.getElementById('profilePicture').src = data.new_picture_url;
-                } else {
-                    alert('Failed to upload the profile picture.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error uploading the profile picture.');
-            });
-        }
-    }
-</script>
-</body>
-</html>
+            <!-- Modal for Card Payment -->
+            <div class="modal fade" id="cardPaymentModal" tabindex="-1" aria-labelledby="cardPaymentModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <form id="card-payment-form">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="cardPaymentModalLabel">Card Payment</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Deposit Amount Input -->
+                                <div class="mb-3">
+                                    <label for="card_amount" class="form-label">Amount ($):</label>
+                                    <input type="number" id="card_amount" name="amount" class="form-control" min="1" step="0.01" required>
+                                </div>
+                                <!-- Stripe Card Element Container -->
+                                <div id="card-element" class="form-control"></div>
+                                <div id="card-errors" role="alert" class="text-danger mt-2"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Submit Payment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+              <!-- JavaScript Imports -->
+              <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+              <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+              <script src="https://js.stripe.com/v3/"></script>
+              <script src="{% static 'js/scripts.js' %}"></script>
+            
+              <script>
+                console.log("Inline script loaded");
+            
+                document.addEventListener("DOMContentLoaded", function() {
+                    console.log("DOM fully loaded");
+            
+                    // Ensure Stripe public key is available
+                    var stripePublicKey = "{{ stripe_public_key }}";
+                    if (!stripePublicKey) {
+                        alert("Stripe public key is missing. Payment processing will not work.");
+                        return;
+                    }
+            
+                    // Initialize Stripe
+                    var stripe = Stripe(stripePublicKey);
+                    var elements = stripe.elements();
+                    var cardElement = elements.create("card");
+                    cardElement.mount("#card-element");
+            
+                    // Profile Picture Upload Handler
+                    function uploadProfilePicture() {
+                        const fileInput = document.getElementById('profilePictureInput');
+                        const file = fileInput.files[0];
+            
+                        if (!file) {
+                            alert("Please select a file to upload.");
+                            return;
+                        }
+            
+                        const formData = new FormData();
+                        formData.append('profile_picture', file);
+            
+                        fetch('/upload-profile-picture/', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                document.getElementById('profilePicture').src = data.new_picture_url;
+                            } else {
+                                alert('Failed to upload the profile picture.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Error uploading the profile picture.');
+                        });
+                    }
+            
+                    // Attach profile picture upload event listener
+                    var profilePictureInput = document.getElementById('profilePictureInput');
+                    if (profilePictureInput) {
+                        profilePictureInput.addEventListener("change", uploadProfilePicture);
+                    }
+            
+                    // Deposit Button Modal Trigger
+                    var depositButton = document.getElementById("card-deposit-button");
+                    if (depositButton) {
+                        depositButton.addEventListener("click", function() {
+                            console.log("Deposit button clicked. Opening modal.");
+                            var modalEl = document.getElementById("cardPaymentModal");
+                            var myModal = new bootstrap.Modal(modalEl);
+                            myModal.show();
+                        });
+                    } else {
+                        console.error("Deposit button not found!");
+                    }
+            
+                    // Handle Card Payment Form Submission
+                    var form = document.getElementById("card-payment-form");
+                    if (form) {
+                        form.addEventListener("submit", async function(e) {
+                            e.preventDefault();
+                            
+                            const amount = document.getElementById("card_amount").value;
+                            console.log("Submitting card payment form with amount:", amount);
+            
+                            if (!amount || isNaN(amount) || amount <= 0) {
+                                document.getElementById("card-errors").textContent = "Please enter a valid amount.";
+                                return;
+                            }
+            
+                            try {
+                                // Create PaymentIntent via AJAX
+                                const response = await fetch("{% url 'account_settings' %}", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/x-www-form-urlencoded",
+                                        "X-CSRFToken": "{{ csrf_token }}"
+                                    },
+                                    body: new URLSearchParams({
+                                        amount: amount,
+                                        payment_method: "card"
+                                    })
+                                });
+            
+                                const data = await response.json();
+                                
+                                if (data.error) {
+                                    document.getElementById("card-errors").textContent = data.error;
+                                    return;
+                                }
+            
+                                const clientSecret = data.client_secret;
+            
+                                // Confirm Card Payment
+                                const result = await stripe.confirmCardPayment(clientSecret, {
+                                    payment_method: {
+                                        card: cardElement,
+                                        billing_details: {
+                                            name: "{{ request.user.username }}"
+                                        }
+                                    }
+                                });
+            
+                                if (result.error) {
+                                    document.getElementById("card-errors").textContent = result.error.message;
+                                } else if (result.paymentIntent.status === "succeeded") {
+                                    alert("Payment succeeded!");
+                                    // Hide modal after successful payment
+                                    bootstrap.Modal.getInstance(document.getElementById("cardPaymentModal")).hide();
+                                }
+                            } catch (error) {
+                                console.error("Error:", error);
+                                document.getElementById("card-errors").textContent = "Payment failed. Please try again.";
+                            }
+                        });
+                    } else {
+                        console.error("Card payment form not found!");
+                    }
+                });
+            </script>
+        </div>
+    </body>
+    </html>

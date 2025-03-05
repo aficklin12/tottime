@@ -18,12 +18,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponse
 import random, logging, json
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_protect
 import pytz, os
 from PIL import Image
 from io import BytesIO
 from .forms import InvitationForm
+from django.utils.timezone import make_aware
 from django.db import models
+from django.utils.timezone import is_aware, make_aware
 from pytz import utc
 from datetime import datetime, timedelta, date, time
 from collections import defaultdict
@@ -67,12 +70,11 @@ def index(request):
     # Get the main user or subuser
     user = get_user_for_view(request)
 
-    # Check if the user is a SubUser
+    # Check if the user is a SubUser and redirect accordingly
     try:
         sub_user = SubUser.objects.get(user=request.user)
         group_id = sub_user.group_id_id  # Get group_id_id from SubUser table
 
-        # Redirect based on group_id_id
         if group_id == 2:
             return redirect('index_director')
         elif group_id == 3:
@@ -83,17 +85,41 @@ def index(request):
             return redirect('index_parent')
         elif group_id == 6:
             return redirect('index_free_user')
-
     except SubUser.DoesNotExist:
         # If the user is not a SubUser, assume they are the owner (ID 1)
         pass
 
-    # Default to the owner view (ID 1) if no other redirection occurs
+    # Get order items for the Food Program section
     order_items = OrderList.objects.filter(user=user)
-    return render(request, 'index.html', {'order_items': order_items})
+
+    # --- New: Build classroom ratio cards ---
+    today = date.today()
+    attendance_records = AttendanceRecord.objects.filter(
+    sign_in_time__date=today, 
+    sign_out_time__isnull=True,  # Add this condition to filter only records with NULL sign_out_time
+    user=user
+)
+    # Get the user's classrooms (assuming you have a Classroom model)
+    classrooms = Classroom.objects.filter(user=user)
+    classroom_cards = {}
+    for classroom in classrooms:
+        # Count attendance records where classroom_override equals the classroom name
+        count = attendance_records.filter(classroom_override=classroom.name).count()
+        classroom_cards[classroom.name] = {
+            'count': count,
+            'ratio': classroom.ratios  # target ratio from the Classroom model
+        }
+
+    context = {
+        'order_items': order_items,
+        'classroom_cards': classroom_cards,
+    }
+    return render(request, 'index.html', context)
 
 @login_required(login_url='/login/')
 def index_director(request):
+    user = get_user_for_view(request)
+    
     show_weekly_menu = False
     show_inventory = False
     show_milk_inventory = False
@@ -170,8 +196,30 @@ def index_director(request):
         # If the user is not a SubUser, default to no permissions (or set defaults as needed)
         pass
 
-    # Render the index_director page without restricting access
-    return render(request, 'index_director.html', {
+    # Ensure order items are always retrieved
+    order_items = OrderList.objects.filter(user=user)
+
+    # --- New: Build classroom ratio cards ---
+    today = date.today()
+    attendance_records = AttendanceRecord.objects.filter(
+    sign_in_time__date=today, 
+    sign_out_time__isnull=True,  # Add this condition to filter only records with NULL sign_out_time
+    user=user
+)
+    # Get the user's classrooms (assuming you have a Classroom model)
+    classrooms = Classroom.objects.filter(user=user)
+    classroom_cards = {}
+    for classroom in classrooms:
+        # Count attendance records where classroom_override equals the classroom name
+        count = attendance_records.filter(classroom_override=classroom.name).count()
+        classroom_cards[classroom.name] = {
+            'count': count,
+            'ratio': classroom.ratios 
+            }
+
+    context = {
+        'order_items': order_items,
+        'classroom_cards': classroom_cards,
         'show_weekly_menu': show_weekly_menu,
         'show_inventory': show_inventory,
         'show_milk_inventory': show_milk_inventory,
@@ -186,7 +234,10 @@ def index_director(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
-    })
+    }
+
+    # Render the index_director page with context
+    return render(request, 'index_director.html', context)
 
 
 @login_required(login_url='/login/')
@@ -836,9 +887,10 @@ def menu(request):
 
 @login_required
 def account_settings(request):
-    success_message = ""  
+    success_message = ""
     allow_access = True
 
+    # Initialize permission flags
     show_weekly_menu = False
     show_inventory = False
     show_milk_inventory = False
@@ -857,7 +909,6 @@ def account_settings(request):
     sub_user = None
 
     try:
-        # Check if the user is a SubUser
         sub_user = SubUser.objects.get(user=request.user)
         group_id = sub_user.group_id.id
 
@@ -878,7 +929,6 @@ def account_settings(request):
             'clock_in': 337,
         }
 
-        # Dynamically check each permission
         for perm_key, perm_id in permissions_ids.items():
             try:
                 role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
@@ -911,9 +961,9 @@ def account_settings(request):
                 elif perm_key == 'clock_in':
                     show_clock_in = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
-                continue  
-
+                continue
     except SubUser.DoesNotExist:
+        # Grant full access if not a SubUser
         allow_access = True
         show_weekly_menu = True
         show_inventory = True
@@ -929,11 +979,50 @@ def account_settings(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
-   
-    if not allow_access:
-            return redirect('no_access')
 
-    # Pass the permission flags and the balance to the template
+    if not allow_access:
+        return redirect('no_access')
+
+    if sub_user and sub_user.main_user.stripe_secret_key:
+        stripe.api_key = sub_user.main_user.stripe_secret_key
+    else:
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    print("Stripe API Key:", stripe.api_key)  # Debug log
+
+    # Process wallet deposit if POST
+    if request.method == "POST":
+        try:
+            amount = float(request.POST.get("amount", 0))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid deposit amount.'}, status=400)
+
+        payment_method = request.POST.get("payment_method")
+        if amount <= 0:
+            return JsonResponse({'error': 'Deposit amount must be positive.'}, status=400)
+        
+        # For cash or check, update the wallet balance directly
+        if payment_method in ["cash", "check"]:
+            sub_user.balance += Decimal(amount)
+            sub_user.save()
+            return JsonResponse({
+                'success': f"${amount} deposited successfully.",
+                'new_balance': str(sub_user.balance)
+            })
+        else:
+            # For card payments, create a Stripe PaymentIntent
+            try:
+                payment_intent = stripe.PaymentIntent.create(
+                    amount = int(amount * 100),  # Convert dollars to cents
+                    currency = "usd",
+                    description = f"Wallet deposit for {request.user.username}",
+                    receipt_email = request.user.email,
+                )
+                return JsonResponse({'client_secret': payment_intent['client_secret']})
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=400)
+        print("Stripe API Key:", stripe.api_key)
+
     return render(request, 'account_settings.html', {
         'show_weekly_menu': show_weekly_menu,
         'show_inventory': show_inventory,
@@ -946,12 +1035,12 @@ def account_settings(request):
         'show_rosters': show_rosters,
         'show_permissions': show_permissions,
         'show_menu_rules': show_menu_rules,
-        'sub_user': sub_user, 
-        'show_billing': show_billing,            
+        'sub_user': sub_user,
+        'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
-        'show_clock_in': show_clock_in, 
+        'show_clock_in': show_clock_in,
+        'stripe_public_key': getattr(sub_user.main_user, 'stripe_public_key', settings.STRIPE_PUBLIC_KEY) if sub_user else settings.STRIPE_PUBLIC_KEY,
     })
-
 
 @login_required
 def menu_rules(request):
@@ -2174,10 +2263,11 @@ def process_code(request):
 
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
+
+
 @login_required
 def daily_attendance(request):
     allow_access = False
-
     show_weekly_menu = False
     show_inventory = False
     show_milk_inventory = False
@@ -2280,13 +2370,41 @@ def daily_attendance(request):
     if not allow_access:
         return redirect('no_access')
 
-    # Proceed with fetching attendance records if access is allowed
     today = date.today()
     user = get_user_for_view(request)
+    students = Student.objects.all() 
+    # Fetch attendance records
     attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=today, user=user)
+
+    # Get classroom names from Classroom model
+    classroom_options = Classroom.objects.filter(user=user).values_list('name', flat=True)
+   
+    attendance_data = {}
+    relative_counts = {}
+
+    # Fetch attendance data and calculate relative counts for each classroom
+    for classroom in Classroom.objects.filter(user=user):
+        populated_records = AttendanceRecord.objects.filter(
+            classroom_override=classroom, 
+            sign_in_time__date=today, 
+            user=user
+        )
+        if populated_records.exists():
+            attendance_data[classroom] = populated_records
+            relative_counts[classroom] = populated_records.filter(sign_out_time__isnull=True).count()
+
+    # Add empty classrooms if there are no records
+    for classroom in Classroom.objects.filter(user=user):
+        if classroom not in attendance_data:
+            attendance_data[classroom] = []
+            relative_counts[classroom] = 0  # No students signed in
 
     return render(request, 'daily_attendance.html', {
         'attendance_records': attendance_records,
+        'relative_counts': relative_counts,
+        'students': students,
+        'classroom_options': classroom_options,
+        'attendance_data': attendance_data,  
         'show_weekly_menu': show_weekly_menu,
         'show_inventory': show_inventory,
         'show_milk_inventory': show_milk_inventory,
@@ -2302,6 +2420,81 @@ def daily_attendance(request):
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
     })
+ 
+@csrf_exempt
+def update_attendance(request):
+    if request.method == 'POST':
+        record_id = request.POST.get('id')
+        field = request.POST.get('field')
+        new_value = request.POST.get('new_value')
+
+        try:
+            record = AttendanceRecord.objects.get(id=record_id)
+
+            if field in ['sign_in_time', 'sign_out_time']:
+                # Get current date and combine it with new time
+                current_date = record.sign_in_time.date() if record.sign_in_time else datetime.today().date()
+                new_value = datetime.strptime(new_value, "%H:%M").time()
+                new_value = datetime.combine(current_date, new_value)  # Convert to datetime
+
+            setattr(record, field, new_value)
+            record.save()
+            return JsonResponse({'status': 'success'})
+        except AttendanceRecord.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Record not found'})
+        except ValueError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid time format'})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+@login_required
+def manual_sign_in_ajax(request):
+    if request.method == 'POST':
+        student_id = request.POST.get('student')
+        sign_in_time_str = request.POST.get('sign_in_time')  # Expecting "HH:MM"
+
+        if student_id:
+            student = get_object_or_404(Student, pk=student_id)
+            today_date = timezone.now().date()
+
+            if sign_in_time_str:
+                try:
+                    # Parse time from string (HH:MM)
+                    time_obj = datetime.strptime(sign_in_time_str, '%H:%M').time()
+                    # Combine with today's date
+                    sign_in_datetime = timezone.make_aware(datetime.combine(today_date, time_obj))
+                except ValueError:
+                    return JsonResponse({'success': False, 'error': 'Invalid time format. Use HH:MM.'}, status=400)
+            else:
+                # If no time is provided, use the current time
+                sign_in_datetime = timezone.now()
+
+            # Use get_user_for_view to determine the correct user
+            assigned_user = get_user_for_view(request)
+
+            # Save record
+            AttendanceRecord.objects.create(
+                user=assigned_user,  # Assigning the user from get_user_for_view
+                student=student,
+                sign_in_time=sign_in_datetime
+            )
+            return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False}, status=400)
+
+
+@login_required
+def delete_attendance(request):
+    if request.method == 'POST':
+        record_id = request.POST.get('id')
+        if record_id:
+            try:
+                record = AttendanceRecord.objects.get(pk=record_id)
+                record.delete()
+                return JsonResponse({'success': True})
+            except AttendanceRecord.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Record not found.'}, status=404)
+    return JsonResponse({'success': False}, status=400)
 
 @login_required
 def rosters(request):
@@ -2685,20 +2878,31 @@ def classroom_options(request):
         'show_clock_in': show_clock_in, 
     })
 
-@login_required 
+@login_required
 def add_classroom(request):
     if request.method == 'POST':
         classroom_name = request.POST.get('className')
-        
+        class_ratios = request.POST.get('classRatio')  # Use correct field name
+
         # Get the current user using get_user_for_view
         user = get_user_for_view(request)
 
-        if classroom_name:
-            new_classroom = Classroom(name=classroom_name, user=user)  # Assign the user to the classroom
-            new_classroom.save()
-            return JsonResponse({'success': True})
-    
-    return JsonResponse({'success': False})
+        # Validate input
+        if not classroom_name or not class_ratios or not class_ratios.isdigit():
+            return JsonResponse({'success': False, 'error': 'Invalid input'})
+
+        # Convert class_ratios to an integer
+        class_ratios = int(class_ratios)
+
+        # Save classroom with the correct field name
+        new_classroom = Classroom(name=classroom_name, ratios=class_ratios, user=user)  # Use 'ratios' instead of 'ratio'
+        new_classroom.save()
+
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+
 
 def delete_classrooms(request):
     if request.method == 'POST':
@@ -3940,11 +4144,17 @@ def permissions(request):
 
     try:
         # Check if the user is a SubUser
-        sub_user = SubUser.objects.get(user=request.user)
-        group_id = sub_user.group_id.id
+        try:
+            sub_user = SubUser.objects.get(user=request.user)
+            user_role_id = sub_user.group_id.id
+            group_id = sub_user.group_id.id
+        except SubUser.DoesNotExist:
+            user_role_id = 1  # Assuming main users have role id 1
+            group_id = 1
+
         required_permission_id = 157  # Permission ID for permissions view
 
-        # Check if the SubUser has permission to access this view
+        # Check if the SubUser (or main user) has permission to access this view
         try:
             role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
             allow_access = role_permission.yes_no_permission
@@ -4028,14 +4238,16 @@ def permissions(request):
     if request.method == "POST":
         for group_id, permissions in request.POST.items():
             if group_id.startswith("permission_"):
-                group_id, permission_id = group_id.split("_")[1], group_id.split("_")[2]
-                group_id, permission_id = int(group_id), int(permission_id)
-                try:
-                    role_permission = RolePermission.objects.get(role_id=group_id, permission_id=permission_id)
-                    role_permission.yes_no_permission = True if permissions == "on" else False
-                    role_permission.save()
-                except RolePermission.DoesNotExist:
-                    pass  # Silent fail, or consider adding a user-friendly message if needed
+                parts = group_id.split("_")
+                if len(parts) >= 3:
+                    grp_id, permission_id = parts[1], parts[2]
+                    grp_id, permission_id = int(grp_id), int(permission_id)
+                    try:
+                        role_permission = RolePermission.objects.get(role_id=grp_id, permission_id=permission_id)
+                        role_permission.yes_no_permission = True if permissions == "on" else False
+                        role_permission.save()
+                    except RolePermission.DoesNotExist:
+                        pass  # Silent fail, or consider adding a user-friendly message if needed
 
         return redirect('permissions')
 
@@ -4045,18 +4257,28 @@ def permissions(request):
     role_permissions = defaultdict(list)
 
     for group in groups:
-        # Fetch the permissions associated with each group, ordered by permission name
-        role_permissions_for_group = RolePermission.objects.filter(role_id=group.id).order_by('permission__name')  # Order by permission name
-        
+        group_role_id = group.id
+        role_permissions_for_group = RolePermission.objects.filter(role_id=group_role_id).order_by('permission__name')
+
         for role_permission in role_permissions_for_group:
             permission = role_permission.permission
-            # Filter out permissions not granted to the user's group
-            if role_permission.yes_no_permission:
-                role_permissions[group.id].append({
+
+            # Apply role-based filtering:
+            # If the current user's role (user_role_id) is lower than the group's role, show all (true & false).
+            # If the roles are equal, show only permissions that are True.
+            if user_role_id < group_role_id:
+                role_permissions[group_role_id].append({
                     'id': permission.id,
                     'permission_name': permission.name,
                     'has_permission': role_permission.yes_no_permission
                 })
+            elif user_role_id == group_role_id:
+                if role_permission.yes_no_permission:
+                    role_permissions[group_role_id].append({
+                        'id': permission.id,
+                        'permission_name': permission.name,
+                        'has_permission': role_permission.yes_no_permission
+                    })
 
     return render(request, 'permissions.html', {
         'groups': groups,
@@ -4520,18 +4742,18 @@ def start_conversation(request, user_id):
     return redirect('conversation', user_id=recipient.id)
 
 
-@login_required
+@login_required 
 def payment_view(request, subuser_id=None):
- # Detect if the request is from a mobile device
+    # Detect if the request is from a mobile device
     is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
         'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
     ])
     
     # If it's a mobile request, redirect to the app_redirect page
     if is_mobile:
-        return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
+        return HttpResponseRedirect(reverse('app_redirect'))
 
-    # Initialize permissions
+    # Initialize permissions (omitted for brevity; same as before)
     allow_access = False
     show_weekly_menu = False
     show_inventory = False
@@ -4555,7 +4777,11 @@ def payment_view(request, subuser_id=None):
         required_permission_id = 331  # Permission ID for "billing"
 
         # Check for required permission
-        allow_access = RolePermission.objects.filter(role_id=group_id, permission_id=required_permission_id, yes_no_permission=True).exists()
+        allow_access = RolePermission.objects.filter(
+            role_id=group_id,
+            permission_id=required_permission_id,
+            yes_no_permission=True
+        ).exists()
 
         # Check additional permissions
         permissions_ids = {
@@ -4576,7 +4802,11 @@ def payment_view(request, subuser_id=None):
         }
 
         for perm_key, perm_id in permissions_ids.items():
-            has_permission = RolePermission.objects.filter(role_id=group_id, permission_id=perm_id, yes_no_permission=True).exists()
+            has_permission = RolePermission.objects.filter(
+                role_id=group_id,
+                permission_id=perm_id,
+                yes_no_permission=True
+            ).exists()
             if perm_key == 'weekly_menu':
                 show_weekly_menu = has_permission
             elif perm_key == 'inventory':
@@ -4624,26 +4854,31 @@ def payment_view(request, subuser_id=None):
         show_payment_setup = True
         show_clock_in = True
 
-
     # Redirect if user does not have the required permission
     if not allow_access:
         return redirect('no_access')
 
-    # Core payment functionality
-    main_user = request.user  # Assume main user if not a SubUser
+    main_user = get_user_for_view(request)
     if not main_user.stripe_secret_key:
         main_user.stripe_secret_key = settings.STRIPE_SECRET_KEY  # Fallback to default test key
 
     stripe.api_key = main_user.stripe_secret_key
 
+    # Handle POST request for creating a payment (unchanged)
     if request.method == "POST" and subuser_id:
         subuser = get_object_or_404(SubUser, id=subuser_id, main_user=main_user)
-        amount = float(request.POST.get('amount'))  # Get amount from the form
+        amount = float(request.POST.get('amount'))
         payment_method = request.POST.get('payment_method')
 
-        existing_payment = Payment.objects.filter(subuser=subuser, amount=amount, status='pending').first()
+        existing_payment = Payment.objects.filter(
+            subuser=subuser,
+            amount=amount,
+            status='pending'
+        ).first()
         if existing_payment:
-            return JsonResponse({'error': 'Payment intent already exists for this subuser and amount.'}, status=400)
+            return JsonResponse({
+                'error': 'Payment intent already exists for this subuser and amount.'
+            }, status=400)
 
         if payment_method in ['cash', 'check']:
             payment = Payment.objects.create(
@@ -4666,9 +4901,33 @@ def payment_view(request, subuser_id=None):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
+    # Get all subusers belonging to the main user
     subusers = SubUser.objects.filter(main_user=main_user, user__groups__id=5)
+    
+    # Build a queryset of payments for these subusers
+    payments = Payment.objects.filter(subuser__in=subusers).select_related(
+        'subuser', 'subuser__user', 'subuser__student'
+    ).order_by('due_date')
+    
+    # Apply filtering based on GET parameters
+    status_filter = request.GET.get('status')
+    if status_filter:
+        payments = payments.filter(status=status_filter)
+    
+    start_date_filter = request.GET.get('start_date')
+    if start_date_filter:
+        payments = payments.filter(start_date__gte=start_date_filter)
+    
+    end_date_filter = request.GET.get('end_date')
+    if end_date_filter:
+        payments = payments.filter(due_date__lte=end_date_filter)
+
     context = {
         'stripe_public_key': main_user.stripe_public_key,
+        'payments': payments,
+        'status_filter': status_filter or '',
+        'start_date_filter': start_date_filter or '',
+        'end_date_filter': end_date_filter or '',
         'subusers': subusers,
         'show_weekly_menu': show_weekly_menu,
         'show_inventory': show_inventory,
@@ -4700,12 +4959,14 @@ def create_payment(request):
             end_date = request.POST.get('end_date')
             notes = request.POST.get('notes')
 
-            # Get SubUser and validate
+            # Get SubUser and Student
             subuser = get_object_or_404(SubUser, id=subuser_id)
+            student = subuser.student  # Get the student from SubUser (adjust based on your model relationships)
 
             # Create Payment
             payment = Payment.objects.create(
                 subuser=subuser,
+                student=student,  # REQUIRED FIELD
                 amount=Decimal(rate),
                 frequency=frequency,
                 start_date=start_date,
@@ -4713,67 +4974,38 @@ def create_payment(request):
                 end_date=None if end_date == '' else end_date,
                 notes=notes,
                 balance=Decimal(rate),
+                next_invoice_date=due_date  # Set initial next_invoice_date to trigger recurring logic
             )
-
-            # Create a periodic task based on frequency
-            #if frequency != 'one-time':
-               # schedule = None
-
-               # if frequency == 'weekly':
-               #     schedule, _ = IntervalSchedule.objects.get_or_create(
-               #         every=1, period=IntervalSchedule.WEEKS
-               #     )
-               # elif frequency == 'monthly':
-                #    schedule, _ = CrontabSchedule.objects.get_or_create(
-                #        minute='0', hour='0', day_of_month='1', month_of_year='*'
-                #    )
-                #elif frequency == 'yearly':
-                #    schedule, _ = CrontabSchedule.objects.get_or_create(
-                #        minute='0', hour='0', day_of_month='1', month_of_year='1'
-                #    )
-
-                # Create the periodic task
-               # PeriodicTask.objects.create(
-                 #   name=f"Recurring Invoice for Payment {payment.id}",
-                 #   task="tottimeapp.tasks.generate_recurring_invoice",
-                 #   interval=schedule if frequency in ['weekly'] else None,
-                 #   crontab=schedule if frequency in ['monthly', 'yearly'] else None,
-                 #   args=json.dumps([payment.id]),  # Pass the payment ID
-                #)
-
             messages.success(request, 'Recurring invoice created successfully.')
             return redirect('payment')
         except Exception as e:
             messages.error(request, f"Error creating payment: {e}")
             return redirect('payment')
 
-    # Frequency choices from the Payment model
-    frequency_choices = Payment._meta.get_field('frequency').choices
-    subusers = SubUser.objects.filter(main_user=request.user.main_user)
-    context = {
-        'subusers': subusers,
-        'frequency_choices': frequency_choices,  # Pass frequency choices to the template
-    }
-    return render(request, 'payment.html', context)
-
 @csrf_exempt
+@login_required
 def create_payment_intent(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            amount = float(data.get('amount'))  # Get the amount from the request body
-            payment_intent = data.get('payment_intent')
+            print(f"Received request body: {request.body}")  # Debugging step
 
-            # Check if the logged-in user is a SubUser
+            data = json.loads(request.body)
+            amount = data.get('amount')  # Get amount from JSON
+
+            if not amount:
+                return JsonResponse({'error': 'Amount is required'}, status=400)
+
+            amount = float(amount)  # Convert to float for safety
+
+            # Ensure the user is either a SubUser or a MainUser
             try:
                 subuser = request.user.subuser
-                main_user = subuser.main_user  # Access MainUser through SubUser
-                description = f"{subuser.user.username}'s payment for student attendance at {main_user.company_name}"
+                main_user = subuser.main_user
+                description = f"{subuser.user.username}'s wallet deposit for {main_user.company_name}"
             except SubUser.DoesNotExist:
-                # If not a SubUser, check if it's a MainUser
                 if isinstance(request.user, MainUser):
-                    main_user = request.user  # request.user is already a MainUser
-                    description = f"{main_user.company_name}'s payment for student attendance"
+                    main_user = request.user
+                    description = f"Wallet deposit for {main_user.company_name}"
                 else:
                     return JsonResponse({'error': 'User is neither a SubUser nor a MainUser'}, status=400)
 
@@ -4782,18 +5014,23 @@ def create_payment_intent(request):
             if not stripe_secret_key:
                 return JsonResponse({'error': 'Stripe secret key is missing for the user.'}, status=400)
 
-            # Set Stripe API key dynamically
-            stripe.api_key = stripe_secret_key
+            print(f"Using Stripe Secret Key: {stripe_secret_key}")  # Debugging step
+            print(f"Stripe Secret Key: {stripe_secret_key}")  # Debugging line
 
-            # Create a Stripe Payment Intent
+            stripe.api_key = stripe_secret_key  # Set Stripe API key dynamically
+
+            # Create a PaymentIntent
             payment_intent = stripe.PaymentIntent.create(
                 amount=int(amount * 100),  # Convert to cents
                 currency="usd",
                 description=description,
+                payment_method_types=["card"],
             )
 
             return JsonResponse({'client_secret': payment_intent.client_secret})
 
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON format in request body'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 

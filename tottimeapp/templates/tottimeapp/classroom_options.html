@@ -354,6 +354,10 @@
                                         <label for="className" class="form-label">Classroom Name</label>
                                         <input type="text" class="form-control" id="className" name="className">
                                     </div>
+                                    <div class="mb-3">
+                                        <label for="classRatio" class="form-label">Student-Teacher Ratio</label>
+                                        <input type="number" class="form-control" id="classRatio" name="classRatio" min="1" required>
+                                    </div>                                    
                                     <button type="submit" class="btn btn-primary">Add</button>
                                 </form>
                             </div>
@@ -436,35 +440,40 @@
     <!-- Your custom JavaScript -->
     <script src="{% static 'js/scripts.js' %}"></script>
     <script>
-     $(document).ready(function() {
+    $(document).ready(function() {
     $('#addClassroomForm').submit(function(e) {
-        e.preventDefault(); // Prevent the form from submitting normally
+        e.preventDefault(); // Prevent default form submission
 
-        // Get the classroom name from the form
         var classroomName = $('#className').val();
+        var classRatio = $('#classRatio').val();
 
-        // Send an AJAX request to the Django view
+        // Ensure classRatio is a whole number
+        if (!Number.isInteger(Number(classRatio)) || classRatio <= 0) {
+            alert("Please enter a valid whole number for the student-teacher ratio.");
+            return;
+        }
+
         $.ajax({
             type: 'POST',
             url: '{% url "add_classroom" %}',
             data: {
                 'className': classroomName,
+                'classRatio': classRatio,
                 'csrfmiddlewaretoken': '{{ csrf_token }}'
             },
             success: function(response) {
                 if (response.success) {
-                    // Reload the page or update the classroom list as needed
                     location.reload();
                 } else {
-                    // Handle error (if any)
                     console.log('Failed to add classroom');
                 }
             },
             error: function(xhr, errmsg, err) {
-                console.log(xhr.status + ": " + xhr.responseText); // Log any errors to the console
+                console.log(xhr.status + ": " + xhr.responseText);
             }
         });
     });
+
     $(document).ready(function() {
     $('#deleteClassroomForm').submit(function(e) {
         e.preventDefault(); // Prevent the form from submitting normally

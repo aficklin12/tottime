@@ -108,6 +108,9 @@ urlpatterns = [
     path('edit_time/', login_required(views.edit_time), name='edit_time'),
     path('delete-time/', login_required(views.delete_time), name='delete_time'),
     path('upload-profile-picture/', login_required(views.upload_profile_picture), name='upload_profile_picture'),
+    path('update_attendance/', login_required(views.update_attendance), name='update_attendance'),
+    path('manual-sign-in-ajax/', login_required(views.manual_sign_in_ajax), name='manual_sign_in_ajax'),
+    path('delete_attendance/', login_required(views.delete_attendance), name='delete_attendance'),
     
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
