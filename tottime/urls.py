@@ -111,7 +111,11 @@ urlpatterns = [
     path('update_attendance/', login_required(views.update_attendance), name='update_attendance'),
     path('manual-sign-in-ajax/', login_required(views.manual_sign_in_ajax), name='manual_sign_in_ajax'),
     path('delete_attendance/', login_required(views.delete_attendance), name='delete_attendance'),
-    
+    path('edit_student/<int:student_id>/', login_required(views.edit_student), name='edit_student'),
+    path('edit_classroom/<int:classroom_id>/', login_required(views.edit_classroom), name='edit_classroom'),
+
+
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

@@ -2879,6 +2879,46 @@ def classroom_options(request):
     })
 
 @login_required
+def edit_student(request, student_id):
+    student = get_object_or_404(Student, id=student_id)
+
+    if request.method == 'POST':
+        print("Received POST data:", request.POST)  # Debugging output
+        first_name = request.POST.get('firstName')
+        last_name = request.POST.get('lastName')
+        dob = request.POST.get('dob')
+        code = request.POST.get('code')
+        classroom_id = request.POST.get('classroom')
+
+        if not first_name or not last_name:
+            return JsonResponse({'success': False, 'error': 'First and last name are required.'})
+
+        classroom = get_object_or_404(Classroom, id=classroom_id)
+
+        student.first_name = first_name
+        student.last_name = last_name
+        student.date_of_birth = dob
+        student.code = code
+        student.classroom = classroom
+        student.save()
+
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method.'})
+
+
+def edit_classroom(request, classroom_id):
+    if request.method == 'POST':
+        classroom = get_object_or_404(Classroom, id=classroom_id)
+        classroom.name = request.POST.get('classroomName')
+        classroom.ratios = request.POST.get('classroomRatio')  # Ensure it's assigned to 'ratios'
+      
+        classroom.save()
+        return JsonResponse({'success': True})
+
+    return JsonResponse({'success': False})
+
+@login_required
 def add_classroom(request):
     if request.method == 'POST':
         classroom_name = request.POST.get('className')

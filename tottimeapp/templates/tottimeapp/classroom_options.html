@@ -73,6 +73,10 @@
     line-height: 1; /* Prevent icon from being too high */
     
 }
+.list-group-item {
+    cursor: pointer;
+}
+
 /* Style for the link text */
 .nav-link {
     color: #ffffff !important; /* Ensure text is completely white */
@@ -284,7 +288,11 @@
                             <div class="card-body">
                                 <ul class="list-group" id="classroomList">
                                     {% for classroom in classrooms %}
-                                        <li class="list-group-item">{{ classroom.name }}</li>
+                                        <li class="list-group-item" data-bs-toggle="modal" data-bs-target="#editClassroomModal"
+                                            data-classroom-id="{{ classroom.id }}" data-classroom-name="{{ classroom.name }}"
+                                            data-classroom-ratios="{{ classroom.ratios }}">
+                                            {{ classroom.name }}
+                                        </li>
                                     {% endfor %}
                                 </ul>
                             </div>
@@ -305,7 +313,13 @@
                                 <ul class="list-group" id="studentList">
                                     {% for classroom in classrooms %}
                                         {% for student in classroom.students %}
-                                            <li class="list-group-item">{{ student.first_name }} {{ student.last_name }}</li>
+                                        <li class="list-group-item" data-bs-toggle="modal" data-bs-target="#editStudentModal"
+                                            data-student-id="{{ student.id }}" data-first-name="{{ student.first_name }}"
+                                            data-last-name="{{ student.last_name }}" data-dob="{{ student.date_of_birth }}"
+                                            data-code="{{ student.code }}" data-classroom="{{ student.classroom.name }}">
+                                            {{ student.first_name }} {{ student.last_name }}
+                                        </li>
+                                
                                         {% endfor %}
                                     {% endfor %}
                                 </ul>
@@ -338,7 +352,82 @@
                         
                     </div>
                 </div>
-            
+                <!-- Edit Classroom Modal -->
+                <div class="modal fade" id="editClassroomModal" tabindex="-1" aria-labelledby="editClassroomModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        {% csrf_token %}
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="editClassroomModalLabel">Edit Classroom</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form id="editClassroomForm">
+                                <div class="modal-body">
+                                    <input type="hidden" id="editClassroomId" name="classroomId"> <!-- Hidden field to store classroom ID -->
+                                    <div class="mb-3">
+                                        <label for="editClassroomName" class="form-label">Classroom Name</label>
+                                        <input type="text" class="form-control" id="editClassroomName" name="classroomName" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editClassroomRatio" class="form-label">Student-Teacher Ratio</label>
+                                        <input type="number" class="form-control" id="editClassroomRatio" name="classroomRatio" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <!-- Edit Student Modal -->
+            <div class="modal fade" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    {% csrf_token %}
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editStudentModalLabel">Edit Student</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form id="editStudentForm">
+                            <div class="modal-body">
+                                <input type="hidden" id="editStudentId" name="studentId"> <!-- Hidden field to store student ID -->
+                                <div class="mb-3">
+                                    <label for="editFirstName" class="form-label">First Name</label>
+                                    <input type="text" class="form-control" id="editFirstName" name="firstName" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editLastName" class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" id="editLastName" name="lastName" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editDob" class="form-label">Date of Birth</label>
+                                    <input type="date" class="form-control" id="editDob" name="dob" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editCode" class="form-label">Code</label>
+                                    <input type="text" class="form-control" id="editCode" name="code" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editClassroom" class="form-label">Classroom</label>
+                                    <select class="form-select" id="editClassroom" name="classroom" required>
+                                        <option selected disabled>Select Classroom</option>
+                                        {% for classroom in classrooms %}
+                                            <option value="{{ classroom.id }}">{{ classroom.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
                 <!-- Add Classroom Modal -->
                 <div class="modal fade" id="addClassroomModal" tabindex="-1" aria-labelledby="addClassroomModalLabel" aria-hidden="true">
                     <div class="modal-dialog">
@@ -440,99 +529,204 @@
     <!-- Your custom JavaScript -->
     <script src="{% static 'js/scripts.js' %}"></script>
     <script>
-    $(document).ready(function() {
-    $('#addClassroomForm').submit(function(e) {
-        e.preventDefault(); // Prevent default form submission
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll("#studentList .list-group-item").forEach(item => {
+                item.addEventListener("click", function () {
+                    const studentId = this.getAttribute("data-student-id");
+                    const firstName = this.getAttribute("data-first-name");
+                    const lastName = this.getAttribute("data-last-name");
+                    const dob = this.getAttribute("data-dob");
+                    const code = this.getAttribute("data-code");
+                    const classroom = this.getAttribute("data-classroom");
 
-        var classroomName = $('#className').val();
-        var classRatio = $('#classRatio').val();
+                    document.getElementById("editStudentId").value = studentId;
+                    document.getElementById("editFirstName").value = firstName;
+                    document.getElementById("editLastName").value = lastName;
+                    document.getElementById("editDob").value = new Date(dob).toISOString().split("T")[0]; // Ensure correct format
+                    document.getElementById("editCode").value = code;
 
-        // Ensure classRatio is a whole number
-        if (!Number.isInteger(Number(classRatio)) || classRatio <= 0) {
-            alert("Please enter a valid whole number for the student-teacher ratio.");
-            return;
-        }
-
-        $.ajax({
-            type: 'POST',
-            url: '{% url "add_classroom" %}',
-            data: {
-                'className': classroomName,
-                'classRatio': classRatio,
-                'csrfmiddlewaretoken': '{{ csrf_token }}'
-            },
-            success: function(response) {
-                if (response.success) {
-                    location.reload();
-                } else {
-                    console.log('Failed to add classroom');
-                }
-            },
-            error: function(xhr, errmsg, err) {
-                console.log(xhr.status + ": " + xhr.responseText);
-            }
-        });
-    });
-
-    $(document).ready(function() {
-    $('#deleteClassroomForm').submit(function(e) {
-        e.preventDefault(); // Prevent the form from submitting normally
-
-        // Get the selected classroom IDs
-        var selectedClassrooms = [];
-        $('input[name="classroomCheckbox"]:checked').each(function() {
-            selectedClassrooms.push($(this).val());
-        });
-
-        // Send an AJAX request to delete the selected classrooms
-        $.ajax({
-            type: 'POST',
-            url: '{% url "delete_classrooms" %}',
-            data: {
-                'classroomIds': selectedClassrooms,
-                'csrfmiddlewaretoken': '{{ csrf_token }}'
-            },
-            success: function(response) {
-                if (response.success) {
-                    // Reload the page or update the classroom list as needed
-                    location.reload();
-                } else {
-                    // Handle error (if any)
-                    console.log('Failed to delete classrooms');
-                }
-            },
-            error: function(xhr, errmsg, err) {
-                console.log(xhr.status + ": " + xhr.responseText); // Log any errors to the console
-            }
-        });
-    });
-});
-});
-    </script>
-     <script>
-        $(document).ready(function() {
-          // Get CSRF token
-          var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
-      
-          $('#addStudentForm').submit(function(e) {
-            e.preventDefault();
-            $.ajax({
-              type: 'POST',
-              url: '{% url "add_student" %}',
-              headers: { "X-CSRFToken": csrftoken }, // Include CSRF token in headers
-              data: $(this).serialize(),
-              success: function(response) {
-                // Handle success
-                $('#addStudentModal').modal('hide');
-                location.reload();
-              },
-              error: function(xhr, status, error) {
-                // Handle errors
-                console.error(xhr.responseText);
-              }
+                    // Set selected classroom
+                    const classroomSelect = document.getElementById("editClassroom");
+                    for (let option of classroomSelect.options) {
+                        if (option.text === classroom) {
+                            option.selected = true;
+                            break;
+                        }
+                    }
+                });
             });
-          });
         });
-      </script>
+    </script>
+    
+    <script>
+        $(document).ready(function () {
+            // CSRF Token Setup
+            var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
+    
+            // Function to handle AJAX requests
+            function sendAjaxRequest(url, data, successCallback) {
+                $.ajax({
+                    type: 'POST',
+                    url: url,
+                    data: data,
+                    headers: { "X-CSRFToken": csrftoken },
+                    success: function (response) {
+                        if (response.success) {
+                            successCallback();
+                        } else {
+                            alert("Operation failed. Please try again.");
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error(xhr.status + ": " + xhr.responseText);
+                    }
+                });
+            }
+    
+            // Add Classroom Form Submission
+            $('#addClassroomForm').submit(function (e) {
+                e.preventDefault();
+                var classroomName = $('#className').val();
+                var classRatio = $('#classRatio').val();
+    
+                // Validate classRatio is a positive integer
+                if (!/^\d+$/.test(classRatio) || parseInt(classRatio) <= 0) {
+                    alert("Please enter a valid whole number for the student-teacher ratio.");
+                    return;
+                }
+    
+                sendAjaxRequest('{% url "add_classroom" %}', {
+                    'className': classroomName,
+                    'classRatio': classRatio,
+                    'csrfmiddlewaretoken': csrftoken
+                }, function () {
+                    location.reload();
+                });
+            });
+    
+            // Delete Classroom Form Submission
+            $('#deleteClassroomForm').submit(function (e) {
+                e.preventDefault();
+                var selectedClassrooms = $('input[name="classroomCheckbox"]:checked')
+                    .map(function () { return $(this).val(); }).get();
+    
+                if (selectedClassrooms.length === 0) {
+                    alert("Please select at least one classroom to delete.");
+                    return;
+                }
+    
+                sendAjaxRequest('{% url "delete_classrooms" %}', {
+                    'classroomIds': selectedClassrooms,
+                    'csrfmiddlewaretoken': csrftoken
+                }, function () {
+                    location.reload();
+                });
+            });
+    
+            // Add Student Form Submission
+            $('#addStudentForm').submit(function (e) {
+                e.preventDefault();
+                sendAjaxRequest('{% url "add_student" %}', $(this).serialize(), function () {
+                    $('#addStudentModal').modal('hide');
+                    location.reload();
+                });
+            });
+    
+            // Edit Student Modal - Populate Fields
+            $('#studentList').on('click', '.student-item', function () {
+                var studentData = $(this).data();
+    
+                $('#editStudentId').val(studentData.studentId);
+                $('#editFirstName').val(studentData.firstName);
+                $('#editLastName').val(studentData.lastName);
+                $('#editDob').val(studentData.dob);
+                $('#editCode').val(studentData.code);
+                $('#editClassroom').val(studentData.classroomId);
+    
+                $('#editStudentModal').modal('show');
+            });
+    
+            // Edit Student Form Submission
+            $('#editStudentForm').submit(function (e) {
+                e.preventDefault();
+                var studentId = $('#editStudentId').val();
+    
+                sendAjaxRequest(`/edit_student/${studentId}/`, $(this).serialize(), function () {
+                    location.reload();
+                });
+            });
+        });
+
+
+
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll("#classroomList .list-group-item").forEach(item => {
+                item.addEventListener("click", function () {
+                    const classroomId = this.getAttribute("data-classroom-id");
+                    const classroomName = this.getAttribute("data-classroom-name");
+                    const classroomRatio = this.getAttribute("data-classroom-ratios");  // Use 'ratios' here
+
+                    document.getElementById("editClassroomId").value = classroomId;
+                    document.getElementById("editClassroomName").value = classroomName;
+                    document.getElementById("editClassroomRatio").value = classroomRatio;
+                });
+            });
+        });
+
+        $(document).ready(function () {
+            // CSRF Token Setup
+            var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
+
+            // Function to handle AJAX requests
+            function sendAjaxRequest(url, data, successCallback) {
+                $.ajax({
+                    type: 'POST',
+                    url: url,
+                    data: data,
+                    headers: { "X-CSRFToken": csrftoken },
+                    success: function (response) {
+                        if (response.success) {
+                            successCallback();
+                        } else {
+                            alert("Operation failed. Please try again.");
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error(xhr.status + ": " + xhr.responseText);
+                    }
+                });
+            }
+
+            // Edit Classroom Form Submission
+            $('#editClassroomForm').submit(function (e) {
+                e.preventDefault();
+                var classroomId = $('#editClassroomId').val();
+                var classroomName = $('#editClassroomName').val();
+                var classroomRatio = $('#editClassroomRatio').val();
+
+                console.log("Sending data to server:", {
+                    classroomId: classroomId,
+                    classroomName: classroomName,
+                    classroomRatio: classroomRatio
+                });
+
+                if (!/^\d+$/.test(classroomRatio) || parseInt(classroomRatio) <= 0) {
+                    alert("Please enter a valid whole number for the student-teacher ratio.");
+                    return;
+                }
+
+                sendAjaxRequest('/edit_classroom/' + classroomId + '/', {
+                    'classroomName': classroomName,
+                    'classroomRatio': classroomRatio,
+                    'csrfmiddlewaretoken': csrftoken
+                }, function () {
+                    location.reload();
+                });
+            });
+        });
+
+    </script>
 </body>
 </html>
