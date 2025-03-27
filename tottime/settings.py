@@ -31,6 +31,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    
 ]
 
 ROOT_URLCONF = "tottime.urls"
@@ -154,3 +155,14 @@ STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "pk_live_CFhVogdafoLSvBgPbbRz
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "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")
 STRIPE_CLIENT_ID = "ca_RKaqTYIkm4UM9fAhUXUs05oUAo5mo7Y8"  # Your platform's client ID
 STRIPE_REDIRECT_URI = "https://tot-time.com/stripe/callback/"
+
+# Square OAuth Credentials (Sandbox)
+SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "sq0idp-86nXqXX8d78U8M99Iozo8Q")
+SQUARE_CLIENT_SECRET = os.getenv("SQUARE_CLIENT_SECRET", "sq0csp-uwRc1ajYJe0ZH7qAG3ITPl266_BXzqawFEy0l4p7VoE")
+SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "EAAAl7H-MQ2Cn8CtUAVu1Qt0mjW42f2KvORUAtWXE4nsWyt1JgS6HwbNPI5jdXaS")
+
+# Square OAuth Redirect URI (Must match what you set in the Square Developer Portal)
+SQUARE_REDIRECT_URI = "http://localhost:8000/square/oauth/callback/"
+
+# Square OAuth Auth URL for sandbox
+SQUARE_AUTH_URL = "https://sandbox.connect.squareup.com/oauth2/authorize"

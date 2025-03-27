@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 import stripe, requests
+import urllib.parse
 from django.conf import settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
@@ -6061,3 +6062,55 @@ def upload_profile_picture(request):
     # If the request is not a POST or no file is provided
     logger.warning("No file provided or request method is not POST")
     return JsonResponse({'success': False}, status=400)
+
+def square_login(request):
+    auth_url = f"https://connect.squareup.com/oauth2/authorize?client_id={settings.SQUARE_APPLICATION_ID}&scope=PAYMENTS_READ+ORDERS_WRITE&session=False&redirect_uri={urllib.parse.quote(settings.SQUARE_REDIRECT_URI)}"
+    return redirect(auth_url)
+
+@login_required
+def square_oauth_callback(request):
+    code = request.GET.get("code")
+    
+    if not code:
+        messages.error(request, "Authorization code not found.")
+        return redirect("dashboard")  # Change to your dashboard URL
+
+    # Exchange the authorization code for an access token
+    token_url = "https://connect.squareup.com/oauth2/token"
+    payload = {
+        "client_id": settings.SQUARE_APPLICATION_ID,  # Use the correct client_id from settings
+        "client_secret": settings.SQUARE_CLIENT_SECRET,  # Use the correct client_secret from settings
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": settings.SQUARE_REDIRECT_URI  # Make sure this matches the redirect URI in Square Developer portal
+    }
+
+    response = requests.post(token_url, json=payload)
+    data = response.json()
+    print(data)  # Log the entire response to see the error message from Square
+
+    if "access_token" in data:
+        # Store tokens in the MainUser model
+        user = request.user
+        user.square_access_token = data["access_token"]
+        user.square_refresh_token = data.get("refresh_token")
+        user.square_merchant_id = data.get("merchant_id")
+        user.save()
+
+        messages.success(request, "Square account linked successfully!")
+        return redirect("index")  # Redirect to a dashboard or success page
+    
+    messages.error(request, f"Failed to link Square account: {data}")
+    return redirect("index")  # Redirect with error message
+
+@login_required
+def square_account_view(request):
+    user = request.user  # MainUser instance
+    square_connected = bool(user.square_access_token)  # Check if Square is linked
+
+    context = {
+        "square_connected": square_connected,
+        "square_login_url": "/square/login/",  # URL for Square login
+    }
+    
+    return render(request, "square.html", context)

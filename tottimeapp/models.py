@@ -360,6 +360,7 @@ class Invitation(models.Model):
     token = models.CharField(max_length=100, unique=True)  # To create unique links
     created_at = models.DateTimeField(auto_now_add=True)
 
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
 class MainUser(AbstractUser):
     first_name = models.CharField(max_length=30, blank=False)
     last_name = models.CharField(max_length=30, blank=False)
@@ -372,6 +373,9 @@ class MainUser(AbstractUser):
     stripe_account_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_public_key = models.CharField(max_length=255, blank=True, null=True)
     stripe_secret_key = models.CharField(max_length=255, blank=True, null=True)
+    square_access_token = models.CharField(max_length=255, blank=True, null=True)
+    square_refresh_token = models.CharField(max_length=255, blank=True, null=True)
+    square_merchant_id = models.CharField(max_length=255, blank=True, null=True)
     code = models.CharField(max_length=4, unique=True, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True, default='profile_pictures/Default_pfp.jpg')
 
@@ -379,58 +383,52 @@ class MainUser(AbstractUser):
         return f"{self.first_name} {self.last_name} - {self.company_name}"
 
     def save(self, *args, **kwargs):
-        # Check if the profile picture is too large
-        if self.profile_picture and self.profile_picture.size > MAX_IMAGE_SIZE:
-            raise ValidationError(f"Profile picture size exceeds the maximum allowed size of {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        # Ensure profile picture exists before checking size
+        if self.profile_picture and hasattr(self.profile_picture, 'size'):
+            if self.profile_picture.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Profile picture size exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
 
-        # Check if the user has uploaded a profile picture
-        if not self.profile_picture:
-            # If not, set the profile picture to the default image
-            default_pic_path = os.path.join('media', 'profile_pictures', 'blank pro pic.avif')
-            if os.path.exists(default_pic_path):
-                with open(default_pic_path, 'rb') as default_pic_file:
-                    self.profile_picture.save('Default_pfp.jpg', default_pic_file, save=False)
-        
-        # Resize the profile picture if it is provided
-        if self.profile_picture:
-            # Open the uploaded image
-            img = Image.open(self.profile_picture)
-            
-            # Ensure the image is in a square shape, resize if necessary
-            width, height = img.size
-            min_dimension = min(width, height)
+        # Set default profile picture if none is uploaded
+        default_pic = 'profile_pictures/Default_pfp.jpg'
+        if not self.profile_picture or not self.profile_picture.name:
+            if default_storage.exists(default_pic):
+                self.profile_picture.name = default_pic
 
-            # Crop the image to a square (center crop)
-            left = (width - min_dimension) / 2
-            top = (height - min_dimension) / 2
-            right = (width + min_dimension) / 2
-            bottom = (height + min_dimension) / 2
-            img = img.crop((left, top, right, bottom))
+        # Resize and process image if provided
+        if self.profile_picture and hasattr(self.profile_picture, 'file'):
+            try:
+                img = Image.open(self.profile_picture)
+                width, height = img.size
+                min_dimension = min(width, height)
 
-            # Create a circular mask
-            mask = Image.new('L', img.size, 0)
-            draw = ImageDraw.Draw(mask)
-            draw.ellipse((0, 0, img.size[0], img.size[1]), fill=255)
+                # Center crop to a square
+                left = (width - min_dimension) / 2
+                top = (height - min_dimension) / 2
+                right = (width + min_dimension) / 2
+                bottom = (height + min_dimension) / 2
+                img = img.crop((left, top, right, bottom))
 
-            # Apply the mask to the image
-            img.putalpha(mask)
+                # Create circular mask
+                mask = Image.new('L', img.size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0, img.size[0], img.size[1]), fill=255)
 
-            # Resize the image to the final 60x60 size (nickel-sized)
-            img = img.resize((60, 60), Image.Resampling.LANCZOS)
+                img.putalpha(mask)
+                img = img.resize((60, 60), Image.Resampling.LANCZOS)
 
-            # Save the resized image to a BytesIO object
-            img_io = BytesIO()
-            img.save(img_io, img.format if img.format else 'PNG')  # Ensure format is set
-            img_io.seek(0)
+                # Save image
+                img_io = BytesIO()
+                img.save(img_io, format='PNG')
+                img_io.seek(0)
+                self.profile_picture.save(self.profile_picture.name, img_io, save=False)
 
-            # Save the resized image back to the model's field
-            self.profile_picture = default_storage.save(self.profile_picture.name, img_io)
-        
-        # Check if the user is in "Parent" or "Free User" groups (IDs 5 or 6)
+            except Exception as e:
+                print(f"Error processing image: {e}")
+
+        # Generate unique code for users not in 'Parent' or 'Free User' groups
         if not self.code and not self.groups.filter(id__in=[5, 6]).exists():
             self.code = self.generate_unique_code()
 
-        # Save the model instance
         super(MainUser, self).save(*args, **kwargs)
 
     def generate_unique_code(self):

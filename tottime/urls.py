@@ -113,6 +113,11 @@ urlpatterns = [
     path('delete_attendance/', login_required(views.delete_attendance), name='delete_attendance'),
     path('edit_student/<int:student_id>/', login_required(views.edit_student), name='edit_student'),
     path('edit_classroom/<int:classroom_id>/', login_required(views.edit_classroom), name='edit_classroom'),
+    path("square/", login_required(views.square_account_view), name="square_account"),
+    path("square/login/", views.square_login, name="square_login"),
+    path("square/callback/", views.square_oauth_callback, name="square_callback"),
+    path('square/oauth/callback/', views.square_oauth_callback, name='square_oauth_callback'),
+    path('square/account/', views.square_account_view, name='square_account_view'),
 
 
 

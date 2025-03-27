@@ -233,30 +233,19 @@
         <div id="layoutSidenav_content">
             <main>
                 <div class="container-fluid px-4">
-                    <h1>Connect Your Stripe Account</h1>
-                    {% if status == 'success' %}
-                        <p>Your Stripe account has been successfully connected!</p>
-                    {% elif status == 'error' %}
-                        <p>There was an error connecting your Stripe account. Please try again later.</p>
-                    {% else %}
-                        <p>Click the button below to connect your Stripe account.</p>
-                        <a href="{% url 'stripe_connect' %}" class="btn btn-primary">
-                            Connect with Stripe
-                        </a>
-                    {% endif %}
-                    {% if messages %}
-                        <ul>
-                            {% for message in messages %}
-                                <li class="alert alert-{{ message.tags }}">{{ message }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% endif %}
-                    <a href="{% url 'square_account' %}" class="btn btn-primary">
-                        Connect with Square
-                    </a>
+                {% block content %}
+                      <div class="container">
+                        <h2>Square Integration</h2>
                     
-                </div>
-                
+                        {% if square_connected %}
+                          <p>Your Square account is connected!</p>
+                        {% else %}
+                          <p>You haven't connected your Square account yet.</p>
+                          <a href="{{ square_login_url }}" class="btn btn-primary">Connect with Square</a>
+                        {% endif %}
+                      </div>
+                    {% endblock %}
+                    
             </main>
             
     <!-- JavaScript imports and custom scripts -->
