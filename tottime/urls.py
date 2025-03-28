@@ -118,6 +118,8 @@ urlpatterns = [
     path("square/callback/", views.square_oauth_callback, name="square_callback"),
     path('square/oauth/callback/', views.square_oauth_callback, name='square_oauth_callback'),
     path('square/account/', views.square_account_view, name='square_account_view'),
+    path('pay_summary/', login_required(views.pay_summary), name='pay_summary'),
+    path('process_payment/', views.process_payment, name='process_payment'),
 
 
 

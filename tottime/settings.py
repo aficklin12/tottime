@@ -157,10 +157,10 @@ STRIPE_CLIENT_ID = "ca_RKaqTYIkm4UM9fAhUXUs05oUAo5mo7Y8"  # Your platform's clie
 STRIPE_REDIRECT_URI = "https://tot-time.com/stripe/callback/"
 
 # Square OAuth Credentials (Sandbox)
-SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "sq0idp-86nXqXX8d78U8M99Iozo8Q")
-SQUARE_CLIENT_SECRET = os.getenv("SQUARE_CLIENT_SECRET", "sq0csp-uwRc1ajYJe0ZH7qAG3ITPl266_BXzqawFEy0l4p7VoE")
-SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "EAAAl7H-MQ2Cn8CtUAVu1Qt0mjW42f2KvORUAtWXE4nsWyt1JgS6HwbNPI5jdXaS")
-
+SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID")
+SQUARE_CLIENT_SECRET = os.getenv("SQUARE_CLIENT_SECRET")
+SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN")
+SQUARE_LOCATION_ID = os.getenv("SQUARE_LOCATION_ID")
 # Square OAuth Redirect URI (Must match what you set in the Square Developer Portal)
 SQUARE_REDIRECT_URI = "http://localhost:8000/square/oauth/callback/"
 

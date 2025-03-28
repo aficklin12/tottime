@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.db.models import Q
 import stripe, requests
 import urllib.parse
+from square.client import Client
 from django.conf import settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
@@ -6105,12 +6106,316 @@ def square_oauth_callback(request):
 
 @login_required
 def square_account_view(request):
-    user = request.user  # MainUser instance
+    user = get_user_for_view(request)
     square_connected = bool(user.square_access_token)  # Check if Square is linked
+
+    # Initialize all permissions to False
+    allow_access = False
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+        required_permission_id = 332
+
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
+
+        # Check additional permissions based on the same group_id
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332, 
+            'clock_in': 337,  
+        }
+
+        # Dynamically check each permission
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue  
+
+    except SubUser.DoesNotExist:
+        # If user is not a SubUser, grant access by default (assuming main user)
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    # Redirect to 'no_access' page if access is not allowed
+    if not allow_access:
+        return redirect('no_access')
 
     context = {
         "square_connected": square_connected,
         "square_login_url": "/square/login/",  # URL for Square login
+        "show_weekly_menu": show_weekly_menu,
+        "show_inventory": show_inventory,
+        "show_milk_inventory": show_milk_inventory,
+        "show_meal_count": show_meal_count,
+        "show_classroom_options": show_classroom_options,
+        "show_recipes": show_recipes,
+        "show_sign_in": show_sign_in,
+        "show_daily_attendance": show_daily_attendance,
+        "show_rosters": show_rosters,
+        "show_permissions": show_permissions,
+        "show_menu_rules": show_menu_rules,
+        "show_billing": show_billing,            
+        "show_payment_setup": show_payment_setup,
+        "show_clock_in": show_clock_in, 
     }
+
+    return render(request, 'square.html', context)
+
+@login_required
+def pay_summary(request):
+    success_message = ""
+    allow_access = True
+
+    # Initialize permission flags
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False  
+    show_menu_rules = False  
+    show_billing = False          
+    show_payment_setup = False
+    show_clock_in = False
+
+    sub_user = None
+    user = get_user_for_view(request)
+
+    try:
+        sub_user = SubUser.objects.get(user=user)
+        group_id = sub_user.group_id.id
+
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157, 
+            'menu_rules': 266,
+            'billing': 331,          
+            'payment_setup': 332,   
+            'clock_in': 337,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue
+    except SubUser.DoesNotExist:
+        # Grant full access if not a SubUser
+        allow_access = True
+        show_weekly_menu = True
+        show_inventory = True
+        show_milk_inventory = True
+        show_meal_count = True
+        show_classroom_options = True
+        show_recipes = True
+        show_sign_in = True
+        show_daily_attendance = True
+        show_rosters = True
+        show_permissions = True
+        show_menu_rules = True
+        show_billing = True
+        show_payment_setup = True
+        show_clock_in = True
+
+    if not allow_access:
+        return redirect('no_access')
+
+    # Retrieve the square credentials from the MainUser model
+    main_user = get_user_for_view(request)
+    square_application_id = main_user.square_merchant_id
+    square_access_id = main_user.square_access_token  # Changed from square_location_id to square_merchant_id
+
+    return render(request, 'pay_summary.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'sub_user': sub_user,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in,
+        'SQUARE_APPLICATION_ID': settings.SQUARE_APPLICATION_ID,
+        'SQUARE_LOCATION_ID': main_user.square_location_id,
+        
+    })
+
+@csrf_exempt
+def process_payment(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            main_user = get_user_for_view(request)
+            
+            # Validate Square credentials
+            if not all([
+                main_user.square_access_token,
+                main_user.square_location_id,
+                settings.SQUARE_APPLICATION_ID
+            ]):
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Square payment system not configured'
+                })
+            
+           # Initialize Square client
+            square_client = Client(
+                access_token=main_user.square_access_token,
+                environment='sandbox' if settings.DEBUG else 'production'
+            )
+
+            # Validate amount
+            try:
+                amount = int(float(data['amount']) * 100)
+                if amount <= 0:
+                    raise ValueError
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'error': 'Invalid amount'})
+
+             # Create payment
+            result = square_client.payments.create_payment(
+                body={
+                    "source_id": data['token'],
+                    "amount_money": {
+                        "amount": amount,
+                        "currency": "USD"
+                    },
+                    "idempotency_key": str(uuid.uuid4()),
+                    "autocomplete": True,
+                    "customer_id": f"user_{request.user.id}",  # Optional customer tracking
+                    "note": f"Wallet top-up for {request.user.email}"
+                }
+            )
+            if result.is_success():
+                # Update balance using atomic update
+                SubUser.objects.filter(user=request.user).update(
+                    balance=models.F('balance') + float(data['amount'])
+                )
+                return JsonResponse({'success': True})
+            
+            return JsonResponse({'success': False, 'error': result.errors})
+            
+        except Exception as e:
+            logger.error(f"Payment error: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
     
-    return render(request, "square.html", context)
+    return JsonResponse({'success': False, 'error': 'Invalid method'})

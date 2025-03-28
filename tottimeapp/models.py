@@ -376,6 +376,7 @@ class MainUser(AbstractUser):
     square_access_token = models.CharField(max_length=255, blank=True, null=True)
     square_refresh_token = models.CharField(max_length=255, blank=True, null=True)
     square_merchant_id = models.CharField(max_length=255, blank=True, null=True)
+    square_location_id = models.CharField(max_length=255, blank=True, null=True)
     code = models.CharField(max_length=4, unique=True, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True, default='profile_pictures/Default_pfp.jpg')
 

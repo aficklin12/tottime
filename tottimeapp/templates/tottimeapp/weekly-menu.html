@@ -240,7 +240,7 @@ th, td {
             <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
                 <div class="sb-sidenav-menu">
                     <div class="nav">
-                        <div class="sb-sidenav-menu-heading">Main</div>
+                        <div class="sb-sidenav-menu-heading"></div>
                         {% if show_sign_in or show_daily_attendance or show_rosters %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
                             <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
@@ -294,11 +294,10 @@ th, td {
                         <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
                                 {% if show_billing %}
+                                <a class="nav-link" href="{% url 'pay_summary' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Pay Summary</a>
                                 <a class="nav-link" href="{% url 'payment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Billing</a>
                                 {% endif %}
-                                {% if show_payment_setup %}
-                                <a class="nav-link" href="{% url 'stripe' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Payment Set-Up</a>
-                                {% endif %}
+                                
                                 
                             </nav>
                         </div>
@@ -338,7 +337,10 @@ th, td {
                                 {% endif %}
                                 {% if show_permissions %}
                                 <a class="nav-link" href="{% url 'permissions' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Permissions</a>
-                                {% endif %}                             
+                                {% endif %}   
+                                {% if show_payment_setup %}
+                                <a class="nav-link" href="{% url 'square_account' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Payment Set-Up</a>
+                                {% endif %}                          
                             </nav>
                         </div>  
                         {% endif %}
