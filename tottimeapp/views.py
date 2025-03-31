@@ -6411,8 +6411,10 @@ def process_payment(request):
                 SubUser.objects.filter(user=request.user).update(
                     balance=models.F('balance') + float(data['amount'])
                 )
-                return JsonResponse({'success': True})
-            
+                return JsonResponse({
+                    'success': True, 
+                    'message': f'Confirmation of payment: ${data["amount"]} successfully added to wallet.'
+                })
             return JsonResponse({'success': False, 'error': result.errors})
             
         except Exception as e:
