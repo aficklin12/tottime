@@ -297,15 +297,22 @@
 
  
             <script>
-                // Initialize Square payment form with proper styling
-                async function initializeSquarePayment() {
-                    const payments = Square.payments(
-                        '{{ SQUARE_APPLICATION_ID }}',
-                        '{{ SQUARE_LOCATION_ID }}'
-                    );
-                    
-                    
+              async function initializeSquarePayment() {
+                if (!window.Square) {
+                    throw new Error("Square.js failed to load.");
                 }
+
+                const payments = Square.payments(
+                    '{{ SQUARE_APPLICATION_ID }}',
+                    '{{ SQUARE_LOCATION_ID }}'
+                );
+
+                const card = await payments.card();
+                await card.attach('#card-container'); // Ensure card UI is attached
+
+                return card;
+            }
+
                 </script>
 
             <script>
@@ -346,6 +353,10 @@
                 async function processPayment(amount) {
                     try {
                         const card = await initializeSquarePayment();
+                        if (!card) {
+                            throw new Error('Failed to initialize Square payment.');
+                        }
+
                         const tokenResult = await card.tokenize();
                         
                         if (tokenResult.status !== 'OK') {
