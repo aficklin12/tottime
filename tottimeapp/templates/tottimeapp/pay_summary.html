@@ -297,7 +297,9 @@
 
  
             <script>
-              async function initializeSquarePayment() {
+              let card; // Store card instance globally
+
+            async function initializeSquarePayment() {
                 if (!window.Square) {
                     throw new Error("Square.js failed to load.");
                 }
@@ -307,86 +309,92 @@
                     '{{ SQUARE_LOCATION_ID }}'
                 );
 
-                const card = await payments.card();
+                card = await payments.card();
                 await card.attach('#card-container'); // Ensure card UI is attached
-
-                return card;
             }
 
-                </script>
-
-            <script>
-                document.getElementById('payment-form').addEventListener('submit', async (event) => {
-                    event.preventDefault();
-                    const submitButton = document.getElementById('submit-button');
-                    const spinner = submitButton.querySelector('.spinner-border');
-                    const statusDiv = document.getElementById('payment-status');
-                    
-                    submitButton.disabled = true;
-                    spinner.classList.remove('d-none');
-                    statusDiv.innerHTML = '';
-                
-                    try {
-                        // Validate amount
-                        const amountInput = document.getElementById('amount');
-                        if (amountInput.value < 1) {
-                            throw new Error('Minimum amount is $1.00');
-                        }
-                
-                        // Process payment
-                        const paymentResult = await processPayment(amountInput.value);
-                        
-                        if (paymentResult.success) {
-                            statusDiv.innerHTML = `<div class="alert alert-success">${paymentResult.message}</div>`;
-                            setTimeout(() => location.reload(), 2000);
-                        } else {
-                            throw new Error(paymentResult.error);
-                        }
-                    } catch (error) {
-                        statusDiv.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
-                    } finally {
-                        submitButton.disabled = false;
-                        spinner.classList.add('d-none');
+            // Initialize Square payment when the modal is shown
+            document.getElementById('paymentModal').addEventListener('shown.bs.modal', async () => {
+                try {
+                    if (!card) { // Only initialize if not already initialized
+                        await initializeSquarePayment();
                     }
-                });
-                
-                async function processPayment(amount) {
-                    try {
-                        const card = await initializeSquarePayment();
-                        if (!card) {
-                            throw new Error('Failed to initialize Square payment.');
-                        }
-
-                        const tokenResult = await card.tokenize();
-                        
-                        if (tokenResult.status !== 'OK') {
-                            throw new Error(tokenResult.errors[0].message || 'Card tokenization failed');
-                        }
-
-                        const response = await fetch('/process-payment/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': '{{ csrf_token }}'
-                            },
-                            body: JSON.stringify({
-                                token: tokenResult.token,
-                                amount: amount,
-                                currency: 'USD'
-                            })
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-
-                        return response.json();
-                    } catch (error) {
-                        console.error('Payment processing error:', error);
-                        throw error;
-                    }
+                } catch (error) {
+                    console.error('Error initializing Square payment:', error);
                 }
+            });
+
+            // Handle form submission
+            document.getElementById('payment-form').addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const submitButton = document.getElementById('submit-button');
+                const spinner = submitButton.querySelector('.spinner-border');
+                const statusDiv = document.getElementById('payment-status');
+
+                submitButton.disabled = true;
+                spinner.classList.remove('d-none');
+                statusDiv.innerHTML = '';
+
+                try {
+                    // Validate amount
+                    const amountInput = document.getElementById('amount');
+                    if (amountInput.value < 1) {
+                        throw new Error('Minimum amount is $1.00');
+                    }
+
+                    // Process payment
+                    const paymentResult = await processPayment(amountInput.value);
+
+                    if (paymentResult.success) {
+                        statusDiv.innerHTML = `<div class="alert alert-success">${paymentResult.message}</div>`;
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        throw new Error(paymentResult.error);
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+                } finally {
+                    submitButton.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+
+            async function processPayment(amount) {
+                try {
+                    if (!card) {
+                        throw new Error('Payment method is not initialized. Please try again.');
+                    }
+
+                    const tokenResult = await card.tokenize();
+
+                    if (tokenResult.status !== 'OK') {
+                        throw new Error(tokenResult.errors[0].message || 'Card tokenization failed');
+                    }
+
+                    const response = await fetch('/process-payment/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            token: tokenResult.token,
+                            amount: amount,
+                            currency: 'USD'
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    return response.json();
+                } catch (error) {
+                    console.error('Payment processing error:', error);
+                    throw error;
+                }
+            }
+
+
                 </script>
                 
-        </body>
-        </html>
