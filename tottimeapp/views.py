@@ -6353,7 +6353,7 @@ def pay_summary(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
-        'SQUARE_APPLICATION_ID': main_user.square_merchant_id,
+        'SQUARE_APPLICATION_ID': settings.SQUARE_APPLICATION_ID,
         'SQUARE_LOCATION_ID': main_user.square_location_id,
         'SQUARE_ACCESS_TOKEN': main_user.square_access_token,
         
@@ -6381,9 +6381,9 @@ def process_payment(request):
            # Initialize Square client
             square_client = Client(
                 access_token=main_user.square_access_token,
-                environment='sandbox' if settings.DEBUG else 'production'
+                environment='sandbox' 
             )
-
+            
             # Validate amount
             try:
                 amount = int(float(data['amount']) * 100)
