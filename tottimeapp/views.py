@@ -6335,8 +6335,7 @@ def pay_summary(request):
 
     # Retrieve the square credentials from the MainUser model
     main_user = get_user_for_view(request)
-    square_application_id = main_user.square_merchant_id
-    square_access_id = main_user.square_access_token  # Changed from square_location_id to square_merchant_id
+    
 
     return render(request, 'pay_summary.html', {
         'show_weekly_menu': show_weekly_menu,
@@ -6354,8 +6353,10 @@ def pay_summary(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
-        'SQUARE_APPLICATION_ID': settings.SQUARE_APPLICATION_ID,
+        'SQUARE_APPLICATION_ID': main_user.square_merchant_id,
         'SQUARE_LOCATION_ID': main_user.square_location_id,
+        'SQUARE_ACCESS_TOKEN': main_user.square_access_token,
+        
         
     })
 
@@ -6370,7 +6371,7 @@ def process_payment(request):
             if not all([
                 main_user.square_access_token,
                 main_user.square_location_id,
-                settings.SQUARE_APPLICATION_ID
+                main_user.square_merchant_id
             ]):
                 return JsonResponse({
                     'success': False, 
