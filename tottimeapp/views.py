@@ -15,7 +15,7 @@ from django.contrib import messages
 from .forms import SignupForm, LoginForm, RuleForm, MessageForm
 from .models import Inventory, Recipe, BreakfastRecipe, Classroom, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord
 from .models import MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
-from .models import Message, Conversation, Payment, TeacherAttendanceRecord
+from .models import Message, Conversation, Payment, TeacherAttendanceRecord,  PaymentRecord
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponse
@@ -6648,7 +6648,6 @@ def pay_summary(request):
         'SQUARE_ACCESS_TOKEN': main_user.square_access_token if hasattr(main_user, 'square_access_token') else None,            
     })
 
-
 @csrf_exempt
 def process_payment(request):
     if request.method == 'POST':
@@ -6663,19 +6662,19 @@ def process_payment(request):
                 main_user.square_merchant_id
             ]):
                 return JsonResponse({
-                    'success': False, 
+                    'success': False,
                     'error': 'Square payment system not configured'
                 })
 
             # Initialize Square client
             square_client = Client(
                 access_token=main_user.square_access_token,
-                environment='sandbox'  # change to 'production' in live environment
+                environment='sandbox'  # Change to 'production' for live
             )
 
             # Validate amount
             try:
-                amount = int(float(data['amount']) * 100)  # convert dollars to cents
+                amount = int(float(data['amount']) * 100)  # Convert to cents
                 if amount <= 0:
                     raise ValueError
             except (ValueError, TypeError):
@@ -6697,12 +6696,25 @@ def process_payment(request):
             )
 
             if result.is_success():
-                # Only update balance if SubUser exists
+                # Only update balance and record payment if SubUser exists
                 try:
-                    # Use Decimal to prevent rounding issues and F-expression for atomic update
-                    SubUser.objects.filter(user=request.user).update(
-                        balance=models.F('balance') + Decimal(str(data['amount']))
+                    subuser = SubUser.objects.get(user=request.user)
+
+                    # Safely update balance
+                    added_amount = Decimal(str(data['amount']))
+                    SubUser.objects.filter(pk=subuser.pk).update(
+                        balance=models.F('balance') + added_amount
                     )
+
+                    # Create a PaymentRecord
+                    PaymentRecord.objects.create(
+                        main_user=subuser.main_user,
+                        subuser=subuser,
+                        amount=added_amount,
+                        source='card',
+                        note='Wallet top-up via Square'
+                    )
+
                 except SubUser.DoesNotExist:
                     return JsonResponse({'success': False, 'error': 'SubUser account not found'})
 

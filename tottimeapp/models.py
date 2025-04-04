@@ -580,3 +580,24 @@ class Payment(models.Model):
             return self.due_date + timedelta(days=365)
         return None
 
+class PaymentRecord(models.Model):
+    PAYMENT_SOURCES = [
+        ('card', 'Card (Online)'),
+        ('manual', 'Manual Entry'),
+        ('balance', 'Balance Used'),
+        ('refund', 'Refund Issued'),
+        ('other', 'Other'),
+    ]
+
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='payment_records')
+    subuser = models.ForeignKey('SubUser', on_delete=models.CASCADE, related_name='payment_records')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    source = models.CharField(max_length=10, choices=PAYMENT_SOURCES, default='card')
+    note = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"${self.amount:.2f} from {self.subuser.user.username} ({self.get_source_display()}) on {self.timestamp.strftime('%Y-%m-%d')}"
+
+    class Meta:
+        ordering = ['-timestamp']
