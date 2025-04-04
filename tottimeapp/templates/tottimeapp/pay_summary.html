@@ -28,8 +28,15 @@
             font-weight: bold;
             font-size: 40px;
         }
-
-
+        h2 {
+            margin-top: 20px;
+            margin-left: 10px;
+            font-size: 30px;
+        }
+        p {
+            margin-top: 20px;
+            margin-left: 10px;
+        }
 .sb-nav-link-icon i {
     color: rgb(57, 189, 180);
     font-size: 1.2rem; /* Icon size */
@@ -60,6 +67,50 @@
     margin-left: 0; /* Reset any left margin if needed */
     border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
     overflow: visible; /* Ensure no clipping occurs */
+}
+.btn-primary {
+    margin-top: 12px;
+    margin-left: 10px;
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+}
+.btn-primary:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+.balance-box {
+    background:  #2d2c30;
+    border-radius: 12px;
+    padding: 15px 25px;
+    margin: 30px 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #fff;
+    font-weight: bold;
+    font-size: 28px;
+    text-align: center;
+    transition: transform 0.2s ease-in-out;
+    width: 210px
+}
+
+.balance-box:hover {
+    transform: scale(1.02);
+}
+.balance-label {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: #ccc;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.balance-amount {
+    font-size: 36px;
+    font-weight: bold;
+    color: #fff;
 }
 
 
@@ -149,15 +200,17 @@
                         {% endif %}
 
 
-                        {% if show_billing or show_payment_setup %}
+                        {% if show_billing or show_payment_setup or show_pay_summary %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
                             <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> Payments
                             <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                         </a>
                         <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_billing %}
+                                {% if show_pay_summary %}
                                 <a class="nav-link" href="{% url 'pay_summary' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Pay Summary</a>
+                                {% endif %}
+                                {% if show_billing %}
                                 <a class="nav-link" href="{% url 'payment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Billing</a>
                                 {% endif %}
                                 
@@ -217,42 +270,28 @@
         <div id="layoutSidenav_content">
             <main>
                 <div class="container-fluid px-4">
-                    <h1>Account</h1>
+                    <h1>Pay Summary</h1>
                 </div>
         
-                <!-- Profile Picture Section -->
-                <div class="container-fluid px-4">
-                    <label for="profilePictureInput" style="cursor: pointer;">
-                        <img 
-                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            id="profilePicture" 
-                            style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
-                    </label>
-                    <!-- Hidden file input to upload a new profile picture -->
-                    <input 
-                        type="file" 
-                        id="profilePictureInput" 
-                        name="profile_picture" 
-                        accept="image/*" 
-                        style="display: none;" 
-                        onchange="uploadProfilePicture()">
-                </div>
+                
         
                 <!-- Wallet Section -->
                 <div class="container-fluid px-4">
-                    <h2>Add Funds to Wallet</h2>
-                </div>
-                <div class="container-fluid px-4">
                     {% if sub_user %}
-                        <p>Current Balance: ${{ sub_user.balance }}</p>
+                        <div class="balance-box">
+                            <div class="balance-label">Current Balance</div>
+                            <div class="balance-amount">${{ sub_user.balance }}</div>
+                        </div>
                     {% else %}
-                        <p>No balance available.</p>
+                        <div class="balance-box">
+                            <div class="balance-label">No balance available</div>
+                        </div>
                     {% endif %}
                 </div>
+                
                 <div class="container-fluid px-4 mb-4">
                     <button id="card-deposit-button" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paymentModal">
-                        Add Funds to your Wallet
+                        Add Funds
                     </button>
                 </div>
                 <!-- Payment Modal -->

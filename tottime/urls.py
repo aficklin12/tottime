@@ -12,6 +12,7 @@ urlpatterns = [
     path('', login_required(views.index), name='index'),  
     path('index.html', login_required(views.index), name='index'),  
     path('index_director.html', login_required(views.index_director), name='index_director'),  
+    path('index_teacher_parent.html', login_required(views.index_teacher_parent), name='index_teacher_parent'),  
     path('index_teacher.html', login_required(views.index_teacher), name='index_teacher'),  
     path('index_cook.html', login_required(views.index_cook), name='index_cook'),  
     path('index_parent.html', login_required(views.index_parent), name='index_parent'),  

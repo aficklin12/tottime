@@ -450,15 +450,7 @@ class SubUser(models.Model):
     def __str__(self):
         return f"SubUser: {self.user.username} linked to MainUser: {self.main_user.username}"
     
-    def deposit_funds(self, amount):
-        """Parent deposits money to their balance."""
-        self.balance += amount
-        self.save()
     
-    def deduct_tuition(self, tuition_fee):
-        """Deduct weekly tuition and handle negative balances (amount owed)."""
-        self.balance -= tuition_fee
-        self.save()
     
 class Roster(models.Model):
     classroom = models.ForeignKey('Classroom', on_delete=models.CASCADE, related_name='rosters')

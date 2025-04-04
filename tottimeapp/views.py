@@ -85,6 +85,8 @@ def index(request):
             return redirect('index_cook')
         elif group_id == 5:
             return redirect('index_parent')
+        elif group_id == 7:
+            return redirect('index_teacher_parent')
         elif group_id == 6:
             return redirect('index_free_user')
     except SubUser.DoesNotExist:
@@ -136,7 +138,9 @@ def index_director(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
+    
     try:
         # Check if the user is a SubUser
         sub_user = SubUser.objects.get(user=request.user)
@@ -158,6 +162,7 @@ def index_director(request):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -191,6 +196,8 @@ def index_director(request):
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
                     show_clock_in = role_permission.yes_no_permission  
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission  
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -236,6 +243,7 @@ def index_director(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary': show_pay_summary,
     }
 
     # Render the index_director page with context
@@ -258,6 +266,7 @@ def index_teacher(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -280,6 +289,7 @@ def index_teacher(request):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -312,7 +322,9 @@ def index_teacher(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission 
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue
 
@@ -336,10 +348,11 @@ def index_teacher(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required(login_url='/login/')
-def index_cook(request):
+def index_teacher_parent(request):
     show_weekly_menu = False
     show_inventory = False
     show_milk_inventory = False
@@ -354,6 +367,7 @@ def index_cook(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -376,6 +390,7 @@ def index_cook(request):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -408,7 +423,110 @@ def index_cook(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission 
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
+            except RolePermission.DoesNotExist:
+                continue
+
+    except SubUser.DoesNotExist:
+        # If the user is not a SubUser, default to no permissions (or set defaults as needed)
+        pass
+
+    # Render the index_director page without restricting access
+    return render(request, 'index_teacher_parent.html', {
+        'show_weekly_menu': show_weekly_menu,
+        'show_inventory': show_inventory,
+        'show_milk_inventory': show_milk_inventory,
+        'show_meal_count': show_meal_count,
+        'show_classroom_options': show_classroom_options,
+        'show_recipes': show_recipes,
+        'show_sign_in': show_sign_in,
+        'show_daily_attendance': show_daily_attendance,
+        'show_rosters': show_rosters,
+        'show_permissions': show_permissions,
+        'show_menu_rules': show_menu_rules,
+        'show_billing': show_billing,
+        'show_payment_setup': show_payment_setup,
+        'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
+    })
+
+@login_required(login_url='/login/')
+def index_cook(request):
+    show_weekly_menu = False
+    show_inventory = False
+    show_milk_inventory = False
+    show_meal_count = False
+    show_classroom_options = False
+    show_recipes = False
+    show_sign_in = False
+    show_daily_attendance = False
+    show_rosters = False
+    show_permissions = False
+    show_menu_rules = False
+    show_billing = False
+    show_payment_setup = False
+    show_clock_in = False
+    show_pay_summary = False
+
+    try:
+        # Check if the user is a SubUser
+        sub_user = SubUser.objects.get(user=request.user)
+        group_id = sub_user.group_id.id
+
+        # Dynamically check permissions
+        permissions_ids = {
+            'weekly_menu': 271,
+            'inventory': 272,
+            'milk_inventory': 270,
+            'meal_count': 269,
+            'classroom_options': 268,
+            'recipes': 267,
+            'sign_in': 273,
+            'daily_attendance': 274,
+            'rosters': 275,
+            'permissions': 157,
+            'menu_rules': 266,
+            'billing': 331,
+            'payment_setup': 332,
+            'clock_in': 337,
+            'pay_summary': 346,
+        }
+
+        for perm_key, perm_id in permissions_ids.items():
+            try:
+                role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                if perm_key == 'weekly_menu':
+                    show_weekly_menu = role_permission.yes_no_permission
+                elif perm_key == 'inventory':
+                    show_inventory = role_permission.yes_no_permission
+                elif perm_key == 'milk_inventory':
+                    show_milk_inventory = role_permission.yes_no_permission
+                elif perm_key == 'meal_count':
+                    show_meal_count = role_permission.yes_no_permission
+                elif perm_key == 'permissions':
+                    show_permissions = role_permission.yes_no_permission
+                elif perm_key == 'menu_rules':
+                    show_menu_rules = role_permission.yes_no_permission
+                elif perm_key == 'classroom_options':
+                    show_classroom_options = role_permission.yes_no_permission
+                elif perm_key == 'recipes':
+                    show_recipes = role_permission.yes_no_permission
+                elif perm_key == 'sign_in':
+                    show_sign_in = role_permission.yes_no_permission
+                elif perm_key == 'daily_attendance':
+                    show_daily_attendance = role_permission.yes_no_permission
+                elif perm_key == 'rosters':
+                    show_rosters = role_permission.yes_no_permission
+                elif perm_key == 'billing':
+                    show_billing = role_permission.yes_no_permission
+                elif perm_key == 'payment_setup':
+                    show_payment_setup = role_permission.yes_no_permission
+                elif perm_key == 'clock_in':
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue
 
@@ -432,6 +550,7 @@ def index_cook(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required(login_url='/login/')
@@ -450,6 +569,7 @@ def index_parent(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -472,6 +592,7 @@ def index_parent(request):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary':346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -505,6 +626,8 @@ def index_parent(request):
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
                     show_clock_in = role_permission.yes_no_permission 
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission 
             except RolePermission.DoesNotExist:
                 continue
 
@@ -528,6 +651,7 @@ def index_parent(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary': show_pay_summary,
         
     })
 
@@ -547,6 +671,7 @@ def index_free_user(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -569,6 +694,7 @@ def index_free_user(request):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -601,7 +727,9 @@ def index_free_user(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission 
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue
 
@@ -625,6 +753,7 @@ def index_free_user(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required
@@ -644,6 +773,7 @@ def recipes(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -674,6 +804,7 @@ def recipes(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -707,7 +838,9 @@ def recipes(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission 
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -728,7 +861,7 @@ def recipes(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
-
+        show_pay_summary = True
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
         return redirect('no_access')
@@ -749,6 +882,7 @@ def recipes(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required
@@ -778,6 +912,7 @@ def menu(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -807,6 +942,7 @@ def menu(request):
             'billing': 331,          
             'payment_setup': 332, 
             'clock_in': 337,  
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -840,7 +976,9 @@ def menu(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission       
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -861,6 +999,7 @@ def menu(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
 
     # Redirect to 'no_access' page if access is not allowed
@@ -883,6 +1022,7 @@ def menu(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     }
 
     return render(request, 'weekly-menu.html', context)
@@ -907,6 +1047,7 @@ def account_settings(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     sub_user = None
 
@@ -929,6 +1070,7 @@ def account_settings(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -961,7 +1103,9 @@ def account_settings(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue
     except SubUser.DoesNotExist:
@@ -981,6 +1125,7 @@ def account_settings(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     if not allow_access:
         return redirect('no_access')
@@ -1041,6 +1186,7 @@ def account_settings(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
         'stripe_public_key': getattr(sub_user.main_user, 'stripe_public_key', settings.STRIPE_PUBLIC_KEY) if sub_user else settings.STRIPE_PUBLIC_KEY,
     })
 
@@ -1061,6 +1207,7 @@ def menu_rules(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -1090,6 +1237,7 @@ def menu_rules(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -1123,7 +1271,9 @@ def menu_rules(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission       
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -1144,6 +1294,7 @@ def menu_rules(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -1169,6 +1320,7 @@ def menu_rules(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required
@@ -1256,6 +1408,7 @@ def inventory_list(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -1285,6 +1438,7 @@ def inventory_list(request):
             'billing': 331,          
             'payment_setup': 332,
             'clock_in': 337,   
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -1318,7 +1472,9 @@ def inventory_list(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -1339,6 +1495,7 @@ def inventory_list(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -1379,6 +1536,7 @@ def inventory_list(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 
@@ -2107,6 +2265,7 @@ def sign_in(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -2136,6 +2295,7 @@ def sign_in(request):
             'billing': 331,          
             'payment_setup': 332, 
             'clock_in': 337,  
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -2169,7 +2329,9 @@ def sign_in(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -2190,6 +2352,7 @@ def sign_in(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -2228,6 +2391,7 @@ def sign_in(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required
@@ -2284,6 +2448,7 @@ def daily_attendance(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -2313,6 +2478,7 @@ def daily_attendance(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -2346,7 +2512,9 @@ def daily_attendance(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -2367,6 +2535,7 @@ def daily_attendance(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -2421,6 +2590,7 @@ def daily_attendance(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
  
 @csrf_exempt
@@ -2517,6 +2687,7 @@ def rosters(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -2546,6 +2717,7 @@ def rosters(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -2579,7 +2751,9 @@ def rosters(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission       
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -2600,6 +2774,7 @@ def rosters(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -2691,6 +2866,7 @@ def rosters(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     }
     
     return render(request, 'rosters.html', context)
@@ -2748,6 +2924,7 @@ def classroom_options(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -2778,6 +2955,7 @@ def classroom_options(request):
             'billing': 331,          
             'payment_setup': 332, 
             'clock_in': 337,  
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -2811,7 +2989,9 @@ def classroom_options(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -2832,6 +3012,7 @@ def classroom_options(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -2878,6 +3059,7 @@ def classroom_options(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required
@@ -2975,6 +3157,7 @@ def milk_count(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -3004,6 +3187,7 @@ def milk_count(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -3037,7 +3221,9 @@ def milk_count(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission 
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -3058,6 +3244,7 @@ def milk_count(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -3093,6 +3280,7 @@ def milk_count(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     }
     
     return render(request, 'milk_count.html', context)
@@ -3114,6 +3302,7 @@ def milk_count_view(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -3143,6 +3332,7 @@ def milk_count_view(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -3176,7 +3366,9 @@ def milk_count_view(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission 
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -3197,6 +3389,7 @@ def milk_count_view(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -3260,6 +3453,7 @@ def milk_count_view(request):
             'show_billing': show_billing,            
             'show_payment_setup': show_payment_setup,
             'show_clock_in': show_clock_in,
+            'show_pay_summary':show_pay_summary,
          }
     else:
         context = {
@@ -3279,6 +3473,7 @@ def milk_count_view(request):
             'show_billing': show_billing,            
             'show_payment_setup': show_payment_setup,
             'show_clock_in': show_clock_in,
+            'show_pay_summary':show_pay_summary,
         }
 
     return render(request, 'milk_count.html', context)
@@ -3330,6 +3525,7 @@ def meal_count(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -3359,6 +3555,7 @@ def meal_count(request):
             'billing': 331,          
             'payment_setup': 332,  
             'clock_in': 337, 
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -3392,7 +3589,9 @@ def meal_count(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -3413,6 +3612,7 @@ def meal_count(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -3482,6 +3682,7 @@ def meal_count(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 
@@ -3815,6 +4016,7 @@ def past_menus(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     # Check permissions for different links
     try:
@@ -3837,6 +4039,7 @@ def past_menus(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -3870,7 +4073,9 @@ def past_menus(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission 
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -3890,6 +4095,7 @@ def past_menus(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Ensure user has access to this page
     if not show_weekly_menu:
@@ -3958,6 +4164,7 @@ def past_menus(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     }
 
     return render(request, 'past-menus.html', context)
@@ -3987,6 +4194,7 @@ def send_invitation(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
 
     try:
@@ -4009,6 +4217,7 @@ def send_invitation(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -4042,7 +4251,9 @@ def send_invitation(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -4062,6 +4273,7 @@ def send_invitation(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     if not allow_access:
         return redirect('no_access')
@@ -4117,6 +4329,7 @@ def send_invitation(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 def accept_invitation(request, token):
@@ -4183,6 +4396,7 @@ def permissions(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -4218,6 +4432,7 @@ def permissions(request):
             'billing': 331,          
             'payment_setup': 332,  
             'clock_in': 337, 
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -4251,7 +4466,9 @@ def permissions(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission       
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -4272,6 +4489,7 @@ def permissions(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -4339,6 +4557,7 @@ def permissions(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 def save_permissions(request):
@@ -4377,6 +4596,7 @@ def no_access(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -4398,6 +4618,7 @@ def no_access(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -4431,7 +4652,9 @@ def no_access(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission     
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -4452,6 +4675,7 @@ def no_access(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Remove this redirect as it causes the loop
     # if not allow_access:
@@ -4473,6 +4697,7 @@ def no_access(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required
@@ -4513,6 +4738,7 @@ def inbox(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -4535,6 +4761,7 @@ def inbox(request):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -4567,7 +4794,9 @@ def inbox(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission       
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -4588,6 +4817,7 @@ def inbox(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Render the inbox page, adding the permission variables
     return render(request, 'messaging/inbox.html', {
@@ -4607,6 +4837,7 @@ def inbox(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 @login_required
@@ -4653,6 +4884,7 @@ def conversation(request, user_id):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -4675,6 +4907,7 @@ def conversation(request, user_id):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -4707,7 +4940,9 @@ def conversation(request, user_id):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission       
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -4728,6 +4963,7 @@ def conversation(request, user_id):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     if request.method == 'POST':
         form = MessageForm(request.POST)
@@ -4773,6 +5009,7 @@ def conversation(request, user_id):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 def start_conversation(request, user_id):
@@ -4811,6 +5048,7 @@ def payment_view(request, subuser_id=None):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -4841,6 +5079,7 @@ def payment_view(request, subuser_id=None):
             'billing': 331,
             'payment_setup': 332,
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -4877,6 +5116,8 @@ def payment_view(request, subuser_id=None):
                 show_payment_setup = has_permission
             elif perm_key == 'clock_in':
                 show_clock_in = has_permission
+            elif perm_key == 'pay_summary':
+                show_pay_summary = has_permission
 
     except SubUser.DoesNotExist:
         # If user is not a SubUser, assume it's a main user and allow access
@@ -4895,6 +5136,7 @@ def payment_view(request, subuser_id=None):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect if user does not have the required permission
     if not allow_access:
@@ -4985,6 +5227,7 @@ def payment_view(request, subuser_id=None):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     }
     return render(request, 'payment.html', context)
 
@@ -5217,6 +5460,7 @@ def stripe_login(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -5246,6 +5490,7 @@ def stripe_login(request):
             'billing': 331,          
             'payment_setup': 332, 
             'clock_in': 337,  
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -5279,7 +5524,9 @@ def stripe_login(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission    
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -5300,6 +5547,7 @@ def stripe_login(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -5320,6 +5568,7 @@ def stripe_login(request):
         'show_billing': show_billing,            
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 def get_stripe_keys(user):
@@ -5427,6 +5676,7 @@ def clock_in(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -5456,6 +5706,7 @@ def clock_in(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337, 
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -5489,7 +5740,9 @@ def clock_in(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -5510,6 +5763,7 @@ def clock_in(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -5562,6 +5816,7 @@ def clock_in(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     })
 
 
@@ -5592,6 +5847,7 @@ def time_sheet(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -5621,6 +5877,7 @@ def time_sheet(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337, 
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -5654,7 +5911,9 @@ def time_sheet(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -5675,6 +5934,7 @@ def time_sheet(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -5768,6 +6028,7 @@ def time_sheet(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 
@@ -5788,6 +6049,7 @@ def employee_detail(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -5817,6 +6079,7 @@ def employee_detail(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337, 
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -5850,7 +6113,9 @@ def employee_detail(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission  
+                    show_clock_in = role_permission.yes_no_permission      
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -5871,6 +6136,7 @@ def employee_detail(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -5943,6 +6209,7 @@ def employee_detail(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary':show_pay_summary,
     })
 
 @csrf_exempt
@@ -6125,6 +6392,7 @@ def square_account_view(request):
     show_billing = False
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     try:
         # Check if the user is a SubUser
@@ -6154,6 +6422,7 @@ def square_account_view(request):
             'billing': 331,          
             'payment_setup': 332, 
             'clock_in': 337,  
+            'pay_summary': 346,
         }
 
         # Dynamically check each permission
@@ -6187,7 +6456,9 @@ def square_account_view(request):
                 elif perm_key == 'payment_setup':
                     show_payment_setup = role_permission.yes_no_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = role_permission.yes_no_permission    
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = role_permission.yes_no_permission
             except RolePermission.DoesNotExist:
                 continue  
 
@@ -6208,6 +6479,7 @@ def square_account_view(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     # Redirect to 'no_access' page if access is not allowed
     if not allow_access:
@@ -6230,6 +6502,7 @@ def square_account_view(request):
         "show_billing": show_billing,            
         "show_payment_setup": show_payment_setup,
         "show_clock_in": show_clock_in, 
+        'show_pay_summary':show_pay_summary,
     }
 
     return render(request, 'square.html', context)
@@ -6237,7 +6510,7 @@ def square_account_view(request):
 @login_required
 def pay_summary(request):
     success_message = ""
-    allow_access = True
+    allow_access = False
 
     # Initialize permission flags
     show_weekly_menu = False
@@ -6254,13 +6527,22 @@ def pay_summary(request):
     show_billing = False          
     show_payment_setup = False
     show_clock_in = False
+    show_pay_summary = False
 
     sub_user = None
-    user = get_user_for_view(request)
+    user = request.user  # Use request.user directly
 
     try:
         sub_user = SubUser.objects.get(user=user)
         group_id = sub_user.group_id.id
+        required_permission_id = 346  # Permission ID for time_sheet view
+
+        # Check if user has permission for time_sheet view
+        try:
+            role_permission = RolePermission.objects.get(role_id=group_id, permission_id=required_permission_id)
+            allow_access = role_permission.yes_no_permission
+        except RolePermission.DoesNotExist:
+            allow_access = False
 
         permissions_ids = {
             'weekly_menu': 271,
@@ -6277,41 +6559,48 @@ def pay_summary(request):
             'billing': 331,          
             'payment_setup': 332,   
             'clock_in': 337,
+            'pay_summary': 346,
         }
 
+        # Iterate through permissions and check access
         for perm_key, perm_id in permissions_ids.items():
             try:
                 role_permission = RolePermission.objects.get(role_id=group_id, permission_id=perm_id)
+                has_permission = role_permission.yes_no_permission
+
                 if perm_key == 'weekly_menu':
-                    show_weekly_menu = role_permission.yes_no_permission
+                    show_weekly_menu = has_permission
                 elif perm_key == 'inventory':
-                    show_inventory = role_permission.yes_no_permission
+                    show_inventory = has_permission
                 elif perm_key == 'milk_inventory':
-                    show_milk_inventory = role_permission.yes_no_permission
+                    show_milk_inventory = has_permission
                 elif perm_key == 'meal_count':
-                    show_meal_count = role_permission.yes_no_permission
+                    show_meal_count = has_permission
                 elif perm_key == 'permissions':
-                    show_permissions = role_permission.yes_no_permission
+                    show_permissions = has_permission
                 elif perm_key == 'menu_rules':
-                    show_menu_rules = role_permission.yes_no_permission
+                    show_menu_rules = has_permission
                 elif perm_key == 'classroom_options':
-                    show_classroom_options = role_permission.yes_no_permission
+                    show_classroom_options = has_permission
                 elif perm_key == 'recipes':
-                    show_recipes = role_permission.yes_no_permission
+                    show_recipes = has_permission
                 elif perm_key == 'sign_in':
-                    show_sign_in = role_permission.yes_no_permission
+                    show_sign_in = has_permission
                 elif perm_key == 'daily_attendance':
-                    show_daily_attendance = role_permission.yes_no_permission
+                    show_daily_attendance = has_permission
                 elif perm_key == 'rosters':
-                    show_rosters = role_permission.yes_no_permission
+                    show_rosters = has_permission
                 elif perm_key == 'billing':
-                    show_billing = role_permission.yes_no_permission
+                    show_billing = has_permission
                 elif perm_key == 'payment_setup':
-                    show_payment_setup = role_permission.yes_no_permission
+                    show_payment_setup = has_permission
                 elif perm_key == 'clock_in':
-                    show_clock_in = role_permission.yes_no_permission
+                    show_clock_in = has_permission
+                elif perm_key == 'pay_summary':
+                    show_pay_summary = has_permission
             except RolePermission.DoesNotExist:
                 continue
+
     except SubUser.DoesNotExist:
         # Grant full access if not a SubUser
         allow_access = True
@@ -6329,13 +6618,13 @@ def pay_summary(request):
         show_billing = True
         show_payment_setup = True
         show_clock_in = True
+        show_pay_summary = True
 
     if not allow_access:
         return redirect('no_access')
 
     # Retrieve the square credentials from the MainUser model
-    main_user = get_user_for_view(request)
-    
+    main_user = request.user  # Assuming the MainUser is linked to request.user
 
     return render(request, 'pay_summary.html', {
         'show_weekly_menu': show_weekly_menu,
@@ -6353,12 +6642,12 @@ def pay_summary(request):
         'show_billing': show_billing,
         'show_payment_setup': show_payment_setup,
         'show_clock_in': show_clock_in,
+        'show_pay_summary': show_pay_summary,
         'SQUARE_APPLICATION_ID': settings.SQUARE_APPLICATION_ID,
-        'SQUARE_LOCATION_ID': main_user.square_location_id,
-        'SQUARE_ACCESS_TOKEN': main_user.square_access_token,
-        
-        
+        'SQUARE_LOCATION_ID': main_user.square_location_id if hasattr(main_user, 'square_location_id') else None,
+        'SQUARE_ACCESS_TOKEN': main_user.square_access_token if hasattr(main_user, 'square_access_token') else None,            
     })
+
 
 @csrf_exempt
 def process_payment(request):
@@ -6366,7 +6655,7 @@ def process_payment(request):
         try:
             data = json.loads(request.body)
             main_user = get_user_for_view(request)
-            
+
             # Validate Square credentials
             if not all([
                 main_user.square_access_token,
@@ -6377,22 +6666,22 @@ def process_payment(request):
                     'success': False, 
                     'error': 'Square payment system not configured'
                 })
-            
-           # Initialize Square client
+
+            # Initialize Square client
             square_client = Client(
                 access_token=main_user.square_access_token,
-                environment='sandbox' 
+                environment='sandbox'  # change to 'production' in live environment
             )
-            
+
             # Validate amount
             try:
-                amount = int(float(data['amount']) * 100)
+                amount = int(float(data['amount']) * 100)  # convert dollars to cents
                 if amount <= 0:
                     raise ValueError
             except (ValueError, TypeError):
                 return JsonResponse({'success': False, 'error': 'Invalid amount'})
 
-             # Create payment
+            # Create payment
             result = square_client.payments.create_payment(
                 body={
                     "source_id": data['token'],
@@ -6402,23 +6691,30 @@ def process_payment(request):
                     },
                     "idempotency_key": str(uuid.uuid4()),
                     "autocomplete": True,
-                    "customer_id": f"user_{request.user.id}",  # Optional customer tracking
+                    "customer_id": f"user_{request.user.id}",
                     "note": f"Wallet top-up for {request.user.email}"
                 }
             )
+
             if result.is_success():
-                # Update balance using atomic update
-                SubUser.objects.filter(user=request.user).update(
-                    balance=models.F('balance') + float(data['amount'])
-                )
+                # Only update balance if SubUser exists
+                try:
+                    # Use Decimal to prevent rounding issues and F-expression for atomic update
+                    SubUser.objects.filter(user=request.user).update(
+                        balance=models.F('balance') + Decimal(str(data['amount']))
+                    )
+                except SubUser.DoesNotExist:
+                    return JsonResponse({'success': False, 'error': 'SubUser account not found'})
+
                 return JsonResponse({
-                    'success': True, 
+                    'success': True,
                     'message': f'Confirmation of payment: ${data["amount"]} successfully added to wallet.'
                 })
+
             return JsonResponse({'success': False, 'error': result.errors})
-            
+
         except Exception as e:
             logger.error(f"Payment error: {str(e)}")
             return JsonResponse({'success': False, 'error': str(e)})
-    
+
     return JsonResponse({'success': False, 'error': 'Invalid method'})

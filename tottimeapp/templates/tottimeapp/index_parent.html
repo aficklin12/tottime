@@ -194,15 +194,17 @@
                         {% endif %}
 
 
-                        {% if show_billing or show_payment_setup %}
+                        {% if show_billing or show_payment_setup or show_pay_summary %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
                             <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> Payments
                             <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                         </a>
                         <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_billing %}
+                                {% if show_pay_summary %}
                                 <a class="nav-link" href="{% url 'pay_summary' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Pay Summary</a>
+                                {% endif %}
+                                {% if show_billing %}
                                 <a class="nav-link" href="{% url 'payment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Billing</a>
                                 {% endif %}
                                 
