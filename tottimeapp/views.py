@@ -150,22 +150,36 @@ def index(request):
 
     # Get order items for the Food Program section
     order_items = OrderList.objects.filter(user=user)
-    # --- New: Build classroom ratio cards ---
+
+    # --- New: Build classroom ratio cards with dynamic ratios ---
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
         sign_out_time__isnull=True,  # Add this condition to filter only records with NULL sign_out_time
         user=user
     )
-    # Get the user's classrooms (assuming you have a Classroom model)
     classrooms = Classroom.objects.filter(user=user)
     classroom_cards = {}
+
     for classroom in classrooms:
         # Count attendance records where classroom_override equals the classroom name
         count = attendance_records.filter(classroom_override=classroom.name).count()
+
+        # Fetch assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        assigned_teachers = [
+            assignment.mainuser or assignment.subuser for assignment in assignments
+        ]
+
+        # Calculate adjusted ratios based on the number of assigned teachers
+        base_ratio = classroom.ratios
+        teacher_count = len(assigned_teachers)
+        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+
+        # Add classroom data to the cards
         classroom_cards[classroom.name] = {
             'count': count,
-            'ratio': classroom.ratios  # target ratio from the Classroom model
+            'ratio': adjusted_ratio  # Use the adjusted ratio
         }
 
     context = {
@@ -183,31 +197,48 @@ def index_director(request):
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):  # Redirect if no access
         return permissions_context
+
     # Ensure order items are always retrieved
     order_items = OrderList.objects.filter(user=user)
-    # --- New: Build classroom ratio cards ---
+
+    # --- New: Build classroom ratio cards with dynamic ratios ---
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
         sign_out_time__isnull=True,  # Add this condition to filter only records with NULL sign_out_time
         user=user
     )
-    # Get the user's classrooms 
     classrooms = Classroom.objects.filter(user=user)
     classroom_cards = {}
+
     for classroom in classrooms:
         # Count attendance records where classroom_override equals the classroom name
         count = attendance_records.filter(classroom_override=classroom.name).count()
+
+        # Fetch assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        assigned_teachers = [
+            assignment.mainuser or assignment.subuser for assignment in assignments
+        ]
+
+        # Calculate adjusted ratios based on the number of assigned teachers
+        base_ratio = classroom.ratios
+        teacher_count = len(assigned_teachers)
+        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+
+        # Add classroom data to the cards
         classroom_cards[classroom.name] = {
             'count': count,
-            'ratio': classroom.ratios
+            'ratio': adjusted_ratio  # Use the adjusted ratio
         }
+
     # Combine permissions context with other context data
     context = {
         'order_items': order_items,
         'classroom_cards': classroom_cards,
         **permissions_context,  # Include permission flags
     }
+
     # Render the index_director page with context
     return render(request, 'index_director.html', context)
 
