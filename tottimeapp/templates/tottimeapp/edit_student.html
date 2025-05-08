@@ -1,0 +1,165 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Edit Student{% endblock %}
+
+{% block styles %}
+<style>
+        h1 {
+            margin-top: 20px;
+            margin-left: 15px;
+            margin-bottom: 30px;
+            font-weight: 400;
+            line-height: 1.2;
+            font-weight: bold;
+            font-size: 40px;
+        }
+
+        .btn-primary {
+            margin-left: 27px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            margin-right: 15px;
+        }
+
+ 
+        .sb-nav-link-icon i {
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+
+/* Style for the link text */
+.nav-link {
+    color: #ffffff !important; /* Ensure text is completely white */
+}
+
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
+
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
+.btn-primary {
+  background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:#272630;
+    font-weight: bold;
+    margin-left: 15px;
+}
+
+/* Additional hover styles (optional) */
+.btn-primary:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color:#fff
+}
+.modal-footer .btn {
+    margin: 5px; /* Remove any default margins */
+    vertical-align: middle; /* Ensure buttons are vertically aligned */
+}
+.navbar-brand img {
+    width: 100%; /* Ensure the logo takes up the full width of its container */
+    max-width: 200px; /* Set a max-width to control the size of the logo */
+    height: auto; /* Maintain aspect ratio */
+    object-fit: contain; /* Make sure the logo doesn't get distorted */
+    margin-left: 0; /* Reset any left margin if needed */
+    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
+    overflow: visible; /* Ensure no clipping occurs */
+}
+.btn-primary {
+    margin-top:25px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1>Edit Student Information</h1>
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Hidden input to pass the previous page URL -->
+        <input type="hidden" name="previous_page" value="{{ previous_page }}">
+
+        <!-- First and Last Name in one row -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="firstName" class="form-label">First Name</label>
+                <input type="text" class="form-control" id="firstName" name="firstName" value="{{ student.first_name }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="lastName" class="form-label">Last Name</label>
+                <input type="text" class="form-control" id="lastName" name="lastName" value="{{ student.last_name }}" required>
+            </div>
+        </div>
+
+        <!-- Date of Birth and Code in one row -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="dob" class="form-label">Date of Birth</label>
+                <input type="date" class="form-control" id="dob" name="dob" value="{{ student.date_of_birth|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="code" class="form-label">Code</label>
+                <input type="text" class="form-control" id="code" name="code" value="{{ student.code }}" maxlength="4" required>
+            </div>
+        </div>
+
+        <!-- Classroom and Status in one row -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="classroom" class="form-label">Home Classroom</label>
+                <select class="form-select" id="classroom" name="classroom" required>
+                    {% for classroom in classrooms %}
+                    <option value="{{ classroom.id }}" {% if classroom.id == student.classroom.id %}selected{% endif %}>
+                        {{ classroom.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status" required>
+                    {% for value, label in student.STATUS_CHOICES %}
+                    <option value="{{ value }}" {% if value == student.status %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Profile Picture -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="profilePicture" class="form-label">Profile Picture</label>
+                <input type="file" class="form-control" id="profilePicture" name="profilePicture">
+                {% if student.profile_picture %}
+                <img src="{{ student.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 150px; height: 150px;">
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Submit and Cancel Buttons -->
+        <div class="row">
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="{{ previous_page }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

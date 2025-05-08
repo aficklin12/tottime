@@ -1,12 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Already Accepted Invitation</title>
-</head>
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+
+{% block title %}Already Accepted Invite{% endblock %}
+
+{% endblock %}
+
+{% block content %}
 <body>
     <h1>Invitation Already Accepted</h1>
     <p>The invitation for {{ user.username }} has already been accepted.</p>
 </body>
-</html>
+{% endblock %}
+

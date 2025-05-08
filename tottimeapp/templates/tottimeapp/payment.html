@@ -1,25 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="" />
-    <meta name="author" content="" />
-    <title>Payments</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Font Awesome -->
-    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Tabulator CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
-    <!-- Custom CSS -->
-    {% load static %}
-    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
-    <style>
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Payments{% endblock %}
+
+{% block styles %}
+<style>
     h1 {
     margin-top: 20px;
     margin-left: 27px;
@@ -51,234 +37,6 @@
     color: #ffffff !important; /* Retain white text on hover */
 }
 
-table {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px; /* Add this for rounded corners */
-    overflow: hidden; /* Ensure the rounded corners are visible */
-}
-/* Ensure vertical centering of content in table cells */
-table th, table td {
-    vertical-align: middle;
-    margin-left: 20px;
-}
-
-.add-invoice-btn {
-    display: inline-block;
-    font-weight: bold;
-    background-color: rgb(57, 189, 180);
-    color: rgb(33, 31, 39);
-    padding: 10px 20px; /* Add more padding for width */
-    font-size: 16px; /* Adjust font size for readability */
-    border: none; /* Remove default border */
-    border-radius: 5px; /* Rounded corners */
-    text-align: center;
-    cursor: pointer; /* Pointer cursor on hover */
-    margin-bottom: 20px; /* Add space below the button */
-}
-
-/* Hover effect for Add New Invoice button */
-.add-invoice-btn:hover {
-    background-color: #007b8a;
-    color: #fff; /* Ensure text stays white on hover */
-}
-
-
-body {
-    font-family: Arial, sans-serif;
-}
-
-.overdue {
-    background-color: #f8d7da;  /* Light red background */
-    color: #721c24;  /* Dark red text */
-}
-
-.status-column {
-    font-weight: bold;
-}
-
-.sortable {
-    cursor: pointer;
-}
-
-.sortable:hover {
-    background-color: #0c1025; /* Optional: highlight when hovering */
-}
-
-#card-element {
-    margin-bottom: 15px;  /* Add bottom margin for space below */
-}
-
-/* Optional: If you want to add padding to the payment method details container */
-.payment-method-details {
-    padding-bottom: 20px; /* Add padding at the bottom of the card details section */
-}
-
-/* Style the action column */
-table th:nth-child(12), table td:nth-child(12) {
-    width: auto; /* Adjust this as necessary for your design */
-    white-space: nowrap; /* Prevent text wrapping */
-    text-align: center; /* Center align the buttons */
-}
-
-/* Ensure buttons are side by side in the action column */
-td button {
-    display: inline-block; /* Place buttons side by side */
-    margin-right: 1px; /* Add space between buttons */
-    width: 150px; /* Set the same width for all buttons */
-}
-
-/* Ensure the buttons are aligned properly */
-.btn {
-    display: inline-flex; /* Align buttons inline */
-    justify-content: center;
-    align-items: center;
-    width: 150px; /* Make all buttons the same width */
-}
-
-/* Optional: Limit the buttons' width to prevent overflowing */
-.btn {
-    max-width: 35px; /* Set the max width for each button */
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-/* Styling for the tooltip text that appears on hover */
-.btn:hover .btn-text {
-    opacity: 1; /* Make the text visible */
-    bottom: 30px; /* Adjust to position the text above the button */
-}
-.btn-text {
-    position: fixed; /* Use fixed to position relative to the viewport */
-    opacity: 0;     /* Initially hidden */
-    pointer-events: none; /* Prevent interaction with the tooltip */
-    transition: opacity 0.3s ease; /* Smooth appearance/disappearance */
-    background-color: grey; /* Grey bubble background */
-    padding: 5px;
-    color: white;
-    border-radius: 4px; /* Optional: rounded corners */
-    font-size: 12px;
-    line-height: 1; 
-    max-height: 22px;
-}
-/* Change hover color for Record Payment button to green */
-.btn-secondary {
-    background-color: #44af5d; /* Green background */
-    border-color: #44af5d; /* Green border */
-    color:rgb(33, 31, 39);
-}
-
-.btn-secondary:hover {
-    background-color: #218838; /* Darker green background on hover */
-    border-color: #1e7e34; /* Darker green border on hover */
-    
-}
-
-/* Add hover effect for Late Fee button */
-.btn-warning:hover {
-    background-color: #b4ad46;
-    border-color: #b4ad46;
-    color:rgb(255, 255, 255);
-}
-.btn-warning {
-    background-color: rgb(228, 218, 79); /* Darker yellow for Late Fee on hover */
-    border-color: rgb(228, 218, 79);
-    color:rgb(33, 31, 39);
-}
-.btn-primary {
-    background-color: rgb(57, 189, 180); /* Change success button color */
-    border-color: rgb(57, 189, 180);
-    color:rgb(33, 31, 39);
-}
-.btn-primary:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-    color:rgb(255, 255, 255);
-}
-
-/* Optional: Adjust border color on hover for all buttons */
-.btn:hover {
-    border-color: #ccc; /* Light gray border on hover */
-}
-#paymentModal .btn-primary {
-    background-color: rgb(57, 189, 180); /* Change success button color */
-    border-color: rgb(57, 189, 180);
-    color:rgb(33, 31, 39);
-    font-size: 16px;
-    padding: 10px 20px;
-    transition: background-color 0.3s ease;
-    white-space: nowrap; /* Prevents the text from wrapping */
-    min-width: 150px; /* Sets a minimum width to ensure it doesn't get too small */
-    width: auto; /* Allows the button to grow with its content */
-}
-
-#paymentModal .btn-primary:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-    color: #fff;
-    
-}
-#recordPaymentModal .btn-primary {
-    background-color: rgb(57, 189, 180); /* Change success button color */
-    border-color: rgb(57, 189, 180);
-    color:rgb(33, 31, 39);
-    font-size: 16px;
-    padding: 10px 20px;
-    transition: background-color 0.3s ease;
-    white-space: nowrap; /* Prevents the text from wrapping */
-    min-width: 150px; /* Sets a minimum width to ensure it doesn't get too small */
-    width: auto; /* Allows the button to grow with its content */
-}
-
-#recordPaymentModal .btn-primary:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-    color: #fff;
-}
-#recurringInvoiceModal .btn {
-    font-size: 16px;
-    padding: 10px 20px;
-    transition: background-color 0.3s ease;
-    white-space: nowrap; /* Prevents the text from wrapping */
-    min-width: 150px; /* Sets a minimum width to ensure it doesn't get too small */
-    width: auto; /* Allows the buttons to grow with their content */
-}
-
-#recurringInvoiceModal .btn-primary {
-    background-color: rgb(57, 189, 180); /* Change success button color */
-    border-color: rgb(57, 189, 180);
-    color:rgb(33, 31, 39);
-}
-
-#recurringInvoiceModal .btn-primary:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-    color: #fff;
-}
-
-#recurringInvoiceModal .btn-secondary {
-    background-color: #6c757d; /* Gray button */
-    border-color: #6c757d;
-}
-
-#recurringInvoiceModal .btn-secondary:hover {
-    background-color: #5a6268;
-    border-color: #545b62;
-    
-}
-
-#lateFeeModal .btn-warning{
-    background-color: rgb(228, 218, 79); /* Change primary button color */
-    border-color: rgb(228, 218, 79);
-    color:rgb(33, 31, 39);
-    min-width: 150px;
-    width: auto;
-
-}
-#lateFeeModal .btn-warning:hover{
-    background-color: #b4ad46;
-    border-color: #b4ad46;
-    color:#fff;
-
-}
 .navbar-brand img {
     width: 100%; /* Ensure the logo takes up the full width of its container */
     max-width: 200px; /* Set a max-width to control the size of the logo */
@@ -288,508 +46,697 @@ td button {
     border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
     overflow: visible; /* Ensure no clipping occurs */
 }
-table.table-bordered tfoot {
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    color: #ffffff !important;
+table {
+           
+           border-collapse: collapse;
+           margin-top: 20px;
+           margin-left: 27px;
+           margin-right: 20px;
+           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+           border-radius: 10px; /* Add this for rounded corners */
+           overflow: hidden;
+       }
+
+       th, td {
+           
+           border: 1px solid #dddddd;
+           padding: 8px;
+           text-align: center;
+       }
+   
+       th {
+           background-color: #272630;
+           color: #ffffff;
+           text-align: center;
+           font-weight: bold;
+       }
+ 
+h2 {
+    font-weight: bold;
+    font-size: 22px; /* Change font size to smaller */
+    margin-top: 20px; /* Add some space above the heading */
+    margin-bottom: 20px; /* Add some space below the heading */
+    margin-left: 27px; /* Align with the main heading */
 }
-    </style>
-</head>
-<body class="sb-nav-fixed">
-    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-        <!-- Navbar Brand-->
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
-        
-        <a class="navbar-brand" href="{% url 'index' %}">
-            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
-        </a>
-        <!-- Navbar-->
-        <div class="ms-auto">
-            <ul class="navbar-nav me-lg-4">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <!-- Profile Picture or Default Image -->
-                        <img 
-                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        {% if user.is_authenticated %}
-                            <li><a class="dropdown-item" href="{% url 'message_inbox' %}">Inbox</a></li>  <!-- Link to Inbox -->
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
-                        {% else %}
-                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider" /></li>
-                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div id="layoutSidenav">
-        <div id="layoutSidenav_nav">
-            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
-                <div class="sb-sidenav-menu">
-                    <div class="nav">
-                        <div class="sb-sidenav-menu-heading"></div>
-                        {% if show_sign_in or show_daily_attendance or show_rosters %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                            Attendance
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_sign_in %}
-                                <a class="nav-link" href="{% url 'sign_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Sign In</a>
-                                {% endif %}
-                                {% if show_daily_attendance %}
-                                <a class="nav-link" href="{% url 'daily_attendance' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Daily Attendance</a>
-                                {% endif %}
-                                {% if show_rosters %}
-                                <a class="nav-link" href="{% url 'rosters' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Rosters</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
-
-                        {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div> Food Program
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_inventory %}
-                                <a class="nav-link" href="{% url 'inventory_list' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Inventory</a>
-                                {% endif %}
-                                {% if show_weekly_menu %}
-                                <a class="nav-link" href="{% url 'menu' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Weekly Menu</a>
-                                {% endif %}
-                                {% if show_milk_inventory %}
-                                <a class="nav-link" href="{% url 'milk_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Milk Inventory</a>
-                                {% endif %}
-                                {% if show_meal_count %}
-                                <a class="nav-link" href="{% url 'meal_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Meal Count</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
+.btn-primary {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        max-height: 35px;
+        margin-left: 27px;
+        background-color: rgb(57, 189, 180);
+        border-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39);
+        font-weight: bold;
+    }
+    .btn-primary:hover {
+        background-color: #007b8a;
+        border-color: #007b8a;
+    }
+    .btn-payment {
+        background-color: rgb(57, 189, 180);
+        border-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39);
+        font-weight: bold;
+    }
+    .btn-payment:hover {
+        background-color: #007b8a;
+        border-color: #007b8a;
+    }
+/* Custom button styles */
+.btn-secondary {
+    background-color: rgb(228, 218, 79); /* Change primary button color */
+    border-color: rgb(228, 218, 79);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+    
+}
 
 
-                        {% if show_billing or show_payment_setup or show_pay_summary %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> Payments
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_pay_summary %}
-                                <a class="nav-link" href="{% url 'pay_summary' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Pay Summary</a>
-                                {% endif %}
-                                {% if show_billing %}
-                                <a class="nav-link" href="{% url 'payment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Billing</a>
-                                {% endif %}
-                                
-                                
-                            </nav>
-                        </div>
-                        {% endif %}
-                        {% if show_clock_in %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> Employees
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsEmployees" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'clock_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Clock</a>
-                                {% endif %}
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'time_sheet' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Sheet</a>
-                                {% endif %}
-                            </nav>
-                        </div>  
-                        {% endif %}
+/* Additional hover styles (optional) */
+.btn-secondary:hover {
+    background-color: #b4ad46;
+    border-color: #b4ad46;
+}
+.modal-footer .btn {
+    margin: 5px; /* Remove any default margins */
+    vertical-align: middle; /* Ensure buttons are vertically aligned */
+}
+    .clickable {
+        text-decoration: none; /* Remove underline */
+        color: inherit; /* Inherit text color */
+        cursor: pointer; /* Show pointer cursor */
+    }
 
-                        {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div> Settings
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_classroom_options %}
-                                <a class="nav-link" href="{% url 'classroom_options' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Classroom Options</a>
-                                {% endif %}
-                                {% if show_recipes %}
-                                <a class="nav-link" href="{% url 'recipes' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Recipe Options</a>
-                                {% endif %}
-                                {% if show_menu_rules %}
-                                <a class="nav-link" href="{% url 'menu_rules' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Menu Rules</a>
-                                {% endif %}
-                                {% if show_permissions %}
-                                <a class="nav-link" href="{% url 'permissions' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Permissions</a>
-                                {% endif %}   
-                                {% if show_payment_setup %}
-                                <a class="nav-link" href="{% url 'square_account' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Payment Set-Up</a>
-                                {% endif %}                          
-                            </nav>
-                        </div>  
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="sb-sidenav-footer">
-                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
-                </div>
-            </nav>
-        </div>
-        <div id="layoutSidenav_content">
-            <main>
+    .clickable:hover {
+        text-decoration: underline; /* Optional: Add underline on hover */
+        color: #007bff; /* Optional: Change color on hover */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
                 <h1 class=>Payments</h1>
 
-                <div class="container">
-                    <button type="button" class="add-invoice-btn" data-bs-toggle="modal" data-bs-target="#recurringInvoiceModal">
-                        Create Tuition Fee
-                    </button>
-                   
-                    <table class="table table-striped table-bordered">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Parent</th>
-                                <th>Student</th>
-                                <th>Frequency</th>
-                                <th>Rate</th>
-                                <th>Start Date</th>
-                                <th>Status</th>
-                                <th>Notes</th>
-                                <th>Due Date</th>
-                                <th>Balance</th>
-                                <th>Amount Paid</th>
-                                <th>Late Fees</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for subuser in subusers %}
-                                {% for payment in subuser.payments.all %}
-                                    <tr id="payment-{{ payment.id }}" class="{% if payment.status == 'overdue' %}overdue{% endif %}">
-                                        <td>{{ subuser.user.last_name }}, {{ subuser.user.first_name }}</td>
-                                        <td>{{ subuser.student.first_name }} {{ subuser.student.last_name }}</td>
-                                        <td>{{ payment.frequency }}</td>
-                                        <td>{{ payment.amount }}</td>
-                                        <td>{{ payment.start_date }}</td>
-                                        <td class="status-column">{{ payment.status }}</td>
-                                        <td>{{ payment.notes }}</td>
-                                        <td>{{ payment.due_date }}</td>
-                                        <td>{{ payment.balance }}</td>
-                                        <td>{{ payment.amount_paid }}</td>
-                                        <td>{{ payment.late_fees }}</td>
-                                        <td>
-                                            {% if payment.balance > 0 %}
-                                                <button type="button" class="btn btn-primary pay-now" data-payment-id="{{ payment.id }}" data-payment-amount="{{ payment.balance }}">
-                                                    <i class="fas fa-credit-card"></i>  <!-- Credit Card icon for Pay Now -->
-                                                    <span class="btn-text">Pay Now</span> <!-- Text shown on hover -->
-                                                </button>
-                                                
-                                                <button type="button" class="btn btn-secondary record-payment" data-payment-id="{{ payment.id }}" data-payment-amount="{{ payment.balance }}">
-                                                    <i class="fas fa-money-bill"></i>  <!-- Cash Bill icon for Record Payment -->
-                                                    <span class="btn-text">Record Payment</span> <!-- Text shown on hover -->
-                                                </button>
-                                                
-                                                <button type="button" class="btn btn-warning apply-late-fee" 
-                                                    data-bs-toggle="modal" data-bs-target="#lateFeeModal" 
-                                                    data-payment-id="{{ payment.id }}">
-                                                    <i class="fas fa-calendar-times"></i>  
-                                                    <span class="btn-text">Add Late Fee</span>
-                                                </button>
-                                            {% else %}
-                                                <span class="text-success">Paid in Full</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            {% endfor %}
-                        </tbody>
-                        <tfoot class="table-dark">
-                            <tr>
-                              <!-- Columns 1-3 (Parent, Student, Frequency) -->
-                              <td colspan="3"><strong>Totals:</strong></td>
-                              <!-- Column 4 (Rate) -->
-                              <td id="total-rate">0.00</td>
-                              <!-- Columns 5-8 merged into one cell -->
-                              <td colspan="4"></td>
-                              <!-- Column 9 (Balance) -->
-                              <td id="total-balance">0.00</td>
-                              <!-- Column 10 (Amount Paid) -->
-                              <td id="total-amount-paid">0.00</td>
-                              <!-- Column 11 (Late Fees) -->
-                              <td id="total-late-fees">0.00</td>
-                              <!-- Column 12 (Action) -->
-                              <td></td>
-                            </tr>
-                        </tfoot>
-                        
-                    </table>
-                    <!-- Modal for Adding Late Fee -->
-                    <div class="modal fade" id="lateFeeModal" tabindex="-1" aria-labelledby="lateFeeModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="lateFeeModalLabel">Apply Late Fee</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="late-fee-form">
-                                        <input type="hidden" id="late-fee-payment-id">
-                                        <div class="mb-3">
-                                            <label for="late-fee-amount" class="form-label">Late Fee Amount</label>
-                                            <input type="number" class="form-control" id="late-fee-amount" name="late_fee" value="10.00" step="0.01">
-                                        </div>
-                                        <button type="submit" class="btn btn-warning">Apply Late Fee</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Modal for Cash/Check Payment -->
-                    <div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="recordPaymentModalLabel">Record Cash/Check Payment</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="record-payment-form">
-                                        <div class="mb-3">
-                                            <label for="payment-amount" class="form-label">Amount</label>
-                                            <input type="number" class="form-control" id="payment-amount" name="payment_amount" step="0.01" required>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="payment-method" class="form-label">Payment Method</label>
-                                            <select class="form-control" id="record-payment-method" name="payment_method" required>
-                                                <option value="cash">Cash</option>
-                                                <option value="check">Check</option>
-                                            </select>
-                                        </div>
+                <!-- Display Error Messages -->
+                {% if messages %}
+    <div id="message-container">
+        {% for message in messages %}
+            <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %}" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
 
-                                        <div class="mb-3">
-                                            <label for="payment-notes" class="form-label">Notes</label>
-                                            <textarea class="form-control" id="payment-notes" name="payment_notes"></textarea>
-                                        </div>
+                <!-- Add Tuition Plan Button -->
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTuitionPlanModal">
+                    Add Tuition
+                </button>
 
-                                        <button type="submit" class="btn btn-primary" id="record-payment-btn">Record Payment</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-               <!-- Modal for Payment -->
-                <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+                <!-- Add Tuition Plan Modal -->
+                <div class="modal fade" id="addTuitionPlanModal" tabindex="-1" aria-labelledby="addTuitionPlanModalLabel" aria-hidden="true">
                     <div class="modal-dialog">
                         <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="paymentModalLabel">Pay Invoice</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form id="payment-form">
+                            <form method="POST" action="{% url 'add_tuition_plan' %}">
+                                {% csrf_token %}
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="addTuitionPlanModalLabel">Add Tuition Plan</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <!-- Student Dropdown -->
+                                <div class="mb-3">
+                                    <label for="student" class="form-label">Student</label>
+                                    <select class="form-select" id="student" name="student">
+                                        <option value="" selected>Select a Student</option>
+                                        {% for student in active_students %}
+                                            {% with student.parents.all|first as parent %}
+                                                <option value="{{ student.id }}" 
+                                                        data-parent-id="{% if parent %}{{ parent.id }}{% else %}''{% endif %}">
+                                                    {{ student.first_name }} {{ student.last_name }}
+                                                </option>
+                                            {% endwith %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Parent Dropdown -->
+                                <div class="mb-3">
+                                    <label for="subuser" class="form-label">Parent</label>
+                                    <select class="form-select" id="subuser" name="subuser" required>
+                                        <option value="" selected>Select a Parent</option>
+                                        {% for subuser in subusers %}
+                                            <option value="{{ subuser.id }}">
+                                                {{ subuser.user.username }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                    <!-- Weekly Amount -->
                                     <div class="mb-3">
-                                        <label for="amount" class="form-label">Amount</label>
-                                        <input type="number" class="form-control" id="amount" name="amount" step="0.01" required>
-                                    </div>                                         
-                                    <!-- Add payment method dropdown -->
-                                    <div class="mb-3">
-                                        <label for="payment-method" class="form-label">Payment Method</label>
-                                        <select class="form-control" id="payment-method" name="payment_method" required>
-                                            <option value="card">Credit Card</option>
-                                            
-                                        </select>
+                                        <label for="weekly_amount" class="form-label">Weekly Amount</label>
+                                        <input type="number" step="0.01" class="form-control" id="weekly_amount" name="weekly_amount" required>
                                     </div>
 
-                                    <!-- Card details are shown only if Credit Card is selected -->
-                                    <div id="card-details" class="payment-method-details">
-                                        <label for="card-element" class="form-label">Credit Card Information</label>
-                                        <div id="card-element"></div>
-                                        <div id="card-errors" role="alert"></div>
+                                    <!-- Start Date -->
+                                    <div class="mb-3">
+                                        <label for="start_date" class="form-label">Start Date</label>
+                                        <input type="date" class="form-control" id="start_date" name="start_date" required>
                                     </div>
-
-                                    <!-- Buttons to show or hide based on payment method selection -->
-                                    <button type="submit" class="btn btn-primary" id="pay-now-btn">Pay Now</button>
-                                </form>
-                            </div>
+                                </div>
+                                <div class="modal-footer d-flex justify-content-end">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
-<!-- Modal for Recurring Invoice -->
-<div class="modal fade" id="recurringInvoiceModal" tabindex="-1" aria-labelledby="recurringInvoiceModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="recurringInvoiceModalLabel">Create Recurring Tuition Fee</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="recurringInvoiceForm" method="post" action="{% url 'create_payment' %}">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="subuser" class="form-label">Select Subuser</label>
-                        <select class="form-select" id="subuser" name="subuser">
-                            {% for subuser in subusers %}
-                                <option value="{{ subuser.id }}">{{ subuser.user.last_name }}, {{ subuser.user.first_name }}</option>
-                            {% endfor %}
+
+                <!-- Filtering and Sorting Options -->
+                <div class="filter-container d-flex flex-wrap justify-content-start align-items-center gap-3 mb-4" style="margin-left: 27px;">
+                     <div class="filter-item">
+                        <label for="searchInput" class="form-label" style="font-weight: bold; color: #272630;">Search</label>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search by Student or Parent Name" style="width: 300px;">
+                    </div>
+
+                    <!-- Filter by Balance -->
+                    <div class="filter-item">
+                        <label for="filterBalance" class="form-label" style="font-weight: bold; color: #272630;">Filter by Balance</label>
+                        <select id="filterBalance" class="form-select" style="width: 200px;">
+                            <option value="">All Balances</option>
+                            <option value="positive">Positive</option>
+                            <option value="negative">Negative</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="frequency" class="form-label">Frequency</label>
-                        <select class="form-select" id="frequency" name="frequency">
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="yearly">Yearly</option>
+
+                    <!-- Filter by Activity Status -->
+                    <div class="filter-item">
+                        <label for="filterActivity" class="form-label" style="font-weight: bold; color: #272630;">Filter by Activity</label>
+                        <select id="filterActivity" class="form-select" style="width: 200px;">
+                            <option value="active" selected>Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="all">All</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="rate" class="form-label">Rate</label>
-                        <input type="number" class="form-control" id="rate" name="rate" step="0.01" required>
+
+                    <!-- Sort Options -->
+                    <div class="filter-item">
+                        <label for="sortOptions" class="form-label" style="font-weight: bold; color: #272630;">Sort By</label>
+                        <select id="sortOptions" class="form-select" style="width: 200px;">
+                            <option value="student">Student Name</option>
+                            <option value="parent">Parent Name</option>
+                            <option value="balance">Balance</option>
+                            <option value="weeklyAmount">Weekly Amount</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <label for="start_date" class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="start_date" name="start_date" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="due_date" class="form-label">Due Date</label>
-                        <input type="date" class="form-control" id="due_date" name="due_date" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="end_date" class="form-label">End Date (Optional)</label>
-                        <input type="date" class="form-control" id="end_date" name="end_date">
-                    </div>
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes"></textarea>
+
+                   
+                </div>
+
+                <!-- Tuition Plans Table -->
+                <table id="tuitionPlansTable">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Parent</th>
+                            <th style="width: 100px;">Weekly Amount</th> <!-- Set width to 100px -->
+                            <th style="width: 100px;">Current Balance</th> <!-- Set width to 100px -->
+                            <th>Start Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    {% for plan in tuition_plans %}
+    <tr>
+        <td>
+            {% if plan.subuser.students.exists %}
+                {% for student in plan.subuser.students.all %}
+                    <a href="{% url 'pay_history' plan.subuser.id %}" class="clickable" data-href="{% url 'pay_history' plan.subuser.id %}">
+                        {{ student.first_name }} {{ student.last_name }}
+                    </a>
+                    {% if not forloop.last %}, {% endif %} <!-- Add a comma between multiple students -->
+                {% endfor %}
+            {% else %}
+                No Student Assigned
+            {% endif %}
+        </td>
+        <td>
+            <a href="{% url 'pay_history' plan.subuser.id %}" class="clickable" data-href="{% url 'pay_history' plan.subuser.id %}">
+                {{ plan.subuser.user.username }}
+            </a>
+        </td>
+        <td>${{ plan.weekly_amount }}</td>
+        <td>
+            {% if plan.subuser.balance < 0 %}
+                <span style="color: red; font-weight: bold;">${{ plan.subuser.balance }} (OVERDUE)</span>
+            {% else %}
+                ${{ plan.subuser.balance }}
+            {% endif %}
+        </td>
+        <td>{{ plan.start_date }}</td>
+        <td>
+            {% if plan.is_active %}
+                Active
+            {% else %}
+                Inactive
+            {% endif %}
+        </td>
+        <td>
+            <button type="button" class="btn btn-payment btn-sm" data-bs-toggle="modal" data-bs-target="#recordPaymentModal{{ plan.id }}">
+                <i class="fas fa-money-bill"></i>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editTuitionPlanModal{{ plan.id }}">
+                Edit
+            </button>
+        </td>
+    </tr>
+    {% endfor %}
+</tbody>
+                </table>
+
+                <!-- Edit Tuition Plan Modals -->
+                {% for plan in tuition_plans %}
+                <div class="modal fade" id="editTuitionPlanModal{{ plan.id }}" tabindex="-1" aria-labelledby="editTuitionPlanModalLabel{{ plan.id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="{% url 'edit_tuition_plan' plan.id %}" data-plan-id="{{ plan.id }}" class="edit-tuition-plan-form">
+                                {% csrf_token %}
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editTuitionPlanModalLabel{{ plan.id }}">Edit Tuition Plan</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="subuser{{ plan.id }}" class="form-label">Parent</label>
+                                        <select class="form-select" id="subuser{{ plan.id }}" name="subuser" required>
+                                            {% for subuser in subusers %}
+                                                <option value="{{ subuser.id }}" {% if subuser.id == plan.subuser.id %}selected{% endif %}>
+                                                    {{ subuser.user.username }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="weekly_amount{{ plan.id }}" class="form-label">Weekly Amount</label>
+                                        <input type="number" step="0.01" class="form-control" id="weekly_amount{{ plan.id }}" name="weekly_amount" value="{{ plan.weekly_amount }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="start_date{{ plan.id }}" class="form-label">Start Date</label>
+                                        <input type="date" class="form-control" id="start_date{{ plan.id }}" name="start_date" value="{{ plan.start_date|date:'Y-m-d' }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="is_active{{ plan.id }}" class="form-label">Status</label>
+                                        <select class="form-select is-active-dropdown" id="is_active{{ plan.id }}" name="is_active" data-is-active="{{ plan.is_active }}">
+                                            <option value="true" {% if plan.is_active %}selected{% endif %}>Active</option>
+                                            <option value="false" {% if not plan.is_active %}selected{% endif %}>Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer d-flex justify-content-end">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Tuition Fee</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+                {% endfor %}
 
-
+                <!-- Record Payment Modals -->
+                {% for plan in tuition_plans %}
+                <div class="modal fade" id="recordPaymentModal{{ plan.id }}" tabindex="-1" aria-labelledby="recordPaymentModalLabel{{ plan.id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="{% url 'record_payment' plan.subuser.id %}">
+                                {% csrf_token %}
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="recordPaymentModalLabel{{ plan.id }}">Record Payment</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="payment_amount{{ plan.id }}" class="form-label">Payment Amount</label>
+                                        <input type="number" step="0.01" class="form-control" id="payment_amount{{ plan.id }}" name="payment_amount" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="payment_method{{ plan.id }}" class="form-label">Payment Method</label>
+                                        <select class="form-select" id="payment_method{{ plan.id }}" name="payment_method" required>
+                                            <option value="cash">Cash</option>
+                                            <option value="check">Check</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="payment_note{{ plan.id }}" class="form-label">Check#/Note</label>
+                                        <textarea class="form-control" id="payment_note{{ plan.id }}" name="payment_note" rows="3" placeholder="Enter check# or add note (optional)"></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer d-flex justify-content-end">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Record Payment</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </main>
-    </div>
-    <script src="https://js.stripe.com/v3/"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="js/scripts.js"></script>
-    <script src="https://js.stripe.com/v3/"></script>
-    <script type="text/javascript" src="https://js.squareup.com/v2/paymentform"></script>
-
+                {% endfor %}
+{% endblock %}
+{% block scripts %}                
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            console.log("DOM fully loaded");
+        document.addEventListener('DOMContentLoaded', function () {
+            const rows = Array.from(document.querySelectorAll('#tuitionPlansTable tbody tr'));
+            const filterParent = document.getElementById('filterParent');
+            const filterBalance = document.getElementById('filterBalance');
+            const filterActivity = document.getElementById('filterActivity');
+            const sortOptions = document.getElementById('sortOptions');
 
-            // Square payment form configuration
-            var paymentForm = new SquarePaymentForm({
-                applicationId: "{{ settings.SQUARE_APPLICATION_ID }}",  // from settings.py
-                locationId: 'YOUR_SQUARE_LOCATION_ID',  // You will need your location ID from Square
-                inputClass: 'sq-input',
-                autoBuild: false,
-                inputStyles: [{
-                    fontSize: '16px',
-                    padding: '12px',
-                    backgroundColor: 'transparent',
-                    color: '#37302e',
-                    lineHeight: '24px',
-                    borderRadius: '3px',
-                    borderColor: '#dcdfe1',
-                    width: '100%'
-                }],
-                cardNumber: {
-                    elementId: 'card-number',
-                    placeholder: 'Card Number'
-                },
-                cvv: {
-                    elementId: 'cvv',
-                    placeholder: 'CVV'
-                },
-                expirationDate: {
-                    elementId: 'expiration-date',
-                    placeholder: 'MM/YY'
-                },
-                postalCode: {
-                    elementId: 'postal-code',
-                    placeholder: 'Postal Code'
-                },
-                callbacks: {
-                    cardNonceResponseReceived: function(errors, nonce, cardData) {
-                        if (errors) {
-                            console.log("Encountered errors: ", errors);
-                            document.getElementById("card-errors").textContent = errors[0].message;
-                            return;
-                        }
-                        
-                        // Send nonce to server to complete the payment
-                        fetch("{% url 'pay_summary' %}", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/x-www-form-urlencoded",
-                                "X-CSRFToken": "{{ csrf_token }}"
-                            },
-                            body: new URLSearchParams({
-                                amount: document.getElementById("card_amount").value,
-                                nonce: nonce,  // Square's nonce for the payment
-                                payment_method: "card"
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                alert("Payment succeeded!");
-                                // Hide modal after successful payment
-                                bootstrap.Modal.getInstance(document.getElementById("cardPaymentModal")).hide();
-                            } else {
-                                document.getElementById("card-errors").textContent = data.error;
-                            }
-                        })
-                        .catch(error => {
-                            console.error("Error:", error);
-                            document.getElementById("card-errors").textContent = "Payment failed. Please try again.";
-                        });
-                    }
-                }
+            // Filter by Parent
+            filterParent.addEventListener('change', function () {
+                const parent = this.value.toLowerCase();
+                rows.forEach(row => {
+                    const parentCell = row.cells[1].textContent.toLowerCase();
+                    row.style.display = parent && parentCell !== parent ? 'none' : '';
+                });
             });
 
-            // Build the payment form
-            paymentForm.build();
-
-            // Handle Card Payment Form Submission
-            var form = document.getElementById("card-payment-form");
-            if (form) {
-                form.addEventListener("submit", function(e) {
-                    e.preventDefault();
-                    
-                    const amount = document.getElementById("card_amount").value;
-                    if (!amount || isNaN(amount) || amount <= 0) {
-                        document.getElementById("card-errors").textContent = "Please enter a valid amount.";
-                        return;
+            // Filter by Balance
+            filterBalance.addEventListener('change', function () {
+                const balanceFilter = this.value;
+                rows.forEach(row => {
+                    const balanceCell = parseFloat(row.cells[3].textContent.replace('$', ''));
+                    if (
+                        (balanceFilter === 'positive' && balanceCell < 0) ||
+                        (balanceFilter === 'negative' && balanceCell >= 0)
+                    ) {
+                        row.style.display = 'none';
+                    } else {
+                        row.style.display = '';
                     }
-                    
-                    // Request nonce and initiate payment
-                    paymentForm.requestCardNonce();
                 });
+            });
+
+            // Filter by Activity Status
+            filterActivity.addEventListener('change', function () {
+                const activityFilter = this.value;
+                rows.forEach(row => {
+                    const isActive = row.cells[5].textContent.trim().toLowerCase() === 'active';
+                    if (
+                        (activityFilter === 'active' && isActive) || // Show active rows when filter is "active"
+                        (activityFilter === 'inactive' && !isActive) || // Show inactive rows when filter is "inactive"
+                        (activityFilter === 'all') // Show all rows when filter is "all"
+                    ) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+
+            // Sort Rows
+            sortOptions.addEventListener('change', function () {
+                const sortBy = this.value;
+                const sortedRows = rows.sort((a, b) => {
+                    let valA, valB;
+                    switch (sortBy) {
+                        case 'student':
+                            valA = a.cells[0].textContent.toLowerCase();
+                            valB = b.cells[0].textContent.toLowerCase();
+                            break;
+                        case 'parent':
+                            valA = a.cells[1].textContent.toLowerCase();
+                            valB = b.cells[1].textContent.toLowerCase();
+                            break;
+                        case 'balance':
+                            valA = parseFloat(a.cells[3].textContent.replace('$', ''));
+                            valB = parseFloat(b.cells[3].textContent.replace('$', ''));
+                            break;
+                        case 'weeklyAmount':
+                            valA = parseFloat(a.cells[2].textContent.replace('$', ''));
+                            valB = parseFloat(b.cells[2].textContent.replace('$', ''));
+                            break;
+                    }
+                    return valA > valB ? 1 : valA < valB ? -1 : 0;
+                });
+
+                // Reorder rows in the table
+                const tbody = document.querySelector('#tuitionPlansTable tbody');
+                sortedRows.forEach(row => tbody.appendChild(row));
+            });
+
+            // Trigger default filter for activity status (Active)
+            filterActivity.dispatchEvent(new Event('change'));
+        });
+
+        // Confirmation for setting a tuition plan to inactive
+        document.addEventListener('DOMContentLoaded', function () {
+            const editForms = document.querySelectorAll('.edit-tuition-plan-form');
+
+            editForms.forEach(form => {
+                form.addEventListener('submit', function (event) {
+                    const dropdown = form.querySelector('.is-active-dropdown');
+                    const isActive = dropdown.value === 'false'; // Check if the selected value is "false"
+
+                    if (isActive) {
+                        const confirmAction = confirm("Are you sure you want to set this tuition plan to inactive?");
+                        if (!confirmAction) {
+                            event.preventDefault(); // Cancel form submission if the user does not confirm
+                        }
+                    }
+                });
+            });
+        });
+
+        // Display error messages as alerts
+        document.addEventListener('DOMContentLoaded', function () {
+            const errorAlert = document.querySelector('.alert-danger');
+            if (errorAlert) {
+                alert(errorAlert.textContent.trim());
             }
         });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const rows = Array.from(document.querySelectorAll('#tuitionPlansTable tbody tr'));
+            const searchInput = document.getElementById('searchInput');
+
+            // Search by Student or Parent Name
+            searchInput.addEventListener('input', function () {
+                const query = this.value.toLowerCase();
+                rows.forEach(row => {
+                    const studentCell = row.cells[0].textContent.toLowerCase();
+                    const parentCell = row.cells[1].textContent.toLowerCase();
+                    row.style.display = studentCell.includes(query) || parentCell.includes(query) ? '' : 'none';
+                });
+            });
+        });
     </script>
-    
-</body>
-</html>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const rows = Array.from(document.querySelectorAll('#tuitionPlansTable tbody tr'));
+        const filterBalance = document.getElementById('filterBalance');
+        const filterActivity = document.getElementById('filterActivity');
+        const searchInput = document.getElementById('searchInput');
+        const sortOptions = document.getElementById('sortOptions');
+
+        // Filter by Balance
+        filterBalance.addEventListener('change', function () {
+            const balanceFilter = this.value;
+            rows.forEach(row => {
+                const balanceCell = parseFloat(row.cells[3].textContent.replace('$', '').replace('(OVERDUE)', '').trim());
+                if (
+                    (balanceFilter === 'positive' && balanceCell <= 0) ||
+                    (balanceFilter === 'negative' && balanceCell >= 0)
+                ) {
+                    row.style.display = 'none';
+                } else {
+                    row.style.display = '';
+                }
+            });
+        });
+
+        // Filter by Activity Status
+        filterActivity.addEventListener('change', function () {
+            const activityFilter = this.value;
+            rows.forEach(row => {
+                const isActive = row.cells[5].textContent.trim().toLowerCase() === 'active';
+                if (
+                    (activityFilter === 'active' && isActive) || // Show active rows when filter is "active"
+                    (activityFilter === 'inactive' && !isActive) || // Show inactive rows when filter is "inactive"
+                    (activityFilter === 'all') // Show all rows when filter is "all"
+                ) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Search by Student or Parent Name
+        searchInput.addEventListener('input', function () {
+            const query = this.value.toLowerCase();
+            rows.forEach(row => {
+                const studentCell = row.cells[0].textContent.toLowerCase();
+                const parentCell = row.cells[1].textContent.toLowerCase();
+                row.style.display = studentCell.includes(query) || parentCell.includes(query) ? '' : 'none';
+            });
+        });
+
+        // Sort Rows
+        sortOptions.addEventListener('change', function () {
+            const sortBy = this.value;
+            const sortedRows = rows.sort((a, b) => {
+                let valA, valB;
+                switch (sortBy) {
+                    case 'student':
+                        valA = a.cells[0].textContent.toLowerCase();
+                        valB = b.cells[0].textContent.toLowerCase();
+                        break;
+                    case 'parent':
+                        valA = a.cells[1].textContent.toLowerCase();
+                        valB = b.cells[1].textContent.toLowerCase();
+                        break;
+                    case 'balance':
+                        valA = parseFloat(a.cells[3].textContent.replace('$', '').replace('(OVERDUE)', '').trim());
+                        valB = parseFloat(b.cells[3].textContent.replace('$', '').replace('(OVERDUE)', '').trim());
+                        break;
+                    case 'weeklyAmount':
+                        valA = parseFloat(a.cells[2].textContent.replace('$', '').trim());
+                        valB = parseFloat(b.cells[2].textContent.replace('$', '').trim());
+                        break;
+                }
+                return valA > valB ? 1 : valA < valB ? -1 : 0;
+            });
+
+            // Reorder rows in the table
+            const tbody = document.querySelector('#tuitionPlansTable tbody');
+            sortedRows.forEach(row => tbody.appendChild(row));
+        });
+
+        // Trigger default filter for activity status (Active)
+        filterActivity.dispatchEvent(new Event('change'));
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const rows = document.querySelectorAll('.clickable-row');
+        rows.forEach(row => {
+            row.addEventListener('click', function () {
+                const href = this.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const clickableLinks = document.querySelectorAll('.clickable');
+        clickableLinks.forEach(link => {
+            link.addEventListener('click', function (event) {
+                const href = this.getAttribute('data-href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const messageContainer = document.getElementById('message-container');
+        if (messageContainer) {
+            setTimeout(() => {
+                messageContainer.style.display = 'none';
+            }, 10000); // 10 seconds
+        }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const studentDropdown = document.getElementById('student');
+        const parentDropdown = document.getElementById('subuser');
+
+        studentDropdown.addEventListener('change', function () {
+            const selectedSubuserId = this.options[this.selectedIndex].getAttribute('data-subuser-id');
+
+            // Update the parent dropdown to match the selected student's parent
+            if (selectedSubuserId) {
+                Array.from(parentDropdown.options).forEach(option => {
+                    if (option.value === selectedSubuserId) {
+                        option.selected = true;
+                    } else {
+                        option.selected = false;
+                    }
+                });
+            } else {
+                parentDropdown.selectedIndex = 0; // Reset to default if no student is selected
+            }  
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const addTuitionForm = document.querySelector('#addTuitionPlanModal form');
+        const parentDropdown = document.getElementById('subuser');
+        const existingPlans = new Set(
+            Array.from(document.querySelectorAll('#tuitionPlansTable tbody tr')).map(row => 
+                row.cells[1].textContent.trim() // Collect parent names or IDs
+            )
+        );
+
+        addTuitionForm.addEventListener('submit', function (event) {
+            const selectedParent = parentDropdown.options[parentDropdown.selectedIndex].textContent.trim();
+
+            if (existingPlans.has(selectedParent)) {
+                const confirmAction = confirm("There is already tuition set for this user. Are you sure you'd like to create another?");
+                if (!confirmAction) {
+                    event.preventDefault(); // Cancel form submission if the user does not confirm
+                }
+            }
+        });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const studentDropdown = document.getElementById('student');
+        const parentDropdown = document.getElementById('subuser');
+
+        // When a student is selected, update the parent dropdown
+        studentDropdown.addEventListener('change', function () {
+            const selectedStudent = this.options[this.selectedIndex];
+            const parentId = selectedStudent.getAttribute('data-parent-id');
+
+            if (parentId) {
+                Array.from(parentDropdown.options).forEach(option => {
+                    if (option.value === parentId) {
+                        option.selected = true;
+                    } else {
+                        option.selected = false;
+                    }
+                });
+            } else {
+                parentDropdown.selectedIndex = 0; // Reset to default if no parent is linked
+            }
+        });
+
+        // When a parent is selected, update the student dropdown
+        parentDropdown.addEventListener('change', function () {
+            const selectedParent = this.options[this.selectedIndex];
+            const studentId = selectedParent.getAttribute('data-student-id');
+
+            if (studentId) {
+                Array.from(studentDropdown.options).forEach(option => {
+                    if (option.value === studentId) {
+                        option.selected = true;
+                    } else {
+                        option.selected = false;
+                    }
+                });
+            } else {
+                studentDropdown.selectedIndex = 0; // Reset to default if no student is linked
+            }
+        });
+    });
+</script>
+{% endblock %}

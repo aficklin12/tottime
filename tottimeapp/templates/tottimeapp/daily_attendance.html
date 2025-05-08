@@ -1,27 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="" />
-    <meta name="author" content="" />
-    <title>Daily Attendance</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Font Awesome -->
-    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Tabulator CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
-    <!-- Custom CSS -->
-    {% load static %}
-    {% load custom_filters %}
-    {% load dict_extras %}
-    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
-    <style>
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Daily Attendance{% endblock %}
+
+{% block styles %}
+<style>
         h1 {
     margin-top: 20px;
     margin-left: 27px;
@@ -30,54 +14,27 @@
     font-weight: bold;
     font-size: 40px;
 }
-h2 {
-    margin-top: 20px;
-    margin-bottom: -10px;
+.table {
+    margin-top: 15px;
     margin-left: 27px;
-    line-height: 1.2;
-    font-size: 25px;
+    border-collapse: collapse; /* Collapse the borders of the table */
+    width: 75%; /* Make the table take up the entire width */
+    table-layout: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px; /* Add this for rounded corners */
+    overflow: hidden;
 }
+th {
+            background-color: #272630 !important;
+            color: #ffffff !important;
+        }
 body {
     font-family: Arial, sans-serif;
         }
-
-table {
-    border-collapse: collapse;
-    margin-top: 20px;
-    margin-left: 27px;
-    margin-right: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px; /* Add this for rounded corners */
-    overflow: hidden; /* Ensure the rounded corners are visible */
-    
+.modal-footer .btn {
+    margin: 5px; /* Remove any default margins */
+    vertical-align: middle; /* Ensure buttons are vertically aligned */
 }
-
-th, td {
-           
-            border: 1px solid #dddddd;
-            padding: 8px;
-            text-align: center; /* Horizontally center the text */
-            vertical-align: middle; 
-        }
-
-
-
-th {
-            background-color: #272630;
-            color: #ffffff;
-            text-align: center;
-            vertical-align: middle;
-            font-weight: bold;
-        }
-
-tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-
-tr:hover {
-            background-color: #ddd;
-        }
-
 
 
 .sb-nav-link-icon i {
@@ -175,11 +132,7 @@ input[type="time"].sign-out-time:focus {
     box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
 }
 
-td {
-    padding: 8px !important; /* Ensure consistent padding */
-    text-align: center; /* Center the content horizontally */
-    vertical-align: middle; /* Center the content vertically */
-}
+
 .over-ratio {
         color: red;
     }
@@ -200,167 +153,207 @@ td {
     background-color: #007b8a;
     border-color: #007b8a;
 }
+.btn-assign {
 
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color: rgb(33, 31, 39);
+    font-size: 17px;
+    font-weight: 500;
+    padding: 4px 6px !important; /* Add padding for more space */
+    
+}
+
+/* Additional hover styles (optional) */
+.btn-assign:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+.btn-rec {
+margin-top: 10px;
+background-color: rgb(153, 158, 158); /* Change success button color */
+border-color: rgb(153, 158, 158);
+color: rgb(33, 31, 39);
+font-size: 17px;
+font-weight: 550;
+padding: 4px 6px !important; /* Add padding for more space */
+
+}
+
+/* Additional hover styles (optional) */
+.btn-rec:hover {
+color: rgb(255, 255, 255);
+background-color: rgb(54, 56, 56);
+border-color: rgb(54, 56, 56);
+}
 .delete-column {
     display: none;
   }
 
+/* Adjust column widths */
+th:nth-child(2), td:nth-child(2), /* Sign In Time column */
+th:nth-child(3), td:nth-child(3)  /* Sign Out Time column */ {
+    width: 15%; /* Set equal width for Sign In and Sign Out columns */
+}
+th:nth-child(1), td:nth-child(1) { 
+    width: 40%; 
+}
+th:nth-child(4), td:nth-child(4) { /* Classroom column */
+    width: 30%; /* Make the Classroom column wider */
+}
 
-    </style>
-</head>
-<body class="sb-nav-fixed">
-    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-        <!-- Navbar Brand-->
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
-        
-        <a class="navbar-brand" href="{% url 'index' %}">
-            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
-        </a>
-        <!-- Navbar-->
-        <div class="ms-auto">
-            <ul class="navbar-nav me-lg-4">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <!-- Profile Picture or Default Image -->
-                        <img 
-                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        {% if user.is_authenticated %}
-                            <li><a class="dropdown-item" href="{% url 'message_inbox' %}">Inbox</a></li>  <!-- Link to Inbox -->
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
-                        {% else %}
-                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider" /></li>
-                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div id="layoutSidenav">
-        <div id="layoutSidenav_nav">
-            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
-                <div class="sb-sidenav-menu">
-                    <div class="nav">
-                        <div class="sb-sidenav-menu-heading"></div>
-                        {% if show_sign_in or show_daily_attendance or show_rosters %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                            Attendance
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_sign_in %}
-                                <a class="nav-link" href="{% url 'sign_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Sign In</a>
-                                {% endif %}
-                                {% if show_daily_attendance %}
-                                <a class="nav-link" href="{% url 'daily_attendance' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Daily Attendance</a>
-                                {% endif %}
-                                {% if show_rosters %}
-                                <a class="nav-link" href="{% url 'rosters' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Rosters</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
+/* Fixed widths for Sign In and Sign Out columns */
+th:nth-child(2), td:nth-child(2), /* Sign In Time column */
+th:nth-child(3), td:nth-child(3)  /* Sign Out Time column */ {
+    width: 15%; /* Fixed width for Sign In and Sign Out columns */
+}
 
-                        {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div> Food Program
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_inventory %}
-                                <a class="nav-link" href="{% url 'inventory_list' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Inventory</a>
-                                {% endif %}
-                                {% if show_weekly_menu %}
-                                <a class="nav-link" href="{% url 'menu' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Weekly Menu</a>
-                                {% endif %}
-                                {% if show_milk_inventory %}
-                                <a class="nav-link" href="{% url 'milk_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Milk Inventory</a>
-                                {% endif %}
-                                {% if show_meal_count %}
-                                <a class="nav-link" href="{% url 'meal_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Meal Count</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
+th:nth-child(1), td:nth-child(1) { 
+    width: 30%; /* Fixed width for Student column */
+}
 
+/* Classroom column adjusts to make space for Delete column */
+th:nth-child(4), td:nth-child(4) { 
+    width: auto; /* Allow the Classroom column to adjust */
+}
 
-                        {% if show_billing or show_payment_setup or show_pay_summary %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> Payments
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_pay_summary %}
-                                <a class="nav-link" href="{% url 'pay_summary' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Pay Summary</a>
-                                {% endif %}
-                                {% if show_billing %}
-                                <a class="nav-link" href="{% url 'payment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Billing</a>
-                                {% endif %}
-                                
-                                
-                            </nav>
-                        </div>
-                        {% endif %}
-                        {% if show_clock_in %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> Employees
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsEmployees" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'clock_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Clock</a>
-                                {% endif %}
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'time_sheet' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Sheet</a>
-                                {% endif %}
-                            </nav>
-                        </div>  
-                        {% endif %}
+/* Delete column fixed width */
+th:nth-child(5), td:nth-child(5) { 
+    width: 5%; /* Fixed width for Delete column */
+}
 
-                        {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div> Settings
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_classroom_options %}
-                                <a class="nav-link" href="{% url 'classroom_options' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Classroom Options</a>
-                                {% endif %}
-                                {% if show_recipes %}
-                                <a class="nav-link" href="{% url 'recipes' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Recipe Options</a>
-                                {% endif %}
-                                {% if show_menu_rules %}
-                                <a class="nav-link" href="{% url 'menu_rules' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Menu Rules</a>
-                                {% endif %}
-                                {% if show_permissions %}
-                                <a class="nav-link" href="{% url 'permissions' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Permissions</a>
-                                {% endif %}   
-                                {% if show_payment_setup %}
-                                <a class="nav-link" href="{% url 'square_account' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Payment Set-Up</a>
-                                {% endif %}                          
-                            </nav>
-                        </div>  
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="sb-sidenav-footer">
-                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
-                </div>
-            </nav>
-        </div>
-        <div id="layoutSidenav_content">
-            <main>
+/* Prevent table layout from shifting */
+.table {
+    table-layout: fixed; /* Ensure table layout remains consistent */
+}
+
+    /* Fixed widths for specific columns */
+    th:nth-child(1), td:nth-child(1) { 
+        width: 30%; /* Fixed width for Student column */
+    }
+
+    th:nth-child(2), td:nth-child(2), /* Sign In Time column */
+    th:nth-child(3), td:nth-child(3)  /* Sign Out Time column */ {
+        width: 15%; /* Fixed width for Sign In and Sign Out columns */
+    }
+
+    th:nth-child(4), td:nth-child(4) { 
+        width: auto; /* Allow the Classroom column to adjust */
+    }
+
+    th:nth-child(5), td:nth-child(5) { 
+        width: 5%; /* Fixed width for Delete column */
+        display: none; /* Hide the Delete column by default */
+    }
+
+    /* Show the Delete column when toggled */
+    .delete-column-visible th:nth-child(5),
+    .delete-column-visible td:nth-child(5) {
+        display: table-cell; /* Make the Delete column visible */
+    }
+
+    /* Prevent table layout from shifting */
+    .table {
+        table-layout: auto; /* Allow the table to adjust dynamically */
+        width: 75%; /* Ensure the table takes up the full width */
+    }
+
+.assign-teacher-row {
+    display: flex; /* Align items horizontally */
+    gap: 10px; /* Add spacing between dropdown and button */
+    align-items: center; /* Vertically align items */
+    justify-content: flex-end; /* Align items to the right */
+    white-space: nowrap; /* Prevent wrapping */
+}
+
+.teacher-row {
+    display: flex; /* Align items horizontally */
+    gap: 10px; /* Add spacing between items */
+    align-items: center; /* Vertically align items */
+    justify-content: flex-start; /* Keep items aligned to the left */
+    white-space: nowrap; /* Prevent wrapping */
+}
+
+.teacher-row div {
+    display: flex; /* Keep flex for individual teacher entries */
+    align-items: center; /* Align name and button vertically */
+    gap: 5px; /* Add spacing between name and button */
+}
+
+.teacher-row select {
+    width: auto; /* Allow the dropdown to adjust its width */
+    text-align: left; /* Align text to the left */
+}
+
+.unassign-teacher-btn {
+    width: 18px; /* Adjust button width */
+    height: 22px; /* Adjust button height */
+    padding: 1px; /* Adjust padding */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.unassign-teacher-btn i {
+    font-size: 0.7rem; /* Adjust icon size */
+}
+
+    /* Reduce padding and size for delete buttons within the table */
+    .table .delete-record {
+        padding: 2px 6px; /* Smaller padding */
+        font-size: 0.9rem; /* Smaller font size */
+        height: 24px; /* Adjust height */
+        width: 24px; /* Adjust width */
+        line-height: 1; /* Ensure proper alignment */
+        align-items: center;
+    }
+
+    .table .delete-record i {
+        font-size: 0.7rem; /* Adjust icon size */
+    }
+
+    /* Center the header and items in the delete column */
+    th.delete-column, td.delete-column {
+        text-align: center; /* Center text horizontally */
+        vertical-align: middle; /* Center text vertically */
+    }
+
+    /* Adjust the unassign button */
+    .unassign-teacher-btn {
+        width: 18px; /* Increase width by 2px */
+        height: 22px; /* Keep the height consistent */
+        padding: 1px; /* Adjust padding for better alignment */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Adjust the trash can icon size */
+    .unassign-teacher-btn i {
+        font-size: 0.7rem; /* Make the icon smaller */
+    }
+
+    /* Remove gridlines for the first two header rows */
+    .table thead tr:nth-child(1) th,
+    .table thead tr:nth-child(2) th,
+    .table thead tr:nth-child(1),
+    .table thead tr:nth-child(2) {
+        border: none; /* Remove borders */
+    }
+   
+    /* General rule for assigned teachers */
+    .assigned-teachers {
+        text-align: left !important; /* Force left alignment */
+    }
+
+    /* Remove bottom margin for the h2 in the first row */
+    .table thead tr:first-child h2 {
+        margin-bottom: 0; /* Remove bottom margin */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
                 <div class="mt-4">
                     <h1>Daily Attendance</h1>
                 </div>
@@ -370,62 +363,98 @@ td {
                 <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
                     <i class="fas fa-trash-alt" style="color: red;"></i>
                 </button>
+                <a href="{% url 'attendance_record' %}" class="btn btn-rec" style="margin-left: 15px;">
+                    Attendance Records
+                </a>
                 {% for classroom, records in attendance_data.items %}
-    <div>
-        <h2>
-            <strong>{{ classroom }}- Ratio: </strong> 
-            <span class="{% if relative_counts|get_item:classroom > classroom.ratios %}over-ratio{% else %}under-ratio{% endif %}">
-                <strong>{{ relative_counts|get_item:classroom }} / {{ classroom.ratios }}</strong>
-            </span>
-        </h2>
-    </div>
-    {% if records %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Student</th>
-                    <th>Sign In Time</th>
-                    <th>Sign Out Time</th>
-                    <th>Classroom</th>
-                    <th class="delete-column" id="deleteColumnHeader">
-                        <i class="fas fa-trash-alt" style="color: white;"></i>
-                    </th>
+    <table class="table table-bordered">
+        <!-- Table Header -->
+        <thead>
+            <!-- First Row: Classroom Name, Ratios, and Assign Teachers -->
+            <tr>
+                <th colspan="3" style="text-align: left;">
+                    <h2>
+                        <strong>{{ classroom }} - Ratio: </strong>
+                        <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
+                            <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
+                        </span>
+                    </h2>
+                </th>
+                <th colspan="2" style="text-align: right; vertical-align: top;">
+                    <div class="assign-teacher-row" style="display: flex; gap: 10px; align-items: center; justify-content: flex-end; white-space: nowrap;">
+                        <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: auto;">
+                            <option value="" disabled selected>Assign teacher</option>
+                            {% for teacher in available_teachers %}
+                                <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
+                    </div>
+                </th>
+            </tr>
+
+            <!-- Second Row: Assigned Teachers -->
+            <tr>
+                <th colspan="5" style="text-align: left; vertical-align: top;">
+                    <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers" style="display: flex; gap: 10px; white-space: nowrap;">
+                        {% for teacher in assigned_teachers|get_item:classroom.id %}
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span>{{ teacher.first_name }} {{ teacher.last_name }}</span>
+                                <button type="button" class="btn btn-danger btn-sm unassign-teacher-btn unassign-column" 
+                                        data-teacher-id="{{ teacher.id }}" 
+                                        data-classroom-id="{{ classroom.id }}" 
+                                        style="display: none;">
+                                    <i class="fas fa-trash-alt" style="color: white;"></i>
+                                </button>
+                            </div>
+                        {% empty %}
+                            <span>No teachers assigned to this classroom.</span>
+                        {% endfor %}
+                    </div>
+                </th>
+            </tr>
+
+            <!-- Third Row: Attendance Records Header -->
+            <tr>
+                <th>Student</th>
+                <th>Sign In Time</th>
+                <th>Sign Out Time</th>
+                <th>Classroom</th>
+                <th class="delete-column" id="deleteColumnHeader">
+                    <i class="fas fa-trash-alt" style="color: white;"></i>
+                </th>
+            </tr>
+        </thead>
+
+        <!-- Table Body -->
+        <tbody>
+            {% for record in records %}
+                <tr id="record-{{ record.id }}">
+                    <td>{{ record.student }}</td>
+                    <td>
+                        <input type="time" class="sign-in-time" data-id="{{ record.id }}" value="{{ record.sign_in_time|time:"H:i" }}">
+                    </td>
+                    <td>
+                        <input type="time" class="sign-out-time" data-id="{{ record.id }}" value="{{ record.sign_out_time|time:"H:i" }}">
+                    </td>
+                    <td>
+                        <select class="classroom-select" data-id="{{ record.id }}">
+                            {% for option in classroom_options %}
+                                <option value="{{ option }}" {% if record.classroom_override == option %}selected{% endif %}>
+                                    {{ option }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="delete-column">
+                        <button type="button" class="btn btn-danger delete-record" data-id="{{ record.id }}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-                {% for record in records %}
-                    <tr id="record-{{ record.id }}">
-                        <td>{{ record.student }}</td>
-                        <td>
-                            <input type="time" class="sign-in-time" data-id="{{ record.id }}" value="{{ record.sign_in_time|time:"H:i" }}">
-                        </td>
-                        <td>
-                            <input type="time" class="sign-out-time" data-id="{{ record.id }}" value="{{ record.sign_out_time|time:"H:i" }}">
-                        </td>
-                        <td>
-                            <select class="classroom-select" data-id="{{ record.id }}">
-                                {% for option in classroom_options %}
-                                    <option value="{{ option }}" {% if record.classroom_override == option %}selected{% endif %}>
-                                        {{ option }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td class="delete-column">
-                            <button type="button" class="btn btn-danger delete-record" data-id="{{ record.id }}">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <!-- No records for this classroom -->
-        <div style="margin: 20px 27px; font-style: italic;">
-            Classroom currently empty.
-        </div>
-    {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
 {% empty %}
     <div style="margin: 20px 27px;">
         <p>No attendance records available for today.</p>
@@ -467,151 +496,225 @@ td {
                     </form>
                 </div>
                 </div>
-            </div>
-            <!-- JavaScript imports and custom scripts -->
-            <!-- jQuery -->
-            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-            <!-- Bootstrap Bundle JS -->
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-            <!-- Your custom JavaScript -->
-            <script src="{% static 'js/scripts.js' %}"></script>
+{% endblock %}
+{% block scripts %}
             <script>
-                $(document).ready(function() {
-                    function updateAttendanceRecord(recordId, field, newValue) {
-                        $.ajax({
-                            url: '/update_attendance/',
-                            method: 'POST',
-                            data: {
-                                'id': recordId,
-                                'field': field,
-                                'new_value': newValue,
-                                'csrfmiddlewaretoken': '{{ csrf_token }}'
-                            },
-                            success: function(response) {
-                                console.log('Attendance record updated successfully');
-                                if (field === 'classroom_override' || field === 'sign_in_time' || field === 'sign_out_time') {
-                                    location.reload();  // Refresh the page when any time field or classroom is changed
-                                }
-                            },
-                            error: function(xhr, status, error) {
-                                console.log('Error updating record:', error);
-                            }
-                        });
+    $(document).ready(function () {
+        function updateAttendanceRecord(recordId, field, newValue) {
+            $.ajax({
+                url: '/update_attendance/',
+                method: 'POST',
+                data: {
+                    'id': recordId,
+                    'field': field,
+                    'new_value': newValue,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    toastr.success('Attendance record updated successfully.');
+                    if (field === 'classroom_override' || field === 'sign_in_time' || field === 'sign_out_time') {
+                        location.reload(); // Refresh the page when any time field or classroom is changed
                     }
-        
-                    // Handle clicks on sign-in time field
-                    $('.sign-in-time').on('click', function() {
-                        var recordId = $(this).data('id');
-                        var currentValue = $(this).val();
-                        $(this).on('change', function() {
-                            var newValue = $(this).val();
-                            if (newValue !== currentValue) {
-                                updateAttendanceRecord(recordId, 'sign_in_time', newValue);
-                            }
-                        });
-                    });
-        
-                    // Handle clicks on sign-out time field
-                    $('.sign-out-time').on('click', function() {
-                        var recordId = $(this).data('id');
-                        var currentValue = $(this).val();
-                        $(this).on('change', function() {
-                            var newValue = $(this).val();
-                            if (newValue !== currentValue) {
-                                updateAttendanceRecord(recordId, 'sign_out_time', newValue);
-                            }
-                        });
-                    });
-        
-                    // Handle changes to classroom override dropdown
-                    $('.classroom-select').on('change', function() {
-                        var recordId = $(this).data('id');
-                        var newValue = $(this).val();
-                        updateAttendanceRecord(recordId, 'classroom_override', newValue);
-                    });
-                });
-        
-                document.addEventListener("DOMContentLoaded", function () {
-                    document.querySelectorAll(".sign-in-time, .sign-out-time").forEach(input => {
-                        input.addEventListener("click", function () {
-                            this.showPicker(); // Opens the time picker when clicking anywhere on the input field
-                        });
-                    });
-                });
-            </script>
-            <script>
-                $('#manualSignInModal').on('show.bs.modal', function () {
-                  var now = new Date();
-                  var hours = now.getHours().toString().padStart(2, '0');
-                  var minutes = now.getMinutes().toString().padStart(2, '0');
-                  $('#signInTime').val(hours + ':' + minutes);
-                });
-              </script>
-                <script>
-                    $(document).ready(function(){
-                    $('#manualSignInForm').on('submit', function(e) {
-                        e.preventDefault();  // Prevent the default form submission
-                
-                        $.ajax({
-                        url: '{% url "manual_sign_in_ajax" %}',
-                        method: 'POST',
-                        data: $(this).serialize(),
-                        success: function(response) {
-                            if(response.success) {
-                            // Close the modal
-                            $('#manualSignInModal').modal('hide');
-                            // Optionally, refresh the page or update your attendance records via AJAX
+                },
+                error: function (xhr, status, error) {
+                    toastr.error('Error updating record: ' + error);
+                }
+            });
+        }
+
+        // Handle clicks on sign-in time field
+        $('.sign-in-time').on('click', function () {
+            var recordId = $(this).data('id');
+            var currentValue = $(this).val();
+            $(this).on('change', function () {
+                var newValue = $(this).val();
+                if (newValue !== currentValue) {
+                    updateAttendanceRecord(recordId, 'sign_in_time', newValue);
+                }
+            });
+        });
+
+        // Handle clicks on sign-out time field
+        $('.sign-out-time').on('click', function () {
+            var recordId = $(this).data('id');
+            var currentValue = $(this).val();
+            $(this).on('change', function () {
+                var newValue = $(this).val();
+                if (newValue !== currentValue) {
+                    updateAttendanceRecord(recordId, 'sign_out_time', newValue);
+                }
+            });
+        });
+
+        // Handle changes to classroom override dropdown
+        $('.classroom-select').on('change', function () {
+            var recordId = $(this).data('id');
+            var newValue = $(this).val();
+
+            $.ajax({
+                url: '/update_attendance/',
+                method: 'POST',
+                data: {
+                    'id': recordId,
+                    'field': 'classroom_override',
+                    'new_value': newValue,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.status === 'success') {
+                        toastr.success('Classroom override updated successfully.');
+                        location.reload();
+                    } else if (response.status === 'warning') {
+                        toastr.warning(response.message);
+                    } else {
+                        toastr.error('Error: ' + (response.message || 'Unknown error.'));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    toastr.error('An error occurred while updating the classroom override.');
+                }
+            });
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".sign-in-time, .sign-out-time").forEach(input => {
+            input.addEventListener("click", function () {
+                this.showPicker();
+            });
+        });
+    });
+</script>
+
+<script>
+    $('#manualSignInModal').on('show.bs.modal', function () {
+        var now = new Date();
+        var hours = now.getHours().toString().padStart(2, '0');
+        var minutes = now.getMinutes().toString().padStart(2, '0');
+        $('#signInTime').val(hours + ':' + minutes);
+    });
+
+    $(document).ready(function () {
+        $('#manualSignInForm').on('submit', function (e) {
+            e.preventDefault();
+
+            $.ajax({
+                url: '{% url "manual_sign_in_ajax" %}',
+                method: 'POST',
+                data: $(this).serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        toastr.success('Student signed in successfully.');
+                        $('#manualSignInModal').modal('hide');
+                        location.reload();
+                    } else {
+                        toastr.error('Failed to sign in the student: ' + (response.error || 'Unknown error.'));
+                    }
+                },
+                error: function () {
+                    toastr.error('An error occurred while signing in the student.');
+                }
+            });
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+        $('.delete-record').on('click', function () {
+            var recordId = $(this).data('id');
+            if (confirm('Are you sure you want to delete this attendance record?')) {
+                $.ajax({
+                    url: '{% url "delete_attendance" %}',
+                    method: 'POST',
+                    data: {
+                        'id': recordId,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            toastr.success('Record deleted successfully.');
                             location.reload();
-                            } else {
-                            alert('Failed to sign in the student: ' + (response.error || 'Unknown error.'));
-                            }
-                        },
-                        error: function() {
-                            alert('An error occurred while signing in the student.');
+                        } else {
+                            toastr.error('Error deleting record: ' + (response.error || 'Unknown error.'));
                         }
-                        });
-                    });
-                    });
-                </script>
-               <script>
-                $(document).ready(function() {
-                    // Delete attendance record
-                    $('.delete-record').on('click', function() {
-                        var recordId = $(this).data('id');
-                        // Confirm before deleting
-                        if (confirm('Are you sure you want to delete this attendance record?')) {
-                            $.ajax({
-                                url: '{% url "delete_attendance" %}',
-                                method: 'POST',
-                                data: {
-                                    'id': recordId,
-                                    'csrfmiddlewaretoken': '{{ csrf_token }}'
-                                },
-                                success: function(response) {
-                                    if (response.success) {
-                                        // Refresh the page to update the list
-                                        location.reload();
-                                        console.log('Record deleted successfully.');
-                                    } else {
-                                        alert('Error deleting record: ' + (response.error || 'Unknown error.'));
-                                    }
-                                },
-                                error: function(xhr, status, error) {
-                                    console.log('Error deleting record:', error);
-                                    alert('An error occurred while deleting the record.');
-                                }
-                            });
-                        }
-                    });
+                    },
+                    error: function (xhr, status, error) {
+                        toastr.error('An error occurred while deleting the record.');
+                    }
                 });
-            </script>
-            
-  <script>
-    // Toggle the display of delete columns when the button is clicked
+            }
+        });
+    });
+</script>
+
+<script>
     function toggleDeleteColumn() {
-      $('.delete-column').toggle();
+        $('.delete-column').toggle();
+        $('.unassign-column').toggle();
     }
-  </script>
-  
-        </body>
-        </html>
+
+    $(document).ready(function () {
+        $('.unassign-teacher-btn').on('click', function () {
+            var classroomId = $(this).data('classroom-id');
+            var teacherId = $(this).data('teacher-id');
+
+            if (!confirm('Are you sure you want to unassign this teacher?')) {
+                return;
+            }
+
+            $.ajax({
+                url: '{% url "unassign_teacher_from_classroom" %}',
+                method: 'POST',
+                data: {
+                    'classroom_id': classroomId,
+                    'teacher_id': teacherId,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        location.reload();
+                    } else {
+                        toastr.error('Error: ' + (response.error || 'Unknown error.'));
+                    }
+                },
+                error: function () {
+                    toastr.error('An error occurred while unassigning the teacher.');
+                }
+            });
+        });
+
+        $('.assign-teacher-btn').on('click', function () {
+            var classroomId = $(this).data('classroom-id');
+            var teacherId = $('#availableTeachers-' + classroomId).val();
+
+            if (!teacherId) {
+                toastr.warning('Please select a teacher to assign.');
+                return;
+            }
+
+            $.ajax({
+                url: '{% url "assign_teacher_to_classroom" %}',
+                method: 'POST',
+                data: {
+                    'classroom_id': classroomId,
+                    'teacher_id': teacherId,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function (response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        location.reload();  // Reload the page to reflect changes
+                    } else {
+                        toastr.error('Error: ' + (response.error || 'Unknown error.'));
+                    }
+                },
+                error: function () {
+                    toastr.error('An error occurred while assigning the teacher.');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+{% block title %}Messaging Permissions{% endblock %}
+{% block styles %}
+<style>
+h1 {
+    margin-top: 20px;
+    margin-left: 27px !important;
+    font-weight: 400;
+    line-height: 1.2;
+    font-weight: bold;
+    font-size: 40px;
+}
+.table {
+    margin-top: 15px;
+    margin-left: 27px;
+    border-collapse: collapse; /* Collapse the borders of the table */
+    width: 75%; /* Make the table take up the entire width */
+    table-layout: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px; /* Add this for rounded corners */
+    overflow: hidden;
+    
+}   
+th {
+            background-color: #272630 !important;
+            color: #ffffff !important;
+            text-align: center; 
+        } 
+th:first-child {
+    text-align: left; /* Left-align the first column */
+    font-weight: bold; /* Make the sender names bold for emphasis */
+}
+td {
+    vertical-align: middle; /* Vertically centers the content */
+}
+td:first-child {
+    text-align: left; /* Left-align the first column */
+    font-weight: bold; /* Make the sender names bold for emphasis */
+}
+td input[type="checkbox"] {
+    display: block;
+    margin: 0 auto; /* Center the checkboxes horizontally */
+}
+.btn-primary {
+    margin-left: 27px !important;
+}
+.btn-secondary {
+    margin-left: 27px !important;
+}
+</style>
+    {% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h1>Messaging Permissions Settings</h1>
+    <a href="{% url 'permissions' %}" class="btn btn-secondary">Page Permissions</a>
+    <form method="POST">
+        {% csrf_token %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Message Sender</th>
+                    {% for group in groups %}
+                        <th>{{ group.name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for sender in groups %}
+                    <tr>
+                        <td>{{ sender.name }}</td>
+                        {% for receiver in groups %}
+                            <td>
+                                <input type="checkbox" name="sender_{{ sender.id }}_receiver_{{ receiver.id }}"
+                                       {% for perm in messaging_permissions %}
+                                           {% if perm.sender_role.id == sender.id and perm.receiver_role.id == receiver.id and perm.can_message %}
+                                               checked
+                                           {% endif %}
+                                       {% endfor %}>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <div style="margin-left: 27px;">
+            <p class="text-muted">
+            Each row represents a sender role, each column represents a receiver role. 
+            Check the boxes to grant permission for a sender role to message a receiver role. 
+            Click "Save" to apply your changes.
+        </p>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block scripts %}
+
+{% endblock %}

@@ -1,736 +1,278 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="" />
-    <meta name="author" content="" />
-    <title>Classroom Options</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Font Awesome -->
-    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Tabulator CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
-    <!-- Custom CSS -->
-    {% load static %}
-    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
-    <style>
-        h1 {
-            margin-top: 20px;
-            margin-left: 15px;
-            margin-bottom: 30px;
-            font-weight: 400;
-            line-height: 1.2;
-            font-weight: bold;
-            font-size: 40px;
-        }
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
 
-        .btn-primary {
-            margin-left: 27px;
-            margin-top: 5px;
-            margin-bottom: 10px;
-            margin-right: 15px;
-        }
+{% block title %}Classroom Options{% endblock %}
 
-        .btn.deleteRecipeBtn {
-            margin-bottom: 6px;   
-        }
-        
-        .recipe-buttons {
-            float: right;
-        }
-        
-        .classrooms, .students, .teachers {
-            width: 280px; /* Adjust the width as needed */
-            margin-left: 27px; /* Adjust the margin as needed */
-            margin-top: 30px;
-            font-size: larger;
-        }
-
-        .classrooms .list-group-item, .students .list-group-item, .teachers .list-group-item {
-            width: 220px;
-            background-color: white; /* Set background color to white */
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 5px;
-            list-style-type: none; /* Remove bullet points */
-           
-            font-size: larger;
-        }
-
-        .bg-faded-red {
-            background-color: #272630; /* Adjust the alpha value (last parameter) for the desired opacity */
-        }
-        .sb-nav-link-icon i {
+{% block styles %}
+<style>
+.clickable-name {
+    cursor: pointer; /* Change cursor to indicate clickability */
+    text-decoration: none; /* Remove underline */
+}
+.clickable-name:hover {
     color: rgb(57, 189, 180);
-    font-size: 1.2rem; /* Icon size */
-    vertical-align: middle; /* Adjust vertical alignment */
-    line-height: 1; /* Prevent icon from being too high */
+    text-decoration: underline; /* Add underline on hover */
+}
+
+#searchInput {
+        width: 150px !important; 
+        margin-left:27px;
+        margin-top: 20px;/* Set a smaller width for the search input */
+    }
+
+#classroomSelect {
+    width: 155px; /* Set a smaller width for the classroom dropdown */
+    margin-top: 20px;
+}
+#statusSelect {
+    width: 100px; /* Set a smaller width for the classroom dropdown */
+    margin-top: 20px;
+}
+#filter-form .row {
+    margin-top: 30px;
+    margin-left: 25px;
+    display: flex;
+    align-items: center; /* Vertically align items */
+    gap: 10px; /* Add spacing between items */
+}
+
+/* Ensure no margin from parent elements */
+.mb-3 {
+    margin-bottom: 0 !important; /* Force remove margin from the form container */
+}
+
+/* Tabs container */
+.tabs {
+    margin-top: 25px;
+    margin-left: 47px;
+    margin-bottom: 4px !important;
     
 }
-.list-group-item {
+
+/* Tab styles */
+.tab {
+    padding: 5px 15px; /* Reduce padding for smaller tabs */
+    text-decoration: none;
+    color: #000;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0; /* Add more curved corners */
+    margin-right: 5px;
     cursor: pointer;
 }
 
-/* Style for the link text */
-.nav-link {
-    color: #ffffff !important; /* Ensure text is completely white */
-}
-
-/* Style for the arrow after the link */
-.sb-sidenav-collapse-arrow i {
-    color: rgb(228, 218, 79);
-}
-
-/* Optional: Hover effect for nav links */
-.nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
-    color: #ffffff !important; /* Retain white text on hover */
-}
-.btn-primary {
-  background-color: rgb(57, 189, 180); /* Change success button color */
-    border-color: rgb(57, 189, 180);
-    color:#272630;
+/* Active tab styles */
+.active-tab {
+    background-color: #272630;
+    color: #ffffff;
     font-weight: bold;
-    margin-left: 15px;
+    cursor: default;
+    border-radius: 10px 10px 0 0; /* Match the curved corners */
+    
+}
+.active-tab:hover {
+    
+    color: rgb(57, 189, 180);
+}
+/* Hover effect for inactive tabs */
+.tab:hover:not(.active-tab) {
+    background-color: #e9ecef;
+    color: rgb(57, 189, 180); /* Change hover text color */
 }
 
-/* Additional hover styles (optional) */
-.btn-primary:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-    color:#fff
+    .btn-table {
+        margin-top: 20px;
+        background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+    }
+.btn-table:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
+#toggleDeleteColumn {
+        margin-top: 20px;
+        margin-left: 10px;
+    }
+.btn-primary {
+     margin-top: 20px!important;
 }
-.navbar-brand img {
-    width: 100%; /* Ensure the logo takes up the full width of its container */
-    max-width: 200px; /* Set a max-width to control the size of the logo */
-    height: auto; /* Maintain aspect ratio */
-    object-fit: contain; /* Make sure the logo doesn't get distorted */
-    margin-left: 0; /* Reset any left margin if needed */
-    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
-    overflow: visible; /* Ensure no clipping occurs */
-}
+</style>
+{% endblock %}
 
+{% block content %}
+<h1>Classroom Options</h1>
 
-    </style>
-</head>
-<body class="sb-nav-fixed">
-    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-        <!-- Navbar Brand-->
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
-        
-        <a class="navbar-brand" href="{% url 'index' %}">
-            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
-        </a>
-        <!-- Navbar-->
-        <div class="ms-auto">
-            <ul class="navbar-nav me-lg-4">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <!-- Profile Picture or Default Image -->
-                        <img 
-                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        {% if user.is_authenticated %}
-                            <li><a class="dropdown-item" href="{% url 'message_inbox' %}">Inbox</a></li>  <!-- Link to Inbox -->
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
-                        {% else %}
-                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider" /></li>
-                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div id="layoutSidenav">
-        <div id="layoutSidenav_nav">
-            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
-                <div class="sb-sidenav-menu">
-                    <div class="nav">
-                        <div class="sb-sidenav-menu-heading"></div>
-                        {% if show_sign_in or show_daily_attendance or show_rosters %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                            Attendance
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_sign_in %}
-                                <a class="nav-link" href="{% url 'sign_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Sign In</a>
-                                {% endif %}
-                                {% if show_daily_attendance %}
-                                <a class="nav-link" href="{% url 'daily_attendance' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Daily Attendance</a>
-                                {% endif %}
-                                {% if show_rosters %}
-                                <a class="nav-link" href="{% url 'rosters' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Rosters</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
+<form method="get" id="filter-form" class="mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <!-- Search Filter -->
+        <input type="text" name="search" class="form-control" placeholder="Search by name" value="{{ search_query }}" id="searchInput" style="width: 200px;">
+        <!-- Classroom Filter -->
+        <select name="classroom" class="form-select" id="classroomSelect">
+            <option value="">All Classrooms</option>
+            {% for classroom in classrooms %}
+            <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == selected_classroom %}selected{% endif %}>
+                {{ classroom.name }}
+            </option>
+            {% endfor %}
+        </select>
+        <!-- Status Filter -->
+        <select name="status" class="form-select" id="statusSelect" onchange="this.form.submit()">
+            <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
+            <option value="transferred" {% if selected_status == 'transferred' %}selected{% endif %}>Transferred</option>
+        </select>
 
-                        {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div> Food Program
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_inventory %}
-                                <a class="nav-link" href="{% url 'inventory_list' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Inventory</a>
-                                {% endif %}
-                                {% if show_weekly_menu %}
-                                <a class="nav-link" href="{% url 'menu' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Weekly Menu</a>
-                                {% endif %}
-                                {% if show_milk_inventory %}
-                                <a class="nav-link" href="{% url 'milk_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Milk Inventory</a>
-                                {% endif %}
-                                {% if show_meal_count %}
-                                <a class="nav-link" href="{% url 'meal_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Meal Count</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
+        <!-- Add Student Button -->
+        <button type="button" class="btn btn-table" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+            Add +
+        </button>
 
-
-                        {% if show_billing or show_payment_setup or show_pay_summary %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> Payments
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_pay_summary %}
-                                <a class="nav-link" href="{% url 'pay_summary' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Pay Summary</a>
-                                {% endif %}
-                                {% if show_billing %}
-                                <a class="nav-link" href="{% url 'payment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Billing</a>
-                                {% endif %}
-                                
-                                
-                            </nav>
-                        </div>
-                        {% endif %}
-                        {% if show_clock_in %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> Employees
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsEmployees" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'clock_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Clock</a>
-                                {% endif %}
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'time_sheet' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Sheet</a>
-                                {% endif %}
-                            </nav>
-                        </div>  
-                        {% endif %}
-
-                        {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div> Settings
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_classroom_options %}
-                                <a class="nav-link" href="{% url 'classroom_options' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Classroom Options</a>
-                                {% endif %}
-                                {% if show_recipes %}
-                                <a class="nav-link" href="{% url 'recipes' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Recipe Options</a>
-                                {% endif %}
-                                {% if show_menu_rules %}
-                                <a class="nav-link" href="{% url 'menu_rules' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Menu Rules</a>
-                                {% endif %}
-                                {% if show_permissions %}
-                                <a class="nav-link" href="{% url 'permissions' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Permissions</a>
-                                {% endif %}   
-                                {% if show_payment_setup %}
-                                <a class="nav-link" href="{% url 'square_account' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Payment Set-Up</a>
-                                {% endif %}                          
-                            </nav>
-                        </div>  
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="sb-sidenav-footer">
-                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
-                </div>
-            </nav>
-        </div>
-        <div id="layoutSidenav_content">
-            <main>
-                <div class="container-fluid px-4">
-                    <h1>Classroom Options</h1>
-                    <div class="mb-4">
-                        <a href="{% url 'send_invitation' %}" class="btn btn-primary">Send Invitation</a>
-                    </div>
-                    <div class="row">
-                        <div class="card mb-4 classrooms bg-faded-red">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div class="col">
-                                    <i class="fas fa-chalkboard me-1 text-white"></i>
-                                    <strong class="text-white">Classrooms</strong>
-                                </div>
-                                <div class="col-auto">
-                                    <button id="classroomListButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#addClassroomModal"><i class="fas fa-plus"></i></button>
-                                    <button id="classroomDelButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#deleteClassroomModal"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-group" id="classroomList">
-                                    {% for classroom in classrooms %}
-                                        <li class="list-group-item" data-bs-toggle="modal" data-bs-target="#editClassroomModal"
-                                            data-classroom-id="{{ classroom.id }}" data-classroom-name="{{ classroom.name }}"
-                                            data-classroom-ratios="{{ classroom.ratios }}">
-                                            {{ classroom.name }}
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="card mb-4 students bg-faded-red">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div class="col">
-                                    <i class="fas fa-chalkboard me-1 text-white"></i>
-                                    <strong class="text-white">Students</strong>
-                                </div>
-                                <div class="col-auto">
-                                    <button id="studentListButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="fas fa-plus"></i></button>
-                                    <button id="studentDelButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#deleteStudentModal"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-group" id="studentList">
-                                    {% for classroom in classrooms %}
-                                        {% for student in classroom.students %}
-                                        <li class="list-group-item" data-bs-toggle="modal" data-bs-target="#editStudentModal"
-                                            data-student-id="{{ student.id }}" data-first-name="{{ student.first_name }}"
-                                            data-last-name="{{ student.last_name }}" data-dob="{{ student.date_of_birth }}"
-                                            data-code="{{ student.code }}" data-classroom="{{ student.classroom.name }}">
-                                            {{ student.first_name }} {{ student.last_name }}
-                                        </li>
-                                
-                                        {% endfor %}
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="card mb-4 teachers bg-faded-red">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div class="col">
-                                    <i class="fas fa-chalkboard me-1 text-white"></i>
-                                    <strong class="text-white">Teachers</strong>
-                                </div>
-                                <div class="col-auto">
-                                    <button id="teacherListButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#addTeacherModal"><i class="fas fa-plus"></i></button>
-                                    <button id="teacherDelButton" type="button" class="btn btn-light btn-sm btn-smaller" data-bs-toggle="modal" data-bs-target="#deleteTeacherModal"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-group" id="teacherList">
-                                    {% if teachers %}
-                                        {% for teacher in teachers %}
-                                            <li class="list-group-item">{{ teacher.first_name }} {{ teacher.last_name }}</li>
-                                        {% endfor %}
-                                    {% else %}
-                                        <li class="list-group-item">No teachers available</li>
-                                    {% endif %}
-                                </ul>
-                            </div>
-                        </div>
-                        
-                    </div>
-                </div>
-                <!-- Edit Classroom Modal -->
-                <div class="modal fade" id="editClassroomModal" tabindex="-1" aria-labelledby="editClassroomModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        {% csrf_token %}
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="editClassroomModalLabel">Edit Classroom</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <form id="editClassroomForm">
-                                <div class="modal-body">
-                                    <input type="hidden" id="editClassroomId" name="classroomId"> <!-- Hidden field to store classroom ID -->
-                                    <div class="mb-3">
-                                        <label for="editClassroomName" class="form-label">Classroom Name</label>
-                                        <input type="text" class="form-control" id="editClassroomName" name="classroomName" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="editClassroomRatio" class="form-label">Student-Teacher Ratio</label>
-                                        <input type="number" class="form-control" id="editClassroomRatio" name="classroomRatio" required>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            <!-- Edit Student Modal -->
-            <div class="modal fade" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    {% csrf_token %}
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="editStudentModalLabel">Edit Student</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form id="editStudentForm">
-                            <div class="modal-body">
-                                <input type="hidden" id="editStudentId" name="studentId"> <!-- Hidden field to store student ID -->
-                                <div class="mb-3">
-                                    <label for="editFirstName" class="form-label">First Name</label>
-                                    <input type="text" class="form-control" id="editFirstName" name="firstName" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editLastName" class="form-label">Last Name</label>
-                                    <input type="text" class="form-control" id="editLastName" name="lastName" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editDob" class="form-label">Date of Birth</label>
-                                    <input type="date" class="form-control" id="editDob" name="dob" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editCode" class="form-label">Code</label>
-                                    <input type="text" class="form-control" id="editCode" name="code" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editClassroom" class="form-label">Classroom</label>
-                                    <select class="form-select" id="editClassroom" name="classroom" required>
-                                        <option selected disabled>Select Classroom</option>
-                                        {% for classroom in classrooms %}
-                                            <option value="{{ classroom.id }}">{{ classroom.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+     </div>
+    <div class="tabs mb-3">
+        <a href="#" class="tab active-tab">Students</a>
+        <a href="{% url 'classroom_options_parents' %}" class="tab">Parents</a>
+        <a href="{% url 'classroom_options_teachers' %}" class="tab">Teachers</a>
+        <a href="{% url 'classroom_options_classrooms' %}" class="tab">Classrooms</a>
+    </div>
+</form>
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addStudentModalLabel">Add Student</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-
-                <!-- Add Classroom Modal -->
-                <div class="modal fade" id="addClassroomModal" tabindex="-1" aria-labelledby="addClassroomModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="addClassroomModalLabel">Add Classroom</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <!-- Form to add a classroom -->
-                                <form id="addClassroomForm">
-                                    <div class="mb-3">
-                                        <label for="className" class="form-label">Classroom Name</label>
-                                        <input type="text" class="form-control" id="className" name="className">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="classRatio" class="form-label">Student-Teacher Ratio</label>
-                                        <input type="number" class="form-control" id="classRatio" name="classRatio" min="1" required>
-                                    </div>                                    
-                                    <button type="submit" class="btn btn-primary">Add</button>
-                                </form>
-                            </div>
-                        </div>
+            <div class="modal-body">
+                <form id="addStudentForm" method="post" action="{% url 'add_student' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="studentFirstName" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="studentFirstName" name="first_name" required>
                     </div>
-                </div>
-                <div class="modal fade" id="deleteClassroomModal" tabindex="-1" aria-labelledby="deleteClassroomModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="deleteClassroomModalLabel">Select Classroom(s) to Delete</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form id="deleteClassroomForm">
-                                    <ul class="list-group">
-                                        {% for classroom in classrooms %}
-                                            <li class="list-group-item">
-                                                <input type="checkbox" class="form-check-input" name="classroomCheckbox" value="{{ classroom.id }}">
-                                                {{ classroom.name }}
-                                            </li>
-                                        {% endfor %}
-                                    </ul>
-                                    <button type="submit" class="btn btn-danger mt-3">Delete Selected</button>
-                                </form>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="studentLastName" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="studentLastName" name="last_name" required>
                     </div>
-                </div>
-
-                <div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="addStudentModalLabel">Add Student</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form id="addStudentForm">
-                          <div class="modal-body">
-                            <div class="mb-3">
-                              <label for="firstName" class="form-label">First Name</label>
-                              <input type="text" class="form-control" id="firstName" name="firstName" required>
-                            </div>
-                            <div class="mb-3">
-                              <label for="lastName" class="form-label">Last Name</label>
-                              <input type="text" class="form-control" id="lastName" name="lastName" required>
-                            </div>
-                            <div class="mb-3">
-                              <label for="dob" class="form-label">Date of Birth</label>
-                              <input type="date" class="form-control" id="dob" name="dob" required>
-                            </div>
-                            <div class="mb-3">
-                              <label for="code" class="form-label">Code</label>
-                              <input type="text" class="form-control" id="code" name="code" required>
-                            </div>
-                            <div class="mb-3">
-                              <label for="classroom" class="form-label">Classroom</label>
-                              <select class="form-select" id="classroom" name="classroom" required>
-                                <option selected disabled>Select Classroom</option>
-                                {% for classroom in classrooms %}
-                                    <option value="{{ classroom.name }}">{{ classroom.name }}</option>
-                                {% endfor %}
-                            </select>
-                          </div>
-                          <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Add Student</button>
-                          </div>
-                        </form>
-                      </div>
+                    <div class="mb-3">
+                        <label for="studentDOB" class="form-label">Date of Birth</label>
+                        <input type="date" class="form-control" id="studentDOB" name="date_of_birth" required>
                     </div>
-                  </div>     
+                    <div class="mb-3">
+                        <label for="studentClassroom" class="form-label">Classroom</label>
+                        <select class="form-control" id="studentClassroom" name="classroom_id" required>
+                            {% for classroom in classrooms %}
+                            <option value="{{ classroom.id }}">{{ classroom.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Student</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
-            </main>
-    <!-- JavaScript imports and custom scripts -->
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap Bundle JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <!-- Your custom JavaScript -->
-    <script src="{% static 'js/scripts.js' %}"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            document.querySelectorAll("#studentList .list-group-item").forEach(item => {
-                item.addEventListener("click", function () {
-                    const studentId = this.getAttribute("data-student-id");
-                    const firstName = this.getAttribute("data-first-name");
-                    const lastName = this.getAttribute("data-last-name");
-                    const dob = this.getAttribute("data-dob");
-                    const code = this.getAttribute("data-code");
-                    const classroom = this.getAttribute("data-classroom");
+<!-- Students Table -->
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Date of Birth</th>
+            <th>Code</th>
+            <th>Classroom</th>
+        </tr>
+    </thead>
+    <tbody id="studentTableBody">
+        {% for student in students %}
+        <tr>
+            <td class="clickable-name" data-url="{% url 'edit_student' student.id %}">
+                {{ student.first_name }} {{ student.last_name }}
+            </td>
+            <td>{{ student.date_of_birth }}</td>
+            <td>{{ student.code }}</td>
+            <td>{{ student.classroom.name }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center">No students found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
 
-                    document.getElementById("editStudentId").value = studentId;
-                    document.getElementById("editFirstName").value = firstName;
-                    document.getElementById("editLastName").value = lastName;
-                    document.getElementById("editDob").value = new Date(dob).toISOString().split("T")[0]; // Ensure correct format
-                    document.getElementById("editCode").value = code;
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('searchInput');
+        const classroomSelect = document.getElementById('classroomSelect');
+        const tableBody = document.getElementById('studentTableBody');
+        const rows = tableBody.getElementsByTagName('tr');
 
-                    // Set selected classroom
-                    const classroomSelect = document.getElementById("editClassroom");
-                    for (let option of classroomSelect.options) {
-                        if (option.text === classroom) {
-                            option.selected = true;
-                            break;
-                        }
+        // Filter table rows based on search input
+        searchInput.addEventListener('keyup', function () {
+            const filter = searchInput.value.toLowerCase();
+
+            for (let i = 0; i < rows.length; i++) {
+                const nameCell = rows[i].getElementsByTagName('td')[0]; // First column (Name)
+
+                if (nameCell) {
+                    const nameText = nameCell.textContent || nameCell.innerText;
+
+                    if (nameText.toLowerCase().includes(filter)) {
+                        rows[i].style.display = '';
+                    } else {
+                        rows[i].style.display = 'none';
                     }
-                });
-            });
-        });
-    </script>
-    
-    <script>
-        $(document).ready(function () {
-            // CSRF Token Setup
-            var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
-    
-            // Function to handle AJAX requests
-            function sendAjaxRequest(url, data, successCallback) {
-                $.ajax({
-                    type: 'POST',
-                    url: url,
-                    data: data,
-                    headers: { "X-CSRFToken": csrftoken },
-                    success: function (response) {
-                        if (response.success) {
-                            successCallback();
-                        } else {
-                            alert("Operation failed. Please try again.");
-                        }
-                    },
-                    error: function (xhr) {
-                        console.error(xhr.status + ": " + xhr.responseText);
-                    }
-                });
+                }
             }
-    
-            // Add Classroom Form Submission
-            $('#addClassroomForm').submit(function (e) {
-                e.preventDefault();
-                var classroomName = $('#className').val();
-                var classRatio = $('#classRatio').val();
-    
-                // Validate classRatio is a positive integer
-                if (!/^\d+$/.test(classRatio) || parseInt(classRatio) <= 0) {
-                    alert("Please enter a valid whole number for the student-teacher ratio.");
-                    return;
+        });
+        // Automatically submit the form when the classroom dropdown changes
+        classroomSelect.addEventListener('change', function () {
+                    document.getElementById('filter-form').submit();
+                });
+
+        // Handle form submission for adding a student
+        const form = document.getElementById('addStudentForm');
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+
+            fetch("{% url 'add_student' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page or update the table dynamically
+                    location.reload();
+                } else {
+                    alert('Error adding student: ' + data.message);
                 }
-    
-                sendAjaxRequest('{% url "add_classroom" %}', {
-                    'className': classroomName,
-                    'classRatio': classRatio,
-                    'csrfmiddlewaretoken': csrftoken
-                }, function () {
-                    location.reload();
-                });
-            });
-    
-            // Delete Classroom Form Submission
-            $('#deleteClassroomForm').submit(function (e) {
-                e.preventDefault();
-                var selectedClassrooms = $('input[name="classroomCheckbox"]:checked')
-                    .map(function () { return $(this).val(); }).get();
-    
-                if (selectedClassrooms.length === 0) {
-                    alert("Please select at least one classroom to delete.");
-                    return;
-                }
-    
-                sendAjaxRequest('{% url "delete_classrooms" %}', {
-                    'classroomIds': selectedClassrooms,
-                    'csrfmiddlewaretoken': csrftoken
-                }, function () {
-                    location.reload();
-                });
-            });
-    
-            // Add Student Form Submission
-            $('#addStudentForm').submit(function (e) {
-                e.preventDefault();
-                sendAjaxRequest('{% url "add_student" %}', $(this).serialize(), function () {
-                    $('#addStudentModal').modal('hide');
-                    location.reload();
-                });
-            });
-    
-            // Edit Student Modal - Populate Fields
-            $('#studentList').on('click', '.student-item', function () {
-                var studentData = $(this).data();
-    
-                $('#editStudentId').val(studentData.studentId);
-                $('#editFirstName').val(studentData.firstName);
-                $('#editLastName').val(studentData.lastName);
-                $('#editDob').val(studentData.dob);
-                $('#editCode').val(studentData.code);
-                $('#editClassroom').val(studentData.classroomId);
-    
-                $('#editStudentModal').modal('show');
-            });
-    
-            // Edit Student Form Submission
-            $('#editStudentForm').submit(function (e) {
-                e.preventDefault();
-                var studentId = $('#editStudentId').val();
-    
-                sendAjaxRequest(`/edit_student/${studentId}/`, $(this).serialize(), function () {
-                    location.reload();
-                });
-            });
+            })
+            .catch(error => console.error('Error:', error));
         });
 
-
-
-
-
-        document.addEventListener("DOMContentLoaded", function () {
-            document.querySelectorAll("#classroomList .list-group-item").forEach(item => {
-                item.addEventListener("click", function () {
-                    const classroomId = this.getAttribute("data-classroom-id");
-                    const classroomName = this.getAttribute("data-classroom-name");
-                    const classroomRatio = this.getAttribute("data-classroom-ratios");  // Use 'ratios' here
-
-                    document.getElementById("editClassroomId").value = classroomId;
-                    document.getElementById("editClassroomName").value = classroomName;
-                    document.getElementById("editClassroomRatio").value = classroomRatio;
-                });
-            });
-        });
-
-        $(document).ready(function () {
-            // CSRF Token Setup
-            var csrftoken = $('input[name=csrfmiddlewaretoken]').val();
-
-            // Function to handle AJAX requests
-            function sendAjaxRequest(url, data, successCallback) {
-                $.ajax({
-                    type: 'POST',
-                    url: url,
-                    data: data,
-                    headers: { "X-CSRFToken": csrftoken },
-                    success: function (response) {
-                        if (response.success) {
-                            successCallback();
-                        } else {
-                            alert("Operation failed. Please try again.");
-                        }
-                    },
-                    error: function (xhr) {
-                        console.error(xhr.status + ": " + xhr.responseText);
-                    }
-                });
-            }
-
-            // Edit Classroom Form Submission
-            $('#editClassroomForm').submit(function (e) {
-                e.preventDefault();
-                var classroomId = $('#editClassroomId').val();
-                var classroomName = $('#editClassroomName').val();
-                var classroomRatio = $('#editClassroomRatio').val();
-
-                console.log("Sending data to server:", {
-                    classroomId: classroomId,
-                    classroomName: classroomName,
-                    classroomRatio: classroomRatio
-                });
-
-                if (!/^\d+$/.test(classroomRatio) || parseInt(classroomRatio) <= 0) {
-                    alert("Please enter a valid whole number for the student-teacher ratio.");
-                    return;
+        // Add a click event listener to all elements with the class "clickable-name"
+        const clickableNames = document.querySelectorAll('.clickable-name');
+        clickableNames.forEach(function (element) {
+            element.addEventListener('click', function () {
+                const url = element.getAttribute('data-url');
+                if (url) {
+                    window.location.href = url;
                 }
-
-                sendAjaxRequest('/edit_classroom/' + classroomId + '/', {
-                    'classroomName': classroomName,
-                    'classroomRatio': classroomRatio,
-                    'csrfmiddlewaretoken': csrftoken
-                }, function () {
-                    location.reload();
-                });
             });
         });
-
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

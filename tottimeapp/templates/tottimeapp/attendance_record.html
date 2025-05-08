@@ -1,0 +1,191 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+
+{% block title %}Attendance Record{% endblock %}
+
+{% block styles %}
+    <style>
+        h1 {
+    margin-top: 20px;
+    margin-left: 27px;
+    font-weight: 400;
+    line-height: 1.2;
+    font-weight: bold;
+    font-size: 40px;
+}
+.table {
+    margin-top: 15px;
+    margin-left: 27px;
+    border-collapse: collapse; /* Collapse the borders of the table */
+    width: 75%; /* Make the table take up the entire width */
+    table-layout: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px; /* Add this for rounded corners */
+    overflow: hidden;
+}
+th {
+            background-color: #272630 !important;
+            color: #ffffff !important;
+        }
+body {
+    font-family: Arial, sans-serif;
+        }
+.modal-footer .btn {
+    margin: 5px; /* Remove any default margins */
+    vertical-align: middle; /* Ensure buttons are vertically aligned */
+}
+
+.btn-primary {
+    margin-left: 27px;
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+}
+
+/* Additional hover styles (optional) */
+.btn-primary:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+
+    </style>
+{% endblock %}
+
+{% block content %}
+        <div id="layoutSidenav_content">
+            <main>
+                <div class="mt-4">
+                    <h1 class="mb-3">Attendance Record for {{ selected_date|date:"F j, Y" }}</h1>
+                    <form method="get" action="{% url 'attendance_record' %}" class="d-flex align-items-center" style="margin-left: 27px;">
+                        <input type="date" id="date" name="date" class="form-control me-2" value="{{ selected_date|date:'Y-m-d' }}" style="width: 200px;">
+                        
+                        <!-- Classroom Filter Dropdown -->
+                        <select id="classroom" name="classroom" class="form-control me-2" style="width: 200px;">
+                            <option value="">All Classrooms</option>
+                            {% for classroom in classrooms %}
+                            <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == selected_classroom %}selected{% endif %}>
+                                {{ classroom.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        
+                        <button type="submit" class="btn btn-primary">Go</button>
+                    </form>
+                </div>
+                
+                <table class="table table-bordered mt-4">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Sign In</th>
+                            <th>Sign Out</th>
+                            {% if column_visibility.classroom_override_1 or column_visibility.timestamp_override_1 %}
+                            <th>Moved to:</th>
+                            {% endif %}
+                            {% if column_visibility.classroom_override_2 or column_visibility.timestamp_override_2 %}
+                            <th>Moved to:</th>
+                            {% endif %}
+                            {% if column_visibility.classroom_override_3 or column_visibility.timestamp_override_3 %}
+                            <th>Moved to:</th>
+                            {% endif %}
+                            {% if column_visibility.classroom_override_4 or column_visibility.timestamp_override_4 %}
+                            <th>Moved to:</th>
+                            {% endif %}
+                            {% if column_visibility.outside_time_out_1 %}<th>Time Outside</th>{% endif %}
+                            {% if column_visibility.outside_time_in_1 %}<th>Time Inside</th>{% endif %}
+                            {% if column_visibility.outside_time_out_2 %}<th>Time Outside</th>{% endif %}
+                            {% if column_visibility.outside_time_in_2 %}<th>Time Inside</th>{% endif %}
+                            {% if column_visibility.meal_1 %}<th>Meal 1</th>{% endif %}
+                            {% if column_visibility.meal_2 %}<th>Meal 2</th>{% endif %}
+                            {% if column_visibility.meal_3 %}<th>Meal 3</th>{% endif %}
+                            {% if column_visibility.meal_4 %}<th>Meal 4</th>{% endif %}
+                            {% if column_visibility.incident_report %}<th>Incident Report</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in attendance_records %}
+                        <tr>
+                            <td>{{ record.student }}</td>
+                            <td>{{ record.sign_in_time|date:"h:i A" }}</td>
+                            <td>{{ record.sign_out_time|date:"h:i A" }}</td>
+                            {% if column_visibility.classroom_override_1 or column_visibility.timestamp_override_1 %}
+                            <td>
+                                {% if record.classroom_override_1 %}{{ record.classroom_override_1 }}{% endif %}
+                                {% if record.timestamp_override_1 %}<br>{{ record.timestamp_override_1|date:"h:i A" }}{% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.classroom_override_2 or column_visibility.timestamp_override_2 %}
+                            <td>
+                                {% if record.classroom_override_2 %}{{ record.classroom_override_2 }}{% endif %}
+                                {% if record.timestamp_override_2 %}<br>{{ record.timestamp_override_2|date:"h:i A" }}{% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.classroom_override_3 or column_visibility.timestamp_override_3 %}
+                            <td>
+                                {% if record.classroom_override_3 %}{{ record.classroom_override_3 }}{% endif %}
+                                {% if record.timestamp_override_3 %}<br>{{ record.timestamp_override_3|date:"h:i A" }}{% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.classroom_override_4 or column_visibility.timestamp_override_4 %}
+                            <td>
+                                {% if record.classroom_override_4 %}{{ record.classroom_override_4 }}{% endif %}
+                                {% if record.timestamp_override_4 %}<br>{{ record.timestamp_override_4|date:"h:i A" }}{% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.outside_time_out_1 %}
+                            <td>
+                                {% if record.outside_time_out_1 %}
+                                    {{ record.outside_time_out_1|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.outside_time_in_1 %}
+                            <td>
+                                {% if record.outside_time_in_1 %}
+                                    {{ record.outside_time_in_1|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.outside_time_out_2 %}
+                            <td>
+                                {% if record.outside_time_out_2 %}
+                                    {{ record.outside_time_out_2|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.outside_time_in_2 %}
+                            <td>
+                                {% if record.outside_time_in_2 %}
+                                    {{ record.outside_time_in_2|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.incident_report %}
+                            <td>
+                                {% if record.incident_report %}
+                                    {{ record.incident_report }}
+                                {% else %}
+                                    <!-- Display blank instead of "None" -->
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="27" class="text-center">No attendance records found for {{ selected_date }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+{% endblock %}
+        

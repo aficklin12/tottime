@@ -1,277 +1,156 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="" />
-    <meta name="author" content="" />
-    <title>Messages</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Font Awesome -->
-    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Tabulator CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    {% load static %}
-    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
-    <style>
-        .back-btn {
-            display: none;
-        }
-    
-        h1 {
-            margin-top: 20px;
-            margin-bottom: 20px; /* conversation page only */
-            margin-left: 27px;
-            font-weight: 400;
-            line-height: 1.2;
-            font-weight: bold;
-            font-size: 40px;
-        }
-    
-        .sb-nav-link-icon i {
-            color: rgb(57, 189, 180);
-            font-size: 1.2rem; /* Icon size */
-            vertical-align: middle; /* Adjust vertical alignment */
-            line-height: 1; /* Prevent icon from being too high */
-        }
-    
-        /* Style for the link text */
-        .nav-link {
-            color: #ffffff !important; /* Ensure text is completely white */
-        }
-    
-        /* Style for the arrow after the link */
-        .sb-sidenav-collapse-arrow i {
-            color: rgb(228, 218, 79);
-        }
-    
-        /* Optional: Hover effect for nav links */
-        .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
-            color: #ffffff !important; /* Retain white text on hover */
-        }
-    
-        /* Chat Box at the Bottom Right */
-        .chat-box {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 350px;
-            max-height: 560px;
-            min-height: 560px;
-            display: flex;
-            flex-direction: column;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            background-color: #ffffff;
-            overflow: hidden;
-        }
-    
-        .chat-container {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between; /* Ensures the form stays at the bottom */
-            padding: 0;
-            margin: 0;
-            overflow: hidden;
-        }
-    
-        .messages {
-            flex: 1; /* Takes up remaining space */
-            display: flex;
-            min-height: 425px;
-            flex-direction: column;
-            gap: 10px;
-            padding: 10px;
-            overflow-y: auto; /* Allows scrolling for messages */
-            background-color: #f5f5f5;
-        }
-    
-        .message.sent {
-            align-self: flex-end;
-            background-color: rgba(57, 189, 180, 0.685);
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 75%;
-            word-wrap: break-word;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-        }
-    
-        .message.received {
-            align-self: flex-start;
-            background-color: rgb(228, 218, 79);
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 75%;
-            word-wrap: break-word;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-        }
-    
-        .message-form {
-            display: flex;
-            align-items: center; /* Keep input and button aligned */
-            padding: 10px;
-            background-color: #ffffff;
-            border-top: 1px solid #ccc;
-            width: 100%;
-            box-sizing: border-box;
-        }
-    
-        .message-input-container {
-            display: flex;
-            flex: 1; /* Allows input to take available space */
-            align-items: center;
-            gap: 10px; /* Adds spacing between input and button */
-        }
-    
-        .message-input {
-            flex: 1; /* Takes up remaining space */
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 20px;
-            font-size: 1em;
-            outline: none;
-            transition: border-color 0.3s;
-            width: auto; /* Prevents shrinking */
-        }
-    
-        .message-input:focus {
-            border-color: rgb(57, 189, 180);
-        }
-    
-        .send-btn {
-            flex-shrink: 0; /* Prevents button from shrinking */
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            border-radius: 50%;
-            background-color: rgb(57, 189, 180);
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-    
-        .send-btn:hover {
-            background-color: #007b8a;
-        }
-    
-        .send-btn i {
-            font-size: 20px;
-        }
-    
-        body {
-            font-family: Arial, sans-serif;
-        }
-    
-        h3 {
-            font-size: 24px;
-            color: #495057;
-            margin-top: 20px;
-            margin-left: 20px;
-        }
-    
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-    
-        section {
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }
-    
-        img {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: 15px;
-            margin-left: 20px;
-        }
-    
-        .navbar-brand img {
-    width: 100%; /* Ensure the logo takes up the full width of its container */
-    max-width: 200px; /* Set a max-width to control the size of the logo */
-    height: auto; /* Maintain aspect ratio */
-    object-fit: contain; /* Make sure the logo doesn't get distorted */
-    margin-left: 0; /* Reset any left margin if needed */
-    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
-    overflow: visible; /* Ensure no clipping occurs */
-}
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
 
-    
-        /* Override styles for the profile picture in the navbar */
-        .navbar-profile-pic {
-            width: 30px !important;
-            height: 30px !important;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-right: -1px !important;
-            margin-left: 0 !important;
-            display: inline-block;
-        }
-    
+{% block title %}Messages{% endblock %}
 
-        .chat-header {
-                display: flex;
-                align-items: center;
-                padding: 10px;
-                background-color: rgba(57, 189, 180, 0.685);
-                border-bottom: 1px solid #ccc;
-            }
-            
-    
-            .chat-header .user-name {
-                font-size: 20px;
-                font-weight: bold;
-            }
-            @media (max-width: 1000px) {
-    /* Full screen chat box */
+{% block styles %}
+<style>
+    .back-btn {
+        display: none;
+    }
+
+    /* Chat Box at the Bottom Right */
     .chat-box {
         position: fixed;
-        top: 55px; /* Adjusted to account for the navbar height */
-        left: 0;
-        width: 100%;
-        height: calc(100% - 60px); /* Adjusted height to account for the navbar */
-        max-height: calc(100% - 60px); /* Adjusted height */
-        min-height: calc(100% - 60px); /* Adjusted height */
+        bottom: 20px;
+        right: 20px;
+        width: 350px;
+        max-height: 560px;
+        min-height: 560px;
         display: flex;
         flex-direction: column;
-        border-radius: 0;
-        box-shadow: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         background-color: #ffffff;
         overflow: hidden;
     }
 
-    /* Back button */
-    .back-btn {
-        background-color: rgb(228, 218, 79);
-        color: rgb(34, 32, 32);
-        border: none;
-        padding: 10px 15px;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-        z-index: 10;
-        display: block; /* Ensure it's visible */
+    .chat-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
     }
 
-    .back-btn:hover {
-        background-color: rgb(155, 148, 55);
-        color: rgb(255, 255, 255);
+    .messages {
+        flex: 1;
+        display: flex;
+        min-height: 425px;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        overflow-y: auto;
+        background-color: #f5f5f5;
+    }
+
+    .message.sent {
+        align-self: flex-end;
+        background-color: rgba(57, 189, 180, 0.685);
+        padding: 10px;
+        border-radius: 10px;
+        max-width: 75%;
+        word-wrap: break-word;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .message.received {
+        align-self: flex-start;
+        background-color: rgb(228, 218, 79);
+        padding: 10px;
+        border-radius: 10px;
+        max-width: 75%;
+        word-wrap: break-word;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-form {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background-color: #ffffff;
+        border-top: 1px solid #ccc;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .message-input-container {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .message-input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        font-size: 1em;
+        outline: none;
+        transition: border-color 0.3s;
+        width: auto;
+    }
+
+    .message-input:focus {
+        border-color: rgb(57, 189, 180);
+    }
+
+    .send-btn {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        background-color: rgb(57, 189, 180);
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+    .send-btn:hover {
+        background-color: #007b8a;
+    }
+
+    .send-btn i {
+        font-size: 20px;
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+    }
+
+    h3 {
+        font-size: 24px;
+        color: #495057;
+        margin-top: 20px;
+        margin-left: 20px;
+    }
+
+    ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    section {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+    }
+
+    img {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 15px;
+        margin-left: 20px;
     }
 
     .chat-header {
@@ -280,292 +159,170 @@
         padding: 10px;
         background-color: rgba(57, 189, 180, 0.685);
         border-bottom: 1px solid #ccc;
-        justify-content: flex-start;  /* Aligns all items to the left */
-    }
-
-    .back-btn {
-        margin-right: 10px; /* Space between back button and profile picture */
-    }
-
-    .chat-header img {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 10px;  /* Adds a bit of space between the profile picture and the user name */
     }
 
     .chat-header .user-name {
-        font-size: 16px;
+        font-size: 20px;
         font-weight: bold;
     }
 
-    /* Optional: Adjust the font size of the input on mobile */
-    .message-input {
-        font-size: 0.9em;
-    }
+    @media (max-width: 1000px) {
+        .chat-box {
+            position: fixed;
+            top: 55px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 60px);
+            max-height: calc(100% - 60px);
+            min-height: calc(100% - 60px);
+            display: flex;
+            flex-direction: column;
+            border-radius: 0;
+            box-shadow: none;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
 
-    .send-btn i {
-        font-size: 18px;
-    }
-}
+        .back-btn {
+            background-color: rgb(228, 218, 79);
+            color: rgb(34, 32, 32);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 10;
+            display: block;
+        }
 
+        .back-btn:hover {
+            background-color: rgb(155, 148, 55);
+            color: rgb(255, 255, 255);
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: rgba(57, 189, 180, 0.685);
+            border-bottom: 1px solid #ccc;
+            justify-content: flex-start;
+        }
+
+        .back-btn {
+            margin-right: 10px;
+        }
+
+        .chat-header img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+
+        .chat-header .user-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .message-input {
+            font-size: 0.9em;
+        }
+
+        .send-btn i {
+            font-size: 18px;
+        }
+    }
 </style>
-</head>
-<body class="sb-nav-fixed">
-    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-        <!-- Navbar Brand-->
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
-        
-        <a class="navbar-brand" href="{% url 'index' %}">
-            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
+{% endblock %}
+
+{% block content %}
+<h1>Messages</h1>
+<ul>
+    {% for conversation in conversations %}
+    <li>
+        {% if conversation.sender == request.user %}
+        <a href="{% url 'conversation' conversation.recipient.id %}" style="text-decoration: none; color: inherit;">
+            <img 
+                src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                alt="Profile Picture" 
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            {{ conversation.recipient.first_name }} {{ conversation.recipient.last_name }}
         </a>
-        <!-- Navbar-->
-        <div class="ms-auto">
-            <ul class="navbar-nav me-lg-4">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <!-- Profile Picture or Default Image -->
-                        <img 
-                        class="navbar-profile-pic"
-                        src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                        alt="Profile Picture">
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        {% if user.is_authenticated %}
-                            <li><a class="dropdown-item" href="{% url 'message_inbox' %}">Inbox</a></li>  <!-- Link to Inbox -->
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
-                        {% else %}
-                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider" /></li>
-                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div id="layoutSidenav">
-        <div id="layoutSidenav_nav">
-            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
-                <div class="sb-sidenav-menu">
-                    <div class="nav">
-                        <div class="sb-sidenav-menu-heading"></div>
-                        {% if show_sign_in or show_daily_attendance or show_rosters %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsAttendance" aria-expanded="false" aria-controls="collapseLayoutsAttendance" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                            Attendance
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsAttendance" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_sign_in %}
-                                <a class="nav-link" href="{% url 'sign_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Sign In</a>
-                                {% endif %}
-                                {% if show_daily_attendance %}
-                                <a class="nav-link" href="{% url 'daily_attendance' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Daily Attendance</a>
-                                {% endif %}
-                                {% if show_rosters %}
-                                <a class="nav-link" href="{% url 'rosters' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Rosters</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
+        {% else %}
+        <a href="{% url 'conversation' conversation.sender.id %}" style="text-decoration: none; color: inherit;">
+            <img 
+                src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                alt="Profile Picture" 
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
+        </a>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
 
-                        {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div> Food Program
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsFood" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_inventory %}
-                                <a class="nav-link" href="{% url 'inventory_list' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Inventory</a>
-                                {% endif %}
-                                {% if show_weekly_menu %}
-                                <a class="nav-link" href="{% url 'menu' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Weekly Menu</a>
-                                {% endif %}
-                                {% if show_milk_inventory %}
-                                <a class="nav-link" href="{% url 'milk_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Milk Inventory</a>
-                                {% endif %}
-                                {% if show_meal_count %}
-                                <a class="nav-link" href="{% url 'meal_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Meal Count</a>
-                                {% endif %}
-                            </nav>
-                        </div>
-                        {% endif %}
+<ul>
+    {% for recipient in recipients %}
+    <li>
+        <a href="{% url 'conversation' recipient.id %}" style="text-decoration: none; color: inherit;">
+            <img 
+                src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+                alt="Profile Picture" 
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+            {{ recipient.first_name }} {{ recipient.last_name }}
+        </a>
+    </li>
+    {% endfor %}
+</ul>
 
 
-                        {% if show_billing or show_payment_setup or show_pay_summary %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsPayment" aria-expanded="false" aria-controls="collapseLayoutsPayment" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div> Payments
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsPayment" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_pay_summary %}
-                                <a class="nav-link" href="{% url 'pay_summary' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Pay Summary</a>
-                                {% endif %}
-                                {% if show_billing %}
-                                <a class="nav-link" href="{% url 'payment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Billing</a>
-                                {% endif %}
-                                
-                                
-                            </nav>
-                        </div>
-                        {% endif %}
-                        {% if show_clock_in %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> Employees
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsEmployees" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'clock_in' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Clock</a>
-                                {% endif %}
-                                {% if show_clock_in %}
-                                <a class="nav-link" href="{% url 'time_sheet' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Sheet</a>
-                                {% endif %}
-                            </nav>
-                        </div>  
-                        {% endif %}
+<div class="chat-box">
+    <div class="chat-header">
+        <ul class="navbar-nav ml-auto">
+            <li><a class="back-btn" href="{% url 'message_inbox' %}"><i class="fas fa-arrow-left"></i></a></li>
+        </ul>
+        <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture">
+        <span class="user-name">{{ recipient.first_name }} {{ recipient.last_name }}</span>
+    </div>
 
-                        {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions %}
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
-                            <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div> Settings
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsSettings" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                {% if show_classroom_options %}
-                                <a class="nav-link" href="{% url 'classroom_options' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Classroom Options</a>
-                                {% endif %}
-                                {% if show_recipes %}
-                                <a class="nav-link" href="{% url 'recipes' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Recipe Options</a>
-                                {% endif %}
-                                {% if show_menu_rules %}
-                                <a class="nav-link" href="{% url 'menu_rules' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Menu Rules</a>
-                                {% endif %}
-                                {% if show_permissions %}
-                                <a class="nav-link" href="{% url 'permissions' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Permissions</a>
-                                {% endif %}   
-                                {% if show_payment_setup %}
-                                <a class="nav-link" href="{% url 'square_account' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Payment Set-Up</a>
-                                {% endif %}                          
-                            </nav>
-                        </div>  
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="sb-sidenav-footer">
-                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
-                </div>
-            </nav>
-        </div>
-        <div id="layoutSidenav_content">
-            <main>
-                {% block content %}
-                <h1>Messages</h1>
-                <ul>
-                    {% for recipient in recipients %}
-                        <section>
-                            <!-- Use the recipient's profile picture as the button to start a conversation -->
-                            <a href="{% url 'conversation' recipient.id %}">
-                                <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
-                            </a>
-                            <!-- Display recipient name next to the profile picture -->
-                            Chat with {{ recipient.first_name }} {{ recipient.last_name }}
-                        </section>
-                    {% endfor %}
-                </ul>
-
-                <ul>
-                    {% for conversation in conversations %}
-                        <section>
-                            {% if conversation.sender == request.user %}
-                                <!-- Use the sender's profile picture as the button to open conversation -->
-                                <a href="{% url 'conversation' conversation.recipient.id %}">
-                                    <img src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
-                                </a>
-                                {{ conversation.recipient.first_name }} {{ conversation.recipient.last_name }}
-                            {% else %}
-                                <!-- Use the recipient's profile picture as the button to open conversation -->
-                                <a href="{% url 'conversation' conversation.sender.id %}">
-                                    <img src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
-                                </a>
-                                {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
-                            {% endif %}
-                        </section>
-                    {% empty %}
-                        <section>No conversations yet.</section>
-                    {% endfor %}
-                </ul>
-
-                
-                <div class="chat-box">
-                    <div class="chat-header">
-                        <ul class="navbar-nav ml-auto">
-                            <li><a class="back-btn" href="{% url 'message_inbox' %}"><i class="fas fa-arrow-left"></i></a></li>  <!-- Link to Inbox -->
-                        </ul>
-                        <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture">
-                        <span class="user-name">{{ recipient.first_name }} {{ recipient.last_name }}</span>
-                    </div>
-                    
-                    <div class="chat-container">
-                        <div class="messages">
-                            {% for message in messages %}
-                            <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
-                                <p>{{ message.content }}</p>
-                                <small>{{ message.timestamp }}</small>
-                            </div>
-                            {% endfor %}
-                        </div>
-
-                        <form method="post" class="message-form">
-                            {% csrf_token %}
-                            <div class="message-input-container">
-                                <!-- Message Input -->
-                                <input type="text" name="content" class="message-input" placeholder="Type a message..." required>
-                                <!-- Send Button -->
-                                <button type="submit" class="send-btn">
-                                    <i class="fa fa-paper-plane"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                {% endblock %}
-            </main>
+    <div class="chat-container">
+        <div class="messages">
+            {% for message in messages %}
+            <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
+                <p>{{ message.content }}</p>
+                <small>{{ message.timestamp }}</small>
+            </div>
+            {% endfor %}
         </div>
 
-    <!-- JavaScript imports and custom scripts -->
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap Bundle JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <!-- Tabulator JS -->
-    <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/js/tabulator.min.js"></script>
-    <!-- Your custom JavaScript -->
-    <script src="{% static 'js/scripts.js' %}"></script>
-        <script>
-            
-            // This function scrolls to the bottom of the messages container
-            function scrollToBottom() {
-                const messagesContainer = document.querySelector('.messages');
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-        
-            // Call this function every time a new message is added
-            scrollToBottom();
-            window.onload = function() {
-                scrollToBottom();  // Scroll to the bottom on page load
-            };
-        
-            document.querySelector('form').addEventListener('submit', function() {
-                setTimeout(scrollToBottom, 200);  // Delay to ensure the new message appears first
-            });
-        </script>
-        
-    </body>
-</html>
+        <form method="post" class="message-form">
+            {% csrf_token %}
+            <div class="message-input-container">
+                <input type="text" name="content" class="message-input" placeholder="Type a message..." required>
+                <button type="submit" class="send-btn">
+                    <i class="fa fa-paper-plane"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    function scrollToBottom() {
+        const messagesContainer = document.querySelector('.messages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    scrollToBottom();
+    window.onload = function() {
+        scrollToBottom();
+    };
+
+    document.querySelector('form').addEventListener('submit', function() {
+        setTimeout(scrollToBottom, 200);
+    });
+</script>
+{% endblock %}

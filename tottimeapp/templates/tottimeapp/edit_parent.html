@@ -1,0 +1,176 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Edit Parent{% endblock %}
+
+{% block styles %}
+<style>
+        h1 {
+            margin-top: 20px;
+            margin-left: 15px;
+            margin-bottom: 30px;
+            font-weight: 400;
+            line-height: 1.2;
+            font-weight: bold;
+            font-size: 40px;
+        }
+
+        .btn-primary {
+            margin-left: 27px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            margin-right: 15px;
+        }
+
+ 
+        .sb-nav-link-icon i {
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+
+/* Style for the link text */
+.nav-link {
+    color: #ffffff !important; /* Ensure text is completely white */
+}
+
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
+
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
+.btn-primary {
+  background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:#272630;
+    font-weight: bold;
+    margin-left: 15px;
+}
+
+/* Additional hover styles (optional) */
+.btn-primary:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color:#fff
+}
+.modal-footer .btn {
+    margin: 5px; /* Remove any default margins */
+    vertical-align: middle; /* Ensure buttons are vertically aligned */
+}
+.navbar-brand img {
+    width: 100%; /* Ensure the logo takes up the full width of its container */
+    max-width: 200px; /* Set a max-width to control the size of the logo */
+    height: auto; /* Maintain aspect ratio */
+    object-fit: contain; /* Make sure the logo doesn't get distorted */
+    margin-left: 0; /* Reset any left margin if needed */
+    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
+    overflow: visible; /* Ensure no clipping occurs */
+}
+.btn-primary{
+    margin-top: 25px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1>Edit Parent Information</h1>
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Hidden input to pass the previous page URL -->
+        <input type="hidden" name="previous_page" value="{{ previous_page }}">
+
+        <!-- First and Last Name in one row -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="firstName" class="form-label">First Name</label>
+                <input type="text" class="form-control" id="firstName" name="firstName" value="{{ parent.first_name }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="lastName" class="form-label">Last Name</label>
+                <input type="text" class="form-control" id="lastName" name="lastName" value="{{ parent.last_name }}" required>
+            </div>
+        </div>
+
+        <!-- Email and Phone Number in one row -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email" value="{{ parent.email }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="phoneNumber" class="form-label">Phone Number</label>
+                <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" 
+                       value="{{ parent.phone_number }}" 
+                       pattern="[0-9]{10}" 
+                       placeholder="Enter a 10-digit phone number">
+                <small class="form-text text-muted">Format: 10 digits (e.g., 1234567890)</small>
+            </div>
+        </div>
+
+        <!-- Address in one row -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <label for="address" class="form-label">Address</label>
+                <input type="text" class="form-control" id="address" name="address" value="{{ parent.address }}">
+            </div>
+        </div>
+
+        <!-- Linked Students in one row -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="d-flex align-items-center">
+                    <label class="form-label me-2">Linked Students</label>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editStudentsModal" title="Edit Linked Students">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                <ul class="list-group">
+                    {% for student in linked_students %}
+                    <li class="list-group-item">{{ student.first_name }} {{ student.last_name }}</li>
+                    {% empty %}
+                    <li class="list-group-item">No students linked to this parent.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Submit and Cancel Buttons -->
+        <div class="row">
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="{{ previous_page }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    function filterStudents() {
+        const searchInput = document.getElementById('studentSearch').value.toLowerCase();
+        const studentList = document.getElementById('studentList');
+        const students = studentList.getElementsByClassName('form-check');
+
+        for (let student of students) {
+            const label = student.getElementsByTagName('label')[0];
+            const text = label.textContent.toLowerCase();
+            student.style.display = text.includes(searchInput) ? '' : 'none';
+        }
+    }
+</script>
+{% endblock %}

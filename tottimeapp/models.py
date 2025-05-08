@@ -4,6 +4,7 @@ from django.contrib.auth.models import  AbstractUser, Group, Permission
 from django.utils import timezone
 from PIL import Image, ImageDraw
 from io import BytesIO
+from datetime import date
 from django.core.exceptions import ValidationError
 import random
 from django.core.files.storage import default_storage
@@ -199,8 +200,7 @@ class OrderList(models.Model):
     def __str__(self):
         return self.item
 
-
-    
+   
 class Classroom(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
@@ -209,13 +209,27 @@ class Classroom(models.Model):
     def __str__(self):
         return self.name
 
+    def get_assigned_teachers(self):
+        """Returns all assigned teachers (SubUsers and MainUsers) for this classroom."""
+        subusers = self.assignments.filter(subuser__isnull=False).select_related('subuser')
+        mainusers = self.assignments.filter(subuser__isnull=True).select_related('classroom__user')
+        return list(subusers) + list(mainusers)
+
 class Student(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     code = models.CharField(max_length=4, unique=True)
-    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='students')
+    profile_picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True, default='student_pictures/default.jpg')  # New field for profile picture
+     # New status field
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('transferred', 'Transferred'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -237,6 +251,14 @@ class AttendanceRecord(models.Model):
     sign_out_time = models.DateTimeField(null=True, blank=True)
     classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, null=True, blank=True)
     classroom_override = models.CharField(max_length=100, null=True, blank=True) 
+    classroom_override_1 = models.CharField(max_length=100, null=True, blank=True)
+    timestamp_override_1 = models.DateTimeField(null=True, blank=True)
+    classroom_override_2 = models.CharField(max_length=100, null=True, blank=True)
+    timestamp_override_2 = models.DateTimeField(null=True, blank=True)
+    classroom_override_3 = models.CharField(max_length=100, null=True, blank=True)
+    timestamp_override_3 = models.DateTimeField(null=True, blank=True)
+    classroom_override_4 = models.CharField(max_length=100, null=True, blank=True)
+    timestamp_override_4 = models.DateTimeField(null=True, blank=True)
     ratios = models.IntegerField(null=True, blank=True)  # Field for storing ratios
     outside_time_out_1 = models.DateTimeField(null=True, blank=True)
     outside_time_out_2 = models.DateTimeField(null=True, blank=True)
@@ -380,10 +402,28 @@ class MainUser(AbstractUser):
     code = models.CharField(max_length=4, unique=True, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True, default='profile_pictures/Default_pfp.jpg')
 
+    # New fields
+    is_account_owner = models.BooleanField(default=False)  # Marks if the user is an account owner
+    main_account_owner = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='linked_users'
+    )  # Links to the account owner (another MainUser)
+
     def __str__(self):
-        return f"{self.first_name} {self.last_name} - {self.company_name}"
+        if self.is_account_owner:
+            return f"{self.first_name} {self.last_name} - Account Owner"
+        elif self.main_account_owner:
+            return f"{self.first_name} {self.last_name} - Linked to {self.main_account_owner.first_name} {self.main_account_owner.last_name}"
+        return f"{self.first_name} {self.last_name} - Regular User"
 
     def save(self, *args, **kwargs):
+        # Ensure that a user cannot be both an account owner and linked to another account owner
+        if self.is_account_owner and self.main_account_owner:
+            raise ValidationError("A user cannot be both an account owner and linked to another account owner.")
+
         # Ensure profile picture exists before checking size
         if self.profile_picture and hasattr(self.profile_picture, 'size'):
             if self.profile_picture.size > MAX_IMAGE_SIZE:
@@ -443,13 +483,26 @@ class SubUser(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # Link to the custom User model
     main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='sub_users')
     group_id = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="subusers", null=True, blank=True)
-    classroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, null=True, blank=True, related_name='subusers')
-    student = models.ForeignKey('Student', on_delete=models.CASCADE, null=True, blank=True)  # Linking to a Student
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Acts as wallet (can be positive or negative)
+    students = models.ManyToManyField('Student', related_name='parents', blank=True)  # Changed to ManyToManyField
 
     def __str__(self):
         return f"SubUser: {self.user.username} linked to MainUser: {self.main_user.username}"
-    
+
+class ClassroomAssignment(models.Model):
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='assignments')
+    subuser = models.ForeignKey(SubUser, on_delete=models.CASCADE, null=True, blank=True, related_name='assignments')
+    mainuser = models.ForeignKey('MainUser', on_delete=models.CASCADE, null=True, blank=True, related_name='assignments')
+    ratio = models.IntegerField(default=1)  # Ratio specific to this teacher-classroom assignment
+    assigned_at = models.DateTimeField(auto_now_add=True)  # Track when the assignment was made
+    unassigned_at = models.DateTimeField(null=True, blank=True)  # Optional: Track when the assignment ended
+
+    def __str__(self):
+        if self.subuser:
+            return f"{self.subuser.user.username} assigned to {self.classroom.name} with ratio {self.ratio}"
+        elif self.mainuser:
+            return f"{self.mainuser.username} assigned to {self.classroom.name} with ratio {self.ratio}"
+        return f"Unassigned teacher in {self.classroom.name}"
     
     
 class Roster(models.Model):
@@ -601,3 +654,53 @@ class PaymentRecord(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
+
+class WeeklyTuition(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('partially_paid', 'Partially Paid'),
+        ('paid', 'Paid'),
+        ('overdue', 'Overdue'),
+    ]
+
+    subuser = models.ForeignKey(SubUser, on_delete=models.CASCADE, related_name='weekly_tuitions')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    has_been_charged = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    def __str__(self):
+        return f"Tuition for {self.subuser.user.username}: ${self.amount} from {self.start_date} to {self.end_date}"
+
+    class Meta:
+        unique_together = ('subuser', 'start_date', 'end_date')
+        
+class TuitionPlan(models.Model):
+    subuser = models.ForeignKey(SubUser, on_delete=models.CASCADE, related_name='tuition_plans')
+    weekly_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    start_date = models.DateField()
+    is_active = models.BooleanField(default=True)  # Optional: marks if the plan is still active
+
+    def __str__(self):
+        return f"{self.subuser.user.username} plan - ${self.weekly_amount}/week"
+
+    @property
+    def next_payment_dates(self):
+        today = date.today()
+        start_of_week = today - timedelta(days=today.weekday())  # Monday of this week
+        end_of_week = start_of_week + timedelta(days=6)  # Sunday of this week
+        return start_of_week, end_of_week
+
+class MessagingPermission(models.Model):
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name="messaging_permissions")
+    sender_role = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="sender_permissions")
+    receiver_role = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="receiver_permissions")
+    can_message = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('main_user', 'sender_role', 'receiver_role')  # Updated constraint
+
+    def __str__(self):
+        return f"{self.main_user.username}: {self.sender_role.name} -> {self.receiver_role.name}: {'Allowed' if self.can_message else 'Not Allowed'}"

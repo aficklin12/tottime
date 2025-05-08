@@ -19,7 +19,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'django_user_agents',
+    'django_q',
     "tottimeapp",
+    
 
 ]
 
@@ -167,3 +169,15 @@ SQUARE_REDIRECT_URI = "http://localhost:8000/square/oauth/callback/"
 # Square OAuth Auth URL for sandbox
 SQUARE_AUTH_URL = "https://sandbox.connect.squareup.com/oauth2/authorize"
 
+Q_CLUSTER = {
+    'name': 'tottime',
+    'workers': 4,
+    'recycle': 500,
+    'timeout': 60,
+    'retry': 120,
+    'queue_limit': 50,
+    'bulk': 10,
+    'catch_up': False,
+    'scheduler': True,
+    'orm': 'default',  # This avoids Redis
+}

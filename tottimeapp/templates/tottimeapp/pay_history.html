@@ -1,0 +1,364 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Pay History{% endblock %}
+
+{% block styles %}
+<style>
+        h1 {
+           margin-top: 20px;
+            margin-left: 12px;
+            font-weight: 400;
+            line-height: 1.2;
+            font-weight: bold;
+            font-size: 40px;
+        }
+        h2 {
+            margin-top: 20px;
+            margin-left: 10px;
+            font-size: 30px;
+        }
+        p {
+            margin-top: 20px;
+            margin-left: 10px;
+        }
+.sb-nav-link-icon i {
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+/* Style for the link text */
+.nav-link {
+    color: #ffffff !important; /* Ensure text is completely white */
+}
+
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
+
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
+.navbar-brand img {
+    width: 100%; /* Ensure the logo takes up the full width of its container */
+    max-width: 200px; /* Set a max-width to control the size of the logo */
+    height: auto; /* Maintain aspect ratio */
+    object-fit: contain; /* Make sure the logo doesn't get distorted */
+    margin-left: 0; /* Reset any left margin if needed */
+    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
+    overflow: visible; /* Ensure no clipping occurs */
+}
+.btn-primary {
+    margin-top: 12px;
+    margin-left: 10px;
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+}
+.btn-primary:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+.btn-filter {
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+}
+.btn-filter:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+.balance-box {
+    background:  #2d2c30;
+    border-radius: 12px;
+    padding: 15px 25px;
+    margin: 30px 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: #fff;
+    font-weight: bold;
+    font-size: 28px;
+    text-align: center;
+    transition: transform 0.2s ease-in-out;
+    width: 210px
+}
+
+.balance-box:hover {
+    transform: scale(1.02);
+}
+.balance-label {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: #ccc;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.balance-amount {
+    font-size: 36px;
+    font-weight: bold;
+    color: #fff;
+}
+#start_date, #end_date {
+        margin-right: 15px;
+        max-width:150px; /* Set a maximum width */
+        width: 100%; /* Ensure responsiveness */
+    }
+    form .row {
+        justify-content: center; /* Center the form elements */
+    }
+    form .form-label {
+    
+    font-weight: 600;
+    color: #333;
+}
+table {
+           
+           border-collapse: collapse;
+           margin-top: 20px;
+           margin-left: 15px;
+           margin-right: 20px;
+           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+           border-radius: 10px; /* Add this for rounded corners */
+           overflow: hidden;
+       }
+
+       th, td {
+           
+           border: 1px solid #dddddd;
+           padding: 8px;
+           text-align: center;
+       }
+   
+       th {
+           background-color: #272630;
+           color: #ffffff;
+           text-align: center;
+           font-weight: bold;
+       }
+ 
+</style>
+{% endblock %}
+
+{% block content %}
+                <div class="container">
+                    <h1>Payment History for {{ subuser.user.username }}</h1>
+                <div class="container mt-5">
+                    <h2>Payments Recieved</h2>
+                    <form method="get" class="mb-3">
+                        <div class="row g-3 align-items-center" style="margin-left: 8px;">
+                            <div class=" d-flex align-items-center">
+                                <label for="start_date" class="form-label me-2 mb-0">Start Date:</label>
+                                <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
+                            
+                          
+                                <label for="end_date" class="form-label me-2 mb-0">End Date:</label>
+                                <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
+                            
+                                <button type="submit" class="btn btn-filter">Filter</button>
+                            </div>
+                        </div>
+                    </form>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Source</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in payment_records %}
+                            <tr>
+                                <td>{{ record.timestamp|date:"Y-m-d H:i" }}</td>
+                                <td>${{ record.amount }}</td>
+                                <td>{{ record.get_source_display }}</td>
+                                <td>{{ record.note|default:"-" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">No payment records found for selected month.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+                <div class="container-fluid px-4 mb-4">
+                    <button id="card-deposit-button" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                        Add Funds
+                    </button>
+                </div>
+                <h2>Invoices Issued</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Amount</th>
+                            <th>Amount Paid</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tuition in weekly_tuitions %}
+                        <tr>
+                            <td>{{ tuition.start_date }}</td>
+                            <td>{{ tuition.end_date }}</td>
+                            <td>${{ tuition.amount }}</td>
+                            <td>${{ tuition.amount_paid }}</td>
+                            <td>{{ tuition.get_status_display }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No weekly tuition records found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Payment Modal -->
+                <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="paymentModalLabel">Add Funds</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="payment-form">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label for="amount" class="form-label">Amount (USD)</label>
+                                        <input type="number" class="form-control" id="amount" name="amount" min="1" step="0.01" required>
+                                    </div>
+                                    <div id="card-container"></div>
+                                    <div id="payment-status" class="mt-3"></div>
+                                    <button type="submit" class="btn btn-primary mt-3" id="submit-button">
+                                        <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                        Process Payment
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+{% endblock %}
+{% block scripts %}
+<script>
+            let card; // Store globally
+          
+            async function initializeSquarePayment() {
+                if (!window.Square) {
+                    throw new Error("Square.js failed to load.");
+                }
+          
+                const payments = Square.payments(
+                    '{{ SQUARE_APPLICATION_ID }}',
+                    '{{ SQUARE_LOCATION_ID }}'
+                );
+          
+                card = await payments.card();
+            }
+          
+            // Initialize Square payment on page load (preloading)
+            document.addEventListener("DOMContentLoaded", async () => {
+                try {
+                    await initializeSquarePayment();
+                } catch (error) {
+                    console.error('Error initializing Square payment:', error);
+                }
+            });
+          
+            // Attach card UI only when the modal opens
+            document.getElementById('paymentModal').addEventListener('shown.bs.modal', async () => {
+                try {
+                    if (card && !document.getElementById('card-container').hasChildNodes()) {
+                        await card.attach('#card-container');
+                    }
+                } catch (error) {
+                    console.error('Error attaching Square payment:', error);
+                }
+            });
+          
+            // Handle form submission
+            document.getElementById('payment-form').addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const submitButton = document.getElementById('submit-button');
+                const spinner = submitButton.querySelector('.spinner-border');
+                const statusDiv = document.getElementById('payment-status');
+          
+                submitButton.disabled = true;
+                spinner.classList.remove('d-none');
+                statusDiv.innerHTML = '';
+          
+                try {
+                    // Validate amount
+                    const amountInput = document.getElementById('amount');
+                    if (amountInput.value < 1) {
+                        throw new Error('Minimum amount is $1.00');
+                    }
+          
+                    // Process payment
+                    const paymentResult = await processPayment(amountInput.value);
+          
+                    if (paymentResult.success) {
+                        statusDiv.innerHTML = `<div class="alert alert-success">${paymentResult.message}</div>`;
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        throw new Error(paymentResult.error);
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+                } finally {
+                    submitButton.disabled = false;
+                    spinner.classList.add('d-none');
+                }
+            });
+          
+            async function processPayment(amount) {
+                try {
+                    if (!card) {
+                        throw new Error('Payment method is not initialized. Please try again.');
+                    }
+          
+                    const tokenResult = await card.tokenize();
+          
+                    if (tokenResult.status !== 'OK') {
+                        throw new Error(tokenResult.errors[0].message || 'Card tokenization failed');
+                    }
+          
+                    const response = await fetch('/process_payment/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            token: tokenResult.token,
+                            amount: amount,
+                            currency: 'USD'
+                        })
+                    });
+          
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+          
+                    return response.json();
+                } catch (error) {
+                    console.error('Payment processing error:', error);
+                    throw error;
+                }
+            }
+          </script>
+{% endblock %}
