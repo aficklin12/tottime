@@ -16,6 +16,10 @@ from .forms import SignupForm, LoginForm, RuleForm, MessageForm, InvitationForm
 from .models import Classroom, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import cv2
+import pytesseract
 from PIL import Image
 from io import BytesIO
 from pytz import utc
@@ -508,37 +512,28 @@ def inventory_list(request):
     })
 
 @login_required
-def inventory_list(request):
-    # Check permissions for the specific page
-    required_permission_id = 272  # Permission ID for inventory_list view
-    permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
-    if isinstance(permissions_context, HttpResponseRedirect):
-        return permissions_context
-    # Get the user (MainUser) for filtering
-    user = get_user_for_view(request)
-    # Retrieve inventory data for the user
-    inventory_items = Inventory.objects.filter(user_id=user.id)
-    # Get unique categories for filtering options
-    categories = Inventory.objects.filter(user_id=user.id).values_list('category', flat=True).distinct()
-    # Retrieve all rules
-    rules = Rule.objects.all()
+@csrf_exempt
+def update_inventory_with_barcode(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            barcode = data.get('barcode')
 
-    # Handle AJAX request for category filtering
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        category_filter = request.GET.get('category')
-        if category_filter:
-            inventory_items = inventory_items.filter(category=category_filter)
-        inventory_data = list(inventory_items.values('id', 'item', 'quantity', 'units', 'category'))
-        return JsonResponse({'inventory_items': inventory_data})
+            # Find the inventory item with the matching barcode
+            user = get_user_for_view(request)
+            inventory_item = Inventory.objects.filter(user=user, barcode=barcode).first()
 
-    # Render the inventory list page
-    return render(request, 'inventory_list.html', {
-        'inventory_items': inventory_items,
-        'categories': categories,
-        'rules': rules,  # Pass the rules to the template
-        **permissions_context,  # Include permission flags dynamically
-    })
+            if inventory_item:
+                # Increment the quantity
+                inventory_item.quantity += 1
+                inventory_item.save()
+                return JsonResponse({'success': True, 'message': 'Inventory updated successfully!'})
+            else:
+                return JsonResponse({'success': False, 'message': 'No matching item found for this barcode.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
 def add_item(request):
@@ -549,19 +544,50 @@ def add_item(request):
         units = request.POST.get('units')
         quantity = request.POST.get('quantity')
         resupply = request.POST.get('resupply')  # Retrieve the resupply value
+        barcode_image = request.FILES.get('barcode_image')
 
         # Use the new category if provided
         if category == 'Other' and new_category:
             category = new_category
 
-        # Save the new item
-        Inventory.objects.create(
+        # Process the barcode image if provided
+        barcode_data = None
+        if barcode_image:
+            # Save the uploaded image temporarily
+            temp_path = default_storage.save('temp/' + barcode_image.name, ContentFile(barcode_image.read()))
+            temp_file = default_storage.path(temp_path)
+
+            try:
+                # Open the image using PIL
+                image = Image.open(temp_file)
+
+                # Use pytesseract to decode the barcode
+                barcode_data = pytesseract.image_to_string(image, config='--psm 8').strip()
+
+                # Optionally, match the barcode with an existing inventory item
+                existing_item = Inventory.objects.filter(user_id=get_user_for_view(request).id, barcode=barcode_data).first()
+                if existing_item:
+                    return JsonResponse({'success': False, 'message': f'Item with barcode "{barcode_data}" already exists.'})
+
+                # Use the barcode data as the item name if no item name is provided
+                if not item_name:
+                    item_name = barcode_data
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': f'Failed to process barcode: {str(e)}'})
+            finally:
+                # Clean up the temporary file
+                default_storage.delete(temp_path)
+
+        # Save the new item, including the barcode image
+        new_item = Inventory.objects.create(
             user_id=get_user_for_view(request).id,
             item=item_name,
             category=category,
             units=units,
             quantity=quantity,
-            resupply=resupply  # Save the resupply value
+            resupply=resupply,
+            barcode=barcode_data,  # Save the decoded barcode data
+            barcode_image=barcode_image  # Save the uploaded barcode image
         )
         return JsonResponse({'success': True, 'message': 'Item added successfully!'})
 
