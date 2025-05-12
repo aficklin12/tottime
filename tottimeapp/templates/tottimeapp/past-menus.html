@@ -40,7 +40,11 @@
     box-sizing: border-box; /* Include padding and border in element's total width and height */
     min-height: auto; /* Minimum height to show */
 }
-
+#weeklyMenuHeader {
+    background-color: #272630;
+    color: #ffffff;
+    text-align: center;
+}
 h1 {
     margin-top: 0;
     margin-bottom: -35px;
@@ -132,6 +136,38 @@ border-color: rgb(54, 56, 56);
     border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
     overflow: visible; /* Ensure no clipping occurs */
 }
+.btn-primaryoff {
+            background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+            margin-left: 20px;
+        }
+    
+.btn-primaryoff:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
+        .btn-secondary {
+    background-color: rgb(228, 218, 79); /* Change primary button color */
+    border-color: rgb(228, 218, 79);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+    
+}
+
+
+/* Additional hover styles (optional) */
+.btn-secondary:hover {
+    background-color: #b4ad46;
+    border-color: #b4ad46;
+}
+#dateRangeSelect {
+    width: 255px!important; /* Set a fixed width for the select element */
+    margin-bottom: 10px; /* Add some margin to the top */
+    margin-left: 20px; /* Add some margin to the left */
+}
 </style>
 {% endblock %}
 
@@ -142,10 +178,10 @@ border-color: rgb(54, 56, 56);
                         {% csrf_token %}
                         <div class="row mt-3 d-flex align-items-center justify-content-start"> <!-- Added d-flex and align-items-center -->
                             <div class="col-auto"> <!-- Use col-auto for automatic width based on content -->
-                                <label for="dateRangeSelect">Date:</label>
+                         
                             </div>
                             <div class="col-auto"> <!-- Same here for the select and buttons -->
-                                <select name="dateRangeSelect" required>
+                                <select name="dateRangeSelect" class="form-select" id="dateRangeSelect" style="width: 155px; margin-top: 20px;" required>
                                     <option value="">-- Select a Date Range --</option>
                                     {% for date_range in date_ranges %}
                                         <option value="{{ date_range }}" {% if date_range == selected_range %}selected{% endif %}>{{ date_range }}</option>
@@ -155,11 +191,11 @@ border-color: rgb(54, 56, 56);
                                 </select>
                             </div>
                             <div class="col-auto"> <!-- Buttons will align in the same row -->
-                                <button type="submit" id="goButton" class="btn btn-primary mt-1">Go</button> <!-- mt-1 for small margin -->
+                                <button type="submit" id="goButton" class="btn btn-primaryoff mt-1">Go</button> <!-- mt-1 for small margin -->
                             </div>
                             
                             <div class="col-auto">
-                                <button type="submit" name="save_changes" class="btn btn-success mt-1">Save Changes</button> <!-- mt-1 for small margin -->
+                                <button type="submit" name="save_changes" class="btn btn-secondary mt-1">Save Changes</button> <!-- mt-1 for small margin -->
                             </div>
                             <div class="col-auto">
                                 <a href="{% url 'menu' %}" class="btn btn-rec">Weekly Menus</a>
@@ -353,7 +389,7 @@ border-color: rgb(54, 56, 56);
                                                         </table>
                                 </div>
                                 {% else %}
-                                <p class="mt-4">No menu data available for the selected date range.</p>
+                                <p class="mt-4" style="margin-left: 27px;">No menu data available for the selected date range.</p>
                                 {% endif %}
                                 </form>
 {% endblock %}

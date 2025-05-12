@@ -1,214 +1,164 @@
 {% extends 'tottimeapp/base.html' %}
-{% load static %} 
+{% load static %}
 {% load custom_filters %}
 {% load dict_extras %}
 {% block title %}Recipes{% endblock %}
 
 {% block styles %}
 <style>
-
-        h1 {
-            margin-top: 20px;
-            margin-left: 27px;
-            font-weight: 400;
-            line-height: 1.2;
-            font-weight: bold;
-            font-size: 40px;
-        }
-    
-        .sb-nav-link-icon i {
-            color: rgb(57, 189, 180);
-            font-size: 1.2rem;
-            vertical-align: middle;
-            line-height: 1;
-        }
-    
-        .nav-link {
-            color: #ffffff !important;
-        }
-    
-        .sb-sidenav-collapse-arrow i {
-            color: rgb(228, 218, 79);
-        }
-    
-        .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #ffffff !important;
-        }
-    
-        .btn-recipe {
-            margin-left: 27px;
-            margin-bottom: 5px;
-            margin-right: 5px;
-            background-color: rgb(57, 189, 180);
-            border-color: rgb(57, 189, 180);
-            color: rgb(33, 31, 39);
-            font-weight: bold;
-        }
-    
-        .btn-recipe:hover {
-            background-color: #007b8a;
-            border-color: #007b8a;
-            color: #fff;
-        }
-    
-        .btn-primary {
-            margin-right: 5px;
-            background-color: rgb(57, 189, 180);
-            border-color: rgb(57, 189, 180);
-            color: rgb(33, 31, 39);
-            font-weight: bold;
-        }
-    
-        .btn-primary:hover {
-            background-color: #007b8a;
-            border-color: #007b8a;
-            color: #fff;
-        }
-    
-        .btn.deleteRecipeBtn {
-            margin-bottom: 6px;
-        }
-    
-        .card-out-of-stock {
-            width: 280px; /* Adjust card width */
-            margin: 5px; /* Add margin for spacing */
-            color:#fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-    
-        .card-out-of-stock .card-body {
-            height: 500px;
-            overflow-y: auto;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-    
-        .bg-faded-red {
-            background-color: #272630;
-        }
-    
-        #recipeListsContainer {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px; /* Adjust spacing between cards */
-        }
-        .list-group-item {
-        width: 235px; /* Set a fixed width */
-        overflow: hidden; /* Hide overflow text */
-        
-        
+    .btn-recipe {
+        margin-left: 27px;
+        margin-bottom: 5px;
+        margin-right: 5px;
+        background-color: rgb(57, 189, 180);
+        border-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39);
+        font-weight: bold;
     }
-    .navbar-brand img {
-    width: 100%; /* Ensure the logo takes up the full width of its container */
-    max-width: 200px; /* Set a max-width to control the size of the logo */
-    height: auto; /* Maintain aspect ratio */
-    object-fit: contain; /* Make sure the logo doesn't get distorted */
-    margin-left: 0; /* Reset any left margin if needed */
-    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
-    overflow: visible; /* Ensure no clipping occurs */
-}
+
+    .btn-recipe:hover {
+        background-color: #007b8a;
+        border-color: #007b8a;
+        color: #fff;
+    }
+
+    .tabs {
+        margin-left: 42px;
+        margin-top: 20px;
+        margin-bottom: -16px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .tab {
+        padding: 5px 15px;
+        text-decoration: none;
+        color: #000;
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        cursor: pointer;
+    }
+
+    .active-tab {
+        background-color: #272630;
+        color: #ffffff;
+        font-weight: bold;
+        cursor: default;
+        border-radius: 10px 10px 0 0;
+    }
+
+    .tab:hover:not(.active-tab) {
+        background-color: #e9ecef;
+        color: rgb(57, 189, 180);
+    }
+
+    .clickable-name {
+        cursor: pointer; /* Change cursor to indicate clickability */
+        text-decoration: none; /* Remove underline */
+    }
+
+    .clickable-name:hover {
+        color: rgb(57, 189, 180);
+        text-decoration: underline; /* Add underline on hover */
+    }
+
+    table {
+        width: 75%;
+    }
+
+    .delete-column {
+        display: none; /* Hide delete column by default */
+        width: 50px; /* Set a smaller width for the delete column */
+        text-align: center; /* Center-align the content */
+    }
+     /* Hide additional ingredient containers by default */
+    #mainIngredient2Container,
+    #mainIngredient3Container,
+    #mainIngredient4Container,
+    #mainIngredient5Container,
+    #breakfastMainIngredient2Container,
+    #breakfastMainIngredient3Container,
+    #breakfastMainIngredient4Container,
+    #breakfastMainIngredient5Container,
+    #amIngredient2Container,
+    #amIngredient3Container,
+    #amIngredient4Container,
+    #amIngredient5Container,
+    #pmIngredient2Container,
+    #pmIngredient3Container,
+    #pmIngredient4Container,
+    #pmIngredient5Container {
+        display: none;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-                <div class="mt-4">
-                    <h1>Recipe Lists</h1>
-                    <!-- Buttons for creating recipes -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createBreakfastRecipeModal">
-                            Create Breakfast Recipe
-                        </button>
-                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createAMRecipeModal">
-                            Create AM Snack Recipe
-                        </button>
-                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
-                            Create Lunch Recipe
-                        </button>
-                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#createPMRecipeModal">
-                            Create PM Snack Recipe
-                        </button>
-                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#fruitRecipeModal">
-                            Add Fruit to Menu Rules
-                        </button>
-                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#vegRecipeModal">
-                            Add Vegetables to Menu Rules
-                        </button>
-                        <button type="button" class="btn btn-recipe" data-bs-toggle="modal" data-bs-target="#wgRecipeModal">
-                            Add Whole Grains to Menu Rules
-                        </button>
-                    </div>
-                </div>
+<div class="container mt-4">
+    <h1>Recipe Lists</h1>
 
-                <div class="container">
-                    <div id="recipeListsContainer">
-                        <div class="card mb-4 card-out-of-stock bg-faded-red">
-                            <div class="card-header">
-                                <i class="fas fa-ban me-1 text-danger"></i>
-                                <strong>Breakfast Recipes</strong>
-                            </div>
-                            <div class="card-body">
-                                <ul id="breakfastRecipeList" class="list-group"></ul>
-                            </div>
-                        </div>
-                        <div class="card mb-4 card-out-of-stock bg-faded-red">
-                            <div class="card-header">
-                                <i class="fas fa-ban me-1 text-danger"></i>
-                                <strong>AM Snack Recipes</strong>
-                            </div>
-                            <div class="card-body">
-                                <ul id="amRecipeList" class="list-group"></ul>
-                            </div>
-                        </div>
-                        <div class="card mb-4 card-out-of-stock bg-faded-red">
-                            <div class="card-header">
-                                <i class="fas fa-ban me-1 text-danger"></i>
-                                <strong>Lunch Recipes</strong>
-                            </div>
-                            <div class="card-body">
-                                <ul id="recipeList" class="list-group"></ul>
-                            </div>
-                        </div>
-                        <div class="card mb-4 card-out-of-stock bg-faded-red">
-                            <div class="card-header">
-                                <i class="fas fa-ban me-1 text-danger"></i>
-                                <strong>PM Snack Recipes</strong>
-                            </div>
-                            <div class="card-body">
-                                <ul id="pmRecipeList" class="list-group"></ul>
-                            </div>
-                        </div>
-                        <div class="card mb-4 card-out-of-stock bg-faded-red">
-                            <div class="card-header">
-                                <i class="fas fa-ban me-1 text-danger"></i>
-                                <strong>Fruits with Rules</strong>
-                            </div>
-                            <div class="card-body">
-                                <ul id="fruitRecipeList" class="list-group"></ul>
-                            </div>
-                        </div>
-                        <div class="card mb-4 card-out-of-stock bg-faded-red">
-                            <div class="card-header">
-                                <i class="fas fa-ban me-1 text-danger"></i>
-                                <strong>Veg. with Rules</strong>
-                            </div>
-                            <div class="card-body">
-                                <ul id="vegRecipeList" class="list-group"></ul>
-                            </div>
-                        </div>
-                        <div class="card mb-4 card-out-of-stock bg-faded-red">
-                            <div class="card-header">
-                                <i class="fas fa-ban me-1 text-danger"></i>
-                                <strong>Grains with Rules</strong>
-                            </div>
-                            <div class="card-body">
-                                <ul id="wgRecipeList" class="list-group"></ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+    <!-- Buttons for creating recipes -->
+    <div class="mt-3 d-flex align-items-center">
+        <!-- Recipe Buttons -->
+        <div>
+            <button type="button" class="btn btn-recipe" id="createBreakfastButton" data-bs-toggle="modal" data-bs-target="#createBreakfastRecipeModal" style="display: block;">
+                Create Breakfast Recipe
+            </button>
+            <button type="button" class="btn btn-recipe" id="createAMButton" data-bs-toggle="modal" data-bs-target="#createAMRecipeModal" style="display: none;">
+                Create AM Snack Recipe
+            </button>
+            <button type="button" class="btn btn-recipe" id="createLunchButton" data-bs-toggle="modal" data-bs-target="#createRecipeModal" style="display: none;">
+                Create Lunch Recipe
+            </button>
+            <button type="button" class="btn btn-recipe" id="createPMButton" data-bs-toggle="modal" data-bs-target="#createPMRecipeModal" style="display: none;">
+                Create PM Snack Recipe
+            </button>
+            <button type="button" class="btn btn-recipe" id="createFruitButton" data-bs-toggle="modal" data-bs-target="#fruitRecipeModal" style="display: none;">
+                Add Fruit to Menu Rules
+            </button>
+            <button type="button" class="btn btn-recipe" id="createVegButton" data-bs-toggle="modal" data-bs-target="#vegRecipeModal" style="display: none;">
+                Add Vegetables to Menu Rules
+            </button>
+            <button type="button" class="btn btn-recipe" id="createWGButton" data-bs-toggle="modal" data-bs-target="#wgRecipeModal" style="display: none;">
+                Add Whole Grains to Menu Rules
+            </button>
+        </div>
 
-            <div class="modal fade" id="fruitRecipeModal" tabindex="-1" aria-labelledby="fruitRecipeModalLabel" aria-hidden="true">
+        <!-- Trash Toggle Button -->
+        <i id="toggleDeleteColumn" class="fas fa-trash-alt" style="color: red; cursor: pointer; margin-left: 15px;" title="Toggle Delete Column"></i>
+    </div>
+
+    <!-- Tabs for categories -->
+    <div class="tabs" id="recipeTabs" role="tablist">
+        <button class="tab active-tab" id="breakfast-tab" data-category="breakfast" role="tab">Breakfast</button>
+        <button class="tab" id="am-snack-tab" data-category="am" role="tab">AM Snack</button>
+        <button class="tab" id="lunch-tab" data-category="lunch" role="tab">Lunch</button>
+        <button class="tab" id="pm-snack-tab" data-category="pm" role="tab">PM Snack</button>
+        <button class="tab" id="fruit-tab" data-category="fruit" role="tab">Fruits</button>
+        <button class="tab" id="veg-tab" data-category="veg" role="tab">Vegetables</button>
+        <button class="tab" id="wg-tab" data-category="wg" role="tab">Whole Grains</button>
+    </div>
+
+    <!-- Table for displaying recipes -->
+    <div class="tab-content mt-3">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th class="delete-column" id="deleteColumnHeader">
+                        <i class="fas fa-trash-alt" style="color: white;"></i>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="recipeTableBody">
+                <!-- Recipes will be dynamically populated here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="modal fade" id="fruitRecipeModal" tabindex="-1" aria-labelledby="fruitRecipeModalLabel" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -318,7 +268,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createRecipeForm">
+                <form id="createRecipeForm" method="post" action="{% url 'create_recipe' %}">
+                    {% csrf_token %}
                     <div class="mb-3">
                         <label for="mealName" class="form-label">Meal Name</label>
                         <input type="text" class="form-control" id="mealName" name="mealName">
@@ -431,7 +382,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createBreakfastRecipeForm">
+                <form id="createBreakfastRecipeForm" method="post" action="{% url 'create_breakfast_recipe' %}">
+                    {% csrf_token %}
                     <div class="mb-3">
                         <label for="breakfastMealName" class="form-label">Meal Name</label>
                         <input type="text" class="form-control" id="breakfastMealName" name="breakfastMealName">
@@ -540,14 +492,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createAMRecipeForm">
+                <form id="createAMRecipeForm" method="post" action="{% url 'create_am_recipe' %}">
+                    {% csrf_token %}
                     <div class="mb-3">
                         <label for="amRecipeName" class="form-label">Recipe Name</label>
                         <input type="text" class="form-control" id="amRecipeName" name="amRecipeName">
                     </div>
 
-                    <!-- Input fields for main ingredients and their quantities -->
-                    <!-- Repeat this block for ingredient2, ingredient3, ingredient4, and ingredient5 -->
+                    <!-- Ingredient #1 -->
                     <div class="mb-3">
                         <label for="amIngredient1" class="form-label">Ingredient #1</label>
                         <select class="form-select" id="amIngredient1" name="amIngredient1">
@@ -555,60 +507,64 @@
                         </select>
                         <input type="number" class="form-control mt-2" id="amQty1" name="amQty1" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #2 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient2">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient2">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="amIngredient2Container" style="display: none;">
                         <label for="amIngredient2" class="form-label">Ingredient #2</label>
                         <select class="form-select" id="amIngredient2" name="amIngredient2">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="amQty2" name="amQty2" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #3 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient3">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient3">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="amIngredient3Container" style="display: none;">
                         <label for="amIngredient3" class="form-label">Ingredient #3</label>
                         <select class="form-select" id="amIngredient3" name="amIngredient3">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="amQty3" name="amQty3" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #4 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient4">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient4">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="amIngredient4Container" style="display: none;">
                         <label for="amIngredient4" class="form-label">Ingredient #4</label>
                         <select class="form-select" id="amIngredient4" name="amIngredient4">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="amQty4" name="amQty4" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #5 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient5">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient5">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="amIngredient5Container" style="display: none;">
                         <label for="amIngredient5" class="form-label">Ingredient #5</label>
                         <select class="form-select" id="amIngredient5" name="amIngredient5">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="amQty5" name="amQty5" min="1" placeholder="Quantity">
                     </div>
-                    
-                    <!-- Fluid input field -->
+
+                    <!-- Additional Fields -->
                     <div class="mb-3">
                         <label for="amFluid" class="form-label">Fluid</label>
                         <input type="text" class="form-control" id="amFluid" name="amFluid">
                     </div>
-
-                    <!-- Fruit/Vegetable input field -->
                     <div class="mb-3">
                         <label for="amFruitVeg" class="form-label">Fruit/Vegetable</label>
                         <input type="text" class="form-control" id="amFruitVeg" name="amFruitVeg">
                     </div>
-
-                    <!-- Meat input field -->
                     <div class="mb-3">
                         <label for="amMeat" class="form-label">Meat</label>
                         <input type="text" class="form-control" id="amMeat" name="amMeat">
@@ -619,11 +575,11 @@
                             <!-- Rules will be populated dynamically here -->
                         </select>
                     </div>
-                    <!-- Instructions text area -->
                     <div class="mb-3">
                         <label for="amInstructions" class="form-label">Instructions</label>
                         <textarea class="form-control" id="amInstructions" name="amInstructions" rows="4"></textarea>
                     </div>
+
                     <button type="submit" class="btn btn-primary">Create AM Snack Recipe</button>
                 </form>
             </div>
@@ -638,14 +594,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createPMRecipeForm">
+                <form id="createPMRecipeForm" method="post" action="{% url 'create_pm_recipe' %}">
+                    {% csrf_token %}
                     <div class="mb-3">
                         <label for="pmRecipeName" class="form-label">Recipe Name</label>
                         <input type="text" class="form-control" id="pmRecipeName" name="pmRecipeName">
                     </div>
 
-                    <!-- Input fields for main ingredients and their quantities -->
-                    <!-- Repeat this block for ingredient2, ingredient3, ingredient4, and ingredient5 -->
+                    <!-- Ingredient #1 -->
                     <div class="mb-3">
                         <label for="pmIngredient1" class="form-label">Ingredient #1</label>
                         <select class="form-select" id="pmIngredient1" name="pmIngredient1">
@@ -653,60 +609,64 @@
                         </select>
                         <input type="number" class="form-control mt-2" id="pmQty1" name="pmQty1" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #2 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient2">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="togglePmIngredient2">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="pmIngredient2Container" style="display: none;">
                         <label for="pmIngredient2" class="form-label">Ingredient #2</label>
                         <select class="form-select" id="pmIngredient2" name="pmIngredient2">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="pmQty2" name="pmQty2" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #3 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient3">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="togglePmIngredient3">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="pmIngredient3Container" style="display: none;">
                         <label for="pmIngredient3" class="form-label">Ingredient #3</label>
                         <select class="form-select" id="pmIngredient3" name="pmIngredient3">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="pmQty3" name="pmQty3" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #4 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient4">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="togglePmIngredient4">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="pmIngredient4Container" style="display: none;">
                         <label for="pmIngredient4" class="form-label">Ingredient #4</label>
                         <select class="form-select" id="pmIngredient4" name="pmIngredient4">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="pmQty4" name="pmQty4" min="1" placeholder="Quantity">
                     </div>
+
+                    <!-- Ingredient #5 -->
                     <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient5">Add Ingredient</button>
+                        <button type="button" class="btn btn-secondary" id="togglePmIngredient5">Add Ingredient</button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="pmIngredient5Container" style="display: none;">
                         <label for="pmIngredient5" class="form-label">Ingredient #5</label>
                         <select class="form-select" id="pmIngredient5" name="pmIngredient5">
                             <!-- Ingredients will be populated dynamically here -->
                         </select>
                         <input type="number" class="form-control mt-2" id="pmQty5" name="pmQty5" min="1" placeholder="Quantity">
                     </div>
-                    
-                    <!-- Fluid input field -->
+
+                    <!-- Additional Fields -->
                     <div class="mb-3">
                         <label for="pmFluid" class="form-label">Fluid</label>
                         <input type="text" class="form-control" id="pmFluid" name="pmFluid">
                     </div>
-
-                    <!-- Fruit/Vegetable input field -->
                     <div class="mb-3">
                         <label for="pmFruitVeg" class="form-label">Fruit/Vegetable</label>
                         <input type="text" class="form-control" id="pmFruitVeg" name="pmFruitVeg">
                     </div>
-
-                    <!-- Meat input field -->
                     <div class="mb-3">
                         <label for="pmMeat" class="form-label">Meat</label>
                         <input type="text" class="form-control" id="pmMeat" name="pmMeat">
@@ -717,11 +677,11 @@
                             <!-- Rules will be populated dynamically here -->
                         </select>
                     </div>
-                    <!-- Instructions text area -->
                     <div class="mb-3">
                         <label for="pmInstructions" class="form-label">Instructions</label>
                         <textarea class="form-control" id="pmInstructions" name="pmInstructions" rows="4"></textarea>
                     </div>
+
                     <button type="submit" class="btn btn-primary">Create PM Snack Recipe</button>
                 </form>
             </div>
@@ -729,908 +689,676 @@
     </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-      $(document).ready(function() {
-    // Function to get CSRF token from cookies
-    function getCookie(name) {
-        var cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            var cookies = document.cookie.split(';');
-            for (var i = 0; i < cookies.length; i++) {
-                var cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+    document.addEventListener('DOMContentLoaded', function () {
+        const recipeTableBody = document.getElementById('recipeTableBody');
+        const deleteColumnHeader = document.getElementById('deleteColumnHeader');
+        const toggleDeleteButton = document.getElementById('toggleDeleteColumn');
+        const tabs = document.querySelectorAll('#recipeTabs .tab');
+        const buttons = {
+            breakfast: document.getElementById('createBreakfastButton'),
+            am: document.getElementById('createAMButton'),
+            lunch: document.getElementById('createLunchButton'),
+            pm: document.getElementById('createPMButton'),
+            fruit: document.getElementById('createFruitButton'),
+            veg: document.getElementById('createVegButton'),
+            wg: document.getElementById('createWGButton')
+        };
+
+        // Initially hide the delete column
+        deleteColumnHeader.style.display = 'none';
+
+       toggleDeleteButton.addEventListener('click', function () {
+            const isHidden = deleteColumnHeader.style.display === 'none' || deleteColumnHeader.style.display === '';
+            deleteColumnHeader.style.display = isHidden ? 'table-cell' : 'none';
+
+            // Toggle visibility for all delete-column cells
+            const deleteColumns = document.querySelectorAll('.delete-column');
+            deleteColumns.forEach(column => {
+                column.style.display = isHidden ? 'table-cell' : 'none';
+            });
+        });
+
+        function fetchRecipes(category) {
+            let endpoint = '';
+            switch (category) {
+                case 'breakfast':
+                    endpoint = '/fetch-breakfast-recipes/';
                     break;
+                case 'am':
+                    endpoint = '/fetch-am-recipes/';
+                    break;
+                case 'lunch':
+                    endpoint = '/fetch-recipes/';
+                    break;
+                case 'pm':
+                    endpoint = '/fetch-pm-recipes/';
+                    break;
+                case 'fruit':
+                    endpoint = '/fetch-fruit-recipes/';
+                    break;
+                case 'veg':
+                    endpoint = '/fetch-veg-recipes/';
+                    break;
+                case 'wg':
+                    endpoint = '/fetch-wg-recipes/';
+                    break;
+                default:
+                    console.error('Invalid category');
+                    return;
+            }
+
+            fetch(endpoint)
+                .then(response => response.json())
+                .then(data => {
+                    recipeTableBody.innerHTML = ''; // Clear the table
+                    const recipes = data.recipes || [];
+                    recipes.forEach(recipe => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="clickable-name" onclick="viewRecipe(${recipe.id})">${recipe.name}</td>
+                            <td class="delete-column" style="display: none;">
+                                <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${category}" style="color: red; cursor: pointer;"></i>
+                            </td>
+                        `;
+                        recipeTableBody.appendChild(row);
+                    });
+
+                    // Add event listeners for delete icons
+                    const deleteIcons = document.querySelectorAll('.delete-record');
+                    deleteIcons.forEach(icon => {
+                        icon.addEventListener('click', function () {
+                            const recipeId = this.getAttribute('data-id');
+                            const category = this.getAttribute('data-category');
+                            if (confirm('Are you sure you want to delete this recipe?')) {
+                                deleteRecipe(recipeId, category);
+                            }
+                        });
+                    });
+
+                    // Synchronize delete column visibility
+                    const isDeleteColumnVisible = deleteColumnHeader.style.display === 'table-cell';
+                    const deleteColumns = document.querySelectorAll('.delete-column');
+                    deleteColumns.forEach(column => {
+                        column.style.display = isDeleteColumnVisible ? 'table-cell' : 'none';
+                    });
+                })
+                .catch(error => console.error('Error fetching recipes:', error));
+        }
+
+        function deleteRecipe(recipeId, category) {
+            fetch(`/delete-recipe/${category}/${recipeId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 }
-            }
+            })
+            .then(response => {
+                if (response.ok) {
+                    toastr.success(`${category.charAt(0).toUpperCase() + category.slice(1)} recipe deleted successfully.`);
+                    fetchRecipes(document.querySelector('.active-tab').getAttribute('data-category'));
+                } else {
+                    toastr.error('Failed to delete recipe.');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting recipe:', error);
+                toastr.error('An error occurred while deleting the recipe.');
+            });
         }
-        return cookieValue;
-    }
 
-    // Function to populate dropdown with rules
-    function populateRulesDropdown() {
-        $.ajax({
-            url: '/fetch-rules/', // Update with your backend endpoint for fetching rules
-            method: 'GET',
-            success: function(response) {
-                var rulesSelect = $('#rule');
-                rulesSelect.empty(); // Clear previous options
-
-                // Add an empty option
-                rulesSelect.append($('<option>', {
-                    value: '',
-                    text: 'Select Rule'
-                }));
-
-                // Add rules
-                $.each(response.rules, function(index, rule) {
-                    rulesSelect.append($('<option>', {
-                        value: rule.id,
-                        text: rule.rule
-                    }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    // Function to populate dropdown with ingredients
-    function populateIngredientsDropdown(selectId) {
-        $.ajax({
-            url: '/fetch-ingredients/', // Update this with your backend endpoint for fetching ingredients
-            method: 'GET',
-            success: function(response) {
-                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
-                var ingredientsSelect = $('#' + selectId);
-                ingredientsSelect.empty();
-                ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
-                $.each(response.ingredients, function(index, ingredient) {
-                    ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    // Clear form fields when the modal is shown
-    $('#createRecipeModal').on('show.bs.modal', function(e) {
-        $('#createRecipeForm').trigger('reset');
-        populateIngredientsDropdown('mainIngredient1');
-        populateIngredientsDropdown('mainIngredient2');
-        populateIngredientsDropdown('mainIngredient3');
-        populateIngredientsDropdown('mainIngredient4');
-        populateIngredientsDropdown('mainIngredient5');
-        populateRulesDropdown(); // Populate the rules dropdown
-        $("#mainIngredient2Container").hide();
-        $("#mainIngredient3Container").hide();
-        $("#mainIngredient4Container").hide();
-        $("#mainIngredient5Container").hide();
-    });
-
-    // Handle form submission
-    $('#createRecipeForm').submit(function(e) {
-        e.preventDefault();
-        var formData = $(this).serialize();
-        var csrfToken = getCookie('csrftoken');
-        $.ajax({
-            url: '/create-recipe/', // Update this with your backend endpoint for creating recipe
-            method: 'POST',
-            data: formData,
-            headers: { 'X-CSRFToken': csrfToken },
-            success: function(response) {
-                $('#createRecipeModal').modal('hide');
-                fetchRecipesAndUpdateList();
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    });
-
-    // Fetch recipes from the backend and update the list
-    function fetchRecipesAndUpdateList() {
-        $.ajax({
-            url: '/fetch-recipes/', // Replace with your backend endpoint for fetching recipes
-            method: 'GET',
-            success: function(response) {
-                var recipeList = $('#recipeList');
-                recipeList.empty();
-                $.each(response.recipes, function(index, recipe) {
-                    var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
-                    var buttonsContainer = $('<div class="recipe-buttons"></div>');
-                    var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
-                    editButton.data('recipe-id', recipe.id);
-                    buttonsContainer.append(editButton);
-                    var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
-                    deleteButton.data('recipe-id', recipe.id);
-                    buttonsContainer.append(deleteButton);
-                    listItem.append(buttonsContainer);
-                    recipeList.append(listItem);
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    // Initial fetch of recipes when the document is ready
-    fetchRecipesAndUpdateList();
-
-    // Add click event to minimize buttons
-    $("#minimizeIngredient2").click(function() {
-        $("#mainIngredient2Container").toggle();
-    });
-    $("#minimizeIngredient3").click(function() {
-        $("#mainIngredient3Container").toggle();
-    });
-    $("#minimizeIngredient4").click(function() {
-        $("#mainIngredient4Container").toggle();
-    });
-    $("#minimizeIngredient5").click(function() {
-        $("#mainIngredient5Container").toggle();
-    });
-});
-
-    </script>
- <script>
-    function getCookie(name) {
-    var cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var cookie = cookies[i].trim();
-            // Check if the cookie name matches the provided name
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
+        // Function to toggle buttons based on the active tab
+        function toggleButtons(category) {
+            Object.keys(buttons).forEach(key => {
+                buttons[key].style.display = key === category ? 'block' : 'none';
+            });
         }
-    }
-    return cookieValue;
-}
-$(document).ready(function() {
-    // Function to populate dropdown with ingredients for breakfast recipe
-    function populateBreakfastIngredientsDropdown(selectId) {
-        $.ajax({
-            url: '/fetch-ingredients/',
-            method: 'GET',
-            success: function(response) {
-                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
-                var ingredientsSelect = $('#' + selectId);
-                ingredientsSelect.empty();
-                ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
-                $.each(response.ingredients, function(index, ingredient) {
-                    ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
 
-    // Function to populate dropdown with rules
-    function populateBreakfastRulesDropdown() {
-        $.ajax({
-            url: '/fetch-rules/',
-            method: 'GET',
-            success: function(response) {
-                var rulesSelect = $('#breakfastRule');
-                rulesSelect.empty();
-                rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
-                $.each(response.rules, function(index, rule) {
-                    rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    // Clear form fields and populate dropdowns when the breakfast recipe modal is shown
-    $('#createBreakfastRecipeModal').on('show.bs.modal', function(e) {
-        $('#createBreakfastRecipeForm').trigger('reset');
-        populateBreakfastIngredientsDropdown('breakfastMainIngredient1');
-        populateBreakfastIngredientsDropdown('breakfastMainIngredient2');
-        populateBreakfastIngredientsDropdown('breakfastMainIngredient3');
-        populateBreakfastIngredientsDropdown('breakfastMainIngredient4');
-        populateBreakfastIngredientsDropdown('breakfastMainIngredient5');
-        populateBreakfastRulesDropdown();
-        $("#breakfastMainIngredient2Container").hide();
-        $("#breakfastMainIngredient3Container").hide();
-        $("#breakfastMainIngredient4Container").hide();
-        $("#breakfastMainIngredient5Container").hide();
-    });
-
-    $('#createBreakfastRecipeForm').submit(function(e) {
-        e.preventDefault();
-        var formData = $(this).serialize();
-        formData += '&additionalFood=' + $('#additionalFood').val();
-        var csrfToken = getCookie('csrftoken');
-        $.ajax({
-            url: '/create-breakfast-recipe/',
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            data: formData,
-            success: function(response) {
-                $('#createBreakfastRecipeModal').modal('hide');
-                alert('Breakfast recipe created successfully!');
-                location.reload();
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-                alert('Error creating breakfast recipe: ' + error);
-            }
-        });
-    });
-
-    // Add show and hide functionality for additional ingredient inputs
-    $('#minimizeBreakfastIngredient2').click(function() {
-        $("#breakfastMainIngredient2Container").toggle();
-    });
-    $('#minimizeBreakfastIngredient3').click(function() {
-        $("#breakfastMainIngredient3Container").toggle();
-    });
-    $('#minimizeBreakfastIngredient4').click(function() {
-        $("#breakfastMainIngredient4Container").toggle();
-    });
-    $('#minimizeBreakfastIngredient5').click(function() {
-        $("#breakfastMainIngredient5Container").toggle();
-    });
-
-function deleteBreakfastRecipe(recipeId) {
-        // Get CSRF token
-        var csrfToken = getCookie('csrftoken');
-        // Submit AJAX request to delete the breakfast recipe
-        $.ajax({
-            url: `/delete-breakfast-recipe/${recipeId}/`, // Replace with your backend endpoint for deleting a breakfast recipe
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': csrfToken
-            },
-            success: function(response) {
-                // Handle success response
-                console.log(response);
-                // Refresh breakfast recipe list
-                fetchBreakfastRecipesAndUpdateList(); // Call function to fetch and update breakfast recipe list
-                // Optionally, you can perform additional actions like showing a success message
-            },
-            error: function(xhr, status, error) {
-                // Handle error
-                console.error(error);
-            }
-        });
-    }
-
-    // Add click event to delete button for each breakfast recipe
-    $(document).on('click', '.deleteBreakfastRecipeBtn', function() {
-        // Get the recipe ID from the button's data attribute
-        var recipeId = $(this).data('recipe-id');
-        // Confirm with the user before deleting
-        if (confirm("Are you sure you want to delete this breakfast recipe?")) {
-            // Call the deleteBreakfastRecipe function
-            deleteBreakfastRecipe(recipeId);
+        // Function to update active tab styling
+        function updateActiveTab(clickedTab) {
+            tabs.forEach(tab => {
+                tab.classList.remove('active-tab'); // Remove active class from all tabs
+            });
+            clickedTab.classList.add('active-tab'); // Add active class to the clicked tab
         }
+
+        // Event listener for tab clicks
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function () {
+                const category = this.getAttribute('data-category');
+                fetchRecipes(category);
+                toggleButtons(category);
+                updateActiveTab(this); // Update the active tab styling
+            });
+        });
+
+        // Load the first tab (Breakfast) by default
+        fetchRecipes('breakfast');
+        toggleButtons('breakfast');
+        updateActiveTab(document.querySelector('#breakfast-tab')); // Set the initial active tab
     });
 
-    // Function to fetch breakfast recipes from the backend and update the list
-    function fetchBreakfastRecipesAndUpdateList() {
-        $.ajax({
-            url: '/fetch-breakfast-recipes/', // Replace with your backend endpoint for fetching breakfast recipes
-            method: 'GET',
-            success: function(response) {
-                // Populate the breakfast recipe list
-                var recipeList = $('#breakfastRecipeList');
-                recipeList.empty(); // Clear previous list items
-
-                // Iterate through each breakfast recipe and create list items with edit and delete buttons
-                $.each(response.recipes, function(index, recipe) {
-                    // Create list item for each breakfast recipe
-                    var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
-
-                    // Create a container for buttons and align it to the right
-                    var buttonsContainer = $('<div class="recipe-buttons"></div>');
-
-                    // Create edit button for the breakfast recipe
-                    var editButton = $('<button type="button" class="btn btn-primary btn-sm editBreakfastRecipeBtn">Edit</button>');
-                    editButton.data('recipe-id', recipe.id);
-                    buttonsContainer.append(editButton);
-
-                    // Create delete button for the breakfast recipe
-                    var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteBreakfastRecipeBtn">Delete</button>');
-                    deleteButton.data('recipe-id', recipe.id);
-                    buttonsContainer.append(deleteButton);
-
-                    // Append buttons container to list item
-                    listItem.append(buttonsContainer);
-
-                    // Append list item to breakfast recipe list
-                    recipeList.append(listItem);
-                });
-            },
-            error: function(xhr, status, error) {
-                // Handle error
-                console.error(error);
-            }
-        });
-    }
-
-    // Initial fetch of breakfast recipes when the document is ready
-    fetchBreakfastRecipesAndUpdateList();
-    });
-
-</script>
-<script>
-    function getCookie(name) {
-    var cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        var cookies = document.cookie.split(';');
-        for (var i = 0; i < cookies.length; i++) {
-            var cookie = cookies[i].trim();
-            // Check if the cookie name matches the provided name
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-   $(document).ready(function() {
-    // Function to populate dropdown with ingredients for AM snack recipe
-    function populateAMIngredientsDropdown(selectId) {
-        // Fetch ingredients dynamically when the modal is shown
-        $.ajax({
-            url: '/fetch-ingredients/', // Update this with your backend endpoint for fetching AM snack ingredients
-            method: 'GET',
-            success: function(response) {
-                // Sort ingredients alphabetically
-                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
-                
-                // Populate the select dropdown with ingredients
-                var ingredientsSelect = $('#' + selectId);
-                ingredientsSelect.empty(); // Clear previous options
-
-                // Add an empty option
-                ingredientsSelect.append($('<option>', {
-                    value: '',
-                    text: 'Select Ingredient'
-                }));
-
-                // Add sorted ingredients
-                $.each(response.ingredients, function(index, ingredient) {
-                    ingredientsSelect.append($('<option>', {
-                        value: ingredient.id,
-                        text: ingredient.item
-                    }));
-                });
-            },
-            error: function(xhr, status, error) {
-                // Handle error
-                console.error(error);
-            }
-        });
-    }
-
-    // Clear form fields when the AM snack recipe modal is shown
-    $('#createAMRecipeModal').on('show.bs.modal', function(e) {
-        // Clear input fields
-        $('#createAMRecipeForm').trigger('reset');
-        // Repopulate dropdowns with AM snack ingredients
-        populateAMIngredientsDropdown('amIngredient1');
-        populateAMIngredientsDropdown('amIngredient2');
-        populateAMIngredientsDropdown('amIngredient3');
-        populateAMIngredientsDropdown('amIngredient4');
-        populateAMIngredientsDropdown('amIngredient5');
-        populateAMRulesDropdown();
-    });
-
-    // Handle form submission for creating AM snack recipe
-    $('#createAMRecipeForm').submit(function(e) {
-        e.preventDefault(); // Prevent default form submission
-        var formData = $(this).serialize(); // Serialize form data
-        // Get CSRF token
-        var csrfToken = getCookie('csrftoken');
-        // Submit form data via AJAX to your backend endpoint for creating AM snack recipe
-        $.ajax({
-            url: '/create-am-recipe/', // Update this with your backend endpoint for creating AM snack recipe
-            method: 'POST',
-            data: formData,
-            headers: {
-                'X-CSRFToken': csrfToken
-            },
-            success: function(response) {
-                // Handle success response
-                console.log(response);
-                // Close the modal
-                $('#createAMRecipeModal').modal('hide');
-                // Optionally, you can perform additional actions like showing a success message
-            },
-            error: function(xhr, status, error) {
-                // Handle error
-                console.error(error);
-            }
-        });
-    });
-});
-  // Function to populate dropdown with rules
-  function populateAMRulesDropdown() {
-        $.ajax({
-            url: '/fetch-rules/',
-            method: 'GET',
-            success: function(response) {
-                var rulesSelect = $('#amRule');
-                rulesSelect.empty();
-                rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
-                $.each(response.rules, function(index, rule) {
-                    rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
+    // Placeholder function for viewing a recipe
+    function viewRecipe(recipeId) {
+        alert(`View recipe with ID: ${recipeId}`);
     }
 </script>
 <script>
-    function getCookie(name) {
-        var cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            var cookies = document.cookie.split(';');
-            for (var i = 0; i < cookies.length; i++) {
-                var cookie = cookies[i].trim();
-                // Check if the cookie name matches the provided name
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+    $(document).ready(function () {
+        // Create Recipe Modal
+        $("#minimizeIngredient2").click(function () {
+            $("#mainIngredient2Container").toggle();
+            if ($("#mainIngredient2Container").is(":visible")) {
+                $("#minimizeIngredient3").show();
+            } else {
+                $("#minimizeIngredient3").hide();
+                $("#mainIngredient3Container").hide();
+                $("#minimizeIngredient4").hide();
+                $("#mainIngredient4Container").hide();
+                $("#minimizeIngredient5").hide();
+                $("#mainIngredient5Container").hide();
             }
-        }
-        return cookieValue;
-    }
+        });
 
-    $(document).ready(function() {
-        // Function to populate dropdown with ingredients for PM snack recipe
-        function populatePMIngredientsDropdown(selectId) {
-            // Fetch ingredients dynamically when the modal is shown
+        $("#minimizeIngredient3").click(function () {
+            $("#mainIngredient3Container").toggle();
+            if ($("#mainIngredient3Container").is(":visible")) {
+                $("#minimizeIngredient4").show();
+            } else {
+                $("#minimizeIngredient4").hide();
+                $("#mainIngredient4Container").hide();
+                $("#minimizeIngredient5").hide();
+                $("#mainIngredient5Container").hide();
+            }
+        });
+
+        $("#minimizeIngredient4").click(function () {
+            $("#mainIngredient4Container").toggle();
+            if ($("#mainIngredient4Container").is(":visible")) {
+                $("#minimizeIngredient5").show();
+            } else {
+                $("#minimizeIngredient5").hide();
+                $("#mainIngredient5Container").hide();
+            }
+        });
+
+        $("#minimizeIngredient5").click(function () {
+            $("#mainIngredient5Container").toggle();
+        });
+
+        // Breakfast Recipe Modal
+        $("#minimizeBreakfastIngredient2").click(function () {
+            $("#breakfastMainIngredient2Container").toggle();
+            if ($("#breakfastMainIngredient2Container").is(":visible")) {
+                $("#minimizeBreakfastIngredient3").show();
+            } else {
+                $("#minimizeBreakfastIngredient3").hide();
+                $("#breakfastMainIngredient3Container").hide();
+                $("#minimizeBreakfastIngredient4").hide();
+                $("#breakfastMainIngredient4Container").hide();
+                $("#minimizeBreakfastIngredient5").hide();
+                $("#breakfastMainIngredient5Container").hide();
+            }
+        });
+
+        $("#minimizeBreakfastIngredient3").click(function () {
+            $("#breakfastMainIngredient3Container").toggle();
+            if ($("#breakfastMainIngredient3Container").is(":visible")) {
+                $("#minimizeBreakfastIngredient4").show();
+            } else {
+                $("#minimizeBreakfastIngredient4").hide();
+                $("#breakfastMainIngredient4Container").hide();
+                $("#minimizeBreakfastIngredient5").hide();
+                $("#breakfastMainIngredient5Container").hide();
+            }
+        });
+
+        $("#minimizeBreakfastIngredient4").click(function () {
+            $("#breakfastMainIngredient4Container").toggle();
+            if ($("#breakfastMainIngredient4Container").is(":visible")) {
+                $("#minimizeBreakfastIngredient5").show();
+            } else {
+                $("#minimizeBreakfastIngredient5").hide();
+                $("#breakfastMainIngredient5Container").hide();
+            }
+        });
+
+        $("#minimizeBreakfastIngredient5").click(function () {
+            $("#breakfastMainIngredient5Container").toggle();
+        });
+
+        // AM Snack Recipe Modal
+        $("#toggleAmIngredient2").click(function () {
+            $("#amIngredient2Container").toggle();
+            if ($("#amIngredient2Container").is(":visible")) {
+                $("#toggleAmIngredient3").show();
+            } else {
+                $("#toggleAmIngredient3").hide();
+                $("#amIngredient3Container").hide();
+                $("#toggleAmIngredient4").hide();
+                $("#amIngredient4Container").hide();
+                $("#toggleAmIngredient5").hide();
+                $("#amIngredient5Container").hide();
+            }
+        });
+
+        $("#toggleAmIngredient3").click(function () {
+            $("#amIngredient3Container").toggle();
+            if ($("#amIngredient3Container").is(":visible")) {
+                $("#toggleAmIngredient4").show();
+            } else {
+                $("#toggleAmIngredient4").hide();
+                $("#amIngredient4Container").hide();
+                $("#toggleAmIngredient5").hide();
+                $("#amIngredient5Container").hide();
+            }
+        });
+
+        $("#toggleAmIngredient4").click(function () {
+            $("#amIngredient4Container").toggle();
+            if ($("#amIngredient4Container").is(":visible")) {
+                $("#toggleAmIngredient5").show();
+            } else {
+                $("#toggleAmIngredient5").hide();
+                $("#amIngredient5Container").hide();
+            }
+        });
+
+        $("#toggleAmIngredient5").click(function () {
+            $("#amIngredient5Container").toggle();
+        });
+
+        // PM Snack Recipe Modal
+        $("#togglePmIngredient2").click(function () {
+            $("#pmIngredient2Container").toggle();
+            if ($("#pmIngredient2Container").is(":visible")) {
+                $("#togglePmIngredient3").show();
+            } else {
+                $("#togglePmIngredient3").hide();
+                $("#pmIngredient3Container").hide();
+                $("#togglePmIngredient4").hide();
+                $("#pmIngredient4Container").hide();
+                $("#togglePmIngredient5").hide();
+                $("#pmIngredient5Container").hide();
+            }
+        });
+
+        $("#togglePmIngredient3").click(function () {
+            $("#pmIngredient3Container").toggle();
+            if ($("#pmIngredient3Container").is(":visible")) {
+                $("#togglePmIngredient4").show();
+            } else {
+                $("#togglePmIngredient4").hide();
+                $("#pmIngredient4Container").hide();
+                $("#togglePmIngredient5").hide();
+                $("#pmIngredient5Container").hide();
+            }
+        });
+
+        $("#togglePmIngredient4").click(function () {
+            $("#pmIngredient4Container").toggle();
+            if ($("#pmIngredient4Container").is(":visible")) {
+                $("#togglePmIngredient5").show();
+            } else {
+                $("#togglePmIngredient5").hide();
+                $("#pmIngredient5Container").hide();
+            }
+        });
+
+        $("#togglePmIngredient5").click(function () {
+            $("#pmIngredient5Container").toggle();
+        });
+
+        // Initially hide all "Add Ingredient" buttons except the first one
+        $("#minimizeIngredient3, #minimizeIngredient4, #minimizeIngredient5").hide();
+        $("#minimizeBreakfastIngredient3, #minimizeBreakfastIngredient4, #minimizeBreakfastIngredient5").hide();
+        $("#toggleAmIngredient3, #toggleAmIngredient4, #toggleAmIngredient5").hide();
+        $("#togglePmIngredient3, #togglePmIngredient4, #togglePmIngredient5").hide();
+
+        // Function to populate dropdowns with ingredients
+        function populateIngredientsDropdown(selectId) {
             $.ajax({
-                url: '/fetch-ingredients/', // Update this with your backend endpoint for fetching PM snack ingredients
+                url: '/fetch-ingredients/', // Backend endpoint to fetch ingredients
                 method: 'GET',
-                success: function(response) {
-                    // Sort ingredients alphabetically
-                    response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
+                success: function (response) {
+                    const ingredients = response.ingredients;
+                    const dropdown = $('#' + selectId);
+                    dropdown.empty(); // Clear existing options
+                    dropdown.append('<option value="">Select Ingredient</option>'); // Default option
 
-                    // Populate the select dropdown with ingredients
-                    var ingredientsSelect = $('#' + selectId);
-                    ingredientsSelect.empty(); // Clear previous options
-
-                    // Add an empty option
-                    ingredientsSelect.append($('<option>', {
-                        value: '',
-                        text: 'Select Ingredient'
-                    }));
-
-                    // Add sorted ingredients
-                    $.each(response.ingredients, function(index, ingredient) {
-                        ingredientsSelect.append($('<option>', {
-                            value: ingredient.id,
-                            text: ingredient.item
-                        }));
+                    // Populate dropdown with ingredients
+                    ingredients.forEach(ingredient => {
+                        dropdown.append(`<option value="${ingredient.id}">${ingredient.item}</option>`);
                     });
                 },
-                error: function(xhr, status, error) {
-                    // Handle error
-                    console.error(error);
+                error: function (xhr, status, error) {
+                    console.error('Error fetching ingredients:', error);
                 }
             });
         }
 
-        // Clear form fields when the PM snack recipe modal is shown
-        $('#createPMRecipeModal').on('show.bs.modal', function(e) {
-            // Clear input fields
-            $('#createPMRecipeForm').trigger('reset');
-            // Repopulate dropdowns with PM snack ingredients
-            populatePMIngredientsDropdown('pmIngredient1');
-            populatePMIngredientsDropdown('pmIngredient2');
-            populatePMIngredientsDropdown('pmIngredient3');
-            populatePMIngredientsDropdown('pmIngredient4');
-            populatePMIngredientsDropdown('pmIngredient5');
-            populatePMRulesDropdown();
+        // Populate dropdowns when modals are shown
+        $('#createRecipeModal').on('show.bs.modal', function () {
+            populateIngredientsDropdown('mainIngredient1');
+            populateIngredientsDropdown('mainIngredient2');
+            populateIngredientsDropdown('mainIngredient3');
+            populateIngredientsDropdown('mainIngredient4');
+            populateIngredientsDropdown('mainIngredient5');
         });
 
-        // Handle form submission for creating PM snack recipe
-        $('#createPMRecipeForm').submit(function(e) {
-            e.preventDefault(); // Prevent default form submission
-            var formData = $(this).serialize(); // Serialize form data
-            // Get CSRF token
-            var csrfToken = getCookie('csrftoken');
-            // Submit form data via AJAX to your backend endpoint for creating PM snack recipe
+        $('#createBreakfastRecipeModal').on('show.bs.modal', function () {
+            populateIngredientsDropdown('breakfastMainIngredient1');
+            populateIngredientsDropdown('breakfastMainIngredient2');
+            populateIngredientsDropdown('breakfastMainIngredient3');
+            populateIngredientsDropdown('breakfastMainIngredient4');
+            populateIngredientsDropdown('breakfastMainIngredient5');
+        });
+
+        $('#createAMRecipeModal').on('show.bs.modal', function () {
+            populateIngredientsDropdown('amIngredient1');
+            populateIngredientsDropdown('amIngredient2');
+            populateIngredientsDropdown('amIngredient3');
+            populateIngredientsDropdown('amIngredient4');
+            populateIngredientsDropdown('amIngredient5');
+        });
+
+        $('#createPMRecipeModal').on('show.bs.modal', function () {
+            populateIngredientsDropdown('pmIngredient1');
+            populateIngredientsDropdown('pmIngredient2');
+            populateIngredientsDropdown('pmIngredient3');
+            populateIngredientsDropdown('pmIngredient4');
+            populateIngredientsDropdown('pmIngredient5');
+        });
+
+        $('#fruitRecipeModal').on('show.bs.modal', function () {
+            populateIngredientsDropdown('fruitMainIngredient1');
+        });
+
+        $('#vegRecipeModal').on('show.bs.modal', function () {
+            populateIngredientsDropdown('vegMainIngredient1');
+        });
+
+        $('#wgRecipeModal').on('show.bs.modal', function () {
+            populateIngredientsDropdown('wgMainIngredient1');
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        // Function to populate dropdowns with rules
+        function populateRulesDropdown(selectId) {
             $.ajax({
-                url: '/create-pm-recipe/', // Update this with your backend endpoint for creating PM snack recipe
+                url: '/fetch-rules/', // Backend endpoint to fetch rules
+                method: 'GET',
+                success: function (response) {
+                    const rules = response.rules;
+                    const dropdown = $('#' + selectId);
+                    dropdown.empty(); // Clear existing options
+                    dropdown.append('<option value="">Select Rule</option>'); // Default option
+
+                    // Populate dropdown with rules
+                    rules.forEach(rule => {
+                        dropdown.append(`<option value="${rule.id}">${rule.rule}</option>`);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error fetching rules:', error);
+                }
+            });
+        }
+
+        // Populate rule dropdowns when modals are shown
+        $('#createRecipeModal').on('show.bs.modal', function () {
+            populateRulesDropdown('rule');
+        });
+
+        $('#createBreakfastRecipeModal').on('show.bs.modal', function () {
+            populateRulesDropdown('breakfastRule');
+        });
+
+        $('#createAMRecipeModal').on('show.bs.modal', function () {
+            populateRulesDropdown('amRule');
+        });
+
+        $('#createPMRecipeModal').on('show.bs.modal', function () {
+            populateRulesDropdown('pmRule');
+        });
+
+        $('#fruitRecipeModal').on('show.bs.modal', function () {
+            populateRulesDropdown('fruitRule');
+        });
+
+        $('#vegRecipeModal').on('show.bs.modal', function () {
+            populateRulesDropdown('vegRule');
+        });
+
+        $('#wgRecipeModal').on('show.bs.modal', function () {
+            populateRulesDropdown('wgRule');
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#createBreakfastRecipeForm').submit(function (e) {
+            e.preventDefault(); // Prevent the default form submission
+
+            const formData = $(this).serialize(); // Serialize form data
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
+
+            $.ajax({
+                url: $(this).attr('action'), // Use the form's action attribute
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $('#createBreakfastRecipeModal').modal('hide'); // Hide the modal
+                        toastr.success('Breakfast recipe created successfully!');
+                        location.reload(); // Reload the page to update the table
+                    } else {
+                        toastr.error('Error creating breakfast recipe.');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    toastr.error('An error occurred while creating the breakfast recipe.');
+                }
+            });
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#createAMRecipeForm').submit(function (e) {
+            e.preventDefault(); // Prevent the default form submission
+
+            const formData = $(this).serialize(); // Serialize form data
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
+
+            $.ajax({
+                url: $(this).attr('action'), // Use the form's action attribute
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert('AM recipe created successfully!');
+                        $('#createAMRecipeModal').modal('hide'); // Hide the modal
+                        location.reload(); // Reload the page to update the table
+                    } else {
+                        alert('Error creating AM recipe.');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the AM recipe.');
+                }
+            });
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#createRecipeForm').submit(function (e) {
+            e.preventDefault(); // Prevent the default form submission
+
+            const formData = $(this).serialize(); // Serialize form data
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
+
+            $.ajax({
+                url: $(this).attr('action'), // Use the form's action attribute
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert('Recipe created successfully!');
+                        $('#createRecipeModal').modal('hide'); // Hide the modal
+                        location.reload(); // Reload the page to update the table
+                    } else {
+                        alert('Error creating recipe.');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the recipe.');
+                }
+            });
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#createPMRecipeForm').submit(function (e) {
+            e.preventDefault(); // Prevent the default form submission
+
+            const formData = $(this).serialize(); // Serialize form data
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
+
+            $.ajax({
+                url: $(this).attr('action'), // Use the form's action attribute
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert('PM recipe created successfully!');
+                        $('#createPMRecipeModal').modal('hide'); // Hide the modal
+                        location.reload(); // Reload the page to update the table
+                    } else {
+                        alert('Error creating PM recipe.');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the PM recipe.');
+                }
+            });
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#createFruitRecipeForm').submit(function (e) {
+            e.preventDefault(); // Prevent the default form submission
+
+            const formData = $(this).serialize(); // Serialize form data
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
+
+            $.ajax({
+                url: $(this).attr('action'), // Use the form's action attribute
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $('#fruitRecipeModal').modal('hide'); // Hide the modal
+                        location.reload(); // Reload the page to update the table
+                    } else {
+                        alert('Error creating fruit recipe.');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the fruit recipe.');
+                }
+            });
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#createVegRecipeForm').submit(function (e) {
+            e.preventDefault(); // Prevent the default form submission
+
+            const formData = $(this).serialize(); // Serialize form data
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
+
+            $.ajax({
+                url: $(this).attr('action'), // Use the form's action attribute
+                method: 'POST',
+                data: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $('#vegRecipeModal').modal('hide'); // Hide the modal
+                        location.reload(); // Reload the page to update the table
+                    } else {
+                        alert('Error creating vegetable recipe.');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the vegetable recipe.');
+                }
+            });
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#createWgRecipeForm').submit(function (e) {
+            e.preventDefault();
+
+            const formData = $(this).serialize();
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+
+            $.ajax({
+                url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
                 headers: {
                     'X-CSRFToken': csrfToken
                 },
-                success: function(response) {
-                    // Handle success response
-                    console.log(response);
-                    // Close the modal
-                    $('#createPMRecipeModal').modal('hide');
-                    // Optionally, you can perform additional actions like showing a success message
-                },
-                error: function(xhr, status, error) {
-                    // Handle error
-                    console.error(error);
-                }
-            });
-        });
-         // Function to populate dropdown with rules
-  function populatePMRulesDropdown() {
-        $.ajax({
-            url: '/fetch-rules/',
-            method: 'GET',
-            success: function(response) {
-                var rulesSelect = $('#pmRule');
-                rulesSelect.empty();
-                rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
-                $.each(response.rules, function(index, rule) {
-                    rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-    });
-</script>
-<script>
-    $(document).ready(function() {
-    // Function to get CSRF token from cookies
-    function getCookie(name) {
-        var cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            var cookies = document.cookie.split(';');
-            for (var i = 0; i < cookies.length; i++) {
-                var cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    // Function to populate dropdown with rules
-    function populateRulesDropdown(selectId) {
-        $.ajax({
-            url: '/fetch-rules/',
-            method: 'GET',
-            success: function(response) {
-                var rulesSelect = $('#' + selectId);
-                rulesSelect.empty(); // Clear previous options
-
-                // Add an empty option
-                rulesSelect.append($('<option>', {
-                    value: '',
-                    text: 'Select Rule'
-                }));
-
-                // Add rules
-                $.each(response.rules, function(index, rule) {
-                    rulesSelect.append($('<option>', {
-                        value: rule.id,
-                        text: rule.rule
-                    }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    // Function to populate dropdown with ingredients
-    function populateIngredientsDropdown(selectId) {
-        $.ajax({
-            url: '/fetch-ingredients/',
-            method: 'GET',
-            success: function(response) {
-                response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
-                var ingredientsSelect = $('#' + selectId);
-                ingredientsSelect.empty();
-                ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
-                $.each(response.ingredients, function(index, ingredient) {
-                    ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    // Clear form fields when the modal is shown
-    $('#fruitRecipeModal').on('show.bs.modal', function(e) {
-        $('#createFruitRecipeForm').trigger('reset');
-        populateIngredientsDropdown('fruitMainIngredient1');
-        populateRulesDropdown('fruitRule'); // Populate the rules dropdown
-    });
-
-    // Handle form submission for fruit recipes
-    $('#createFruitRecipeForm').submit(function(e) {
-        e.preventDefault();
-        var formData = $(this).serialize();
-        var csrfToken = getCookie('csrftoken');
-        $.ajax({
-            url: '/create-fruit-recipe/', // Update this with your backend endpoint for creating fruit recipe
-            method: 'POST',
-            data: formData,
-            headers: { 'X-CSRFToken': csrfToken },
-            success: function(response) {
-                $('#fruitRecipeModal').modal('hide');
-                fetchFruitRecipesAndUpdateList();
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    });
-
-    // Fetch fruit recipes from the backend and update the list
-    function fetchFruitRecipesAndUpdateList() {
-        $.ajax({
-            url: '/fetch-fruit-recipes/', // Replace with your backend endpoint for fetching fruit recipes
-            method: 'GET',
-            success: function(response) {
-                var fruitRecipeList = $('#fruitRecipeList');
-                fruitRecipeList.empty();
-                $.each(response.recipes, function(index, recipe) {
-                    var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
-                    var buttonsContainer = $('<div class="recipe-buttons"></div>');
-                    var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
-                    editButton.data('recipe-id', recipe.id);
-                    buttonsContainer.append(editButton);
-                    var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
-                    deleteButton.data('recipe-id', recipe.id);
-                    buttonsContainer.append(deleteButton);
-                    listItem.append(buttonsContainer);
-                    fruitRecipeList.append(listItem);
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-            }
-        });
-    }
-
-    // Initial fetch of fruit recipes when the document is ready
-    fetchFruitRecipesAndUpdateList();
-});
-</script>
-<script>
-    $(document).ready(function() {
-        function getCookie(name) {
-            var cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                var cookies = document.cookie.split(';');
-                for (var i = 0; i < cookies.length; i++) {
-                    var cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-    
-        function populateRulesDropdown(selectId) {
-            $.ajax({
-                url: '/fetch-rules/',
-                method: 'GET',
-                success: function(response) {
-                    var rulesSelect = $('#' + selectId);
-                    rulesSelect.empty();
-                    rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
-                    $.each(response.rules, function(index, rule) {
-                        rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
-                    });
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                }
-            });
-        }
-    
-        function populateIngredientsDropdown(selectId) {
-            $.ajax({
-                url: '/fetch-ingredients/',
-                method: 'GET',
-                success: function(response) {
-                    response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
-                    var ingredientsSelect = $('#' + selectId);
-                    ingredientsSelect.empty();
-                    ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
-                    $.each(response.ingredients, function(index, ingredient) {
-                        ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
-                    });
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                }
-            });
-        }
-    
-        $('#vegRecipeModal').on('show.bs.modal', function(e) {
-            $('#createVegRecipeForm').trigger('reset');
-            populateIngredientsDropdown('vegMainIngredient1');
-            populateRulesDropdown('vegRule');
-        });
-    
-        $('#createVegRecipeForm').submit(function(e) {
-            e.preventDefault();
-            var formData = $(this).serialize();
-            var csrfToken = getCookie('csrftoken');
-            $.ajax({
-                url: '/create-veg-recipe/',
-                method: 'POST',
-                data: formData,
-                headers: { 'X-CSRFToken': csrfToken },
-                success: function(response) {
-                    $('#vegRecipeModal').modal('hide');
-                    fetchVegRecipesAndUpdateList();
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                }
-            });
-        });
-    
-        function fetchVegRecipesAndUpdateList() {
-            $.ajax({
-                url: '/fetch-veg-recipes/',
-                method: 'GET',
-                success: function(response) {
-                    var vegRecipeList = $('#vegRecipeList');
-                    vegRecipeList.empty();
-                    $.each(response.recipes, function(index, recipe) {
-                        var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
-                        var buttonsContainer = $('<div class="recipe-buttons"></div>');
-                        var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
-                        editButton.data('recipe-id', recipe.id);
-                        buttonsContainer.append(editButton);
-                        var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
-                        deleteButton.data('recipe-id', recipe.id);
-                        buttonsContainer.append(deleteButton);
-                        listItem.append(buttonsContainer);
-                        vegRecipeList.append(listItem);
-                    });
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                }
-            });
-        }
-    
-        fetchVegRecipesAndUpdateList();
-    });
-    </script>
-    <script>
-        $(document).ready(function() {
-            function getCookie(name) {
-                var cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    var cookies = document.cookie.split(';');
-                    for (var i = 0; i < cookies.length; i++) {
-                        var cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }
-                    }
-                }
-                return cookieValue;
-            }
-        
-            function populateRulesDropdown(selectId) {
-                $.ajax({
-                    url: '/fetch-rules/',
-                    method: 'GET',
-                    success: function(response) {
-                        var rulesSelect = $('#' + selectId);
-                        rulesSelect.empty();
-                        rulesSelect.append($('<option>', { value: '', text: 'Select Rule' }));
-                        $.each(response.rules, function(index, rule) {
-                            rulesSelect.append($('<option>', { value: rule.id, text: rule.rule }));
-                        });
-                    },
-                    error: function(xhr, status, error) {
-                        console.error(error);
-                    }
-                });
-            }
-        
-            function populateIngredientsDropdown(selectId) {
-                $.ajax({
-                    url: '/fetch-ingredients/',
-                    method: 'GET',
-                    success: function(response) {
-                        response.ingredients.sort((a, b) => a.item.localeCompare(b.item));
-                        var ingredientsSelect = $('#' + selectId);
-                        ingredientsSelect.empty();
-                        ingredientsSelect.append($('<option>', { value: '', text: 'Select Ingredient' }));
-                        $.each(response.ingredients, function(index, ingredient) {
-                            ingredientsSelect.append($('<option>', { value: ingredient.id, text: ingredient.item }));
-                        });
-                    },
-                    error: function(xhr, status, error) {
-                        console.error(error);
-                    }
-                });
-            }
-        
-            $('#wgRecipeModal').on('show.bs.modal', function(e) {
-                $('#createWgRecipeForm').trigger('reset');
-                populateIngredientsDropdown('wgMainIngredient1');
-                populateRulesDropdown('wgRule');
-            });
-        
-            $('#createWgRecipeForm').submit(function(e) {
-                e.preventDefault();
-                var formData = $(this).serialize();
-                var csrfToken = getCookie('csrftoken');
-                $.ajax({
-                    url: '/create-wg-recipe/',
-                    method: 'POST',
-                    data: formData,
-                    headers: { 'X-CSRFToken': csrfToken },
-                    success: function(response) {
+                success: function (response) {
+                    if (response.success) {
                         $('#wgRecipeModal').modal('hide');
-                        fetchWgRecipesAndUpdateList();
-                    },
-                    error: function(xhr, status, error) {
-                        console.error(error);
+                        toastr.success('WG recipe created successfully!');
+                        location.reload();
+                    } else {
+                        toastr.error('Error creating WG recipe.');
                     }
-                });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                    toastr.error('An error occurred while creating the WG recipe.');
+                }
             });
-        
-            function fetchWgRecipesAndUpdateList() {
-                $.ajax({
-                    url: '/fetch-wg-recipes/',
-                    method: 'GET',
-                    success: function(response) {
-                        var wgRecipeList = $('#wgRecipeList');
-                        wgRecipeList.empty();
-                        $.each(response.recipes, function(index, recipe) {
-                            var listItem = $('<li class="list-group-item"></li>').text(recipe.name);
-                            var buttonsContainer = $('<div class="recipe-buttons"></div>');
-                            var editButton = $('<button type="button" class="btn btn-primary btn-sm editRecipeBtn">Edit</button>');
-                            editButton.data('recipe-id', recipe.id);
-                            buttonsContainer.append(editButton);
-                            var deleteButton = $('<button type="button" class="btn btn-danger btn-sm deleteRecipeBtn">Delete</button>');
-                            deleteButton.data('recipe-id', recipe.id);
-                            buttonsContainer.append(deleteButton);
-                            listItem.append(buttonsContainer);
-                            wgRecipeList.append(listItem);
-                        });
-                    },
-                    error: function(xhr, status, error) {
-                        console.error(error);
-                    }
-                });
-            }
-        
-            fetchWgRecipesAndUpdateList();
         });
+    });
 </script>
 {% endblock %}

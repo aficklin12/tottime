@@ -41,7 +41,7 @@ ROOT_URLCONF = "tottime.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        'DIRS': [
+        "DIRS": [
             os.path.join(BASE_DIR, 'tottimeapp', 'templates', 'tottimeapp'),
             os.path.join(BASE_DIR, 'templates'),
         ],
@@ -52,6 +52,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "tottimeapp.context_processors.unread_messages_count",  # Ensure this is added
             ],
         },
     },

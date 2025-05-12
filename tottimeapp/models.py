@@ -46,7 +46,9 @@ class Inventory(models.Model):
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)  # Allow null and blank values permanently
     resupply = models.IntegerField()
     total_quantity = models.IntegerField(default=0)
-    
+    barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)  # Add barcode field
+    barcode_image = models.ImageField(upload_to='barcodes/', null=True, blank=True)  # Barcode image field
+
 
     def __str__(self):
         return self.item
@@ -233,7 +235,7 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
-    
+
 class IncidentReport(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     date_of_incident = models.DateField()
@@ -704,3 +706,13 @@ class MessagingPermission(models.Model):
 
     def __str__(self):
         return f"{self.main_user.username}: {self.sender_role.name} -> {self.receiver_role.name}: {'Allowed' if self.can_message else 'Not Allowed'}"
+    
+class DiaperChangeRecord(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='diaper_changes')
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    timestamp = models.DateTimeField(default=timezone.now)
+    notes = models.TextField(null=True, blank=True)  # Optional field for additional details
+
+    def __str__(self):
+            return f"Diaper change for {self.student} at {self.timestamp}"
+

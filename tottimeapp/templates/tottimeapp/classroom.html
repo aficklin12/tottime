@@ -157,29 +157,29 @@ body {
     visibility: hidden; /* Hides the checkbox but keeps it functional */
     position: absolute; /* Ensures it doesn't affect layout */
 }
+.btn-primaryoff {
+            background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+            margin-left: 20px;
+            margin-right:15px!important;
+        }
+    
+.btn-primaryoff:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
     </style>
 {% endblock %}
 {% block content %}
                 <div class="d-flex justify-content-between align-items-center mt-4">
                     <h1>{% if classroom %}{{ classroom.name }} Classroom{% else %}My Classroom{% endif %}</h1>
-                    
-                    <!-- Change Classroom Dropdown -->
-                    <div class="d-flex align-items-center" style="margin-right: 110px;">
-                        <label for="classroomFilter" class="me-2" style="font-size: 1rem; font-weight: 500;">Change Classroom:</label>
-                        <select id="classroomFilter" class="form-select" style="width: auto; display: inline-block;">
-                            <option value=""></option>
-                            {% for classroom in classrooms %}
-                            <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == request.GET.classroom_id %}selected{% endif %}>
-                                {{ classroom.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
                 </div>
 
-                <!-- Move the Select Button underneath both header and dropdown -->
                 <div class="d-flex justify-content-start align-items-center mt-3">
-                    <button id="selectButton" class="btn btn-primary me-2">Select</button>
+                    <button id="selectButton" class="btn btn-primaryoff me-2">Select</button>
                     <div id="selectAllContainer" class="form-check" style="display: none;">
                         <input type="checkbox" id="selectAllCheckbox" class="form-check-input">
                         <label for="selectAllCheckbox" class="form-check-label">Select All</label>
@@ -192,12 +192,24 @@ body {
                         <ul class="dropdown-menu" aria-labelledby="actionsButton">
                             <li><a class="dropdown-item" href="#" id="markOutside">Mark Outside</a></li>
                             <li><a class="dropdown-item" href="#" id="markInside">Mark Inside</a></li>
-                            <li><a class="dropdown-item" href="#" id="signIn">Sign In</a></li> <!-- New Sign In button -->
+                            <li><a class="dropdown-item" href="#" id="signIn">Sign In</a></li>
                             <li><a class="dropdown-item" href="#" id="signOut">Sign Out</a></li>
                         </ul>
                     </div>
                 </div>
- 
+
+                <!-- Move the Change Classroom Dropdown under the Select Button -->
+                <div class="d-flex align-items-center mt-3" style="margin-left: 10px;">
+                    <select id="classroomFilter" class="form-select" style="width: auto; display: inline-block;">
+                        <option value="" selected>Change Classroom</option> <!-- Default option -->
+                        {% for classroom in classrooms %}
+                        <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == request.GET.classroom_id %}selected{% endif %}>
+                            {{ classroom.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <div class="container mt-4">
                     <div class="card-container"> <!-- Flexbox container -->
                         {% for student in assigned_students %}

@@ -1,11 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.db.models import Q, Value, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
+from django.db.models import Q, Count, Value, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
 from django.db.models.functions import Concat
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
 from square.client import Client
+import cv2
+from django.core.files.storage import default_storage
 from django.conf import settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
@@ -58,6 +60,7 @@ def check_permissions(request, required_permission_id=None):
         'show_payment_setup': False,
         'show_clock_in': False,
         'show_pay_summary': False,
+        'total_unread_count': 0,  # Add total_unread_count to the context
     }
 
     try:
@@ -98,6 +101,15 @@ def check_permissions(request, required_permission_id=None):
                 permission_id=perm_id,
                 yes_no_permission=True
             ).exists()
+
+        # Calculate total unread messages
+        conversations = Conversation.objects.filter(
+            Q(sender=request.user) | Q(recipient=request.user)
+        ).annotate(
+            unread_count=Count('messages', filter=Q(messages__recipient=request.user, messages__is_read=False))
+        )
+        total_unread_count = conversations.aggregate(total_unread=Sum('unread_count'))['total_unread'] or 0
+        permissions_context['total_unread_count'] = total_unread_count
 
     except SubUser.DoesNotExist:
         # If user is not a SubUser, assume it's a main user and allow access
@@ -150,22 +162,36 @@ def index(request):
 
     # Get order items for the Food Program section
     order_items = OrderList.objects.filter(user=user)
-    # --- New: Build classroom ratio cards ---
+
+    # --- New: Build classroom ratio cards with dynamic ratios ---
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
         sign_out_time__isnull=True,  # Add this condition to filter only records with NULL sign_out_time
         user=user
     )
-    # Get the user's classrooms (assuming you have a Classroom model)
     classrooms = Classroom.objects.filter(user=user)
     classroom_cards = {}
+
     for classroom in classrooms:
         # Count attendance records where classroom_override equals the classroom name
         count = attendance_records.filter(classroom_override=classroom.name).count()
+
+        # Fetch assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        assigned_teachers = [
+            assignment.mainuser or assignment.subuser for assignment in assignments
+        ]
+
+        # Calculate adjusted ratios based on the number of assigned teachers
+        base_ratio = classroom.ratios
+        teacher_count = len(assigned_teachers)
+        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+
+        # Add classroom data to the cards
         classroom_cards[classroom.name] = {
             'count': count,
-            'ratio': classroom.ratios  # target ratio from the Classroom model
+            'ratio': adjusted_ratio  # Use the adjusted ratio
         }
 
     context = {
@@ -183,31 +209,48 @@ def index_director(request):
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):  # Redirect if no access
         return permissions_context
+
     # Ensure order items are always retrieved
     order_items = OrderList.objects.filter(user=user)
-    # --- New: Build classroom ratio cards ---
+
+    # --- New: Build classroom ratio cards with dynamic ratios ---
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
         sign_out_time__isnull=True,  # Add this condition to filter only records with NULL sign_out_time
         user=user
     )
-    # Get the user's classrooms 
     classrooms = Classroom.objects.filter(user=user)
     classroom_cards = {}
+
     for classroom in classrooms:
         # Count attendance records where classroom_override equals the classroom name
         count = attendance_records.filter(classroom_override=classroom.name).count()
+
+        # Fetch assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        assigned_teachers = [
+            assignment.mainuser or assignment.subuser for assignment in assignments
+        ]
+
+        # Calculate adjusted ratios based on the number of assigned teachers
+        base_ratio = classroom.ratios
+        teacher_count = len(assigned_teachers)
+        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+
+        # Add classroom data to the cards
         classroom_cards[classroom.name] = {
             'count': count,
-            'ratio': classroom.ratios
+            'ratio': adjusted_ratio  # Use the adjusted ratio
         }
+
     # Combine permissions context with other context data
     context = {
         'order_items': order_items,
         'classroom_cards': classroom_cards,
         **permissions_context,  # Include permission flags
     }
+
     # Render the index_director page with context
     return render(request, 'index_director.html', context)
 
@@ -466,6 +509,13 @@ def inventory_list(request):
         **permissions_context,  # Include permission flags dynamically
     })
 
+def decode_barcode_opencv(image_path):
+    """Decode a barcode from an image using OpenCV."""
+    image = cv2.imread(image_path)
+    detector = cv2.QRCodeDetector()
+    data, _, _ = detector.detectAndDecode(image)
+    return data
+
 @login_required
 def add_item(request):
     if request.method == 'POST':
@@ -474,11 +524,27 @@ def add_item(request):
         new_category = request.POST.get('new_category')
         units = request.POST.get('units')
         quantity = request.POST.get('quantity')
-        resupply = request.POST.get('resupply')  # Retrieve the resupply value
+        resupply = request.POST.get('resupply')
+        barcode_image = request.FILES.get('barcode_image')  # Retrieve the uploaded barcode image
 
         # Use the new category if provided
         if category == 'Other' and new_category:
             category = new_category
+
+        # Decode the barcode from the uploaded image
+        barcode = None
+        if barcode_image:
+            # Save the image temporarily to decode it
+            temp_image_path = default_storage.save(barcode_image.name, barcode_image)
+            temp_image_full_path = default_storage.path(temp_image_path)
+
+            # Decode the barcode using OpenCV
+            try:
+                barcode = decode_barcode_opencv(temp_image_full_path)
+                if not barcode:
+                    return JsonResponse({'success': False, 'message': 'No barcode detected in the image.'})
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': f'Error decoding barcode: {str(e)}'})
 
         # Save the new item
         Inventory.objects.create(
@@ -487,10 +553,29 @@ def add_item(request):
             category=category,
             units=units,
             quantity=quantity,
-            resupply=resupply  # Save the resupply value
+            resupply=resupply,
+            barcode=barcode,  # Save the decoded barcode value
+            barcode_image=barcode_image  # Save the uploaded barcode image
         )
         return JsonResponse({'success': True, 'message': 'Item added successfully!'})
 
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+@login_required
+def scan_barcode(request):
+    if request.method == 'POST':
+        barcode = request.POST.get('barcode')
+        if not barcode:
+            return JsonResponse({'success': False, 'message': 'No barcode provided.'})
+
+        # Find the inventory item with the matching barcode
+        inventory_item = get_object_or_404(Inventory, barcode=barcode, user=request.user)
+
+        # Increment the quantity
+        inventory_item.quantity += 1
+        inventory_item.save()
+
+        return JsonResponse({'success': True, 'message': f'{inventory_item.item} quantity updated.', 'new_quantity': inventory_item.quantity})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
@@ -533,7 +618,6 @@ def fetch_ingredients(request):
     user = get_user_for_view(request)
     ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item')
     return JsonResponse({'ingredients': list(ingredients)})
-
 @login_required
 def create_recipe(request):
     if request.method == 'POST':
@@ -558,7 +642,7 @@ def create_recipe(request):
         meat_alternate = request.POST.get('meatAlternate')
         rule_id = request.POST.get('rule')  # Extract rule from form data
 
-        # Use get_user_for_view to get the main user (either logged-in user or main user if subuser)
+        # Use get_user_for_view to get the correct user (main user or subuser)
         user = get_user_for_view(request)
 
         # Get the rule object if rule_id is provided
@@ -602,8 +686,6 @@ def create_fruit_recipe(request):
             return JsonResponse({'error': 'Main ingredient is required'}, status=400)
         if not quantity:
             return JsonResponse({'error': 'Quantity is required'}, status=400)
-        if not rule_id:
-            return JsonResponse({'error': 'Rule is required'}, status=400)
 
         # Use get_user_for_view to get the main user (either logged-in user or main user if subuser)
         user = get_user_for_view(request)
@@ -615,7 +697,7 @@ def create_fruit_recipe(request):
         fruit_recipe = FruitRecipe.objects.create(
             user=user,
             name=recipe_name,
-            rule=rule
+            rule=rule  # This will be None if no rule is selected
         )
 
         # Save the ingredient and its quantity to the fruit recipe
@@ -645,8 +727,6 @@ def create_veg_recipe(request):
             return JsonResponse({'error': 'Main ingredient is required'}, status=400)
         if not quantity:
             return JsonResponse({'error': 'Quantity is required'}, status=400)
-        if not rule_id:
-            return JsonResponse({'error': 'Rule is required'}, status=400)
 
         # Use get_user_for_view to determine the main user (current user or main user if subuser)
         user = get_user_for_view(request)
@@ -658,7 +738,7 @@ def create_veg_recipe(request):
         veg_recipe = VegRecipe.objects.create(
             user=user,
             name=recipe_name,
-            rule=rule
+            rule=rule  # This will be None if no rule is selected
         )
 
         # Save the ingredient and its quantity to the vegetable recipe
@@ -671,7 +751,7 @@ def create_veg_recipe(request):
         return JsonResponse({'success': True})
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
-
+    
 @login_required
 def create_wg_recipe(request):
     if request.method == 'POST':
@@ -688,8 +768,6 @@ def create_wg_recipe(request):
             return JsonResponse({'error': 'Main ingredient is required'}, status=400)
         if not quantity:
             return JsonResponse({'error': 'Quantity is required'}, status=400)
-        if not rule_id:
-            return JsonResponse({'error': 'Rule is required'}, status=400)
 
         # Use get_user_for_view to determine the main user (either the current user or main user if subuser)
         user = get_user_for_view(request)
@@ -701,7 +779,7 @@ def create_wg_recipe(request):
         wg_recipe = WgRecipe.objects.create(
             user=user,
             name=recipe_name,
-            rule=rule
+            rule=rule  # This will be None if no rule is selected
         )
 
         # Save the ingredient and its quantity to the WG recipe
@@ -850,7 +928,7 @@ def create_pm_recipe(request):
         # Use get_user_for_view to get the correct user (main user or subuser)
         user = get_user_for_view(request)
 
-        rule = Rule.objects.get(id=rule_id) if rule_id else None
+        rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
         # Create PM recipe instance
         pm_recipe = PMRecipe.objects.create(
@@ -864,12 +942,11 @@ def create_pm_recipe(request):
         )
 
         # Save main ingredients and their quantities to the PM recipe
-        for ingredient_id, quantity in zip(main_ingredient_ids, quantities):
+        for index, (ingredient_id, quantity) in enumerate(zip(main_ingredient_ids, quantities), start=1):
             if ingredient_id and quantity:
-                ingredient = Inventory.objects.get(id=ingredient_id)
-                # Assign main ingredients and their quantities directly to the PM recipe instance
-                setattr(pm_recipe, f'ingredient{main_ingredient_ids.index(ingredient_id) + 1}', ingredient)
-                setattr(pm_recipe, f'qty{main_ingredient_ids.index(ingredient_id) + 1}', quantity)
+                ingredient = get_object_or_404(Inventory, id=ingredient_id)
+                setattr(pm_recipe, f'ingredient{index}', ingredient)
+                setattr(pm_recipe, f'qty{index}', quantity)
 
         pm_recipe.save()  # Save the changes to the database
 
@@ -877,7 +954,7 @@ def create_pm_recipe(request):
     else:
         # If the request method is not POST, return error response
         return JsonResponse({'error': 'Method not allowed'}, status=405)
-
+    
 def fetch_recipes(request):
     # Use get_user_for_view to get the correct user (main user or subuser)
     user = get_user_for_view(request)
@@ -940,15 +1017,16 @@ def fetch_breakfast_recipes(request):
     breakfast_recipes = BreakfastRecipe.objects.filter(user=user).values('id', 'name')
     return JsonResponse({'recipes': list(breakfast_recipes)})
 
+@login_required
 def fetch_am_recipes(request):
     user = get_user_for_view(request)
-    am_recipes = AMRecipe.objects.filter(user=user).values('id', 'name')  
-    return JsonResponse({'am_recipes': list(am_recipes)})
+    am_recipes = AMRecipe.objects.filter(user=user).values('id', 'name')
+    return JsonResponse({'recipes': list(am_recipes)})
 
 def fetch_pm_recipes(request):
     user = get_user_for_view(request)
-    am_recipes = PMRecipe.objects.filter(user=user).values('id', 'name')  
-    return JsonResponse({'pm_recipes': list(am_recipes)})
+    pm_recipes = PMRecipe.objects.filter(user=user).values('id', 'name')  
+    return JsonResponse({'recipes': list(pm_recipes)})
 
 def check_ingredients_availability(request, recipe):
     """Check if all ingredients in a recipe are available in sufficient quantities."""
@@ -1063,52 +1141,35 @@ def save_menu(request):
 
     return JsonResponse({'status': 'fail', 'error': 'Invalid request method'}, status=400)
 
-def delete_recipe(request, recipe_id):
+@login_required
+def delete_recipe(request, recipe_id, category):
     if request.method == 'DELETE':
-        # Handle recipe deletion
-        # Example logic:
-        recipe = Recipe.objects.get(pk=recipe_id)
-        recipe.delete()
-        return JsonResponse({'status': 'success', 'message': 'Recipe deleted successfully'})
-    else:
-        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-    
-def delete_breakfast_recipe(request, recipe_id):
-    if request.method == 'DELETE':
-        # Handle breakfast recipe deletion
+        # Map category to the corresponding model
+        model_mapping = {
+            'breakfast': BreakfastRecipe,
+            'am': AMRecipe,
+            'pm': PMRecipe,
+            'lunch': Recipe,
+            'fruit': FruitRecipe,
+            'veg': VegRecipe,
+            'wg': WgRecipe,
+        }
+
+        # Get the model based on the category
+        model = model_mapping.get(category)
+        if not model:
+            return JsonResponse({'status': 'error', 'message': 'Invalid category'}, status=400)
+
+        # Retrieve and delete the recipe
         try:
-            # Retrieve the breakfast recipe object
-            recipe = BreakfastRecipe.objects.get(pk=recipe_id)
-            # Delete the breakfast recipe
+            recipe = get_object_or_404(model, pk=recipe_id)
             recipe.delete()
-            return JsonResponse({'status': 'success', 'message': 'Breakfast recipe deleted successfully'})
-        except BreakfastRecipe.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Breakfast recipe not found'}, status=404)
+            return JsonResponse({'status': 'success', 'message': f'{category.capitalize()} recipe deleted successfully'})
+        except model.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': f'{category.capitalize()} recipe not found'}, status=404)
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
-  
-def delete_am_recipe(request, recipe_id):
-    if request.method == 'DELETE':
-        try:
-            am_recipe = AMRecipe.objects.get(pk=recipe_id)
-            am_recipe.delete()
-            return JsonResponse({'status': 'success', 'message': 'AM Recipe deleted successfully'})
-        except AMRecipe.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'AM Recipe not found'})
-    else:
-        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
     
-def delete_pm_recipe(request, recipe_id):
-    if request.method == 'DELETE':
-        try:
-            am_recipe = PMRecipe.objects.get(pk=recipe_id)
-            am_recipe.delete()
-            return JsonResponse({'status': 'success', 'message': 'PM Recipe deleted successfully'})
-        except AMRecipe.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'PM Recipe not found'})
-    else:
-        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
 @login_required
 def order_list(request):
     if request.method == 'POST':
@@ -3177,7 +3238,8 @@ def inbox(request):
     conversations = Conversation.objects.filter(
         Q(sender=request.user) | Q(recipient=request.user)
     ).annotate(
-        latest_message_timestamp=Max('messages__timestamp')
+        latest_message_timestamp=Max('messages__timestamp'),
+        unread_count=Count('messages', filter=Q(messages__recipient=request.user, messages__is_read=False))
     ).filter(
         messages__isnull=False  # Ensure the conversation has at least one message
     ).order_by('-latest_message_timestamp')
@@ -3190,7 +3252,7 @@ def inbox(request):
     # Strip hidden characters or whitespace from first names
     for recipient in recipients:
         recipient.first_name = recipient.first_name.strip()
-    # Render the inbox page, adding the permission variables
+
     return render(request, 'messaging/inbox.html', {
         'conversations': conversations,
         'recipients': recipients,
@@ -3225,7 +3287,6 @@ def conversation(request, user_id):
         if not permission:
             return HttpResponseForbidden("You do not have permission to message this user.")
 
-    # Fetch or create the conversation
     conversation = Conversation.objects.filter(
         (Q(sender=request.user) & Q(recipient=recipient)) |
         (Q(sender=recipient) & Q(recipient=request.user))
@@ -3233,8 +3294,11 @@ def conversation(request, user_id):
     if not conversation:
         conversation = Conversation.objects.create(sender=request.user, recipient=recipient)
 
-    messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
+    # Mark all unread messages in this conversation as read
+    Message.objects.filter(conversation=conversation, recipient=request.user, is_read=False).update(is_read=True)
 
+    messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
+   
     # Fetch all conversations for the logged-in user
     conversations = Conversation.objects.filter(
         Q(sender=request.user) | Q(recipient=request.user)

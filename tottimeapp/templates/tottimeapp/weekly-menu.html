@@ -200,6 +200,34 @@ color: rgb(255, 255, 255);
 background-color: rgb(54, 56, 56);
 border-color: rgb(54, 56, 56);
 }
+.btn-primaryoff {
+            background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+            margin-left: 20px;
+            margin-right:15px!important;
+        }
+    
+.btn-primaryoff:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
+        .btn-secondary {
+    background-color: rgb(228, 218, 79); /* Change primary button color */
+    border-color: rgb(228, 218, 79);
+    color:rgb(33, 31, 39);
+    font-weight: 555;
+    
+}
+
+
+/* Additional hover styles (optional) */
+.btn-secondary:hover {
+    background-color: #b4ad46;
+    border-color: #b4ad46;
+}
 </style>
 {% endblock %}
 
@@ -210,8 +238,8 @@ border-color: rgb(54, 56, 56);
                 <div class="row">
                     <div class="col">
                         <div class="mb-3">
-                            <button id="generateMenuBtn" class="btn btn-primary mr-2">Generate Menu</button>
-                            <button id="saveMenuBtn" type="submit" class="btn btn-success">Save Menu</button> <!-- Button type set to submit -->
+                            <button id="generateMenuBtn" class="btn btn-primaryoff mr-2">Generate Menu</button>
+                            <button id="saveMenuBtn" type="submit" class="btn btn-secondary">Save Menu</button> <!-- Button type set to submit -->
                             <a href="{% url 'past_menus' %}" class="btn btn-rec" style="margin-left: 15px;">
                                 Saved Weekly Menus
                             </a>    

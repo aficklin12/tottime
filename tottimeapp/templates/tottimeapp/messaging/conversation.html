@@ -66,6 +66,12 @@
         box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     }
 
+    .message.unread {
+        border: 2px solid red;
+        font-weight: bold;
+        background-color: #f0f8ff; /* Light blue background for unread messages */
+    }
+
     .message-form {
         display: flex;
         align-items: center;
@@ -290,7 +296,7 @@
     <div class="chat-container">
         <div class="messages">
             {% for message in messages %}
-            <div class="message {% if message.sender == user %}sent{% else %}received{% endif %}">
+            <div class="message {% if message.sender == user %}sent{% else %}received{% endif %} {% if not message.is_read and message.sender != user %}unread{% endif %}">
                 <p>{{ message.content }}</p>
                 <small>{{ message.timestamp }}</small>
             </div>

@@ -350,6 +350,21 @@ th:nth-child(5), td:nth-child(5) {
     .table thead tr:first-child h2 {
         margin-bottom: 0; /* Remove bottom margin */
     }
+    .btn-primaryoff {
+            background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+            margin-top: 10px!important;
+            margin-left: 27px;
+            margin-right:15px;
+        }
+    
+.btn-primaryoff:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
 </style>
 {% endblock %}
 
@@ -357,7 +372,7 @@ th:nth-child(5), td:nth-child(5) {
                 <div class="mt-4">
                     <h1>Daily Attendance</h1>
                 </div>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
+                <button type="button" class="btn btn-primaryoff" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
                     Sign In
                 </button>
                 <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
