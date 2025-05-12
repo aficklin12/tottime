@@ -56,8 +56,7 @@ urlpatterns = [
     path('add_classroom/', login_required(views.add_classroom), name='add_classroom'),
     path('delete_classroom/', login_required(views.delete_classroom), name='delete_classroom'),
     path('add_student/', login_required(views.add_student), name='add_student'),
-    path('scan-barcode/', login_required(views.scan_barcode), name='scan_barcode'),
-
+   
     path('401/', login_required(views.error401), name='error401'),  
     path('404/', login_required(views.error404), name='error404'),  
     path('500/', login_required(views.error500), name='error500'),  

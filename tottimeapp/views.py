@@ -1,13 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.db.models import Q, Count, Value, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
+from django.db.models import Q, Value, Count, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
 from django.db.models.functions import Concat
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
 from square.client import Client
-import cv2
-from django.core.files.storage import default_storage
 from django.conf import settings
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
@@ -509,12 +507,38 @@ def inventory_list(request):
         **permissions_context,  # Include permission flags dynamically
     })
 
-def decode_barcode_opencv(image_path):
-    """Decode a barcode from an image using OpenCV."""
-    image = cv2.imread(image_path)
-    detector = cv2.QRCodeDetector()
-    data, _, _ = detector.detectAndDecode(image)
-    return data
+@login_required
+def inventory_list(request):
+    # Check permissions for the specific page
+    required_permission_id = 272  # Permission ID for inventory_list view
+    permissions_context = check_permissions(request, required_permission_id)
+    # If check_permissions returns a redirect, return it immediately
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    # Get the user (MainUser) for filtering
+    user = get_user_for_view(request)
+    # Retrieve inventory data for the user
+    inventory_items = Inventory.objects.filter(user_id=user.id)
+    # Get unique categories for filtering options
+    categories = Inventory.objects.filter(user_id=user.id).values_list('category', flat=True).distinct()
+    # Retrieve all rules
+    rules = Rule.objects.all()
+
+    # Handle AJAX request for category filtering
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        category_filter = request.GET.get('category')
+        if category_filter:
+            inventory_items = inventory_items.filter(category=category_filter)
+        inventory_data = list(inventory_items.values('id', 'item', 'quantity', 'units', 'category'))
+        return JsonResponse({'inventory_items': inventory_data})
+
+    # Render the inventory list page
+    return render(request, 'inventory_list.html', {
+        'inventory_items': inventory_items,
+        'categories': categories,
+        'rules': rules,  # Pass the rules to the template
+        **permissions_context,  # Include permission flags dynamically
+    })
 
 @login_required
 def add_item(request):
@@ -524,27 +548,11 @@ def add_item(request):
         new_category = request.POST.get('new_category')
         units = request.POST.get('units')
         quantity = request.POST.get('quantity')
-        resupply = request.POST.get('resupply')
-        barcode_image = request.FILES.get('barcode_image')  # Retrieve the uploaded barcode image
+        resupply = request.POST.get('resupply')  # Retrieve the resupply value
 
         # Use the new category if provided
         if category == 'Other' and new_category:
             category = new_category
-
-        # Decode the barcode from the uploaded image
-        barcode = None
-        if barcode_image:
-            # Save the image temporarily to decode it
-            temp_image_path = default_storage.save(barcode_image.name, barcode_image)
-            temp_image_full_path = default_storage.path(temp_image_path)
-
-            # Decode the barcode using OpenCV
-            try:
-                barcode = decode_barcode_opencv(temp_image_full_path)
-                if not barcode:
-                    return JsonResponse({'success': False, 'message': 'No barcode detected in the image.'})
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'Error decoding barcode: {str(e)}'})
 
         # Save the new item
         Inventory.objects.create(
@@ -553,29 +561,10 @@ def add_item(request):
             category=category,
             units=units,
             quantity=quantity,
-            resupply=resupply,
-            barcode=barcode,  # Save the decoded barcode value
-            barcode_image=barcode_image  # Save the uploaded barcode image
+            resupply=resupply  # Save the resupply value
         )
         return JsonResponse({'success': True, 'message': 'Item added successfully!'})
 
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
-@login_required
-def scan_barcode(request):
-    if request.method == 'POST':
-        barcode = request.POST.get('barcode')
-        if not barcode:
-            return JsonResponse({'success': False, 'message': 'No barcode provided.'})
-
-        # Find the inventory item with the matching barcode
-        inventory_item = get_object_or_404(Inventory, barcode=barcode, user=request.user)
-
-        # Increment the quantity
-        inventory_item.quantity += 1
-        inventory_item.save()
-
-        return JsonResponse({'success': True, 'message': f'{inventory_item.item} quantity updated.', 'new_quantity': inventory_item.quantity})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
