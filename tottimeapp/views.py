@@ -519,42 +519,20 @@ def add_item(request):
         new_category = request.POST.get('new_category')
         units = request.POST.get('units')
         quantity = request.POST.get('quantity')
-        resupply = request.POST.get('resupply')  # Retrieve the resupply value
-        barcode_image = request.FILES.get('barcode_image')
+        resupply = request.POST.get('resupply')
+        barcode = request.POST.get('barcode')  # Retrieve the scanned barcode
 
         # Use the new category if provided
         if category == 'Other' and new_category:
             category = new_category
 
-        # Process the barcode image if provided
-        barcode_data = None
-        if barcode_image:
-            # Save the uploaded image temporarily
-            temp_path = default_storage.save('temp/' + barcode_image.name, ContentFile(barcode_image.read()))
-            temp_file = default_storage.path(temp_path)
+        # Check if the barcode already exists
+        if barcode:
+            existing_item = Inventory.objects.filter(user_id=get_user_for_view(request).id, barcode=barcode).first()
+            if existing_item:
+                return JsonResponse({'success': False, 'message': f'Item with barcode "{barcode}" already exists.'})
 
-            try:
-                # Open the image using PIL
-                image = Image.open(temp_file)
-
-                # Use pytesseract to decode the barcode
-                barcode_data = pytesseract.image_to_string(image, config='--psm 8').strip()
-
-                # Optionally, match the barcode with an existing inventory item
-                existing_item = Inventory.objects.filter(user_id=get_user_for_view(request).id, barcode=barcode_data).first()
-                if existing_item:
-                    return JsonResponse({'success': False, 'message': f'Item with barcode "{barcode_data}" already exists.'})
-
-                # Use the barcode data as the item name if no item name is provided
-                if not item_name:
-                    item_name = barcode_data
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'Failed to process barcode: {str(e)}'})
-            finally:
-                # Clean up the temporary file
-                default_storage.delete(temp_path)
-
-        # Save the new item, including the barcode image
+        # Create the new inventory item
         new_item = Inventory.objects.create(
             user_id=get_user_for_view(request).id,
             item=item_name,
@@ -562,8 +540,7 @@ def add_item(request):
             units=units,
             quantity=quantity,
             resupply=resupply,
-            barcode=barcode_data,  # Save the decoded barcode data
-            barcode_image=barcode_image  # Save the uploaded barcode image
+            barcode=barcode.strip().upper() if barcode else None  # Normalize the barcode
         )
         return JsonResponse({'success': True, 'message': 'Item added successfully!'})
 
@@ -577,14 +554,25 @@ def update_item_quantity(request):
         if not barcode:
             return JsonResponse({'success': False, 'message': 'No barcode provided.'})
 
+        # Normalize the barcode
+        barcode = barcode.strip().upper()
+
+        # Log the scanned barcode for debugging
+        print(f"Scanned barcode: {barcode}")
+
         # Find the item by barcode
         user = get_user_for_view(request)
+        print(f"User ID: {user.id}")  # Debugging
+
         try:
             item = Inventory.objects.get(user=user, barcode=barcode)
+            print(f"Item found: {item}")  # Debugging
             item.quantity += 1  # Increment the quantity
             item.save()
             return JsonResponse({'success': True, 'message': f'Quantity for "{item.item}" updated successfully!'})
         except Inventory.DoesNotExist:
+            # Fallback: Log the issue and return an error
+            print(f"Item with barcode {barcode} not found for user {user.id}")  # Debugging
             return JsonResponse({'success': False, 'message': 'Item with this barcode not found.'})
 
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})

@@ -47,7 +47,6 @@ class Inventory(models.Model):
     resupply = models.IntegerField()
     total_quantity = models.IntegerField(default=0)
     barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)  # Add barcode field
-    barcode_image = models.ImageField(upload_to='barcodes/', null=True, blank=True)  # Barcode image field
 
 
     def __str__(self):

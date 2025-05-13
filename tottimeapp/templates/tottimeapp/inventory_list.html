@@ -219,8 +219,11 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="barcodeImage" class="form-label">Upload Barcode</label>
-                        <input type="file" class="form-control" id="barcodeImage" name="barcode_image" accept="image/*">
+                        <label for="barcode" class="form-label">Barcode</label>
+                        <div class="d-flex align-items-center">
+                            <input type="text" class="form-control" id="barcode" name="barcode" readonly required>
+                            <button type="button" class="btn btn-success ms-2" onclick="startBarcodeScanner()">Scan Barcode</button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Add Item</button>
                 </form>
@@ -506,7 +509,7 @@
     });
 </script>
 <script>
- function startBarcodeScanner() {
+function startBarcodeScanner() {
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
@@ -518,7 +521,7 @@
             target: document.querySelector('#scanner-container'),
             constraints: {
                 facingMode: "environment", // Use the back camera
-                width: { ideal: 1280 },   // Adjust resolution for mobile
+                width: { ideal: 1280 },
                 height: { ideal: 720 }
             }
         },
@@ -531,8 +534,16 @@
                 "code_39_reader",
                 "i2of5_reader",
                 "2of5_reader"
-            ]
-        }
+            ],
+            multiple: false // Ensure only one barcode is detected at a time
+        },
+        locate: true, // Enable barcode localization
+        locator: {
+            patchSize: "medium", // Options: "x-small", "small", "medium", "large", "x-large"
+            halfSample: true // Improves performance by reducing image resolution
+        },
+        numOfWorkers: navigator.hardwareConcurrency || 4, // Use available CPU cores
+        frequency: 10 // Reduce the frequency of detection to improve accuracy
     }, function(err) {
         if (err) {
             console.error(err);
@@ -542,42 +553,62 @@
         Quagga.start();
     });
 
-    // Handle detected barcodes
+    function validateBarcode(barcode) {
+        // Ensure the barcode is numeric and has a reasonable length
+        const isValid = /^\d{8,13}$/.test(barcode); // Adjust the regex based on your barcode format
+        return isValid ? barcode : null;
+    }
+
     Quagga.onDetected(function(result) {
-        const barcode = result.codeResult.code;
+        let barcode = result.codeResult.code;
         console.log("Barcode detected:", barcode);
+
+        // Validate the barcode
+        barcode = validateBarcode(barcode);
+        if (!barcode) {
+            toastr.error("Invalid barcode detected. Please try again.", "Error");
+            return;
+        }
 
         // Stop the scanner
         Quagga.stop();
 
         // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
         modal.hide();
 
-        // Send the barcode to the server
+        // Display a Toastr success message for the scanned barcode
+        toastr.success(`Barcode detected: ${barcode}`, "Success");
+
+        // Send the barcode to the server to update the item quantity
         updateItemQuantity(barcode);
     });
 }
 
-    function updateItemQuantity(barcode) {
-        $.ajax({
-            url: "{% url 'update_item_quantity' %}", // Add this URL in your Django views
-            type: "POST",
-            data: {
-                csrfmiddlewaretoken: "{{ csrf_token }}",
-                barcode: barcode
-            },
-            success: function(response) {
-                if (response.success) {
-                    toastr.success(response.message, "Success");
-                    location.reload(); // Reload the page to reflect changes
-                } else {
-                    toastr.error(response.message, "Error");
-                }
-            },
-            error: function(xhr, status, error) {
-                toastr.error("Failed to update item quantity. Please try again.", "Error");
+function updateItemQuantity(barcode) {
+    console.log("Sending barcode to server:", barcode); // Debugging
+
+    $.ajax({
+        url: "{% url 'update_item_quantity' %}",
+        type: "POST",
+        data: {
+            csrfmiddlewaretoken: "{{ csrf_token }}",
+            barcode: barcode
+        },
+        success: function(response) {
+            console.log("Server response:", response); // Debugging
+            if (response.success) {
+                toastr.success(response.message, "Success");
+                location.reload();
+            } else {
+                toastr.error(response.message, "Error");
             }
-        });
-    }
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX error:", error); // Debugging
+            toastr.error("Failed to update item quantity. Please try again.", "Error");
+        }
+    });
+}
 </script>
 {% endblock %}
