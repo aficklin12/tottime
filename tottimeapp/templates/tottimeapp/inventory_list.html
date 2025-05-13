@@ -513,6 +513,41 @@
     }
 </script>
 <script>
+    document.addEventListener('deviceready', function() {
+    const permissions = cordova.plugins.permissions;
+
+    function requestCameraPermission(callback) {
+        permissions.checkPermission(permissions.CAMERA, function(status) {
+            if (status.hasPermission) {
+                console.log("Camera permission already granted.");
+                callback(); // Initialize the scanner
+            } else {
+                console.log("Requesting camera permission...");
+                permissions.requestPermission(permissions.CAMERA, function(status) {
+                    if (status.hasPermission) {
+                        console.log("Camera permission granted.");
+                        callback(); // Initialize the scanner
+                    } else {
+                        console.error("Camera permission denied.");
+                        alert("Camera permission is required to scan barcodes.");
+                    }
+                }, function() {
+                    console.error("Camera permission request failed.");
+                    alert("Failed to request camera permission.");
+                });
+            }
+        }, function() {
+            console.error("Failed to check camera permission.");
+        });
+    }
+
+    // Example usage: Call this before starting the barcode scanner
+    document.getElementById('startScannerButton').addEventListener('click', function() {
+        requestCameraPermission(function() {
+            startBarcodeScanner(); // Your existing function to start the scanner
+        });
+    });
+});
 function startBarcodeScanner() {
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
@@ -556,6 +591,7 @@ function startBarcodeScanner() {
         }
         Quagga.start();
     });
+
 
     Quagga.onProcessed(function(result) {
         console.log('Processed result:', result);
