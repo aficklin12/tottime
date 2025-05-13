@@ -571,7 +571,6 @@ def update_item_quantity(request):
             item.save()
             return JsonResponse({'success': True, 'message': f'Quantity for "{item.item}" updated successfully!'})
         except Inventory.DoesNotExist:
-            # Fallback: Log the issue and return an error
             print(f"Item with barcode {barcode} not found for user {user.id}")  # Debugging
             return JsonResponse({'success': False, 'message': 'Item with this barcode not found.'})
 
