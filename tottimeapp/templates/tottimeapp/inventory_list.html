@@ -98,7 +98,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="scanner-container"></div>
+                <div id="scanner-container">
+                    <canvas></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -491,26 +493,27 @@
             });
         });
     });
-</script>
-<script>
-    document.getElementById('barcodeImage').addEventListener('change', function(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.createElement('img');
-                preview.src = e.target.result;
-                preview.style.maxWidth = '100%';
-                preview.style.marginTop = '10px';
-                document.getElementById('addItemForm').appendChild(preview);
-            };
-            reader.readAsDataURL(file);
-        }
-    });
+
+    const barcodeImage = document.getElementById('barcodeImage');
+    if (barcodeImage) {
+        barcodeImage.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.createElement('img');
+                    preview.src = e.target.result;
+                    preview.style.maxWidth = '100%';
+                    preview.style.marginTop = '10px';
+                    document.getElementById('addItemForm').appendChild(preview);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
 </script>
 <script>
 function startBarcodeScanner() {
-    // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
 
@@ -520,9 +523,9 @@ function startBarcodeScanner() {
             type: "LiveStream",
             target: document.querySelector('#scanner-container'),
             constraints: {
-                facingMode: "environment", // Use the back camera
-                width: { ideal: 320 },
-                height: { ideal: 240 }
+                facingMode: "environment",
+                width: { ideal: 640 },
+                height: { ideal: 480 }
             }
         },
         decoder: {
@@ -535,15 +538,16 @@ function startBarcodeScanner() {
                 "i2of5_reader",
                 "2of5_reader"
             ],
-            multiple: true // Ensure only one barcode is detected at a time
+            multiple: false
         },
-        locate: true, // Enable barcode localization
+        locate: true,
         locator: {
-            patchSize: "small", // Options: "x-small", "small", "medium", "large", "x-large"
-            halfSample: true // Improves performance by reducing image resolution
+            patchSize: "medium",
+            halfSample: false
         },
-        numOfWorkers: 4, // Use available CPU cores
-        frequency: 25 // Reduce the frequency of detection to improve accuracy
+        numOfWorkers: 4,
+        frequency: 10,
+        debug: true // Enable debugging
     }, function(err) {
         if (err) {
             console.error(err);
@@ -553,36 +557,41 @@ function startBarcodeScanner() {
         Quagga.start();
     });
 
-    function validateBarcode(barcode) {
-        // Ensure the barcode is numeric and has a reasonable length
-        const isValid = /^\d{8,13}$/.test(barcode); // Adjust the regex based on your barcode format
-        return isValid ? barcode : null;
-    }
+    Quagga.onProcessed(function(result) {
+        console.log('Processed result:', result);
+        if (result && result.boxes) {
+            const canvas = document.querySelector('#scanner-container canvas');
+            if (canvas) {
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                result.boxes.forEach(function(box) {
+                    Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, context, { color: 'green', lineWidth: 2 });
+                });
+            }
+        }
+    });
 
     Quagga.onDetected(function(result) {
         let barcode = result.codeResult.code;
         console.log("Barcode detected:", barcode);
 
-        // Validate the barcode
-        barcode = validateBarcode(barcode);
         if (!barcode) {
-            toastr.error("Invalid barcode detected. Please try again.", "Error");
+            toastr.error("No valid barcode detected. Please try again.", "Error");
             return;
         }
 
-        // Stop the scanner
         Quagga.stop();
-
-        // Close the modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
         modal.hide();
-
-        // Display a Toastr success message for the scanned barcode
         toastr.success(`Barcode detected: ${barcode}`, "Success");
-
-        // Send the barcode to the server to update the item quantity
         updateItemQuantity(barcode);
     });
+
+
+    const canvas = document.querySelector('#scanner-container canvas');
+    if (canvas) {
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        // Use the context for drawing
+    }
 }
 
 function updateItemQuantity(barcode) {
