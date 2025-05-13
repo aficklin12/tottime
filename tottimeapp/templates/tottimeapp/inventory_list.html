@@ -51,12 +51,23 @@
         margin-top: 25px;
         margin-left: 25px!important;
     }
-       #scanner-container {
+ #scanner-container {
         width: 300px; /* Approx. 3 inches */
         height: 100px; /* Approx. 1 inch */
         margin: 0 auto; /* Center the scanner */
         border: 2px solid #000; /* Optional: Add a border for better visibility */
         position: relative;
+        overflow: hidden; /* Ensure the video doesn't overflow the container */
+    }
+
+    #scanner-container video {
+        width: 100%; /* Scale the video to fit the container's width */
+        height: 100%; /* Scale the video to fit the container's height */
+        object-fit: cover; /* Ensure the video fills the container without distortion */
+    }
+
+    #scanner-container canvas {
+        display: none; /* Hide the canvas used by QuaggaJS for processing */
     }
 </style>
 {% endblock %}
@@ -495,63 +506,57 @@
     });
 </script>
 <script>
-    function startBarcodeScanner() {
-        // Show the modal
-        const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
-        modal.show();
+ function startBarcodeScanner() {
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
+    modal.show();
 
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector('#scanner-container'),
-                constraints: {
-                    facingMode: "environment", // Use the back camera
-                    width: { ideal: 1280 },   // Adjust resolution for mobile
-                    height: { ideal: 720 }
-                },
-                area: { // Restrict the scanning area
-                    top: "25%",    // Start scanning 25% from the top
-                    right: "25%",  // End scanning 25% from the right
-                    bottom: "25%", // End scanning 25% from the bottom
-                    left: "25%"    // Start scanning 25% from the left
-                }
-            },
-            decoder: {
-                readers: [
-                    "code_128_reader",
-                    "ean_reader",
-                    "ean_8_reader",
-                    "upc_reader",
-                    "code_39_reader",
-                    "i2of5_reader",
-                    "2of5_reader"
-                ]
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#scanner-container'),
+            constraints: {
+                facingMode: "environment", // Use the back camera
+                width: { ideal: 1280 },   // Adjust resolution for mobile
+                height: { ideal: 720 }
             }
-        }, function(err) {
-            if (err) {
-                console.error(err);
-                alert("Failed to initialize barcode scanner.");
-                return;
-            }
-            Quagga.start();
-        });
+        },
+        decoder: {
+            readers: [
+                "code_128_reader",
+                "ean_reader",
+                "ean_8_reader",
+                "upc_reader",
+                "code_39_reader",
+                "i2of5_reader",
+                "2of5_reader"
+            ]
+        }
+    }, function(err) {
+        if (err) {
+            console.error(err);
+            alert("Failed to initialize barcode scanner.");
+            return;
+        }
+        Quagga.start();
+    });
 
-        // Handle detected barcodes
-        Quagga.onDetected(function(result) {
-            const barcode = result.codeResult.code;
-            console.log("Barcode detected:", barcode);
+    // Handle detected barcodes
+    Quagga.onDetected(function(result) {
+        const barcode = result.codeResult.code;
+        console.log("Barcode detected:", barcode);
 
-            // Stop the scanner
-            Quagga.stop();
+        // Stop the scanner
+        Quagga.stop();
 
-            // Close the modal
-            modal.hide();
+        // Close the modal
+        modal.hide();
 
-            // Send the barcode to the server
-            updateItemQuantity(barcode);
-        });
-    }
+        // Send the barcode to the server
+        updateItemQuantity(barcode);
+    });
+}
 
     function updateItemQuantity(barcode) {
         $.ajax({
