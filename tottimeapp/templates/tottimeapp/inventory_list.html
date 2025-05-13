@@ -95,6 +95,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="barcodeScannerModalLabel">Scan Barcode</h5>
+                <div id="loadingSpinner" class="spinner-border text-primary" role="status" style="display: none;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -514,6 +517,7 @@ function startBarcodeScanner() {
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
 
+    document.getElementById('loadingSpinner').style.display = 'block';
     Quagga.init({
         inputStream: {
             name: "Live",
@@ -521,8 +525,8 @@ function startBarcodeScanner() {
             target: document.querySelector('#scanner-container'),
             constraints: {
                 facingMode: "environment", // Use the back camera
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                width: { ideal: 640 }, // Reduce resolution for mobile
+                height: { ideal: 480 }
             }
         },
         decoder: {
@@ -531,20 +535,19 @@ function startBarcodeScanner() {
                 "ean_reader",
                 "ean_8_reader",
                 "upc_reader",
-                "code_39_reader",
-                "i2of5_reader",
-                "2of5_reader"
+                "code_39_reader"
             ],
-            multiple: false // Ensure only one barcode is detected at a time
+            multiple: false // Detect one barcode at a time
         },
-        locate: true, // Enable barcode localization
+        locate: true,
         locator: {
-            patchSize: "x-large", // Options: "x-small", "small", "medium", "large", "x-large"
-            halfSample: true // Improves performance by reducing image resolution
+            patchSize: "medium", // Smaller patch size for better accuracy
+            halfSample: true // Reduce image resolution for faster processing
         },
-        numOfWorkers: navigator.hardwareConcurrency || 4, // Use available CPU cores
-        frequency: 15 // Reduce the frequency of detection to improve accuracy
+        numOfWorkers: 2, // Limit workers for mobile devices
+        frequency: 10 // Increase detection frequency
     }, function(err) {
+        document.getElementById('loadingSpinner').style.display = 'none';
         if (err) {
             console.error(err);
             alert("Failed to initialize barcode scanner.");
@@ -554,8 +557,7 @@ function startBarcodeScanner() {
     });
 
     function validateBarcode(barcode) {
-        // Ensure the barcode is numeric and has a reasonable length
-        const isValid = /^\d{8,13}$/.test(barcode); // Adjust the regex based on your barcode format
+        const isValid = /^\d{8,13}$/.test(barcode); // Validate barcode format
         return isValid ? barcode : null;
     }
 
@@ -563,24 +565,17 @@ function startBarcodeScanner() {
         let barcode = result.codeResult.code;
         console.log("Barcode detected:", barcode);
 
-        // Validate the barcode
         barcode = validateBarcode(barcode);
         if (!barcode) {
             toastr.error("Invalid barcode detected. Please try again.", "Error");
             return;
         }
 
-        // Stop the scanner
         Quagga.stop();
-
-        // Close the modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
         modal.hide();
 
-        // Display a Toastr success message for the scanned barcode
         toastr.success(`Barcode detected: ${barcode}`, "Success");
-
-        // Send the barcode to the server to update the item quantity
         updateItemQuantity(barcode);
     });
 }
