@@ -51,6 +51,13 @@
         margin-top: 25px;
         margin-left: 25px!important;
     }
+       #scanner-container {
+        width: 300px; /* Approx. 3 inches */
+        height: 100px; /* Approx. 1 inch */
+        margin: 0 auto; /* Center the scanner */
+        border: 2px solid #000; /* Optional: Add a border for better visibility */
+        position: relative;
+    }
 </style>
 {% endblock %}
 
@@ -72,7 +79,6 @@
                 </div>
             </div>
 
-<!-- Modal for Barcode Scanner -->
 <div class="modal fade" id="barcodeScannerModal" tabindex="-1" aria-labelledby="barcodeScannerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -81,7 +87,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="scanner-container" style="width: 100%; height: 400px;"></div>
+                <div id="scanner-container"></div>
             </div>
         </div>
     </div>
@@ -494,18 +500,33 @@
         const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
         modal.show();
 
-        // Initialize QuaggaJS
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
-                target: document.querySelector('#scanner-container'), // Camera preview container
+                target: document.querySelector('#scanner-container'),
                 constraints: {
-                    facingMode: "environment" // Use the back camera
+                    facingMode: "environment", // Use the back camera
+                    width: { ideal: 1280 },   // Adjust resolution for mobile
+                    height: { ideal: 720 }
+                },
+                area: { // Restrict the scanning area
+                    top: "25%",    // Start scanning 25% from the top
+                    right: "25%",  // End scanning 25% from the right
+                    bottom: "25%", // End scanning 25% from the bottom
+                    left: "25%"    // Start scanning 25% from the left
                 }
             },
             decoder: {
-                readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // Supported barcode formats
+                readers: [
+                    "code_128_reader",
+                    "ean_reader",
+                    "ean_8_reader",
+                    "upc_reader",
+                    "code_39_reader",
+                    "i2of5_reader",
+                    "2of5_reader"
+                ]
             }
         }, function(err) {
             if (err) {
