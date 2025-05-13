@@ -478,84 +478,79 @@
 </script>
 <script>
     function startBarcodeScanner() {
-        // Create a video overlay for scanning
-        const scannerOverlay = document.createElement('div');
-        scannerOverlay.id = 'scannerOverlay';
-        scannerOverlay.style.position = 'fixed';
-        scannerOverlay.style.top = '0';
-        scannerOverlay.style.left = '0';
-        scannerOverlay.style.width = '100%';
-        scannerOverlay.style.height = '100%';
-        scannerOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        scannerOverlay.style.zIndex = '9999';
-        scannerOverlay.style.display = 'flex';
-        scannerOverlay.style.justifyContent = 'center';
-        scannerOverlay.style.alignItems = 'center';
-        scannerOverlay.innerHTML = `
-            <div style="position: relative; width: 80%; max-width: 500px;">
-                <video id="barcodeScanner" style="width: 100%;"></video>
-                <button onclick="stopBarcodeScanner()" style="position: absolute; top: 10px; right: 10px; z-index: 1000;" class="btn btn-danger">Close</button>
-            </div>
-        `;
-        document.body.appendChild(scannerOverlay);
+    // Create a video overlay for scanning
+    const scannerOverlay = document.createElement('div');
+    scannerOverlay.id = 'scannerOverlay';
+    scannerOverlay.style.position = 'fixed';
+    scannerOverlay.style.top = '0';
+    scannerOverlay.style.left = '0';
+    scannerOverlay.style.width = '100%';
+    scannerOverlay.style.height = '100%';
+    scannerOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    scannerOverlay.style.zIndex = '9999';
+    scannerOverlay.style.display = 'flex';
+    scannerOverlay.style.justifyContent = 'center';
+    scannerOverlay.style.alignItems = 'center';
+    scannerOverlay.innerHTML = `
+        <div style="position: relative; width: 80%; max-width: 500px;">
+            <video id="barcodeScanner" style="width: 100%;"></video>
+            <button onclick="stopBarcodeScanner()" style="position: absolute; top: 10px; right: 10px; z-index: 1000;" class="btn btn-danger">Close</button>
+        </div>
+    `;
+    document.body.appendChild(scannerOverlay);
 
-        // Initialize QuaggaJS
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector('#barcodeScanner')
-            },
-            decoder: {
-                readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
+    // Initialize QuaggaJS
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#barcodeScanner'),
+            constraints: {
+                facingMode: "environment" // Use the back camera on mobile devices
             }
-        }, function(err) {
-            if (err) {
-                console.error(err);
-                alert('Failed to start the scanner.');
-                stopBarcodeScanner();
-                return;
-            }
-            Quagga.start();
-        });
-
-        // Detect barcode
-        Quagga.onDetected(function(result) {
-            const barcode = result.codeResult.code;
-            Quagga.stop();
-            stopBarcodeScanner();
-
-            // Send the barcode to the server
-            fetch('/update_item_quantity/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ barcode: barcode })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Item quantity updated successfully!');
-                    location.reload();
-                } else {
-                    alert(data.message || 'Failed to update item quantity.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while updating the item.');
-            });
-        });
-    }
-
-    function stopBarcodeScanner() {
-        Quagga.stop();
-        const scannerOverlay = document.getElementById('scannerOverlay');
-        if (scannerOverlay) {
-            document.body.removeChild(scannerOverlay);
+        },
+        decoder: {
+            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
         }
-    }
+    }, function(err) {
+        if (err) {
+            console.error('QuaggaJS initialization failed:', err);
+            alert('Failed to start the scanner. Please check your camera permissions.');
+            stopBarcodeScanner();
+            return;
+        }
+        Quagga.start();
+    });
+
+    // Detect barcode
+    Quagga.onDetected(function(result) {
+        const barcode = result.codeResult.code;
+        Quagga.stop();
+        stopBarcodeScanner();
+
+        // Send the barcode to the server
+        fetch('/update_item_quantity/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ barcode: barcode })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Item quantity updated successfully!');
+                location.reload();
+            } else {
+                alert(data.message || 'Failed to update item quantity.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating the item.');
+        });
+    });
+}
 </script>
 {% endblock %}
