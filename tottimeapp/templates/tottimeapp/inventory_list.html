@@ -497,8 +497,8 @@
             }
         }, function(err) {
             if (err) {
-                console.error(err);
-                alert("Failed to initialize barcode scanner.");
+                console.error('QuaggaJS initialization error:', err);
+                alert("Failed to initialize barcode scanner. Please check your camera permissions.");
                 return;
             }
             Quagga.start();
