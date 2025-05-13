@@ -562,34 +562,46 @@ function startBarcodeScanner() {
         Quagga.start();
     });
 
+    function validateBarcode(barcode) {
+        // Ensure the barcode is numeric and has a reasonable length
+        const isValid = /^\d{8,13}$/.test(barcode); // Adjust the regex based on your barcode format
+        return isValid ? barcode : null;
+    }
+
     Quagga.onDetected(function(result) {
         let barcode = result.codeResult.code;
         console.log("Barcode detected:", barcode);
+
+        // Validate the barcode
+        barcode = validateBarcode(barcode);
+        if (!barcode) {
+            toastr.error("Invalid barcode detected. Please try again.", "Error");
+            return;
+        }
 
         // Stop the scanner
         Quagga.stop();
 
         // Close the modal
-        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
-        modalInstance.hide();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
+        modal.hide();
 
-        // Display a success message
+        // Display a Toastr success message for the scanned barcode
         toastr.success(`Barcode detected: ${barcode}`, "Success");
 
-        // Send the barcode to the server
+        // Send the barcode to the server to update the item quantity
         updateItemQuantity(barcode);
     });
+
+    const canvas = document.querySelector('#scanner-container canvas');
+    if (canvas) {
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        // Use the context for drawing
+    }
 }
 
-// Stop the camera when the modal is closed
-document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
-    if (Quagga) {
-        Quagga.stop();
-    }
-});
-
 function updateItemQuantity(barcode) {
-    console.log("Sending barcode to server:", barcode);
+    console.log("Sending barcode to server:", barcode); // Debugging
 
     $.ajax({
         url: "{% url 'update_item_quantity' %}",
@@ -599,6 +611,7 @@ function updateItemQuantity(barcode) {
             barcode: barcode
         },
         success: function(response) {
+            console.log("Server response:", response); // Debugging
             if (response.success) {
                 toastr.success(response.message, "Success");
                 location.reload();
@@ -607,6 +620,7 @@ function updateItemQuantity(barcode) {
             }
         },
         error: function(xhr, status, error) {
+            console.error("AJAX error:", error); // Debugging
             toastr.error("Failed to update item quantity. Please try again.", "Error");
         }
     });
