@@ -510,6 +510,7 @@
 </script>
 <script>
 function startBarcodeScanner() {
+    // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
 
@@ -520,25 +521,29 @@ function startBarcodeScanner() {
             target: document.querySelector('#scanner-container'),
             constraints: {
                 facingMode: "environment", // Use the back camera
-                width: { ideal: 640 }, // Reduce resolution for faster processing
-                height: { ideal: 480 }
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
             }
         },
         decoder: {
             readers: [
-                "ean_reader", // Focus on EAN barcodes for mobile optimization
+                "code_128_reader",
+                "ean_reader",
                 "ean_8_reader",
-                "upc_reader"
+                "upc_reader",
+                "code_39_reader",
+                "i2of5_reader",
+                "2of5_reader"
             ],
-            multiple: false
+            multiple: false // Ensure only one barcode is detected at a time
         },
-        locate: true,
+        locate: true, // Enable barcode localization
         locator: {
-            patchSize: "medium", // Use "medium" for better detection on mobile
-            halfSample: true
+            patchSize: "x-large", // Options: "x-small", "small", "medium", "large", "x-large"
+            halfSample: true // Improves performance by reducing image resolution
         },
-        numOfWorkers: 2, // Reduce workers for mobile devices
-        frequency: 5 // Lower frequency for faster detection
+        numOfWorkers: navigator.hardwareConcurrency || 4, // Use available CPU cores
+        frequency: 15 // Reduce the frequency of detection to improve accuracy
     }, function(err) {
         if (err) {
             console.error(err);
@@ -548,18 +553,34 @@ function startBarcodeScanner() {
         Quagga.start();
     });
 
+    function validateBarcode(barcode) {
+        // Ensure the barcode is numeric and has a reasonable length
+        const isValid = /^\d{8,13}$/.test(barcode); // Adjust the regex based on your barcode format
+        return isValid ? barcode : null;
+    }
+
     Quagga.onDetected(function(result) {
-        const barcode = result.codeResult.code;
+        let barcode = result.codeResult.code;
         console.log("Barcode detected:", barcode);
 
+        // Validate the barcode
+        barcode = validateBarcode(barcode);
         if (!barcode) {
             toastr.error("Invalid barcode detected. Please try again.", "Error");
             return;
         }
 
+        // Stop the scanner
         Quagga.stop();
+
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
         modal.hide();
+
+        // Display a Toastr success message for the scanned barcode
         toastr.success(`Barcode detected: ${barcode}`, "Success");
+
+        // Send the barcode to the server to update the item quantity
         updateItemQuantity(barcode);
     });
 }

@@ -554,24 +554,18 @@ def update_item_quantity(request):
         if not barcode:
             return JsonResponse({'success': False, 'message': 'No barcode provided.'})
 
-        # Normalize the barcode
         barcode = barcode.strip().upper()
-
-        # Log the scanned barcode for debugging
         print(f"Scanned barcode: {barcode}")
 
-        # Find the item by barcode
         user = get_user_for_view(request)
-        print(f"User ID: {user.id}")  # Debugging
+        print(f"User ID: {user.id}")
 
         try:
             item = Inventory.objects.get(user=user, barcode=barcode)
-            print(f"Item found: {item}")  # Debugging
-            item.quantity += 1  # Increment the quantity
+            item.quantity += 1
             item.save()
             return JsonResponse({'success': True, 'message': f'Quantity for "{item.item}" updated successfully!'})
         except Inventory.DoesNotExist:
-            print(f"Item with barcode {barcode} not found for user {user.id}")  # Debugging
             return JsonResponse({'success': False, 'message': 'Item with this barcode not found.'})
 
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
