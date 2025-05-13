@@ -478,7 +478,7 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script>
-   function startBarcodeScanner() {
+function startBarcodeScanner() {
     // Create a video overlay for scanning
     const scannerOverlay = document.createElement('div');
     scannerOverlay.id = 'scannerOverlay';
@@ -505,13 +505,14 @@
         inputStream: {
             name: "Live",
             type: "LiveStream",
-            target: document.querySelector('#barcodeScanner'), // Attach to the video element
+            target: document.querySelector('#barcodeScanner'),
             constraints: {
-                facingMode: "environment" // Use the back camera on mobile devices
-            }
+                facingMode: "environment"
+            },
+            willReadFrequently: true
         },
         decoder: {
-            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // Supported barcode formats
+            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
         }
     }, function(err) {
         if (err) {
@@ -520,6 +521,7 @@
             stopBarcodeScanner();
             return;
         }
+        console.log('QuaggaJS initialized successfully');
         Quagga.start();
     });
 
@@ -563,6 +565,12 @@ function stopBarcodeScanner() {
     if (scannerOverlay) {
         // Stop QuaggaJS
         Quagga.stop();
+
+        // Stop the video stream
+        if (scannerOverlay.stream) {
+            const tracks = scannerOverlay.stream.getTracks();
+            tracks.forEach(track => track.stop());
+        }
 
         // Remove the overlay
         document.body.removeChild(scannerOverlay);
