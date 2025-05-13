@@ -476,8 +476,9 @@
         }
     });
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <script>
-    function startBarcodeScanner() {
+   function startBarcodeScanner() {
     // Create a video overlay for scanning
     const scannerOverlay = document.createElement('div');
     scannerOverlay.id = 'scannerOverlay';
@@ -493,7 +494,7 @@
     scannerOverlay.style.alignItems = 'center';
     scannerOverlay.innerHTML = `
         <div style="position: relative; width: 80%; max-width: 500px;">
-            <video id="barcodeScanner" style="width: 100%;"></video>
+            <video id="barcodeScanner" autoplay playsinline style="width: 100%;"></video>
             <button onclick="stopBarcodeScanner()" style="position: absolute; top: 10px; right: 10px; z-index: 1000;" class="btn btn-danger">Close</button>
         </div>
     `;
@@ -504,13 +505,13 @@
         inputStream: {
             name: "Live",
             type: "LiveStream",
-            target: document.querySelector('#barcodeScanner'),
+            target: document.querySelector('#barcodeScanner'), // Attach to the video element
             constraints: {
                 facingMode: "environment" // Use the back camera on mobile devices
             }
         },
         decoder: {
-            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
+            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // Supported barcode formats
         }
     }, function(err) {
         if (err) {
@@ -525,6 +526,9 @@
     // Detect barcode
     Quagga.onDetected(function(result) {
         const barcode = result.codeResult.code;
+        console.log('Barcode detected:', barcode);
+
+        // Stop the scanner
         Quagga.stop();
         stopBarcodeScanner();
 
@@ -551,6 +555,18 @@
             alert('An error occurred while updating the item.');
         });
     });
+}
+
+function stopBarcodeScanner() {
+    // Remove the scanner overlay
+    const scannerOverlay = document.getElementById('scannerOverlay');
+    if (scannerOverlay) {
+        // Stop QuaggaJS
+        Quagga.stop();
+
+        // Remove the overlay
+        document.body.removeChild(scannerOverlay);
+    }
 }
 </script>
 {% endblock %}
