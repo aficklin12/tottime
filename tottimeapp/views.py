@@ -511,28 +511,6 @@ def inventory_list(request):
         **permissions_context,  # Include permission flags dynamically
     })
 
-@csrf_exempt
-@login_required
-def update_item_quantity(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            barcode = data.get('barcode')
-
-            # Find the item with the matching barcode
-            user = get_user_for_view(request)
-            item = Inventory.objects.filter(user_id=user.id, barcode=barcode).first()
-
-            if item:
-                item.quantity += 1
-                item.save()
-                return JsonResponse({'success': True, 'message': 'Item quantity updated successfully!'})
-            else:
-                return JsonResponse({'success': False, 'message': 'Item with this barcode not found.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
-
 @login_required
 def add_item(request):
     if request.method == 'POST':
@@ -588,6 +566,26 @@ def add_item(request):
             barcode_image=barcode_image  # Save the uploaded barcode image
         )
         return JsonResponse({'success': True, 'message': 'Item added successfully!'})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+
+@csrf_exempt
+@login_required
+def update_item_quantity(request):
+    if request.method == 'POST':
+        barcode = request.POST.get('barcode')
+        if not barcode:
+            return JsonResponse({'success': False, 'message': 'No barcode provided.'})
+
+        # Find the item by barcode
+        user = get_user_for_view(request)
+        try:
+            item = Inventory.objects.get(user=user, barcode=barcode)
+            item.quantity += 1  # Increment the quantity
+            item.save()
+            return JsonResponse({'success': True, 'message': f'Quantity for "{item.item}" updated successfully!'})
+        except Inventory.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Item with this barcode not found.'})
 
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
