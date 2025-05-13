@@ -521,8 +521,8 @@ function startBarcodeScanner() {
             target: document.querySelector('#scanner-container'),
             constraints: {
                 facingMode: "environment", // Use the back camera
-                width: { ideal: 640 },
-                height: { ideal: 480 }
+                width: { ideal: 320 },
+                height: { ideal: 240 }
             }
         },
         decoder: {
@@ -535,15 +535,15 @@ function startBarcodeScanner() {
                 "i2of5_reader",
                 "2of5_reader"
             ],
-            multiple: false // Ensure only one barcode is detected at a time
+            multiple: true // Ensure only one barcode is detected at a time
         },
         locate: true, // Enable barcode localization
         locator: {
-            patchSize: "medium", // Options: "x-small", "small", "medium", "large", "x-large"
-            halfSample: false // Improves performance by reducing image resolution
+            patchSize: "small", // Options: "x-small", "small", "medium", "large", "x-large"
+            halfSample: true // Improves performance by reducing image resolution
         },
-        numOfWorkers: 2, // Use available CPU cores
-        frequency: 10 // Reduce the frequency of detection to improve accuracy
+        numOfWorkers: 4, // Use available CPU cores
+        frequency: 25 // Reduce the frequency of detection to improve accuracy
     }, function(err) {
         if (err) {
             console.error(err);
