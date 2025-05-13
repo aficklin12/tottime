@@ -514,14 +514,23 @@ def inventory_list(request):
 @login_required
 @csrf_exempt
 def update_inventory_with_barcode(request):
-    if request.method == 'POST':
+    if request.method == 'POST' and request.FILES.get('barcode_image'):
+        barcode_image = request.FILES['barcode_image']
+
+        # Save the uploaded image temporarily
+        temp_path = default_storage.save('temp/' + barcode_image.name, ContentFile(barcode_image.read()))
+        temp_file = default_storage.path(temp_path)
+
         try:
-            data = json.loads(request.body)
-            barcode = data.get('barcode')
+            # Open the image using PIL
+            image = Image.open(temp_file)
+
+            # Use pytesseract to decode the barcode
+            barcode_data = pytesseract.image_to_string(image, config='--psm 8').strip()
 
             # Find the inventory item with the matching barcode
             user = get_user_for_view(request)
-            inventory_item = Inventory.objects.filter(user=user, barcode=barcode).first()
+            inventory_item = Inventory.objects.filter(user=user, barcode=barcode_data).first()
 
             if inventory_item:
                 # Increment the quantity
@@ -531,9 +540,12 @@ def update_inventory_with_barcode(request):
             else:
                 return JsonResponse({'success': False, 'message': 'No matching item found for this barcode.'})
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+            return JsonResponse({'success': False, 'message': f'Failed to process barcode: {str(e)}'})
+        finally:
+            # Clean up the temporary file
+            default_storage.delete(temp_path)
 
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method or no image provided.'})
 
 @login_required
 def add_item(request):
