@@ -511,28 +511,26 @@ def inventory_list(request):
         **permissions_context,  # Include permission flags dynamically
     })
 
-@login_required
 @csrf_exempt
-def update_inventory_with_barcode(request):
+@login_required
+def update_item_quantity(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             barcode = data.get('barcode')
 
-            # Find the inventory item with the matching barcode
+            # Find the item with the matching barcode
             user = get_user_for_view(request)
-            inventory_item = Inventory.objects.filter(user=user, barcode=barcode).first()
+            item = Inventory.objects.filter(user_id=user.id, barcode=barcode).first()
 
-            if inventory_item:
-                # Increment the quantity
-                inventory_item.quantity += 1
-                inventory_item.save()
-                return JsonResponse({'success': True, 'message': 'Inventory updated successfully!'})
+            if item:
+                item.quantity += 1
+                item.save()
+                return JsonResponse({'success': True, 'message': 'Item quantity updated successfully!'})
             else:
-                return JsonResponse({'success': False, 'message': 'No matching item found for this barcode.'})
+                return JsonResponse({'success': False, 'message': 'Item with this barcode not found.'})
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
-
+            return JsonResponse({'success': False, 'message': str(e)})
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
