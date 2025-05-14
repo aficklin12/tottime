@@ -51,27 +51,37 @@
         margin-top: 25px;
         margin-left: 25px!important;
     }
- #scanner-container {
-        width: 300px; /* Approx. 3 inches */
-        height: 100px; /* Approx. 1 inch */
-        margin: 0 auto; /* Center the scanner */
-        border: 2px solid #000; /* Optional: Add a border for better visibility */
-        position: relative;
-        overflow: hidden; /* Ensure the video doesn't overflow the container */
-    }
-
-    #scanner-container video {
-        width: 100%; /* Scale the video to fit the container's width */
-        height: 100%; /* Scale the video to fit the container's height */
-        object-fit: cover; /* Ensure the video fills the container without distortion */
-    }
-
     #scanner-container canvas {
         display: none; /* Hide the canvas used by QuaggaJS for processing */
     }
     .btn-warning {
         margin-right:25px;
     }
+#scanner-container {
+    width: 360px;
+    height: 640px;
+    margin: 0 auto;
+    border: 2px solid #000;
+    position: relative;
+    overflow: hidden;
+}
+#scanner-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+#barcode-guideline {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 260px;   /* barcode width for mobile */
+    height: 60px;   /* barcode height for mobile */
+    transform: translate(-50%, -50%);
+    border: 3px solid red;
+    border-radius: 8px;
+    pointer-events: none;
+    z-index: 10;
+}
 </style>
 {% endblock %}
 
@@ -103,8 +113,10 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="scanner-container">
+                <div id="scanner-container" style="position: relative;">
                     <canvas></canvas>
+                    <!-- Guideline overlay -->
+                    <div id="barcode-guideline"></div>
                 </div>
             </div>
         </div>
@@ -519,7 +531,6 @@
 </script>
 <script>
 function startBarcodeScanner() {
-    // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
 
@@ -529,9 +540,15 @@ function startBarcodeScanner() {
             type: "LiveStream",
             target: document.querySelector('#scanner-container'),
             constraints: {
-                facingMode: "environment", // Use the back camera
-                width: { ideal: 640 }, // Increase resolution for better detection
-                height: { ideal: 480 }
+                facingMode: "environment",
+                width: { ideal: 360 },
+                height: { ideal: 640 }
+            },
+            area: {
+                top: "46%",    // (50% - 9%/2)
+                right: "14%",  // (100% - 72%)/2
+                left: "14%",
+                bottom: "46%"  // (50% - 9%/2)
             }
         },
         decoder: {
@@ -544,15 +561,15 @@ function startBarcodeScanner() {
                 "i2of5_reader",
                 "2of5_reader"
             ],
-            multiple: true // Ensure only one barcode is detected at a time
+            multiple: false
         },
-        locate: true, // Enable barcode localization
+        locate: true,
         locator: {
-            patchSize: "medium", // Options: "x-small", "small", "medium", "large", "x-large"
-            halfSample: false // Improves performance by reducing image resolution
+            patchSize: "medium",
+            halfSample: false
         },
-        numOfWorkers: 4, // Use available CPU cores
-        frequency: 25 // Reduce the frequency of detection to improve accuracy
+        numOfWorkers: 2,
+        frequency: 25
     }, function(err) {
         if (err) {
             console.error(err);
@@ -561,36 +578,22 @@ function startBarcodeScanner() {
         }
         Quagga.start();
     });
-
-    function validateBarcode(barcode) {
-        // Ensure the barcode is numeric and has a reasonable length
-        const isValid = /^\d{8,13}$/.test(barcode); // Adjust the regex based on your barcode format
-        return isValid ? barcode : null;
-    }
-
+    Quagga.offDetected();
     Quagga.onDetected(function(result) {
         let barcode = result.codeResult.code;
         console.log("Barcode detected:", barcode);
 
-        // Validate the barcode
-        barcode = validateBarcode(barcode);
-        if (!barcode) {
-            toastr.error("Invalid barcode detected. Please try again.", "Error");
-            return;
-        }
-
-        // Stop the scanner
         Quagga.stop();
-
-        // Close the modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
-        modal.hide();
-
-        // Display a Toastr success message for the scanned barcode
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
+        modalInstance.hide();
         toastr.success(`Barcode detected: ${barcode}`, "Success");
-
-        // Send the barcode to the server to update the item quantity
         updateItemQuantity(barcode);
+    });
+
+    document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
+        if (Quagga) {
+            Quagga.stop();
+        }
     });
 
     const canvas = document.querySelector('#scanner-container canvas');
@@ -599,9 +602,8 @@ function startBarcodeScanner() {
         // Use the context for drawing
     }
 }
-
 function updateItemQuantity(barcode) {
-    console.log("Sending barcode to server:", barcode); // Debugging
+    console.log("Sending barcode to server:", barcode);
 
     $.ajax({
         url: "{% url 'update_item_quantity' %}",
@@ -611,7 +613,6 @@ function updateItemQuantity(barcode) {
             barcode: barcode
         },
         success: function(response) {
-            console.log("Server response:", response); // Debugging
             if (response.success) {
                 toastr.success(response.message, "Success");
                 location.reload();
@@ -620,7 +621,6 @@ function updateItemQuantity(barcode) {
             }
         },
         error: function(xhr, status, error) {
-            console.error("AJAX error:", error); // Debugging
             toastr.error("Failed to update item quantity. Please try again.", "Error");
         }
     });
