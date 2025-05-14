@@ -82,6 +82,12 @@
     pointer-events: none;
     z-index: 10;
 }
+#barcodeScannerModal {
+    z-index: 1080 !important;
+}
+#barcodeScannerModal + .modal-backdrop {
+    z-index: 1079 !important;
+}
 </style>
 {% endblock %}
 
@@ -92,7 +98,7 @@
                 <div class="text-center me-3">
                     <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
                 </div>
-                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startBarcodeScanner()">
+                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startBarcodeScanner(updateItemQuantity)">
                     <i class="fas fa-barcode"></i> Scan
                 </button>
                 <div class="d-flex align-items-center">
@@ -240,8 +246,18 @@
                     <div class="mb-3">
                         <label for="barcode" class="form-label">Barcode</label>
                         <div class="d-flex align-items-center">
-                            <input type="text" class="form-control" id="barcode" name="barcode" readonly required>
-                            <button type="button" class="btn btn-success ms-2" onclick="startBarcodeScanner()">Scan Barcode</button>
+                            <input type="text" 
+                                class="form-control" 
+                                id="barcode" 
+                                name="barcode" 
+                                readonly 
+                                required 
+                                tabindex="-1"
+                                style="background-color: #e9ecef; cursor: not-allowed;"
+                                onpaste="return false;">
+                            <button type="button" class="btn btn-warning ms-2" onclick="startBarcodeScanner(function(barcode){ document.getElementById('barcode').value = barcode; })">
+                                <i class="fas fa-barcode"></i> Scan
+                            </button>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Add Item</button>
@@ -530,7 +546,7 @@
     }
 </script>
 <script>
-function startBarcodeScanner() {
+function startBarcodeScanner(onDetectedCallback) {
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
 
@@ -545,10 +561,10 @@ function startBarcodeScanner() {
                 height: { ideal: 640 }
             },
             area: {
-                top: "38%",    // (50% - 25%/2)
-                right: "8%",   // (100% - 83%)/2
+                top: "38%",
+                right: "8%",
                 left: "8%",
-                bottom: "38%"  // (50% - 25%/2)
+                bottom: "38%"
             }
         },
         decoder: {
@@ -587,7 +603,10 @@ function startBarcodeScanner() {
         const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
         modalInstance.hide();
         toastr.success(`Barcode detected: ${barcode}`, "Success");
-        updateItemQuantity(barcode);
+
+        if (typeof onDetectedCallback === "function") {
+            onDetectedCallback(barcode);
+        }
     });
 
     document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
