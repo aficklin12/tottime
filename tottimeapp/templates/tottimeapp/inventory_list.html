@@ -59,7 +59,7 @@
     }
 #scanner-container {
     width: 360px;
-    height: 640px;
+    height: 360px;
     margin: 0 auto;
     border: 2px solid #000;
     position: relative;
@@ -74,8 +74,8 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 260px;   /* barcode width for mobile */
-    height: 60px;   /* barcode height for mobile */
+    width: 300px;   /* wider for easier alignment */
+    height: 160px;  /* much taller for less dead space */
     transform: translate(-50%, -50%);
     border: 3px solid red;
     border-radius: 8px;
@@ -545,10 +545,10 @@ function startBarcodeScanner() {
                 height: { ideal: 640 }
             },
             area: {
-                top: "46%",    // (50% - 9%/2)
-                right: "14%",  // (100% - 72%)/2
-                left: "14%",
-                bottom: "46%"  // (50% - 9%/2)
+                top: "38%",    // (50% - 25%/2)
+                right: "8%",   // (100% - 83%)/2
+                left: "8%",
+                bottom: "38%"  // (50% - 25%/2)
             }
         },
         decoder: {
