@@ -27,7 +27,14 @@ th {
 .btn-primary {
     margin-top: 25px;
 }
-
+.clickable-name {
+    cursor: pointer; /* Change cursor to indicate clickability */
+    text-decoration: none; /* Remove underline */
+}
+.clickable-name:hover {
+    color: rgb(57, 189, 180);
+    text-decoration: underline; /* Add underline on hover */
+}
     </style>
 {% endblock %}
 
@@ -78,6 +85,7 @@ th {
                             {% if column_visibility.meal_3 %}<th>Meal 3</th>{% endif %}
                             {% if column_visibility.meal_4 %}<th>Meal 4</th>{% endif %}
                             {% if column_visibility.incident_report %}<th>Incident Report</th>{% endif %}
+                            {% if column_visibility.diaper_changes %}<th>Diaper Changes</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -149,11 +157,26 @@ th {
                             {% if column_visibility.incident_report %}
                             <td>
                                 {% if record.incident_report %}
-                                    {{ record.incident_report }}
+                                    <span class="clickable-name" data-incident-id="{{ record.incident_report.id }}">Incident Report</span>
                                 {% else %}
                                     <!-- Display blank instead of "None" -->
                                 {% endif %}
                             </td>
+                            {% endif %}
+                            {% if column_visibility.diaper_changes %}
+                            <td>
+                                {% if record.student.id in diaper_change_students %}
+                                    <span class="clickable-name diaper-changes-link"
+                                          data-student-id="{{ record.student.id }}"
+                                          data-date="{{ selected_date|date:'Y-m-d' }}">
+                                        Diaper Changes
+                                    </span>
+                                {% else %}
+                                    <!-- Display blank if no diaper changes -->
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if column_visibility.meal_1 %}
                             {% endif %}
                         </tr>
                         {% empty %}
@@ -163,6 +186,99 @@ th {
                         {% endfor %}
                     </tbody>
                 </table>
-                
+                <!-- Diaper Changes Modal -->
+                <div class="modal fade" id="diaperChangesModal" tabindex="-1" aria-labelledby="diaperChangesModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="diaperChangesModalLabel">Diaper Changes</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="diaperChangesModalBody">
+                        <!-- Content loaded by JS -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                    </div>
+                </div>
+                </div>
+                <!-- Incident Report Modal -->
+                <div class="modal fade" id="incidentReportViewModal" tabindex="-1" aria-labelledby="incidentReportViewModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="incidentReportViewModalLabel">Incident Report</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="incidentReportModalBody">
+                        <!-- Content will be loaded by JS -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                    </div>
+                </div>
+                </div>
 {% endblock %}
-        
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Incident report click handler (already present)
+    $('.clickable-name').on('click', function() {
+        const incidentId = $(this).data('incident-id');
+        if (incidentId) {
+            $.ajax({
+                url: "{% url 'incident_report_detail' %}",
+                type: "GET",
+                data: { id: incidentId },
+                success: function(data) {
+                    $('#incidentReportModalBody').html(
+                        `<strong>Date:</strong> ${data.date_of_incident}<br>
+                         <strong>Description:</strong> ${data.incident_description}<br>
+                         <strong>Injury:</strong> ${data.injury_description}<br>
+                         <strong>Treatment:</strong> ${data.treatment_administered}`
+                    );
+                    $('#incidentReportViewModal').modal('show');
+                },
+                error: function() {
+                    $('#incidentReportModalBody').html('<span class="text-danger">Could not load incident report.</span>');
+                    $('#incidentReportViewModal').modal('show');
+                }
+            });
+        }
+    });
+
+    // Diaper changes click handler
+    $('.diaper-changes-link').on('click', function() {
+        const studentId = $(this).data('student-id');
+        const date = $(this).data('date');
+        $.ajax({
+            url: "{% url 'diaper_changes_for_student' %}",
+            type: "GET",
+            data: { student_id: studentId, date: date },
+            success: function(data) {
+                if (data.changes.length > 0) {
+                    let html = '<ul class="list-group">';
+                    data.changes.forEach(function(change) {
+                        html += `<li class="list-group-item">
+                                    <strong>Time:</strong> ${change.time} <br>
+                                    <strong>Notes:</strong> ${change.notes || '<em>No notes</em>'}
+                                 </li>`;
+                    });
+                    html += '</ul>';
+                    $('#diaperChangesModalBody').html(html);
+                } else {
+                    $('#diaperChangesModalBody').html('<em>No diaper changes recorded for this date.</em>');
+                }
+                $('#diaperChangesModal').modal('show');
+            },
+            error: function() {
+                $('#diaperChangesModalBody').html('<span class="text-danger">Could not load diaper changes.</span>');
+                $('#diaperChangesModal').modal('show');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

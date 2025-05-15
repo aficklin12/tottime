@@ -282,17 +282,99 @@ body {
                                 </button>
                                 </div>
                             <div class="modal-footer">
-                                <!-- Dropdown for Classroom Override -->
-                                <select id="classroomOverrideDropdown" class="form-select" style="width: auto; display: inline-block;">
-                                    {% for classroom in classrooms %}
-                                    <option value="{{ classroom.id }}">{{ classroom.name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <button id="moveClassroomButton" class="btn btn-primary">Move</button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            </div>
+                                <div class="dropdown me-auto">
+                                    <button class="btn btn-primary dropdown-toggle" type="button" id="studentActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Actions
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="studentActionsDropdown">
+                                        <li>
+                                            <a class="dropdown-item" href="#" id="moveClassroomDropdownItem">Move Classroom</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" id="addIncidentReportDropdownItem">Add Incident Report</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" id="addDiaperChangeDropdownItem">Record Diaper Change</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <!-- Hidden trigger buttons for modals -->
+                                <button id="addIncidentReportButton" type="button" style="display:none"></button>
+                                <button id="addDiaperChangeButton" type="button" style="display:none"></button>
+                                <!-- Classroom override dropdown and move button, hidden by default -->
+                                <div id="moveClassroomControls" style="display: none; align-items: center;">
+                                    <select id="classroomOverrideDropdown" class="form-select" style="width: auto; display: inline-block;">
+                                        {% for classroom in classrooms %}
+                                        <option value="{{ classroom.id }}">{{ classroom.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button id="moveClassroomButton" class="btn btn-primary ms-2">Move</button>
+                                </div>
+                             </div>
                         </div>
                     </div>
+                </div>
+                <!-- Diaper Change Modal -->
+               <div class="modal fade" id="diaperChangeModal" tabindex="-1" aria-labelledby="diaperChangeModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                    <form id="diaperChangeForm">
+                        <div class="modal-header">
+                        <h5 class="modal-title" id="diaperChangeModalLabel">Record Diaper Change</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                        <input type="hidden" id="diaperChangeStudentId" name="student_id">
+                        <div class="mb-3">
+                            <label for="diaperChangeTimestamp" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="diaperChangeTimestamp" name="timestamp" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="diaperChangeNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="diaperChangeNotes" name="notes"></textarea>
+                        </div>
+                        </div>
+                        <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                        </div>
+                    </form>
+                    </div>
+                </div>
+                </div>
+                <!-- Incident Report Modal -->
+                <div class="modal fade" id="incidentReportModal" tabindex="-1" aria-labelledby="incidentReportModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                    <form id="incidentReportForm">
+                        <div class="modal-header">
+                        <h5 class="modal-title" id="incidentReportModalLabel">Add Incident Report</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                        <input type="hidden" id="incidentStudentId" name="student_id">
+                        <div class="mb-3">
+                            <label for="dateOfIncident" class="form-label">Date of Incident</label>
+                            <input type="date" class="form-control" id="dateOfIncident" name="date_of_incident" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="incidentDescription" class="form-label">Incident Description</label>
+                            <textarea class="form-control" id="incidentDescription" name="incident_description" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="injuryDescription" class="form-label">Injury Description</label>
+                            <textarea class="form-control" id="injuryDescription" name="injury_description" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="treatmentAdministered" class="form-label">Treatment Administered</label>
+                            <textarea class="form-control" id="treatmentAdministered" name="treatment_administered" required></textarea>
+                        </div>
+                        </div>
+                        <div class="modal-footer">
+                        <button type="submit" class="btn btn-danger">Submit Report</button>
+                        </div>
+                    </form>
+                    </div>
+                </div>
                 </div>
 {% endblock %}
 {% block scripts %}
@@ -652,6 +734,102 @@ body {
             return selectedStudents;
         }
     });
+    $(document).ready(function() {
+    // Open the incident report modal and set the student ID
+    $('#addIncidentReportButton').on('click', function() {
+        const studentId = $('#toggleAttendance').data('student-id');
+        $('#incidentStudentId').val(studentId);
+
+        // Set the date input to today by default
+        const today = new Date().toISOString().split('T')[0];
+        $('#dateOfIncident').val(today);
+
+        $('#incidentReportModal').modal('show');
+    });
+
+    // Handle incident report form submission
+    $('#incidentReportForm').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: "{% url 'add_incident_report' %}",
+            type: "POST",
+            data: $(this).serialize() + '&csrfmiddlewaretoken={{ csrf_token }}',
+            success: function(response) {
+                if (response.status === 'success') {
+                    toastr.success('Incident report added!');
+                    $('#incidentReportModal').modal('hide');
+                } else {
+                    toastr.error('Failed to add incident report.');
+                }
+            },
+            error: function() {
+                toastr.error('An error occurred.');
+            }
+        });
+    });
+});
+// ...existing code...
+$(document).ready(function() {
+    // Open diaper change modal
+    $('#addDiaperChangeButton').on('click', function() {
+        const studentId = $('#toggleAttendance').data('student-id');
+        $('#diaperChangeStudentId').val(studentId);
+        $('#diaperChangeNotes').val('');
+        // Set current time in HH:MM format
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        $('#diaperChangeTimestamp').val(`${hours}:${minutes}`);
+        $('#diaperChangeModal').modal('show');
+    });
+
+    // Handle diaper change form submission
+    $('#diaperChangeForm').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            url: "{% url 'add_diaper_change' %}",
+            type: "POST",
+            data: $(this).serialize() + '&csrfmiddlewaretoken={{ csrf_token }}',
+            success: function(response) {
+                if (response.status === 'success') {
+                    toastr.success('Diaper change recorded!');
+                    $('#diaperChangeModal').modal('hide');
+                } else {
+                    toastr.error('Failed to record diaper change.');
+                }
+            },
+            error: function() {
+                toastr.error('An error occurred.');
+            }
+        });
+    });
+});
+$(document).ready(function() {
+    // Hide move classroom controls initially
+    $('#moveClassroomControls').hide();
+
+    // Show move classroom controls when "Move Classroom" is selected
+    $('#moveClassroomDropdownItem').on('click', function(e) {
+        e.preventDefault();
+        $('#moveClassroomControls').show();
+    });
+
+    // Hide move classroom controls when modal is closed or another action is selected
+    $('#addIncidentReportDropdownItem, #addDiaperChangeDropdownItem').on('click', function(e) {
+        e.preventDefault();
+        $('#moveClassroomControls').hide();
+        if (this.id === 'addIncidentReportDropdownItem') {
+            $('#addIncidentReportButton').trigger('click');
+        } else if (this.id === 'addDiaperChangeDropdownItem') {
+            $('#addDiaperChangeButton').trigger('click');
+        }
+    });
+
+    // Hide move classroom controls when modal is closed
+    $('#studentModal').on('hidden.bs.modal', function () {
+        $('#moveClassroomControls').hide();
+    });
+});
 </script>
 
 {% endblock %}

@@ -243,8 +243,8 @@ class IncidentReport(models.Model):
     treatment_administered = models.TextField()
 
     def __str__(self):
-        return f"{self.student_first_name} {self.student_last_name} on {self.date_of_incident}"
-
+        return f"{self.student.first_name} {self.student.last_name} on {self.date_of_incident}"
+    
 class AttendanceRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)

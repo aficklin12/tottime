@@ -57,6 +57,10 @@ urlpatterns = [
     path('delete_classroom/', login_required(views.delete_classroom), name='delete_classroom'),
     path('add_student/', login_required(views.add_student), name='add_student'),
     path('update_item_quantity/', login_required(views.update_item_quantity), name='update_item_quantity'),
+    path('add-incident-report/', login_required(views.add_incident_report), name='add_incident_report'),
+    path('incident-report-detail/', login_required(views.incident_report_detail), name='incident_report_detail'),
+    path('add-diaper-change/', login_required(views.add_diaper_change), name='add_diaper_change'),
+    path('diaper-changes-for-student/', login_required(views.diaper_changes_for_student), name='diaper_changes_for_student'),
 
     path('401/', login_required(views.error401), name='error401'),  
     path('404/', login_required(views.error404), name='error404'),  

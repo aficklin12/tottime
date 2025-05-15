@@ -13,7 +13,7 @@ from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.core.files.storage import default_storage
@@ -1324,7 +1324,17 @@ def attendance_record(request):
         'meal_3': attendance_records.filter(meal_3__isnull=False).exists(),
         'meal_4': attendance_records.filter(meal_4__isnull=False).exists(),
         'incident_report': attendance_records.filter(incident_report__isnull=False).exists(),
+         'diaper_changes': DiaperChangeRecord.objects.filter(
+        student__in=attendance_records.values_list('student', flat=True),
+        timestamp__date=selected_date
+    ).exists(),
     }
+    diaper_change_students = set(
+    DiaperChangeRecord.objects.filter(
+        student__in=attendance_records.values_list('student', flat=True),
+        timestamp__date=selected_date
+    ).values_list('student_id', flat=True)
+)
     # Render the attendance record page
     return render(request, 'attendance_record.html', {
         'attendance_records': attendance_records,
@@ -1332,6 +1342,7 @@ def attendance_record(request):
         'selected_date': selected_date,
         'selected_classroom': selected_classroom,
         'column_visibility': column_visibility,
+        'diaper_change_students': diaper_change_students,  # <-- add this
         **permissions_context,  # Include permission flags dynamically
     })
 
@@ -1530,6 +1541,94 @@ def classroom(request):
         'classroom': selected_classroom,  # Pass the selected classroom
         **permissions_context,  # Include permission flags dynamically
     })
+
+@login_required
+@csrf_exempt
+def add_incident_report(request):
+    if request.method == 'POST':
+        student_id = request.POST.get('student_id')
+        date_of_incident = request.POST.get('date_of_incident')
+        incident_description = request.POST.get('incident_description')
+        injury_description = request.POST.get('injury_description')
+        treatment_administered = request.POST.get('treatment_administered')
+        try:
+            student = Student.objects.get(id=student_id)
+            # Create the incident report
+            incident = IncidentReport.objects.create(
+                student=student,
+                date_of_incident=date_of_incident,
+                incident_description=incident_description,
+                injury_description=injury_description,
+                treatment_administered=treatment_administered
+            )
+            # Link to the active attendance record (where sign_out_time is null)
+            attendance = AttendanceRecord.objects.filter(
+                student=student, sign_out_time__isnull=True
+            ).order_by('-sign_in_time').first()
+            if attendance:
+                attendance.incident_report = incident
+                attendance.save()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+@login_required
+def incident_report_detail(request):
+    incident_id = request.GET.get('id')
+    try:
+        incident = IncidentReport.objects.get(id=incident_id)
+        return JsonResponse({
+            'date_of_incident': incident.date_of_incident.strftime('%Y-%m-%d'),
+            'incident_description': incident.incident_description,
+            'injury_description': incident.injury_description,
+            'treatment_administered': incident.treatment_administered,
+        })
+    except IncidentReport.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
+    
+@login_required
+def add_diaper_change(request):
+    if request.method == 'POST':
+        student_id = request.POST.get('student_id')
+        notes = request.POST.get('notes')
+        timestamp = request.POST.get('timestamp')
+        try:
+            student = Student.objects.get(id=student_id)
+            diaper_change = DiaperChangeRecord.objects.create(
+                student=student,
+                changed_by=request.user,
+                notes=notes,
+                timestamp=timestamp  # Use the submitted timestamp
+            )
+            # Link to active attendance record
+            attendance = AttendanceRecord.objects.filter(
+                student=student, sign_out_time__isnull=True
+            ).order_by('-sign_in_time').first()
+            if attendance:
+                attendance.diaper_change = diaper_change
+                attendance.save()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+@login_required
+def diaper_changes_for_student(request):
+    student_id = request.GET.get('student_id')
+    date = request.GET.get('date')
+    try:
+        changes = DiaperChangeRecord.objects.filter(
+            student_id=student_id,
+            timestamp__date=date
+        ).order_by('timestamp')
+        data = [{
+            'time': change.timestamp.strftime('%I:%M %p'),
+            'notes': change.notes
+        } for change in changes]
+        return JsonResponse({'changes': data})
+    except Exception as e:
+        return JsonResponse({'changes': [], 'error': str(e)}, status=400)
 
 @login_required
 def get_attendance_record(request, student_id):
