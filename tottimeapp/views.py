@@ -1592,14 +1592,17 @@ def add_diaper_change(request):
     if request.method == 'POST':
         student_id = request.POST.get('student_id')
         notes = request.POST.get('notes')
-        timestamp = request.POST.get('timestamp')
+        time_str = request.POST.get('timestamp')  # format: 'HH:MM'
         try:
             student = Student.objects.get(id=student_id)
+            # Combine today's date with submitted time
+            today = date.today()
+            timestamp = datetime.strptime(f"{today} {time_str}", "%Y-%m-%d %H:%M")
             diaper_change = DiaperChangeRecord.objects.create(
                 student=student,
                 changed_by=request.user,
                 notes=notes,
-                timestamp=timestamp  # Use the submitted timestamp
+                timestamp=timestamp
             )
             # Link to active attendance record
             attendance = AttendanceRecord.objects.filter(
