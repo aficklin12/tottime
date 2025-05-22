@@ -3194,7 +3194,6 @@ def accept_invitation(request, token):
 def invalid_invitation(request):
     return render(request, 'invalid_invitation.html')
 
-
 @login_required
 def inbox_perms(request):
     required_permission_id = 157  # Permission ID for permissions view

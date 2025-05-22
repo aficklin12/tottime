@@ -11,3 +11,8 @@ def unread_messages_count(request):
         print(f"Total unread messages: {total_unread_count}")  # Debugging
         return {'total_unread_count': total_unread_count}
     return {'total_unread_count': 0}
+
+def is_app_context(request):
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    is_app = 'cordova' in user_agent or 'tot-time-app' in user_agent or 'mobile' in user_agent
+    return {'is_app': is_app}
