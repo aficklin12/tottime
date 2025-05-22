@@ -301,23 +301,6 @@
             </main>
         </div>
     </div>
-    <script>
-    // Hide back button if on an index page, even if there is browser history
-    const hidePaths = [
-        '/index.html',
-        '/index_director.html',
-        '/index_teacher_parent.html',
-        '/index_teacher.html',
-        '/index_cook.html',
-        '/index_parent.html',
-        '/index_free_user.html',
-        '/',
-    ];
-    const backBtn = document.getElementById('back-btn');
-    if (backBtn && hidePaths.includes(window.location.pathname)) {
-        backBtn.style.display = 'none';
-    }
-</script>
     <!-- JavaScript imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

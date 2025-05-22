@@ -18,16 +18,16 @@ def is_app_context(request):
     return {'is_app': is_app}
 
 def show_back_button(request):
-    # List of paths where the back button should be hidden
-    hide_paths = [
-        '/index.html',
-        '/index_director.html',
-        '/index_teacher_parent.html',
-        '/index_teacher.html',
-        '/index_cook.html',
-        '/index_parent.html',
-        '/index_free_user.html',
-        '/',
+    # List of view names where the back button should be hidden
+    hide_view_names = [
+        'index',
+        'index_director',
+        'index_teacher_parent',
+        'index_teacher',
+        'index_cook',
+        'index_parent',
+        'index_free_user',
     ]
-    # Hide the back button if the current path matches any in the list
-    return {'show_back_button': request.path not in hide_paths}
+    resolver_match = getattr(request, 'resolver_match', None)
+    current_view_name = resolver_match.view_name if resolver_match else None
+    return {'show_back_button': current_view_name not in hide_view_names}
