@@ -286,9 +286,6 @@
 
 <div class="chat-box">
     <div class="chat-header">
-        <ul class="navbar-nav ml-auto">
-            <li><a class="back-btn" href="{% url 'message_inbox' %}"><i class="fas fa-arrow-left"></i></a></li>
-        </ul>
         <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture">
         <span class="user-name">{{ recipient.first_name }} {{ recipient.last_name }}</span>
     </div>
