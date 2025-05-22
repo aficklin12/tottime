@@ -52,7 +52,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "tottimeapp.context_processors.unread_messages_count",  # Ensure this is added
+                "tottimeapp.context_processors.unread_messages_count",  
+                'tottimeapp.context_processors.is_app_context',
             ],
         },
     },
