@@ -121,9 +121,9 @@
 <body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <!-- Back Button (only in app) -->
-        {% if is_app %}
+        {% if is_app and show_back_button %}
         <button onclick="window.history.back();" class="btn btn-outline-light me-2" style="font-size:1.2rem;">
-            <i class="fas fa-arrow-left"></i> Back
+            <i class="fas fa-arrow-left"></i>
         </button>
         {% endif %}
         {% if is_app %}

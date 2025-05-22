@@ -54,6 +54,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "tottimeapp.context_processors.unread_messages_count",  
                 'tottimeapp.context_processors.is_app_context',
+                'tottimeapp.context_processors.show_back_button',
             ],
         },
     },
