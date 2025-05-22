@@ -144,9 +144,9 @@
                                 src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
                                 alt="Profile Picture" 
                                 style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
-                            {% if total_unread_count > 0 %}
+                            {% if unread_message_count|add:0 > 0 %}
                             <span class="notification-badge">
-                                !
+                                {{ unread_message_count }}
                             </span>
                             {% endif %}
                         </div>
@@ -156,9 +156,9 @@
                             <li>
                                 <a class="dropdown-item" href="{% url 'message_inbox' %}">
                                     Messaging
-                                    {% if total_unread_count > 0 %}
+                                    {% if unread_message_count|add:0 > 0 %}
                                     <span style="background-color: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 5px;">
-                                        !
+                                        {{ unread_message_count }}
                                     </span>
                                     {% endif %}
                                 </a>

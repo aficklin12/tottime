@@ -27,14 +27,7 @@
         align-items: center;
     }
 
-    img {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 15px;
-        margin-left: 20px;
-    }
+   
     .unread-count {
         color: red;
         font-weight: bold;
@@ -50,28 +43,26 @@
     {% for conversation in conversations %}
     <section>
         {% if conversation.sender == request.user %}
-        <!-- Use the sender's profile picture as the button to open conversation -->
         <a href="{% url 'conversation' conversation.recipient.id %}">
             <img 
                 src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
                 alt="Profile Picture" 
-                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 20px; margin-right: 15px;">
         </a>
         {{ conversation.recipient.first_name }} {{ conversation.recipient.last_name }}
-        {% if conversation.unread_count > 0 %}
-        <span class="unread-count">Unread messages</span>
+        {% if conversation.unread_count|add:0 > 0 %}
+            <span class="unread-count">({{ conversation.unread_count }} unread message{{ conversation.unread_count|pluralize }})</span>
         {% endif %}
         {% else %}
-        <!-- Use the recipient's profile picture as the button to open conversation -->
         <a href="{% url 'conversation' conversation.sender.id %}">
             <img 
                 src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
                 alt="Profile Picture" 
-                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 20px; margin-right: 15px;">
         </a>
         {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
-        {% if conversation.unread_count > 0 %}
-        <span class="unread-count">({{ conversation.unread_count }} unread)</span>
+        {% if conversation.unread_count|add:0 > 0 %}
+            <span class="unread-count">({{ conversation.unread_count }} unread message{{ conversation.unread_count|pluralize }})</span>
         {% endif %}
         {% endif %}
     </section>
@@ -87,8 +78,11 @@
                 <img 
                     src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
                     alt="Profile Picture" 
-                    style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                    style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 20px; margin-right: 15px;">
                 {{ recipient.first_name }} {{ recipient.last_name }}
+                {% if conversation.unread_count|add:0 > 0 %}
+                    <span class="unread-count">({{ conversation.unread_count }} unread message{{ conversation.unread_count|pluralize }})</span>
+                {% endif %}
             </a>
         </li>
         {% elif recipient.is_account_owner %}
@@ -97,8 +91,11 @@
                 <img 
                     src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
                     alt="Profile Picture" 
-                    style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                    style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 20px; margin-right: 15px;">
                 {{ recipient.first_name }} {{ recipient.last_name }}
+                {% if conversation.unread_count|add:0 > 0 %}
+                    <span class="unread-count">({{ conversation.unread_count }} unread message{{ conversation.unread_count|pluralize }})</span>
+                {% endif %}
             </a>
         </li>
         {% endif %}

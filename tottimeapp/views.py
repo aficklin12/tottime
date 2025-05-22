@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.db.models import Q, Value, Count, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
+from django.db.models import Q, Subquery, IntegerField, Count, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
 from django.db.models.functions import Concat
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
@@ -3422,11 +3422,20 @@ def inbox(request):
         account_owner = MainUser.objects.none()
     recipients = (recipients_with_subuser | account_owner).distinct()
 
+    # Annotate each conversation with the unread count for the current user
+    unread_count_subquery = Message.objects.filter(
+        conversation=OuterRef('pk'),
+        recipient=request.user,
+        is_read=False
+    ).values('conversation').annotate(
+        count=Count('pk')
+    ).values('count')
+
     conversations = Conversation.objects.filter(
         Q(sender=request.user) | Q(recipient=request.user)
     ).annotate(
         latest_message_timestamp=Max('messages__timestamp'),
-        unread_count=Count('messages', filter=Q(messages__recipient=request.user, messages__is_read=False))
+        unread_count=Subquery(unread_count_subquery, output_field=IntegerField())
     ).filter(
         messages__isnull=False
     ).order_by('-latest_message_timestamp')
@@ -3480,11 +3489,21 @@ def conversation(request, user_id):
 
     messages = Message.objects.filter(conversation=conversation_obj).order_by('timestamp')
 
+    # Annotate each conversation with the unread count for the current user
+    unread_count_subquery = Message.objects.filter(
+        conversation=OuterRef('pk'),
+        recipient=request.user,
+        is_read=False
+    ).values('conversation').annotate(
+        count=Count('pk')
+    ).values('count')
+
     # Fetch all conversations for the logged-in user
     conversations = Conversation.objects.filter(
         Q(sender=request.user) | Q(recipient=request.user)
     ).annotate(
-        latest_message_timestamp=Max('messages__timestamp')
+        latest_message_timestamp=Max('messages__timestamp'),
+        unread_count=Subquery(unread_count_subquery, output_field=IntegerField())
     ).filter(
         messages__isnull=False
     ).order_by('-latest_message_timestamp')

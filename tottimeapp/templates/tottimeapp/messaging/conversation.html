@@ -150,15 +150,6 @@
         align-items: center;
     }
 
-    img {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 15px;
-        margin-left: 20px;
-    }
-
     .chat-header {
         display: flex;
         align-items: center;
@@ -171,7 +162,11 @@
         font-size: 20px;
         font-weight: bold;
     }
-
+    .unread-count {
+        color: red;
+        font-weight: bold;
+        margin-left: 10px;
+    }
     @media (max-width: 1000px) {
         .chat-box {
             position: fixed;
@@ -253,16 +248,22 @@
             <img 
                 src="{% if conversation.recipient.profile_picture %}{{ conversation.recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
                 alt="Profile Picture" 
-                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 20px; margin-right: 15px;">
             {{ conversation.recipient.first_name }} {{ conversation.recipient.last_name }}
+            {% if conversation.unread_count|add:0 > 0 %}
+                    <span class="unread-count">({{ conversation.unread_count }} unread message{{ conversation.unread_count|pluralize }})</span>
+            {% endif %}
         </a>
         {% else %}
         <a href="{% url 'conversation' conversation.sender.id %}" style="text-decoration: none; color: inherit;">
             <img 
                 src="{% if conversation.sender.profile_picture %}{{ conversation.sender.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
                 alt="Profile Picture" 
-                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 20px; margin-right: 15px;">
             {{ conversation.sender.first_name }} {{ conversation.sender.last_name }}
+            {% if conversation.unread_count|add:0 > 0 %}
+                    <span class="unread-count">({{ conversation.unread_count }} unread message{{ conversation.unread_count|pluralize }})</span>
+            {% endif %}
         </a>
         {% endif %}
     </li>
@@ -276,8 +277,11 @@
             <img 
                 src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
                 alt="Profile Picture" 
-                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-left: 20px; margin-right: 15px;">
             {{ recipient.first_name }} {{ recipient.last_name }}
+            {% if conversation.unread_count|add:0 > 0 %}
+                    <span class="unread-count">({{ conversation.unread_count }} unread message{{ conversation.unread_count|pluralize }})</span>
+            {% endif %}
         </a>
     </li>
     {% endfor %}
@@ -286,7 +290,10 @@
 
 <div class="chat-box">
     <div class="chat-header">
-        <img src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" alt="Profile Picture">
+        <img 
+            src="{% if recipient.profile_picture %}{{ recipient.profile_picture.url }}{% else %}{% static 'profile_pictures/default_profile_picture.png' %}{% endif %}" 
+            alt="Profile Picture"
+            style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; margin-left: 20px;">
         <span class="user-name">{{ recipient.first_name }} {{ recipient.last_name }}</span>
     </div>
 
