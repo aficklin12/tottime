@@ -122,7 +122,7 @@
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <!-- Back Button (only in app) -->
         {% if is_app and show_back_button %}
-        <button id="back-btn" onclick="window.history.back();" class="btn btn-outline-light me-2" style="font-size:1.2rem;">
+        <button onclick="window.history.back();" class="btn btn-outline-light me-2" style="font-size:1.2rem;">
             <i class="fas fa-arrow-left"></i>
         </button>
         {% endif %}
@@ -131,7 +131,7 @@
             <i class="fas fa-bars"></i>
         </button>
         {% endif %}
-        <a class="navbar-brand" href="{% url 'index' %}">
+        <a class="navbar-brand" href="{% url 'index' %}" onclick="window.location.replace(this.href); return false;">
             <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
         </a>
         <!-- Navbar-->
@@ -313,9 +313,8 @@
         '/index_free_user.html',
         '/',
     ];
-    const backBtn = document.getElementById('back-btn');
-    if (backBtn && hidePaths.includes(window.location.pathname)) {
-        backBtn.style.display = 'none';
+    if (hidePaths.includes(window.location.pathname)) {
+        document.getElementById('back-btn').style.display = 'none';
     }
 </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
