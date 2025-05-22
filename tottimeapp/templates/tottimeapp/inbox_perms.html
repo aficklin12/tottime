@@ -48,14 +48,61 @@ td input[type="checkbox"] {
 .btn-secondary {
     margin-left: 27px !important;
 }
+/* Tabs container */
+.tabs {
+    margin-top: 25px;
+    margin-left: 47px;
+    margin-bottom: -11px!important;
+}
+
+/* Tab styles */
+.tab {
+    padding: 5px 15px; /* Reduce padding for smaller tabs */
+    text-decoration: none;
+    color: #000;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0; /* Add more curved corners */
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+/* Active tab styles */
+.active-tab {
+    background-color: #272630;
+    color: #ffffff;
+    font-weight: bold;
+    cursor: default;
+    border-radius: 10px 10px 0 0; /* Match the curved corners */
+    
+}
+.active-tab:hover {
+    
+    color: rgb(57, 189, 180);
+}
+/* Hover effect for inactive tabs */
+.tab:hover:not(.active-tab) {
+    background-color: #e9ecef;
+    color: rgb(57, 189, 180); /* Change hover text color */
+}
+#sender_user.form-select {
+    width: 200px!important;
+
+}
 </style>
     {% endblock %}
 {% block content %}
 <div class="container mt-4">
     <h1>Messaging Permissions Settings</h1>
-    <a href="{% url 'permissions' %}" class="btn btn-secondary">Page Permissions</a>
+      
     <form method="POST">
         {% csrf_token %}
+        <button type="submit" class="btn btn-primary" style="margin-bottom: 15px; margin-top: 15px;">Save</button>
+        <div class="tabs mb-3">
+            <a href="{% url 'permissions' %}" class="tab">Page Permissions</a>
+            <a href="#" class="tab active-tab">Messaging Permissions</a>
+        </div>
         <table class="table">
             <thead>
                 <tr>
@@ -83,17 +130,98 @@ td input[type="checkbox"] {
                 {% endfor %}
             </tbody>
         </table>
-        <button type="submit" class="btn btn-primary">Save</button>
-        <div style="margin-left: 27px;">
+        <div style="margin-left: 27px; width: 75%;">
             <p class="text-muted">
             Each row represents a sender role, each column represents a receiver role. 
             Check the boxes to grant permission for a sender role to message a receiver role. 
             Click "Save" to apply your changes.
-        </p>
+            </p>
         </div>
+    </form>
+    <h2 style="margin-left:27px; margin-top:20px; margin-bottom:-25px;">User-Specific Messaging Permissions</h2>
+    <form method="POST" id="user-override-form" style="margin-left:27px;">
+        {% csrf_token %}
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px;">
+            <select name="sender_user" id="sender_user" class="form-select" style="width: 155px;">
+                <option value="">Select User</option>
+                {% for user in all_users %}
+                    <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" name="user_override_submit" class="btn btn-primary" style="visibility:hidden; margin-top: 25px;" id="save-overrides-btn">Save</button>
+        </div>
+        <div id="receiver-table-container" style="margin-top:10px; margin-left:-27px"></div>
     </form>
 </div>
 {% endblock %}
 {% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const senderSelect = document.getElementById('sender_user');
+    const receiverTableContainer = document.getElementById('receiver-table-container');
+    const saveBtn = document.getElementById('save-overrides-btn');
+    senderSelect.addEventListener('change', function() {
+        const senderId = this.value;
+        receiverTableContainer.innerHTML = '';
+        saveBtn.style.visibility = 'hidden';
+        if (!senderId) return;
+        fetch("{% url 'get_allowed_receivers' %}?sender_id=" + senderId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.receivers.length === 0) {
+                    receiverTableContainer.innerHTML = '<p>No users available to message.</p>';
+                    return;
+                }
+                let table = '<table class="table"><thead><tr><th>Receiver</th><th>Restrict Messaging</th></tr></thead><tbody>';
+                data.receivers.forEach(function(user) {
+                    table += `<tr>
+                        <td>${user.name}</td>
+                        <td style="text-align:center;">
+                            <input type="checkbox" name="restrict_receiver_${user.id}" ${user.restricted ? 'checked' : ''}>
+                        </td>
+                    </tr>`;
+                });
+                table += '</tbody></table>';
+                receiverTableContainer.innerHTML = table;
+                saveBtn.style.visibility = 'visible';
+            });
+    });
 
+    // On submit, add hidden fields for sender/receiver pairs with checked boxes
+    document.getElementById('user-override-form').addEventListener('submit', function(e) {
+        // Remove any previous hidden fields
+        document.querySelectorAll('.dynamic-hidden').forEach(el => el.remove());
+        const senderId = senderSelect.value;
+        if (!senderId) return;
+        // For each receiver row, add hidden fields for all checkboxes
+        const rows = receiverTableContainer.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            const receiverId = checkbox.name.split('_').pop();
+            // Add hidden fields for each receiver
+            let inputSender = document.createElement('input');
+            inputSender.type = 'hidden';
+            inputSender.name = `override_sender_${receiverId}`;
+            inputSender.value = senderId;
+            inputSender.className = 'dynamic-hidden';
+            this.appendChild(inputSender);
+
+            let inputReceiver = document.createElement('input');
+            inputReceiver.type = 'hidden';
+            inputReceiver.name = `override_receiver_${receiverId}`;
+            inputReceiver.value = receiverId;
+            inputReceiver.className = 'dynamic-hidden';
+            this.appendChild(inputReceiver);
+
+            let inputRestrict = document.createElement('input');
+            inputRestrict.type = 'hidden';
+            inputRestrict.name = `override_restrict_${receiverId}`;
+            inputRestrict.value = checkbox.checked ? '1' : '0';
+            inputRestrict.className = 'dynamic-hidden';
+            this.appendChild(inputRestrict);
+        });
+    });
+
+});
+</script>
 {% endblock %}

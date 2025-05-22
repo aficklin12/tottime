@@ -40,3 +40,6 @@ class MessageForm(forms.ModelForm):
         model = Message
         fields = ['content']
 
+class ForgotUsernameForm(forms.Form):
+    email = forms.EmailField(label='Email', max_length=254)
+

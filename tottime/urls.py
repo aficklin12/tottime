@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.contrib.auth.decorators import login_required  # Import login_required
 from django.views.generic import RedirectView
 from tottimeapp import views
+from django.contrib.auth import views as auth_views
 
 
 urlpatterns = [
@@ -18,6 +19,19 @@ urlpatterns = [
     path('index_parent.html', login_required(views.index_parent), name='index_parent'),  
     path('index_free_user.html', login_required(views.index_free_user), name='index_free_user'),  
     path('login/', views.user_login, name='login'),  # Unprotected view
+    path('forgot-username/', views.forgot_username, name='forgot_username'),
+    path('password-reset/', auth_views.PasswordResetView.as_view(
+        template_name='tottimeapp/password_reset_form.html'
+    ), name='password_reset'),
+    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(
+        template_name='tottimeapp/password_reset_done.html'
+    ), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='tottimeapp/password_reset_confirm.html'
+    ), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='tottimeapp/password_reset_complete.html'
+    ), name='password_reset_complete'),
     path('signup/', views.user_signup, name='signup'),  # Unprotected view
     path('logout/', login_required(views.logout_view), name='logout'),  
     path('inventory/', login_required(views.inventory_list), name='inventory_list'),  
@@ -61,7 +75,6 @@ urlpatterns = [
     path('incident-report-detail/', login_required(views.incident_report_detail), name='incident_report_detail'),
     path('add-diaper-change/', login_required(views.add_diaper_change), name='add_diaper_change'),
     path('diaper-changes-for-student/', login_required(views.diaper_changes_for_student), name='diaper_changes_for_student'),
-
     path('401/', login_required(views.error401), name='error401'),  
     path('404/', login_required(views.error404), name='error404'),  
     path('500/', login_required(views.error500), name='error500'),  
@@ -142,7 +155,8 @@ urlpatterns = [
     path('edit-student/<int:student_id>/', login_required(views.edit_student_info), name='edit_student'),
     path('attendance_record/', login_required(views.attendance_record), name='attendance_record'),
     path('inbox_perms/', login_required(views.inbox_perms), name='inbox_perms'),
- 
+    path('get-allowed-receivers/', login_required(views.get_allowed_receivers), name='get_allowed_receivers'),
+
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

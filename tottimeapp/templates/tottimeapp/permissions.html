@@ -117,6 +117,44 @@
 #group-select {
     margin-left:25px;
 }
+/* Tabs container */
+.tabs {
+    margin-top: 25px;
+    margin-left: 47px;
+    margin-bottom: -11px!important;
+}
+
+/* Tab styles */
+.tab {
+    padding: 5px 15px; /* Reduce padding for smaller tabs */
+    text-decoration: none;
+    color: #000;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0; /* Add more curved corners */
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+/* Active tab styles */
+.active-tab {
+    background-color: #272630;
+    color: #ffffff;
+    font-weight: bold;
+    cursor: default;
+    border-radius: 10px 10px 0 0; /* Match the curved corners */
+    
+}
+.active-tab:hover {
+    
+    color: rgb(57, 189, 180);
+}
+/* Hover effect for inactive tabs */
+.tab:hover:not(.active-tab) {
+    background-color: #e9ecef;
+    color: rgb(57, 189, 180); /* Change hover text color */
+}
 </style>
 {% endblock %}
 
@@ -135,10 +173,12 @@
                                     <option value="{{ group.id }}">{{ group.name }}</option>
                                 {% endfor %}
                             </select>
-                            <a href="{% url 'inbox_perms' %}" class="btn btn-secondary">Messaging Permissions</a>
                             <button type="submit" class="btn btn-primary">Save Permissions</button>
                         </div>
-                        
+                        <div class="tabs mb-3">
+                            <a href="#" class="tab active-tab">Page Permissions</a>
+                            <a href="{% url 'inbox_perms' %}" class="tab">Messaging Permissions</a>
+                        </div>
                         <!-- Permissions Table (will be populated with JavaScript) -->
                         <table id="permissions-table" class="table table-striped mt-3">
                             <thead>

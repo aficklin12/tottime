@@ -12,8 +12,8 @@ from django.utils.timezone import now
 from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
-from .forms import SignupForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
+from .models import Classroom, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.core.files.storage import default_storage
@@ -123,9 +123,6 @@ def check_permissions(request, required_permission_id=None):
         return redirect('no_access')
 
     return permissions_context
-
-def login_view(request):
-    return render(request, 'login.html')
 
 def app_redirect(request):
     return render(request, 'app_redirect.html')
@@ -458,21 +455,47 @@ def user_login(request):
         if form.is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
-            user = authenticate(request, username=username, password=password)
+            User = get_user_model()
+            try:
+                user_obj = User.objects.get(username__iexact=username)
+                user = authenticate(request, username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                user = None
             if user is not None:
                 login(request, user)
                 return redirect('index')  # Redirect to the index page on successful login
             else:
-                # If authentication fails, add an error message to the request
                 messages.error(request, "Invalid username or password.")
         else:
             messages.error(request, "Please correct the errors below.")
     else:
         form = LoginForm()
 
-    # Render the login template with the form
     return render(request, 'login.html', {'form': form})
     
+def forgot_username(request):
+    if request.method == 'POST':
+        form = ForgotUsernameForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            User = get_user_model()
+            users = User.objects.filter(email__iexact=email)
+            if users.exists():
+                usernames = ', '.join([user.username for user in users])
+                send_mail(
+                    'Your Username(s)',
+                    f'Your username(s): {usernames}',
+                    'no-reply@yourdomain.com',
+                    [email],
+                )
+                messages.success(request, 'Your username has been sent to your email.')
+            else:
+                messages.error(request, 'No user found with that email address.')
+            return redirect('forgot_username')
+    else:
+        form = ForgotUsernameForm()
+    return render(request, 'tottimeapp/forgot_username.html', {'form': form})
+
 def logout_view(request):
     logout(request)
     # Redirect to the homepage or any other desired page
@@ -3171,19 +3194,16 @@ def accept_invitation(request, token):
 def invalid_invitation(request):
     return render(request, 'invalid_invitation.html')
 
+
 @login_required
 def inbox_perms(request):
-    # Check permissions for the specific page
     required_permission_id = 157  # Permission ID for permissions view
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    # Get the main user
+
     main_user = get_user_for_view(request)
-    # Get all groups excluding "Free User"
-    groups = Group.objects.exclude(name="Free User")
-    # Prepopulate permissions for new users
+    groups = Group.objects.exclude(name="Free User").exclude(id=8)
     for sender in groups:
         for receiver in groups:
             MessagingPermission.objects.get_or_create(
@@ -3192,31 +3212,57 @@ def inbox_perms(request):
                 receiver_role=receiver,
                 defaults={'can_message': False}
             )
-    # Fetch messaging permissions for the current main user
     messaging_permissions = MessagingPermission.objects.filter(main_user=main_user)
-    if request.method == "POST":
-        try:
-            # Iterate over all possible sender-receiver combinations
-            for sender in groups:
-                for receiver in groups:
-                    checkbox_name = f"sender_{sender.id}_receiver_{receiver.id}"
-                    can_message = checkbox_name in request.POST  # Checkbox is checked if it exists in POST data
+    all_users = MainUser.objects.filter(
+        Q(main_account_owner=main_user) | Q(id=main_user.id)
+    )
+    user_messaging_permissions = UserMessagingPermission.objects.filter(main_user=main_user)
 
-                    # Update or create the MessagingPermission
-                    MessagingPermission.objects.update_or_create(
-                        main_user=main_user,
-                        sender_role=sender,
-                        receiver_role=receiver,
-                        defaults={'can_message': can_message}
-                    )
-            messages.success(request, "Messaging permissions have been successfully updated!")
-        except Exception as e:
-            messages.error(request, f"An error occurred: {str(e)}")
-    # Render the template with the permissions context
+    if request.method == "POST":
+        # Handle user-specific override table
+        if "user_override_submit" in request.POST:
+            sender_id = request.POST.get("sender_user")
+            if sender_id:
+                sender = MainUser.objects.get(id=sender_id)
+                # Remove all overrides for this sender first (to reset)
+                UserMessagingPermission.objects.filter(main_user=main_user, sender=sender).delete()
+                # Now add overrides for checked boxes
+                for key in request.POST:
+                    if key.startswith("override_restrict_"):
+                        receiver_id = key.split("_")[-1]
+                        restrict = request.POST[key] == "1"
+                        receiver = MainUser.objects.get(id=receiver_id)
+                        if restrict:
+                            UserMessagingPermission.objects.update_or_create(
+                                main_user=main_user,
+                                sender=sender,
+                                receiver=receiver,
+                                defaults={'can_message': False}
+                            )
+                messages.success(request, "User-specific messaging restrictions updated!")
+        else:
+            # ...existing group/role-based permission logic...
+            try:
+                for sender in groups:
+                    for receiver in groups:
+                        checkbox_name = f"sender_{sender.id}_receiver_{receiver.id}"
+                        can_message = checkbox_name in request.POST
+                        MessagingPermission.objects.update_or_create(
+                            main_user=main_user,
+                            sender_role=sender,
+                            receiver_role=receiver,
+                            defaults={'can_message': can_message}
+                        )
+                messages.success(request, "Messaging permissions have been successfully updated!")
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
+
     return render(request, 'inbox_perms.html', {
         'groups': groups,
         'messaging_permissions': messaging_permissions,
-        **permissions_context,  # Include permission flags dynamically
+        'all_users': all_users,
+        'user_messaging_permissions': user_messaging_permissions,
+        **permissions_context,
     })
 
 @login_required
@@ -3289,61 +3335,115 @@ def no_access(request):
     # Directly render the no_access.html template with the permissions context
     return render(request, 'no_access.html', permissions_context)
 
+def can_user_message(main_user, sender, receiver):
+    # Check user-specific override
+    user_perm = UserMessagingPermission.objects.filter(
+        main_user=main_user, sender=sender, receiver=receiver
+    ).first()
+    if user_perm is not None:
+        return user_perm.can_message
+    # Fallback to role-based
+    sender_group = sender.subuser.group_id if hasattr(sender, 'subuser') else Group.objects.get(name="Owner")
+    receiver_group = receiver.subuser.group_id if hasattr(receiver, 'subuser') else Group.objects.get(name="Owner")
+    role_perm = MessagingPermission.objects.filter(
+        main_user=main_user,
+        sender_role=sender_group,
+        receiver_role=receiver_group
+    ).first()
+    return role_perm.can_message if role_perm else False
+
+@login_required
+def get_allowed_receivers(request):
+    main_user = get_user_for_view(request)
+    sender_id = request.GET.get("sender_id")
+    if not sender_id:
+        return JsonResponse({"receivers": []})
+    try:
+        sender = MainUser.objects.get(id=sender_id)
+    except MainUser.DoesNotExist:
+        return JsonResponse({"receivers": []})
+
+    # Get sender's group
+    sender_group = sender.subuser.group_id if hasattr(sender, 'subuser') else Group.objects.get(name="Owner")
+
+    # Find all MessagingPermission for this sender group where can_message=True
+    allowed_receiver_roles = MessagingPermission.objects.filter(
+        main_user=main_user,
+        sender_role=sender_group,
+        can_message=True
+    ).values_list('receiver_role', flat=True)
+
+    # Get all users with those roles, except the sender
+    all_users = MainUser.objects.filter(
+        Q(main_account_owner=main_user) | Q(id=main_user.id)
+    ).exclude(id=sender.id)
+
+    receivers = []
+    for user in all_users:
+        # Get user's group
+        receiver_group = user.subuser.group_id if hasattr(user, 'subuser') else Group.objects.get(name="Owner")
+        if receiver_group.id in allowed_receiver_roles:
+            # Check for user-specific override
+            user_perm = UserMessagingPermission.objects.filter(
+                main_user=main_user, sender=sender, receiver=user
+            ).first()
+            receivers.append({
+                "id": user.id,
+                "name": user.get_full_name(),
+                "restricted": user_perm is not None and user_perm.can_message is False
+            })
+    return JsonResponse({"receivers": receivers})
+
 @login_required
 def inbox(request):
-    # Check permissions for the specific page
-    required_permission_id = 157  # Permission ID for permissions view
+    required_permission_id = None
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    # Get the main account owner for the logged-in user
     main_account_owner = request.user.main_account_owner if not request.user.is_account_owner else request.user
-    # Get all users linked to the same main account owner, excluding the logged-in user
     all_users = MainUser.objects.filter(
         Q(main_account_owner=main_account_owner) | Q(id=main_account_owner.id)
     ).exclude(id=request.user.id)
-    # Determine the user's group_id
     user_group = request.user.subuser.group_id if hasattr(request.user, 'subuser') else Group.objects.get(name="Owner")
-    # Fetch messaging permissions relevant to the user's group
     messaging_permissions = MessagingPermission.objects.filter(
         sender_role=user_group,
         can_message=True
     )
-    # Get the list of allowed receiver roles
-    allowed_receiver_roles = messaging_permissions.values_list('receiver_role', flat=True)
-    # Filter recipients explicitly based on messaging permissions
+    allowed_receiver_roles = list(messaging_permissions.values_list('receiver_role', flat=True))
     recipients_with_subuser = all_users.filter(
         subuser__group_id__in=allowed_receiver_roles
     )
-    # Check if the current user has permission to message the main account owner
     has_permission_to_message_owner = messaging_permissions.filter(
-        receiver_role__id=1  # Check if the receiver role is "Owner"
+        receiver_role__id=1
     ).exists()
-    # Include the main account owner explicitly if permission is granted
     if has_permission_to_message_owner:
         account_owner = MainUser.objects.filter(id=main_account_owner.id)
     else:
-        account_owner = MainUser.objects.none()  # Exclude the main account owner if no permission
-    # Combine both querysets
+        account_owner = MainUser.objects.none()
     recipients = (recipients_with_subuser | account_owner).distinct()
-    # Get all conversations where the logged-in user is either the sender or recipient
+
     conversations = Conversation.objects.filter(
         Q(sender=request.user) | Q(recipient=request.user)
     ).annotate(
         latest_message_timestamp=Max('messages__timestamp'),
         unread_count=Count('messages', filter=Q(messages__recipient=request.user, messages__is_read=False))
     ).filter(
-        messages__isnull=False  # Ensure the conversation has at least one message
+        messages__isnull=False
     ).order_by('-latest_message_timestamp')
-    # Exclude users the logged-in user already has conversations with
+
     conversation_users = set()
     for conversation in conversations:
         conversation_users.add(conversation.sender)
         conversation_users.add(conversation.recipient)
     recipients = recipients.exclude(id__in=[user.id for user in conversation_users])
-    # Strip hidden characters or whitespace from first names
+
+    # Filter recipients based on user-specific permission overrides
+    recipients = [
+        recipient for recipient in recipients
+        if can_user_message(main_account_owner, request.user, recipient)
+    ]
+
     for recipient in recipients:
         recipient.first_name = recipient.first_name.strip()
 
@@ -3351,48 +3451,36 @@ def inbox(request):
         'conversations': conversations,
         'recipients': recipients,
         'messaging_permissions': messaging_permissions,
-        'allowed_receiver_roles': allowed_receiver_roles,  # Pass allowed roles for debugging
-        **permissions_context,  # Include permission flags dynamically
+        'allowed_receiver_roles': allowed_receiver_roles,
+        **permissions_context,
     })
 
 @login_required
 def conversation(request, user_id):
-    # Check permissions for the specific page
-    required_permission_id = 157  # Permission ID for permissions view
+    required_permission_id = None  # Permission ID for permissions view
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
     recipient = get_object_or_404(MainUser, id=user_id)
-    # Check if the logged-in user is the account owner
-    if not request.user.is_account_owner:
-        # Check messaging permissions
-        sender_role = request.user.subuser.group_id if hasattr(request.user, 'subuser') else Group.objects.get(name="Owner")
-        receiver_role = recipient.subuser.group_id if hasattr(recipient, 'subuser') else Group.objects.get(name="Owner")
-        if not sender_role or not receiver_role:
-            return HttpResponseForbidden("You do not have permission to message this user.")
-        # Check if messaging is allowed
-        permission = MessagingPermission.objects.filter(
-            sender_role=sender_role,
-            receiver_role=receiver_role,
-            can_message=True
-        ).exists()
-        if not permission:
-            return HttpResponseForbidden("You do not have permission to message this user.")
+    main_account_owner = request.user.main_account_owner if not request.user.is_account_owner else request.user
 
-    conversation = Conversation.objects.filter(
+    # Check permission to message this user (with override)
+    if not can_user_message(main_account_owner, request.user, recipient):
+        return HttpResponseForbidden("You do not have permission to message this user.")
+
+    conversation_obj = Conversation.objects.filter(
         (Q(sender=request.user) & Q(recipient=recipient)) |
         (Q(sender=recipient) & Q(recipient=request.user))
     ).first()
-    if not conversation:
-        conversation = Conversation.objects.create(sender=request.user, recipient=recipient)
+    if not conversation_obj:
+        conversation_obj = Conversation.objects.create(sender=request.user, recipient=recipient)
 
     # Mark all unread messages in this conversation as read
-    Message.objects.filter(conversation=conversation, recipient=request.user, is_read=False).update(is_read=True)
+    Message.objects.filter(conversation=conversation_obj, recipient=request.user, is_read=False).update(is_read=True)
 
-    messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
-   
+    messages = Message.objects.filter(conversation=conversation_obj).order_by('timestamp')
+
     # Fetch all conversations for the logged-in user
     conversations = Conversation.objects.filter(
         Q(sender=request.user) | Q(recipient=request.user)
@@ -3403,7 +3491,6 @@ def conversation(request, user_id):
     ).order_by('-latest_message_timestamp')
 
     # Fetch recipients for starting new conversations
-    main_account_owner = request.user.main_account_owner if not request.user.is_account_owner else request.user
     all_users = MainUser.objects.filter(
         Q(main_account_owner=main_account_owner) | Q(id=main_account_owner.id)
     ).exclude(id=request.user.id)
@@ -3412,7 +3499,7 @@ def conversation(request, user_id):
         sender_role=user_group,
         can_message=True
     )
-    allowed_receiver_roles = messaging_permissions.values_list('receiver_role', flat=True)
+    allowed_receiver_roles = list(messaging_permissions.values_list('receiver_role', flat=True))
     recipients_with_subuser = all_users.filter(
         subuser__group_id__in=allowed_receiver_roles
     )
@@ -3432,13 +3519,19 @@ def conversation(request, user_id):
         conversation_users.add(conv.recipient)
     recipients = recipients.exclude(id__in=[user.id for user in conversation_users])
 
+    # Filter recipients based on user-specific permission overrides
+    recipients = [
+        recipient for recipient in recipients
+        if can_user_message(main_account_owner, request.user, recipient)
+    ]
+
     if request.method == 'POST':
         form = MessageForm(request.POST)
         if form.is_valid():
             new_message = form.save(commit=False)
             new_message.sender = request.user
             new_message.recipient = recipient
-            new_message.conversation = conversation
+            new_message.conversation = conversation_obj
             new_message.save()
             return redirect('conversation', user_id=recipient.id)
     else:
@@ -3450,7 +3543,7 @@ def conversation(request, user_id):
         'messages': messages,
         'conversations': conversations,
         'recipients': recipients,
-        **permissions_context,  # Include permission flags dynamically
+        **permissions_context,
     })
 
 @login_required

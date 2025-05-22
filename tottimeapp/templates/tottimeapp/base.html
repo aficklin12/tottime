@@ -120,9 +120,17 @@
 </head>
 <body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-        <!-- Navbar Brand-->
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
-        
+        <!-- Back Button (only in app) -->
+        {% if is_app %}
+        <button onclick="window.history.back();" class="btn btn-outline-light me-2" style="font-size:1.2rem;">
+            <i class="fas fa-arrow-left"></i> Back
+        </button>
+        {% endif %}
+        {% if is_app %}
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="fas fa-bars"></i>
+        </button>
+        {% endif %}
         <a class="navbar-brand" href="{% url 'index' %}">
             <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
         </a>
@@ -138,7 +146,7 @@
                                 style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
                             {% if total_unread_count > 0 %}
                             <span class="notification-badge">
-                                {{ total_unread_count }}
+                                !
                             </span>
                             {% endif %}
                         </div>
@@ -149,8 +157,8 @@
                                 <a class="dropdown-item" href="{% url 'message_inbox' %}">
                                     Messaging
                                     {% if total_unread_count > 0 %}
-                                    <span style="background-color: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; margin-left: 5px;">
-                                        {{ total_unread_count }}
+                                    <span style="background-color: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 5px;">
+                                        !
                                     </span>
                                     {% endif %}
                                 </a>

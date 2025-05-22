@@ -1,0 +1,30 @@
+{% extends "tottimeapp/base_minimal.html" %}
+{% block content %}
+<div class="container login-container">
+    <form method="POST" class="login-form">
+        <div class="login-title">Forgot Username</div>
+        {% csrf_token %}
+        {% if messages %}
+            <div class="alert alert-info custom-alert">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="form-floating mb-3">
+            <input class="form-control w-100" id="inputEmail" type="email" name="email" placeholder="Email" value="{{ request.POST.email }}">
+            <label for="inputEmail">Email</label>
+            {% if form.email.errors %}
+                <div class="alert alert-danger custom-alert">
+                    {% for error in form.email.errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-block">Send Username</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

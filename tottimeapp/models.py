@@ -715,3 +715,14 @@ class DiaperChangeRecord(models.Model):
     def __str__(self):
             return f"Diaper change for {self.student} at {self.timestamp}"
 
+class UserMessagingPermission(models.Model):
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name="user_messaging_permissions")
+    sender = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name="can_send_to")
+    receiver = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name="can_receive_from")
+    can_message = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('main_user', 'sender', 'receiver')
+
+    def __str__(self):
+        return f"{self.sender} -> {self.receiver}: {'Allowed' if self.can_message else 'Not Allowed'}"
