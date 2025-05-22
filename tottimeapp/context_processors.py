@@ -16,3 +16,18 @@ def is_app_context(request):
     user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
     is_app = 'cordova' in user_agent or 'tot-time-app' in user_agent or 'mobile' in user_agent
     return {'is_app': is_app}
+
+def show_back_button(request):
+    # List of paths where the back button should be hidden
+    hide_paths = [
+        '/index.html',
+        '/index_director.html',
+        '/index_teacher_parent.html',
+        '/index_teacher.html',
+        '/index_cook.html',
+        '/index_parent.html',
+        '/index_free_user.html',
+        '/',
+    ]
+    # Hide the back button if the current path matches any in the list
+    return {'show_back_button': request.path not in hide_paths}
