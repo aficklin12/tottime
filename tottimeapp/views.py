@@ -438,6 +438,9 @@ def error500(request):
 def privacy_policy(request):
     return render(request, 'privacy_policy.html')
 
+def delete_request(request):
+    return render(request, 'delete_request.html')
+
 def user_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)

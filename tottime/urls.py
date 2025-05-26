@@ -79,6 +79,7 @@ urlpatterns = [
     path('404/', login_required(views.error404), name='error404'),  
     path('500/', login_required(views.error500), name='error500'),  
     path('privacy_policy/', login_required(views.privacy_policy), name='privacy_policy'),  
+    path('delete_request/', login_required(views.delete_request), name='delete_request'),  
     path('create-breakfast-recipe/', login_required(views.create_breakfast_recipe), name='create_breakfast_recipe'), 
     path('fetch-breakfast-recipes/', login_required(views.fetch_breakfast_recipes), name='fetch_breakfast_recipes'),  
     path('create-am-recipe/', login_required(views.create_am_recipe), name='create_am_recipe'),  
