@@ -435,6 +435,9 @@ def error404(request):
 def error500(request):
     return render(request, '500.html')
 
+def privacy_policy(request):
+    return render(request, 'privacy_policy.html')
+
 def user_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
