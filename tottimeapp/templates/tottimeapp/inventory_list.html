@@ -559,79 +559,86 @@ document.addEventListener('deviceready', function() {
 </script>
 <script>
 function startBarcodeScanner(onDetectedCallback) {
-    const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
-    modal.show();
-
-    Quagga.init({
-        inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector('#scanner-container'),
-            constraints: {
-                facingMode: "environment",
-                width: { ideal: 360 },
-                height: { ideal: 640 }
-            },
-            area: {
-                top: "38%",
-                right: "8%",
-                left: "8%",
-                bottom: "38%"
-            }
-        },
-        decoder: {
-            readers: [
-                "code_128_reader",
-                "ean_reader",
-                "ean_8_reader",
-                "upc_reader",
-                "code_39_reader",
-                "i2of5_reader",
-                "2of5_reader"
-            ],
-            multiple: false
-        },
-        locate: true,
-        locator: {
-            patchSize: "medium",
-            halfSample: false
-        },
-        numOfWorkers: 2,
-        frequency: 25
-    }, function(err) {
-        if (err) {
-            console.error(err);
-            alert("Failed to initialize barcode scanner.");
+    // Request camera permission first
+    var permissions = cordova.plugins.permissions;
+    permissions.requestPermission(permissions.CAMERA, function(status) {
+        if (!status.hasPermission) {
+            alert('Camera permission is required for barcode scanning.');
             return;
         }
-        Quagga.start();
-    });
-    Quagga.offDetected();
-    Quagga.onDetected(function(result) {
-        let barcode = result.codeResult.code;
-        console.log("Barcode detected:", barcode);
 
-        Quagga.stop();
-        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
-        modalInstance.hide();
-        toastr.success(`Barcode detected: ${barcode}`, "Success");
+        // Now show modal and start Quagga
+        const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
+        modal.show();
 
-        if (typeof onDetectedCallback === "function") {
-            onDetectedCallback(barcode);
-        }
-    });
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#scanner-container'),
+                constraints: {
+                    facingMode: "environment",
+                    width: { ideal: 360 },
+                    height: { ideal: 640 }
+                },
+                area: {
+                    top: "38%",
+                    right: "8%",
+                    left: "8%",
+                    bottom: "38%"
+                }
+            },
+            decoder: {
+                readers: [
+                    "code_128_reader",
+                    "ean_reader",
+                    "ean_8_reader",
+                    "upc_reader",
+                    "code_39_reader",
+                    "i2of5_reader",
+                    "2of5_reader"
+                ],
+                multiple: false
+            },
+            locate: true,
+            locator: {
+                patchSize: "medium",
+                halfSample: false
+            },
+            numOfWorkers: 2,
+            frequency: 25
+        }, function(err) {
+            if (err) {
+                console.error(err);
+                alert("Failed to initialize barcode scanner.");
+                return;
+            }
+            Quagga.start();
+        });
 
-    document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
-        if (Quagga) {
+        Quagga.offDetected();
+        Quagga.onDetected(function(result) {
+            let barcode = result.codeResult.code;
+            console.log("Barcode detected:", barcode);
+
             Quagga.stop();
-        }
-    });
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
+            modalInstance.hide();
+            toastr.success(`Barcode detected: ${barcode}`, "Success");
 
-    const canvas = document.querySelector('#scanner-container canvas');
-    if (canvas) {
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        // Use the context for drawing
-    }
+            if (typeof onDetectedCallback === "function") {
+                onDetectedCallback(barcode);
+            }
+        });
+
+        document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
+            if (Quagga) {
+                Quagga.stop();
+            }
+        });
+    }, function() {
+        alert('Camera permission request failed');
+    });
 }
 function updateItemQuantity(barcode) {
     console.log("Sending barcode to server:", barcode);
