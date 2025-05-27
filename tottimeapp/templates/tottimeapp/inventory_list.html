@@ -545,45 +545,61 @@
         });
     }
 
-    document.addEventListener('deviceready', function () {
-    var permissions = cordova.plugins.permissions;
-    permissions.requestPermissions(
-        [permissions.CAMERA, permissions.RECORD_AUDIO],
-        function(status) {
-            if (status.hasPermission) {
-                // Permissions granted, proceed with camera access
-            } else {
-                // Permissions denied, handle accordingly
-            }
-        },
-        function() {
-            // Error requesting permissions
-        }
-    );
-});
+ 
 </script>
 <script>
-function startBarcodeScanner(onDetectedCallback) {
+document.addEventListener('deviceready', function () {
+    // Request permissions on app start
+    requestAllPermissions();
+});
+
+function requestAllPermissions(callback) {
     if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
         var permissions = cordova.plugins.permissions;
-        permissions.requestPermissions(
-            [permissions.CAMERA, permissions.RECORD_AUDIO],
-            function(status) {
-                if (!status.hasPermission) {
-                    alert('Camera and audio permissions are required for barcode scanning.');
-                    return;
-                }
-                launchBarcodeScanner(onDetectedCallback);
-            },
-            function() {
-                alert('Permission request failed');
+        var needed = [
+            permissions.CAMERA,
+            permissions.RECORD_AUDIO,
+            permissions.WRITE_EXTERNAL_STORAGE,
+            permissions.READ_EXTERNAL_STORAGE
+        ];
+        permissions.hasPermission(needed, function(status) {
+            if (!status.hasPermission) {
+                permissions.requestPermissions(needed,
+                    function(status2) {
+                        if (status2.hasPermission) {
+                            if (typeof callback === "function") callback(true);
+                        } else {
+                            alert('Camera, audio, and storage permissions are required for this app.');
+                            if (typeof callback === "function") callback(false);
+                        }
+                    },
+                    function() {
+                        alert('Permission request failed');
+                        if (typeof callback === "function") callback(false);
+                    }
+                );
+            } else {
+                if (typeof callback === "function") callback(true);
             }
-        );
+        }, function() {
+            alert('Permission check failed');
+            if (typeof callback === "function") callback(false);
+        });
     } else {
-        launchBarcodeScanner(onDetectedCallback);
+        // Not Cordova, assume permissions are granted
+        if (typeof callback === "function") callback(true);
     }
 }
 
+function startBarcodeScanner(onDetectedCallback) {
+    requestAllPermissions(function(granted) {
+        if (granted) {
+            launchBarcodeScanner(onDetectedCallback);
+        } else {
+            alert('Cannot start barcode scanner without permissions.');
+        }
+    });
+}
 // Move your existing Quagga logic into a new function:
 function launchBarcodeScanner(onDetectedCallback) {
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
