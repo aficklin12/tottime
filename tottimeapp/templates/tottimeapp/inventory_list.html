@@ -544,101 +544,102 @@
             }
         });
     }
-
-    // Request camera permission before starting Quagga
-document.addEventListener('deviceready', function() {
-    var permissions = cordova.plugins.permissions;
-    permissions.requestPermission(permissions.CAMERA, function(status) {
-        if (!status.hasPermission) {
-            alert('Camera permission is required for barcode scanning.');
-        }
-    }, function() {
-        alert('Camera permission request failed');
-    });
-});
 </script>
 <script>
 function startBarcodeScanner(onDetectedCallback) {
-    // Request camera permission first
-    var permissions = cordova.plugins.permissions;
-    permissions.requestPermission(permissions.CAMERA, function(status) {
-        if (!status.hasPermission) {
-            alert('Camera permission is required for barcode scanning.');
-            return;
-        }
-
-        // Now show modal and start Quagga
-        const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
-        modal.show();
-
-        Quagga.init({
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector('#scanner-container'),
-                constraints: {
-                    facingMode: "environment",
-                    width: { ideal: 360 },
-                    height: { ideal: 640 }
-                },
-                area: {
-                    top: "38%",
-                    right: "8%",
-                    left: "8%",
-                    bottom: "38%"
-                }
-            },
-            decoder: {
-                readers: [
-                    "code_128_reader",
-                    "ean_reader",
-                    "ean_8_reader",
-                    "upc_reader",
-                    "code_39_reader",
-                    "i2of5_reader",
-                    "2of5_reader"
-                ],
-                multiple: false
-            },
-            locate: true,
-            locator: {
-                patchSize: "medium",
-                halfSample: false
-            },
-            numOfWorkers: 2,
-            frequency: 25
-        }, function(err) {
-            if (err) {
-                console.error(err);
-                alert("Failed to initialize barcode scanner.");
+    // Request camera permission before initializing Quagga
+    if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
+        var permissions = cordova.plugins.permissions;
+        permissions.requestPermission(permissions.CAMERA, function(status) {
+            if (!status.hasPermission) {
+                alert('Camera permission is required for barcode scanning.');
                 return;
             }
-            Quagga.start();
+            // Permission granted, proceed to show modal and initialize Quagga
+            launchBarcodeScanner(onDetectedCallback);
+        }, function() {
+            alert('Camera permission request failed');
         });
+    } else {
+        // Not running in Cordova, proceed as normal (for web testing)
+        launchBarcodeScanner(onDetectedCallback);
+    }
+}
 
-        Quagga.offDetected();
-        Quagga.onDetected(function(result) {
-            let barcode = result.codeResult.code;
-            console.log("Barcode detected:", barcode);
-
-            Quagga.stop();
-            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
-            modalInstance.hide();
-            toastr.success(`Barcode detected: ${barcode}`, "Success");
-
-            if (typeof onDetectedCallback === "function") {
-                onDetectedCallback(barcode);
+// Move your existing Quagga logic into a new function:
+function launchBarcodeScanner(onDetectedCallback) {
+    const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
+    modal.show();
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector('#scanner-container'),
+            constraints: {
+                facingMode: "environment",
+                width: { ideal: 360 },
+                height: { ideal: 640 }
+            },
+            area: {
+                top: "38%",
+                right: "8%",
+                left: "8%",
+                bottom: "38%"
             }
-        });
-
-        document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
-            if (Quagga) {
-                Quagga.stop();
-            }
-        });
-    }, function() {
-        alert('Camera permission request failed');
+        },
+        decoder: {
+            readers: [
+                "code_128_reader",
+                "ean_reader",
+                "ean_8_reader",
+                "upc_reader",
+                "code_39_reader",
+                "i2of5_reader",
+                "2of5_reader"
+            ],
+            multiple: false
+        },
+        locate: true,
+        locator: {
+            patchSize: "medium",
+            halfSample: false
+        },
+        numOfWorkers: 2,
+        frequency: 25
+    }, function(err) {
+        if (err) {
+            console.error(err);
+            alert("Failed to initialize barcode scanner.");
+            return;
+        }
+        Quagga.start();
     });
+    Quagga.offDetected();
+    Quagga.onDetected(function(result) {
+        let barcode = result.codeResult.code;
+        console.log("Barcode detected:", barcode);
+
+        Quagga.stop();
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
+        modalInstance.hide();
+        toastr.success(`Barcode detected: ${barcode}`, "Success");
+
+        if (typeof onDetectedCallback === "function") {
+            onDetectedCallback(barcode);
+        }
+    });
+
+    document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
+        if (Quagga) {
+            Quagga.stop();
+        }
+    });
+
+    const canvas = document.querySelector('#scanner-container canvas');
+    if (canvas) {
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        // Use the context for drawing
+    }
 }
 function updateItemQuantity(barcode) {
     console.log("Sending barcode to server:", barcode);
