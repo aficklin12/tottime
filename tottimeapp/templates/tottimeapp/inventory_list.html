@@ -544,6 +544,18 @@
             }
         });
     }
+
+    // Request camera permission before starting Quagga
+document.addEventListener('deviceready', function() {
+    var permissions = cordova.plugins.permissions;
+    permissions.requestPermission(permissions.CAMERA, function(status) {
+        if (!status.hasPermission) {
+            alert('Camera permission is required for barcode scanning.');
+        }
+    }, function() {
+        alert('Camera permission request failed');
+    });
+});
 </script>
 <script>
 function startBarcodeScanner(onDetectedCallback) {
