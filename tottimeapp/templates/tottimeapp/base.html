@@ -308,6 +308,30 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="{% static 'js/toastr-settings.js' %}"></script>
+    <script>
+document.addEventListener('deviceready', function () {
+    // Request permissions as soon as the app is ready
+    if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
+        var permissions = cordova.plugins.permissions;
+        var needed = [
+            permissions.CAMERA,
+            permissions.RECORD_AUDIO,
+            permissions.WRITE_EXTERNAL_STORAGE,
+            permissions.READ_EXTERNAL_STORAGE
+        ];
+        permissions.requestPermissions(needed,
+            function(status) {
+                if (!status.hasPermission) {
+                    alert('Camera, audio, and storage permissions are required for this app.');
+                }
+            },
+            function() {
+                alert('Permission request failed');
+            }
+        );
+    }
+});
+</script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
