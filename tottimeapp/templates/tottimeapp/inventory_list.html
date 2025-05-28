@@ -98,7 +98,7 @@
                 <div class="text-center me-3">
                     <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
                 </div>
-                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startBarcodeScanner(updateItemQuantity)" disabled>
+                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startBarcodeScanner(updateItemQuantity)">
                     <i class="fas fa-barcode"></i> Scan
                 </button>
                 <div class="d-flex align-items-center">
@@ -549,27 +549,68 @@
 </script>
 <script>
 document.addEventListener('deviceready', function () {
-    // Enable scan button after Cordova is ready
-    document.querySelectorAll('.btn-warning').forEach(btn => btn.disabled = false);
+    // Request permissions as soon as the app is ready
+    if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
+        var permissions = cordova.plugins.permissions;
+        var needed = [
+            permissions.CAMERA,
+            permissions.RECORD_AUDIO,
+            permissions.WRITE_EXTERNAL_STORAGE,
+            permissions.READ_EXTERNAL_STORAGE
+        ];
+        permissions.requestPermissions(needed,
+            function(status) {
+                if (!status.hasPermission) {
+                    alert('Camera, audio, and storage permissions are required for this app.');
+                }
+            },
+            function() {
+                alert('Permission request failed');
+            }
+        );
+    }
 });
-
-function startBarcodeScanner(onDetectedCallback) {
-    console.log("startBarcodeScanner called");
-    requestAllPermissions(function(granted) {
-        console.log("Permissions granted?", granted);
-        if (granted) {
-            launchBarcodeScanner(onDetectedCallback);
-        } else {
-            alert('Cannot start barcode scanner without permissions.');
-        }
-    });
-}
 </script>
 <script>
+function startBarcodeScanner(onDetectedCallback) {
+    if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
+        var permissions = cordova.plugins.permissions;
+        var needed = [
+            permissions.CAMERA,
+            permissions.RECORD_AUDIO,
+            permissions.WRITE_EXTERNAL_STORAGE,
+            permissions.READ_EXTERNAL_STORAGE
+        ];
+        permissions.hasPermission(needed, function(status) {
+            if (!status.hasPermission) {
+                permissions.requestPermissions(needed, function(status2) {
+                    if (status2.hasPermission) {
+                        launchBarcodeScanner(onDetectedCallback);
+                    } else {
+                        alert('Camera, audio, and storage permissions are required for this app.');
+                    }
+                }, function() {
+                    alert('Permission request failed');
+                });
+            } else {
+                launchBarcodeScanner(onDetectedCallback);
+            }
+        }, function() {
+            alert('Permission check failed');
+        });
+    } else {
+        // Not Cordova, assume permissions are granted
+        launchBarcodeScanner(onDetectedCallback);
+    }
+}
 
 function launchBarcodeScanner(onDetectedCallback) {
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
+    if (typeof Quagga === "undefined") {
+        alert("Barcode scanner not available.");
+        return;
+    }
     Quagga.init({
         inputStream: {
             name: "Live",
@@ -619,7 +660,9 @@ function launchBarcodeScanner(onDetectedCallback) {
         let barcode = result.codeResult.code;
         console.log("Barcode detected:", barcode);
 
-        Quagga.stop();
+        if (typeof Quagga !== "undefined") {
+            Quagga.stop();
+        }
         const modalInstance = bootstrap.Modal.getInstance(document.getElementById('barcodeScannerModal'));
         modalInstance.hide();
         toastr.success(`Barcode detected: ${barcode}`, "Success");
@@ -630,37 +673,8 @@ function launchBarcodeScanner(onDetectedCallback) {
     });
 
     document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
-        if (Quagga) {
+        if (typeof Quagga !== "undefined") {
             Quagga.stop();
-        }
-    });
-
-    const canvas = document.querySelector('#scanner-container canvas');
-    if (canvas) {
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        // Use the context for drawing
-    }
-}
-function updateItemQuantity(barcode) {
-    console.log("Sending barcode to server:", barcode);
-
-    $.ajax({
-        url: "{% url 'update_item_quantity' %}",
-        type: "POST",
-        data: {
-            csrfmiddlewaretoken: "{{ csrf_token }}",
-            barcode: barcode
-        },
-        success: function(response) {
-            if (response.success) {
-                toastr.success(response.message, "Success");
-                location.reload();
-            } else {
-                toastr.error(response.message, "Error");
-            }
-        },
-        error: function(xhr, status, error) {
-            toastr.error("Failed to update item quantity. Please try again.", "Error");
         }
     });
 }
