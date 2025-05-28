@@ -549,19 +549,13 @@
 </script>
 <script>
 document.addEventListener('deviceready', function () {
-    // Request permissions as soon as the app is ready
+    // Request only CAMERA permission
     if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
         var permissions = cordova.plugins.permissions;
-        var needed = [
-            permissions.CAMERA,
-            permissions.RECORD_AUDIO,
-            permissions.WRITE_EXTERNAL_STORAGE,
-            permissions.READ_EXTERNAL_STORAGE
-        ];
-        permissions.requestPermissions(needed,
+        permissions.requestPermission(permissions.CAMERA,
             function(status) {
                 if (!status.hasPermission) {
-                    alert('Camera, audio, and storage permissions are required for this app.');
+                    alert('Camera permission is required for barcode scanning.');
                 }
             },
             function() {
@@ -575,19 +569,13 @@ document.addEventListener('deviceready', function () {
 function startBarcodeScanner(onDetectedCallback) {
     if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
         var permissions = cordova.plugins.permissions;
-        var needed = [
-            permissions.CAMERA,
-            permissions.RECORD_AUDIO,
-            permissions.WRITE_EXTERNAL_STORAGE,
-            permissions.READ_EXTERNAL_STORAGE
-        ];
-        permissions.hasPermission(needed, function(status) {
+        permissions.hasPermission(permissions.CAMERA, function(status) {
             if (!status.hasPermission) {
-                permissions.requestPermissions(needed, function(status2) {
+                permissions.requestPermission(permissions.CAMERA, function(status2) {
                     if (status2.hasPermission) {
                         launchBarcodeScanner(onDetectedCallback);
                     } else {
-                        alert('Camera, audio, and storage permissions are required for this app.');
+                        alert('Camera permission is required for barcode scanning.');
                     }
                 }, function() {
                     alert('Permission request failed');
