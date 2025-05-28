@@ -98,7 +98,7 @@
                 <div class="text-center me-3">
                     <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
                 </div>
-                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startBarcodeScanner(updateItemQuantity)">
+                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startBarcodeScanner(updateItemQuantity)" disabled>
                     <i class="fas fa-barcode"></i> Scan
                 </button>
                 <div class="d-flex align-items-center">
@@ -549,50 +549,14 @@
 </script>
 <script>
 document.addEventListener('deviceready', function () {
-    // Request permissions on app start
-    requestAllPermissions();
+    // Enable scan button after Cordova is ready
+    document.querySelectorAll('.btn-warning').forEach(btn => btn.disabled = false);
 });
 
-function requestAllPermissions(callback) {
-    if (window.cordova && cordova.plugins && cordova.plugins.permissions) {
-        var permissions = cordova.plugins.permissions;
-        var needed = [
-            permissions.CAMERA,
-            permissions.RECORD_AUDIO,
-            permissions.WRITE_EXTERNAL_STORAGE,
-            permissions.READ_EXTERNAL_STORAGE
-        ];
-        permissions.hasPermission(needed, function(status) {
-            if (!status.hasPermission) {
-                permissions.requestPermissions(needed,
-                    function(status2) {
-                        if (status2.hasPermission) {
-                            if (typeof callback === "function") callback(true);
-                        } else {
-                            alert('Camera, audio, and storage permissions are required for this app.');
-                            if (typeof callback === "function") callback(false);
-                        }
-                    },
-                    function() {
-                        alert('Permission request failed');
-                        if (typeof callback === "function") callback(false);
-                    }
-                );
-            } else {
-                if (typeof callback === "function") callback(true);
-            }
-        }, function() {
-            alert('Permission check failed');
-            if (typeof callback === "function") callback(false);
-        });
-    } else {
-        // Not Cordova, assume permissions are granted
-        if (typeof callback === "function") callback(true);
-    }
-}
-
 function startBarcodeScanner(onDetectedCallback) {
+    console.log("startBarcodeScanner called");
     requestAllPermissions(function(granted) {
+        console.log("Permissions granted?", granted);
         if (granted) {
             launchBarcodeScanner(onDetectedCallback);
         } else {
@@ -600,7 +564,9 @@ function startBarcodeScanner(onDetectedCallback) {
         }
     });
 }
-// Move your existing Quagga logic into a new function:
+</script>
+<script>
+
 function launchBarcodeScanner(onDetectedCallback) {
     const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
     modal.show();
