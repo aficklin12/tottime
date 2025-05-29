@@ -301,11 +301,8 @@
             </main>
         </div>
     </div>
-    <button id="testCameraBtn" class="btn btn-danger" style="position:fixed;bottom:20px;right:20px;z-index:2000;">Test Camera</button>
-<div id="cameraTestContainer" style="display:none;position:fixed;bottom:70px;right:20px;z-index:2000;background:#fff;padding:10px;border-radius:8px;">
-    <video id="cameraTestVideo" width="320" height="240" autoplay style="border:1px solid #ccc;"></video>
-    <button onclick="stopCameraTest()" class="btn btn-sm btn-secondary mt-2">Close</button>
-</div>
+ <button onclick="takePicture()">Take Picture</button>
+    <img id="photo" style="width: 100%; max-width: 300px; margin-top: 20px;">
     <!-- JavaScript imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -313,32 +310,21 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="{% static 'js/toastr-settings.js' %}"></script>
-  <script>
-function stopCameraTest() {
-    document.getElementById('cameraTestContainer').style.display = 'none';
-    let video = document.getElementById('cameraTestVideo');
-    if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-    }
-}
-document.getElementById('testCameraBtn').onclick = function() {
-    let container = document.getElementById('cameraTestContainer');
-    let video = document.getElementById('cameraTestVideo');
-    container.style.display = 'block';
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(function(stream) {
-                video.srcObject = stream;
-            })
-            .catch(function(err) {
-                alert('Camera initialization failed: ' + err.name);
-            });
-    } else {
-        alert('Camera API not supported.');
-    }
-};
-</script>
+ <script>
+      function takePicture() {
+        navigator.camera.getPicture(function(imageURI) {
+          document.getElementById('photo').src = imageURI;
+        }, function(message) {
+          alert('Failed because: ' + message);
+        }, {
+          quality: 50,
+          destinationType: Camera.DestinationType.FILE_URI
+        });
+      }
+      document.addEventListener('deviceready', function() {
+        // Cordova is ready
+      });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
