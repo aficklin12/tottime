@@ -301,8 +301,55 @@
             </main>
         </div>
     </div>
- <button onclick="takePicture()">Take Picture</button>
-    <img id="photo" style="width: 100%; max-width: 300px; margin-top: 20px;">
+    <!-- Test Camera Button and Web Camera Modal -->
+    <button id="testWebCameraBtn" class="btn btn-primary" style="position:fixed;bottom:20px;right:20px;z-index:2000;">
+        Test Web Camera
+    </button>
+    <div class="modal fade" id="webCameraModal" tabindex="-1" aria-labelledby="webCameraModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="webCameraModalLabel">Web Camera Test</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <video id="webCameraVideo" autoplay playsinline style="width:100%;height:auto;border:1px solid #ccc;"></video>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    // Test button opens the camera modal and starts the camera using getUserMedia
+    document.getElementById('testWebCameraBtn').onclick = function() {
+        const modal = new bootstrap.Modal(document.getElementById('webCameraModal'));
+        modal.show();
+
+        const video = document.getElementById('webCameraVideo');
+        // Stop any previous stream
+        if (video.srcObject) {
+            video.srcObject.getTracks().forEach(track => track.stop());
+        }
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    alert('Camera access denied: ' + err.message);
+                });
+        } else {
+            alert('Camera API not supported in this browser.');
+        }
+
+        // Stop camera when modal is closed
+        document.getElementById('webCameraModal').addEventListener('hidden.bs.modal', function () {
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+        }, { once: true });
+    };
+    </script>
     <!-- JavaScript imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -310,21 +357,6 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="{% static 'js/toastr-settings.js' %}"></script>
- <script>
-      function takePicture() {
-        navigator.camera.getPicture(function(imageURI) {
-          document.getElementById('photo').src = imageURI;
-        }, function(message) {
-          alert('Failed because: ' + message);
-        }, {
-          quality: 50,
-          destinationType: Camera.DestinationType.FILE_URI
-        });
-      }
-      document.addEventListener('deviceready', function() {
-        // Cordova is ready
-      });
-    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
