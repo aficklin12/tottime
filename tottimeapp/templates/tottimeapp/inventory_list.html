@@ -98,7 +98,7 @@
                 <div class="text-center me-3">
                     <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
                 </div>
-                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startBarcodeScanner(updateItemQuantity)">
+                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startWebBarcodeScanner(updateItemQuantity)">
                     <i class="fas fa-barcode"></i> Scan
                 </button>
                 <div class="d-flex align-items-center">
@@ -665,6 +665,96 @@ function launchBarcodeScanner(onDetectedCallback) {
             Quagga.stop();
         }
     });
+}
+</script>
+<!-- Add this to your inventory_list.html (or the remote template at https://tot-time.com/inventory_list) -->
+<script>
+function startWebBarcodeScanner(onDetectedCallback) {
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('barcodeScannerModal'));
+    modal.show();
+
+    // Get the video element or create one
+    let video = document.createElement('video');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('playsinline', '');
+    video.style.width = "100%";
+    video.style.height = "100%";
+    const scannerContainer = document.getElementById('scanner-container');
+    scannerContainer.innerHTML = '';
+    scannerContainer.appendChild(video);
+
+    // Access the camera
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+                video.srcObject = stream;
+
+                // Use QuaggaJS for barcode scanning
+                if (typeof Quagga !== "undefined") {
+                    Quagga.init({
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: video,
+                            constraints: {
+                                facingMode: "environment"
+                            }
+                        },
+                        decoder: {
+                            readers: [
+                                "code_128_reader",
+                                "ean_reader",
+                                "ean_8_reader",
+                                "upc_reader",
+                                "code_39_reader",
+                                "i2of5_reader",
+                                "2of5_reader"
+                            ],
+                            multiple: false
+                        }
+                    }, function(err) {
+                        if (err) {
+                            alert("Failed to initialize barcode scanner: " + err);
+                            return;
+                        }
+                        Quagga.start();
+                    });
+
+                    Quagga.offDetected();
+                    Quagga.onDetected(function(result) {
+                        let barcode = result.codeResult.code;
+                        Quagga.stop();
+                        // Stop the camera stream
+                        if (video.srcObject) {
+                            video.srcObject.getTracks().forEach(track => track.stop());
+                        }
+                        modal.hide();
+                        toastr.success(`Barcode detected: ${barcode}`, "Success");
+                        if (typeof onDetectedCallback === "function") {
+                            onDetectedCallback(barcode);
+                        }
+                    });
+
+                    // Stop Quagga and camera when modal is closed
+                    document.getElementById('barcodeScannerModal').addEventListener('hidden.bs.modal', function () {
+                        if (typeof Quagga !== "undefined") {
+                            Quagga.stop();
+                        }
+                        if (video.srcObject) {
+                            video.srcObject.getTracks().forEach(track => track.stop());
+                        }
+                    }, { once: true });
+                } else {
+                    alert("Barcode scanner library not loaded.");
+                }
+            })
+            .catch(function(err) {
+                alert('Camera access denied: ' + err.message);
+            });
+    } else {
+        alert('Camera API not supported in this browser.');
+    }
 }
 </script>
 {% endblock %}
