@@ -321,21 +321,21 @@
     </div>
     <script>
     function openCameraBridge() {
-    // Open the local bridge in a new window
-    var bridge = window.open('camera_bridge.html', '_blank', 'width=1,height=1');
-    // Listen for the result
+    var bridgeUrl = 'file:///android_asset/www/camera_bridge.html';
+    // If running in Cordova, use the local file path
+    if (window.cordova && window.location.origin.startsWith('file://')) {
+        bridgeUrl = window.location.origin + '/camera_bridge.html';
+    }
+    var bridge = window.open(bridgeUrl, '_blank', 'width=1,height=1');
     window.addEventListener("message", function handler(event) {
         if (event.data.type === "cameraResult") {
-            // Do something with event.data.image (base64 string)
             alert("Got image from camera!");
-            // Remove listener after use
             window.removeEventListener("message", handler);
         } else if (event.data.type === "cameraError") {
             alert("Camera error: " + event.data.error);
             window.removeEventListener("message", handler);
         }
     });
-    // Tell the bridge to open the camera
     bridge.onload = function() {
         bridge.postMessage("openCamera", "*");
     };
@@ -370,6 +370,10 @@
             }
         }, { once: true });
     };
+
+    if (!window.cordova) {
+        document.querySelector('button[onclick="openCameraBridge()"]').style.display = 'none';
+    }
     </script>
     <!-- JavaScript imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
