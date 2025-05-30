@@ -302,37 +302,6 @@
         </div>
     </div>
    
-    <button onclick="openCameraBridge()">Take Photo (Hybrid Bridge)</button>
-    <div class="modal fade" id="webCameraModal" tabindex="-1" aria-labelledby="webCameraModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="webCameraModalLabel">Web Camera Test</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <video id="webCameraVideo" autoplay playsinline style="width:100%;height:auto;border:1px solid #ccc;"></video>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script>
-    function openCameraBridge() {
-    // Open the local bridge in InAppBrowser
-    var ref = cordova.InAppBrowser.open('camera_bridge.html', '_blank', 'location=no,hidden=yes');
-    window.addEventListener("message", function handler(event) {
-        if (event.data.type === "cameraResult") {
-            // Use event.data.image (base64 string)
-            alert("Got image from camera!");
-            window.removeEventListener("message", handler);
-        } else if (event.data.type === "cameraError") {
-            alert("Camera error: " + event.data.error);
-            window.removeEventListener("message", handler);
-        }
-    });
-    // Optionally, you can use ref.executeScript or listen for custom URL changes for callback
-}
- 
     </script>
     <!-- JavaScript imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
