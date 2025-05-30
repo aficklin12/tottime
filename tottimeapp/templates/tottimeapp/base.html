@@ -301,10 +301,7 @@
             </main>
         </div>
     </div>
-    <!-- Test Camera Button and Web Camera Modal -->
-    <button id="testWebCameraBtn" class="btn btn-primary" style="position:fixed;bottom:20px;right:20px;z-index:2000;">
-        Test Web Camera
-    </button>
+   
     <button onclick="openCameraBridge()">Take Photo (Hybrid Bridge)</button>
     <div class="modal fade" id="webCameraModal" tabindex="-1" aria-labelledby="webCameraModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -321,14 +318,11 @@
     </div>
     <script>
     function openCameraBridge() {
-    var bridgeUrl = 'file:///android_asset/www/camera_bridge.html';
-    // If running in Cordova, use the local file path
-    if (window.cordova && window.location.origin.startsWith('file://')) {
-        bridgeUrl = window.location.origin + '/camera_bridge.html';
-    }
-    var bridge = window.open(bridgeUrl, '_blank', 'width=1,height=1');
+    // Open the local bridge in InAppBrowser
+    var ref = cordova.InAppBrowser.open('camera_bridge.html', '_blank', 'location=no,hidden=yes');
     window.addEventListener("message", function handler(event) {
         if (event.data.type === "cameraResult") {
+            // Use event.data.image (base64 string)
             alert("Got image from camera!");
             window.removeEventListener("message", handler);
         } else if (event.data.type === "cameraError") {
@@ -336,40 +330,9 @@
             window.removeEventListener("message", handler);
         }
     });
-    bridge.onload = function() {
-        bridge.postMessage("openCamera", "*");
-    };
+    // Optionally, you can use ref.executeScript or listen for custom URL changes for callback
 }
-    // Test button opens the camera modal and starts the camera using getUserMedia
-    document.getElementById('testWebCameraBtn').onclick = function() {
-        const modal = new bootstrap.Modal(document.getElementById('webCameraModal'));
-        modal.show();
-
-        const video = document.getElementById('webCameraVideo');
-        // Stop any previous stream
-        if (video.srcObject) {
-            video.srcObject.getTracks().forEach(track => track.stop());
-        }
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                .then(function(stream) {
-                    video.srcObject = stream;
-                })
-                .catch(function(err) {
-                    alert('Camera access denied: ' + err.message);
-                });
-        } else {
-            alert('Camera API not supported in this browser.');
-        }
-
-        // Stop camera when modal is closed
-        document.getElementById('webCameraModal').addEventListener('hidden.bs.modal', function () {
-            if (video.srcObject) {
-                video.srcObject.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-            }
-        }, { once: true });
-    };
+ 
     </script>
     <!-- JavaScript imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
