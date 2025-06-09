@@ -174,6 +174,22 @@ body {
             color: #fff;
         }
 @media (max-width: 1000px) {
+    /* Center all content and titles on small screens */
+
+    body, .container, .card-container, .d-flex, h1, h2, h3, h4, h5, h6 {
+        text-align: center !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+    .d-flex {
+        flex-direction: column !important;
+    }
+    .container, .card-container {
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    /* end Center all content  */
+
     .student-card {
         width: 70px !important;
         height: 90px !important;
