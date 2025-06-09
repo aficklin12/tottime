@@ -173,27 +173,29 @@ body {
             border-color: #007b8a;
             color: #fff;
         }
-body.cordova-app .student-card {
-    width: 35px !important;
-    height: 40px !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    padding-top: 2px !important;
-}
-body.cordova-app .profile-picture-container,
-body.cordova-app .card-img-top.rounded-circle,
-body.cordova-app .profile-picture-container img {
-    width: 25px !important;
-    height: 25px !important;
-    font-size: 0.35rem !important;
-}
-body.cordova-app .card-title {
-    font-size: 0.25rem !important;
-}
-body.cordova-app .checkmark-overlay {
-    width: 35px !important;
-    height: 40px !important;
-    font-size: 0.6rem !important;
+@media (max-width: 600px) {
+    .student-card {
+        width: 70px !important;
+        height: 80px !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        padding-top: 2px !important;
+    }
+    .profile-picture-container,
+    .card-img-top.rounded-circle,
+    .profile-picture-container img {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 0.7rem !important;
+    }
+    .card-title {
+        font-size: 0.5rem !important;
+    }
+    .checkmark-overlay {
+        width: 70px !important;
+        height: 80px !important;
+        font-size: 1.2rem !important;
+    }
 }
     </style>
 {% endblock %}
