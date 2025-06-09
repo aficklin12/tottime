@@ -310,6 +310,11 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="{% static 'js/toastr-settings.js' %}"></script>
+    <script>
+    document.addEventListener("deviceready", function() {
+        document.body.classList.add('cordova-app');
+    }, false);
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
