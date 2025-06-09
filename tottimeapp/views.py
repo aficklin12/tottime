@@ -1457,31 +1457,29 @@ def daily_attendance(request):
 
 @login_required
 def classroom(request):
-    # Check permissions for the specific page
     required_permission_id = 274  # Permission ID for daily_attendance view
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
+
     try:
-        # Check if the user is a MainUser
         main_user = MainUser.objects.get(id=request.user.id)
-        # Fetch all classrooms for the dropdown
         classrooms = Classroom.objects.all()
-        # Get the selected classroom ID from the query parameters
         selected_classroom_id = request.GET.get('classroom_id')
+        status_filter = request.GET.get('status', 'signed_in')  # Default to 'signed_in'
+
         # If no classroom is selected, default to the first assigned classroom
         if not selected_classroom_id:
             assigned_classroom = ClassroomAssignment.objects.filter(mainuser=main_user).first()
             if assigned_classroom:
                 selected_classroom_id = assigned_classroom.classroom.id
-        # Fetch the selected classroom object
+
         selected_classroom = None
         if selected_classroom_id:
             selected_classroom = Classroom.objects.filter(id=selected_classroom_id).first()
-        # Fetch students based on the selected classroom or all assigned students
+
+        # Build the base queryset for students
         if selected_classroom_id:
-            # Fetch students directly assigned to the selected classroom
             students_in_classroom = Student.objects.filter(
                 classroom_id=selected_classroom_id
             ).annotate(
@@ -1492,7 +1490,6 @@ def classroom(request):
                     )
                 )
             ).exclude(
-                # Exclude students with an active classroom_override
                 Exists(
                     AttendanceRecord.objects.filter(
                         student=OuterRef('pk'),
@@ -1501,7 +1498,6 @@ def classroom(request):
                     )
                 )
             )
-            # Fetch students with a classroom_override matching the selected classroom
             students_with_override = Student.objects.filter(
                 attendancerecord__classroom_override=Classroom.objects.get(id=selected_classroom_id).name,
                 attendancerecord__sign_out_time__isnull=True
@@ -1513,14 +1509,18 @@ def classroom(request):
                     )
                 )
             )
-            # Combine both querysets and remove duplicates
-            all_students = students_in_classroom.union(students_with_override).order_by(
-                '-is_signed_in',  # Signed-in students first
-                'last_name',      # Alphabetical by last name
-                'first_name'      # Alphabetical by first name
-            )
+
+            # Apply status filter BEFORE union
+            if status_filter == 'signed_in':
+                students_in_classroom = students_in_classroom.filter(is_signed_in=True)
+                students_with_override = students_with_override.filter(is_signed_in=True)
+            elif status_filter == 'signed_out':
+                students_in_classroom = students_in_classroom.filter(is_signed_in=False)
+                students_with_override = students_with_override.filter(is_signed_in=False)
+            # else 'all': do not filter
+
+            all_students = students_in_classroom.union(students_with_override)
         else:
-            # Fetch all assigned students for the current user
             assigned_students = Student.objects.filter(
                 classroom__assignments__mainuser=main_user
             ).annotate(
@@ -1531,7 +1531,6 @@ def classroom(request):
                     )
                 )
             ).exclude(
-                # Exclude students with an active classroom_override
                 Exists(
                     AttendanceRecord.objects.filter(
                         student=OuterRef('pk'),
@@ -1540,7 +1539,6 @@ def classroom(request):
                     )
                 )
             )
-            # Fetch students based on classroom_override
             override_students = Student.objects.filter(
                 attendancerecord__classroom_override__in=assigned_students.values_list('classroom__name', flat=True),
                 attendancerecord__sign_out_time__isnull=True
@@ -1552,23 +1550,32 @@ def classroom(request):
                     )
                 )
             )
-            # Combine both querysets and remove duplicates
-            all_students = assigned_students.union(override_students).order_by(
-                '-is_signed_in',
-                'last_name',
-                'first_name'
-            )
+
+            # Apply status filter BEFORE union
+            if status_filter == 'signed_in':
+                assigned_students = assigned_students.filter(is_signed_in=True)
+                override_students = override_students.filter(is_signed_in=True)
+            elif status_filter == 'signed_out':
+                assigned_students = assigned_students.filter(is_signed_in=False)
+                override_students = override_students.filter(is_signed_in=False)
+            # else 'all': do not filter
+
+            all_students = assigned_students.union(override_students)
+
+        all_students = all_students.order_by('-is_signed_in', 'last_name', 'first_name')
+
     except MainUser.DoesNotExist:
-        # If the user is not a MainUser, deny access
         all_students = Student.objects.none()
         classrooms = Classroom.objects.none()
         selected_classroom = None
-    # Render the template with all required context
+        status_filter = 'signed_in'
+
     return render(request, 'classroom.html', {
         'assigned_students': all_students,
-        'classrooms': classrooms,  # Pass classrooms for the dropdown
-        'classroom': selected_classroom,  # Pass the selected classroom
-        **permissions_context,  # Include permission flags dynamically
+        'classrooms': classrooms,
+        'classroom': selected_classroom,
+        'status_filter': status_filter,
+        **permissions_context,
     })
 
 @login_required

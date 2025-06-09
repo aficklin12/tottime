@@ -249,14 +249,22 @@ body {
 
                 <!-- Move the Change Classroom Dropdown under the Select Button -->
                 <div class="d-flex align-items-center mt-3" style="margin-left: 10px;">
-                    <select id="classroomFilter" class="form-select" style="width: auto; display: inline-block;">
-                        <option value="" selected>Change Classroom</option> <!-- Default option -->
-                        {% for classroom in classrooms %}
-                        <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == request.GET.classroom_id %}selected{% endif %}>
-                            {{ classroom.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                    <form id="filterForm" method="get" style="display: flex; gap: 10px;">
+                         <select id="statusFilter" name="status" class="form-select" style="width: auto; display: inline-block;">
+                            <option value="signed_in" {% if status_filter == 'signed_in' %}selected{% endif %}>Signed In</option>
+                            <option value="signed_out" {% if status_filter == 'signed_out' %}selected{% endif %}>Signed Out</option>
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                        </select>
+                        <select id="classroomFilter" name="classroom_id" class="form-select" style="width: auto; display: inline-block;">
+                            <option value="" {% if not classroom %}selected{% endif %}>Change Classroom</option>
+                            {% for classroom in classrooms %}
+                            <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == request.GET.classroom_id %}selected{% endif %}>
+                                {{ classroom.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                       
+                    </form>
                 </div>
 
                 <div class="container mt-4">
@@ -298,7 +306,7 @@ body {
                             </div>
                         </div>
                         {% empty %}
-                        <p class="text-center">No students assigned to you.</p>
+                        <p class="text-center">No students signed in.</p>
                         {% endfor %}
                     </div>
                 </div>
@@ -427,6 +435,14 @@ body {
                 </div>
 {% endblock %}
 {% block scripts %}
+<script>
+document.getElementById('statusFilter').addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+});
+document.getElementById('classroomFilter').addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+});
+</script>
             <script>
     $(document).ready(function() {
         let isSelectMode = false; // Track the toggle state of the "Select" button
@@ -631,10 +647,12 @@ body {
             if (isSelectMode) {
                 $('.student-checkbox').show(); // Show individual checkboxes
                 $('#selectAllContainer').show(); // Show "Select All" checkbox
+                $('#actionsContainer').show(); // Show "Actions" button
                 $(this).text('Cancel'); // Change button text to "Cancel"
             } else {
                 $('.student-checkbox').hide(); // Hide individual checkboxes
                 $('#selectAllContainer').hide(); // Hide "Select All" checkbox
+                $('#actionsContainer').hide(); // Hide "Actions" button
                 $('.student-checkbox').prop('checked', false); // Uncheck all checkboxes
                 $('.checkmark-overlay').hide(); // Hide all checkmarks
                 $('#selectAllCheckbox').prop('checked', false); // Uncheck "Select All"
