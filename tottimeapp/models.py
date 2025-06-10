@@ -430,39 +430,28 @@ class MainUser(AbstractUser):
         if self.is_account_owner and self.main_account_owner:
             raise ValidationError("A user cannot be both an account owner and linked to another account owner.")
 
-        # Ensure profile picture exists before checking size
-        if self.profile_picture and hasattr(self.profile_picture, 'size'):
-            if self.profile_picture.size > MAX_IMAGE_SIZE:
+        # Only check size and process image if a new file is being uploaded
+        if self.profile_picture and hasattr(self.profile_picture, 'file'):
+            # Check file size
+            if hasattr(self.profile_picture.file, 'size') and self.profile_picture.file.size > MAX_IMAGE_SIZE:
                 raise ValidationError(f"Profile picture size exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
 
-        # Set default profile picture if none is uploaded
-        default_pic = 'profile_pictures/Default_pfp.jpg'
-        if not self.profile_picture or not self.profile_picture.name:
-            if default_storage.exists(default_pic):
-                self.profile_picture.name = default_pic
-
-        # Resize and process image if provided
-        if self.profile_picture and hasattr(self.profile_picture, 'file'):
             try:
                 img = Image.open(self.profile_picture)
                 width, height = img.size
                 min_dimension = min(width, height)
-
                 # Center crop to a square
                 left = (width - min_dimension) / 2
                 top = (height - min_dimension) / 2
                 right = (width + min_dimension) / 2
                 bottom = (height + min_dimension) / 2
                 img = img.crop((left, top, right, bottom))
-
                 # Create circular mask
                 mask = Image.new('L', img.size, 0)
                 draw = ImageDraw.Draw(mask)
                 draw.ellipse((0, 0, img.size[0], img.size[1]), fill=255)
-
                 img.putalpha(mask)
                 img = img.resize((60, 60), Image.Resampling.LANCZOS)
-
                 # Save image with a unique filename to avoid browser cache issues
                 img_io = BytesIO()
                 img.save(img_io, format='PNG')
@@ -470,9 +459,14 @@ class MainUser(AbstractUser):
                 ext = 'png'
                 filename = f"{self.username}_{uuid.uuid4().hex}.{ext}"
                 self.profile_picture.save(filename, img_io, save=False)
-
             except Exception as e:
                 print(f"Error processing image: {e}")
+
+        # Set default profile picture if none is uploaded
+        default_pic = 'profile_pictures/Default_pfp.jpg'
+        if not self.profile_picture or not self.profile_picture.name:
+            if default_storage.exists(default_pic):
+                self.profile_picture.name = default_pic
 
         # Generate unique code for users not in 'Parent' or 'Free User' groups
         if not self.code and not self.groups.filter(id__in=[5, 6]).exists():
