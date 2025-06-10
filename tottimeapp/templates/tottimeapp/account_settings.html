@@ -27,7 +27,7 @@ h1 {
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="row mb-3">
-        <div class="col-12 col-md-6" style="margin-left: 25px; max-width: 315px;">
+        <div class="col-12 col-md-6" style="margin-left: 25px; max-width: 350px;">
             <label for="firstName" class="form-label">First Name</label>
             <input type="text" class="form-control w-100" style="max-width: 100%;" id="firstName" name="first_name" value="{{ user.first_name }}">
             <label for="lastName" class="form-label mt-2">Last Name</label>

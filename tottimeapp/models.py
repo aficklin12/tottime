@@ -468,7 +468,7 @@ class MainUser(AbstractUser):
                 img.save(img_io, format='PNG')
                 img_io.seek(0)
                 ext = 'png'
-                filename = f"profile_pictures/{self.username}_{uuid.uuid4().hex}.{ext}"
+                filename = f"{self.username}_{uuid.uuid4().hex}.{ext}"
                 self.profile_picture.save(filename, img_io, save=False)
 
             except Exception as e:
