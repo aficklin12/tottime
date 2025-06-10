@@ -18,6 +18,19 @@ h1 {
             margin-left: 0px !important;
 
         }
+@media (max-width: 1000px) {
+    html, body {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    .col-12.col-md-6 {
+        margin-left: 0 !important;
+        max-width: 100vw !important;
+        width: 100vw !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
 </style>
 {% endblock %}
 
@@ -39,7 +52,6 @@ h1 {
             <input type="text" class="form-control w-100" style="max-width: 100%;" id="address" name="address" value="{{ user.address }}">
             <label for="code" class="form-label mt-2">Code</label>
             <input type="number" class="form-control w-100" style="max-width: 100%;" id="code" name="code" value="{{ user.code }}" min="0" step="1" pattern="\d*">
-            <label for="profilePictureInput" class="form-label mt-2">Profile Picture</label>
             {% if user.profile_picture %}
             <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 75px; height: 75px;">
             {% else %}
