@@ -13,31 +13,36 @@ h1 {
     font-weight: bold;
     font-size: 40px;
 }
+
 </style>
 {% endblock %}
 
 {% block content %}
 
-            <h1>Account</h1>
-
-        <!-- Profile Picture Section -->
-        <div class="row mb-3">
-            <div class="col-md-6" style="margin-left: 25px;">
-                <label for="profilePictureInput" class="form-label">Profile Picture</label>
+<h1>Account</h1>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-md-6" style="margin-left: 25px;">
+            <label for="profilePictureInput" class="form-label">Profile Picture</label>
+            <div class="d-flex align-items-center">
                 <input 
                     type="file" 
-                    class="form-control" 
+                    class="form-control"
+                    style="max-width: 280px; display: inline-block; margin-right: 10px;"
                     id="profilePictureInput" 
                     name="profile_picture" 
                     accept="image/*">
-                {% if user.profile_picture %}
-                <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 150px; height: 150px;">
-                {% else %}
-                <img src="{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 150px; height: 150px;">
-                {% endif %}
+                <button type="submit" class="btn btn-secondary mt-0" style="height: 38px;">Upload</button>
             </div>
+            {% if user.profile_picture %}
+            <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 90px; height: 90px;">
+            {% else %}
+            <img src="{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 90px; height: 90px;">
+            {% endif %}
         </div>
-
+    </div>
+</form>
 {% endblock %}
 
 {% block scripts %}

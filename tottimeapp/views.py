@@ -340,56 +340,20 @@ def menu(request):
 @login_required
 def account_settings(request):
     success_message = ""
-    # Check permissions for the specific page
-    required_permission_id = None  # No specific permission required for this page
+    required_permission_id = None
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    # Set the Stripe API key
-    sub_user = SubUser.objects.filter(user=request.user).first()
-    if sub_user and sub_user.main_user.stripe_secret_key:
-        stripe.api_key = sub_user.main_user.stripe_secret_key
-    else:
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-    print("Stripe API Key:", stripe.api_key)  # Debug log
-    # Process wallet deposit if POST
-    if request.method == "POST":
-        try:
-            amount = float(request.POST.get("amount", 0))
-        except (TypeError, ValueError):
-            return JsonResponse({'error': 'Invalid deposit amount.'}, status=400)
 
-        payment_method = request.POST.get("payment_method")
-        if amount <= 0:
-            return JsonResponse({'error': 'Deposit amount must be positive.'}, status=400)
+    if request.method == "POST" and request.FILES.get("profile_picture"):
+        user = request.user
+        user.profile_picture = request.FILES["profile_picture"]
+        user.save()
+        success_message = "Profile picture updated successfully."
 
-        # For cash or check, update the wallet balance directly
-        if payment_method in ["cash", "check"]:
-            sub_user.balance += Decimal(amount)
-            sub_user.save()
-            return JsonResponse({
-                'success': f"${amount} deposited successfully.",
-                'new_balance': str(sub_user.balance)
-            })
-        else:
-            # For card payments, create a Stripe PaymentIntent
-            try:
-                payment_intent = stripe.PaymentIntent.create(
-                    amount=int(amount * 100),  # Convert dollars to cents
-                    currency="usd",
-                    description=f"Wallet deposit for {request.user.username}",
-                    receipt_email=request.user.email,
-                )
-                return JsonResponse({'client_secret': payment_intent['client_secret']})
-            except Exception as e:
-                return JsonResponse({'error': str(e)}, status=400)
-
-    # Render the account settings page
     return render(request, 'account_settings.html', {
-        **permissions_context,  # Include permission flags dynamically
-        'sub_user': sub_user,
-        'stripe_public_key': getattr(sub_user.main_user, 'stripe_public_key', settings.STRIPE_PUBLIC_KEY) if sub_user else settings.STRIPE_PUBLIC_KEY,
+        **permissions_context,
+        "success_message": success_message,
     })
 
 @login_required
