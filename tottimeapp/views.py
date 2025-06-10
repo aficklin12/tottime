@@ -345,17 +345,24 @@ def account_settings(request):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    if request.method == "POST" and request.FILES.get("profile_picture"):
-        user = request.user
-        user.profile_picture = request.FILES["profile_picture"]
+    user = request.user
+
+    if request.method == "POST":
+        user.first_name = request.POST.get("first_name", user.first_name)
+        user.last_name = request.POST.get("last_name", user.last_name)
+        user.email = request.POST.get("email", user.email)
+        user.phone_number = request.POST.get("phone_number", user.phone_number)
+        user.address = request.POST.get("address", user.address)
+        user.code = request.POST.get("code", user.code)
+        if request.FILES.get("profile_picture"):
+            user.profile_picture = request.FILES["profile_picture"]
         user.save()
-        success_message = "Profile picture updated successfully."
+        success_message = "Account information updated successfully."
 
     return render(request, 'account_settings.html', {
         **permissions_context,
         "success_message": success_message,
     })
-
 @login_required
 def menu_rules(request):
     # Check permissions for the specific page
