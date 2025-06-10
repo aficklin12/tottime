@@ -18,22 +18,7 @@ h1 {
             margin-left: 0px !important;
 
         }
-@media (max-width: 1000px) {
-    html, body {
-        max-width: 100vw;
-        overflow-x: hidden;
-    }
-    .col-12.col-md-6 {
-        margin-left: 0 !important;
-        max-width: 100vw !important;
-        width: 100vw !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-    .account-form-col {
-    padding-left: 8px;
-}
-}
+
 </style>
 {% endblock %}
 
@@ -42,7 +27,7 @@ h1 {
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="row mb-3">
-        <div class="col-12 col-md-6 account-form-col" style="margin-left: 25px; max-width: 400px;">
+        <div class="col-12 col-md-6" style="margin-left: 25px; max-width: 300px;">
             <label for="firstName" class="form-label">First Name</label>
             <input type="text" class="form-control w-100" style="max-width: 100%;" id="firstName" name="first_name" value="{{ user.first_name }}">
             <label for="lastName" class="form-label mt-2">Last Name</label>
