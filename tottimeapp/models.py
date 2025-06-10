@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 from io import BytesIO
 from datetime import date
 from django.core.exceptions import ValidationError
-import random
+import random, uuid
 from django.core.files.storage import default_storage
 from django.conf import settings
 from datetime import timedelta
@@ -402,17 +402,21 @@ class MainUser(AbstractUser):
     square_merchant_id = models.CharField(max_length=255, blank=True, null=True)
     square_location_id = models.CharField(max_length=255, blank=True, null=True)
     code = models.CharField(max_length=4, unique=True, blank=True, null=True)
-    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True, default='profile_pictures/Default_pfp.jpg')
-
-    # New fields
-    is_account_owner = models.BooleanField(default=False)  # Marks if the user is an account owner
-    main_account_owner = models.ForeignKey(
-        'self', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+    profile_picture = models.ImageField(
+        upload_to='profile_pictures/', 
         blank=True, 
+        null=True, 
+        default='profile_pictures/Default_pfp.jpg'
+    )
+
+    is_account_owner = models.BooleanField(default=False)
+    main_account_owner = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='linked_users'
-    )  # Links to the account owner (another MainUser)
+    )
 
     def __str__(self):
         if self.is_account_owner:
@@ -459,11 +463,13 @@ class MainUser(AbstractUser):
                 img.putalpha(mask)
                 img = img.resize((60, 60), Image.Resampling.LANCZOS)
 
-                # Save image
+                # Save image with a unique filename to avoid browser cache issues
                 img_io = BytesIO()
                 img.save(img_io, format='PNG')
                 img_io.seek(0)
-                self.profile_picture.save(self.profile_picture.name, img_io, save=False)
+                ext = 'png'
+                filename = f"profile_pictures/{self.username}_{uuid.uuid4().hex}.{ext}"
+                self.profile_picture.save(filename, img_io, save=False)
 
             except Exception as e:
                 print(f"Error processing image: {e}")
@@ -476,8 +482,8 @@ class MainUser(AbstractUser):
 
     def generate_unique_code(self):
         """Generates a unique 4-digit code."""
-        code = str(random.randint(1000, 9999))  # Generates a random 4-digit number
-        while MainUser.objects.filter(code=code).exists():  # Ensure the code is unique
+        code = str(random.randint(1000, 9999))
+        while MainUser.objects.filter(code=code).exists():
             code = str(random.randint(1000, 9999))
         return code
     
