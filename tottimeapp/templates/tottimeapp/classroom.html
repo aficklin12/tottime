@@ -207,6 +207,19 @@ body {
     }
     .card-title {
         font-size: 0.5rem !important;
+        max-width: 60px !important;      /* Limit width to fit card */
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: normal !important;  /* Allow wrapping */
+        word-break: break-word !important;
+        display: block !important;
+        margin: 0 auto !important;
+    }
+    .card-body.p-2 {
+        padding: 2px !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     .checkmark-overlay {
         margin-left: -4px !important;
