@@ -101,6 +101,15 @@
 .btn-primary {
      margin-top: 20px!important;
 }
+
+.classroom-color-dot {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    vertical-align: middle;
+}
     </style>
 {% endblock %}
 
@@ -125,6 +134,10 @@
                     <div class="mb-3">
                         <label for="classroomRatios" class="form-label">Ratios</label>
                         <input type="number" class="form-control" id="classroomRatios" name="ratios" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="classroomColor" class="form-label">Classroom Color</label>
+                        <input type="color" class="form-control form-control-color" id="classroomColor" name="color" value="#57bdb4" title="Choose your color">
                     </div>
                     <button type="submit" class="btn btn-primary">Add Classroom</button>
                 </form>
@@ -162,6 +175,7 @@
             <th>Classroom</th>
             <th>Ratios</th>
             <th>Assigned Teachers</th>
+            <th>Color</th>
             <th class="delete-column" id="deleteColumnHeader">
                 <i class="fas fa-trash-alt" style="color: white;"></i>
             </th>
@@ -181,10 +195,12 @@
                 {{ classroom.teachers }}
                 {% endif %}
             </td>
+            <td style="text-align: center;">
+            <span class="classroom-color-dot" style="background-color: {{ classroom.color }};"></span>
+            </td>
             <td class="delete-column">
                 <!-- Trashcan Icon for Deleting Classroom -->
                 <i class="fas fa-trash-alt delete-record" data-id="{{ classroom.id }}" style="color: red; cursor: pointer;"></i>
-                                
             </td>
         </tr>
         {% empty %}
@@ -270,6 +286,7 @@
 
             const name = document.getElementById('classroomName').value;
             const ratios = document.getElementById('classroomRatios').value;
+            const color = document.getElementById('classroomColor').value;
 
             fetch("{% url 'add_classroom' %}", {
                 method: 'POST',
@@ -277,12 +294,11 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}',
                 },
-                body: JSON.stringify({ name, ratios }),
+                body: JSON.stringify({ name, ratios, color }),
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Reload the page or update the table dynamically
                     location.reload();
                 } else {
                     alert('Error adding classroom: ' + data.error);

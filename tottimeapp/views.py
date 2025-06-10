@@ -2198,6 +2198,7 @@ def classroom_options_classrooms(request):
             'id': classroom.id,  # Include the classroom ID
             'name': classroom.name,
             'ratios': classroom.ratios,
+            'color': classroom.color,
             'teachers': ', '.join(assigned_teachers) if assigned_teachers else 'No teachers currrently assigned to this classroom.',
         })
 
@@ -2215,11 +2216,12 @@ def add_classroom(request):
             data = json.loads(request.body)
             name = data.get('name')
             ratios = data.get('ratios')
+            color = data.get('color', '#57bdb4')
 
             if not name or not ratios:
                 return JsonResponse({'success': False, 'error': 'Invalid data'})
 
-            Classroom.objects.create(user=request.user, name=name, ratios=ratios)
+            Classroom.objects.create(user=request.user, name=name, ratios=ratios, color=color)  # <-- add color here
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
@@ -2604,6 +2606,7 @@ def edit_classroom(request, classroom_id):
         # Handle form submission
         name = request.POST.get('name')
         ratios = request.POST.get('ratios')
+        color = request.POST.get('color', '#57bdb4')  # Default if not provided
 
         # Validate the form inputs
         if not name:
@@ -2625,6 +2628,7 @@ def edit_classroom(request, classroom_id):
         # Update classroom information
         classroom.name = name
         classroom.ratios = int(ratios)
+        classroom.color = color  # Save the color
         classroom.save()
 
         # Redirect to the previous page or the classroom list

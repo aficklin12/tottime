@@ -206,6 +206,7 @@ class Classroom(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     ratios = models.IntegerField(default=1)
+    color = models.CharField(max_length=7, default="#57bdb4")  # Default color
 
     def __str__(self):
         return self.name
