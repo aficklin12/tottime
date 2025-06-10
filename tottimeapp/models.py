@@ -430,10 +430,10 @@ class MainUser(AbstractUser):
         if self.is_account_owner and self.main_account_owner:
             raise ValidationError("A user cannot be both an account owner and linked to another account owner.")
 
-        # Only check size and process image if a new file is being uploaded
-        if self.profile_picture and hasattr(self.profile_picture, 'file'):
+        # Only check size and process image if a new file is being uploaded (in memory)
+        if self.profile_picture and getattr(self.profile_picture, '_file', None):
             # Check file size
-            if hasattr(self.profile_picture.file, 'size') and self.profile_picture.file.size > MAX_IMAGE_SIZE:
+            if hasattr(self.profile_picture._file, 'size') and self.profile_picture._file.size > MAX_IMAGE_SIZE:
                 raise ValidationError(f"Profile picture size exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
 
             try:
