@@ -1673,16 +1673,12 @@ def get_attendance_record(request, student_id):
 
 @login_required
 def edit_student_info(request, student_id):
-    # Check permissions for the specific page
     permissions_context = check_permissions(request)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
     student = get_object_or_404(Student, id=student_id)
-    classrooms = Classroom.objects.all()  # Fetch all classrooms
-
-    # Get the previous page URL from the Referer header or the form
+    classrooms = Classroom.objects.all()
     previous_page = request.POST.get('previous_page', request.META.get('HTTP_REFERER', '/'))
 
     if request.method == 'POST':
@@ -1692,36 +1688,50 @@ def edit_student_info(request, student_id):
         code = request.POST.get('code')
         classroom_id = request.POST.get('classroom')
         profile_picture = request.FILES.get('profile_picture')
-        status = request.POST.get('status')  # Get the status field from the form
+        status = request.POST.get('status')
 
         if not first_name or not last_name:
             return render(request, 'tottimeapp/edit_student.html', {
                 'student': student,
                 'classrooms': classrooms,
                 'error': 'First and last name are required.',
-                'previous_page': previous_page,  # Pass the previous page URL to the template
-                **permissions_context,  # Include permission flags dynamically
+                'previous_page': previous_page,
+                **permissions_context,
             })
 
         classroom = get_object_or_404(Classroom, id=classroom_id)
         student.first_name = first_name
         student.last_name = last_name
-        student.date_of_birth = dob
+
+        # Convert dob to date if needed
+        if dob:
+            try:
+                student.date_of_birth = datetime.strptime(dob, "%Y-%m-%d").date()
+            except ValueError:
+                return render(request, 'tottimeapp/edit_student.html', {
+                    'student': student,
+                    'classrooms': classrooms,
+                    'error': 'Invalid date format.',
+                    'previous_page': previous_page,
+                    **permissions_context,
+                })
+
         student.code = code
         student.classroom = classroom
-        student.status = status  # Update the status field
+        student.status = status
+
+        # Only update profile_picture if a new file is uploaded
         if profile_picture:
             student.profile_picture = profile_picture
-        student.save()
 
-        # Redirect to the previous page after saving
+        student.save()
         return redirect(previous_page)
 
     return render(request, 'tottimeapp/edit_student.html', {
         'student': student,
         'classrooms': classrooms,
-        'previous_page': previous_page,  # Pass the previous page URL to the template
-        **permissions_context,  # Include permission flags dynamically
+        'previous_page': previous_page,
+        **permissions_context,
     })
 
 @csrf_exempt
