@@ -362,7 +362,9 @@ def account_settings(request):
     return render(request, 'account_settings.html', {
         **permissions_context,
         "success_message": success_message,
+        "user": user, 
     })
+
 @login_required
 def menu_rules(request):
     # Check permissions for the specific page
@@ -1668,6 +1670,7 @@ def get_attendance_record(request, student_id):
         }
 
     return JsonResponse(data)
+
 @login_required
 def edit_student_info(request, student_id):
     # Check permissions for the specific page
@@ -1688,7 +1691,7 @@ def edit_student_info(request, student_id):
         dob = request.POST.get('dob')
         code = request.POST.get('code')
         classroom_id = request.POST.get('classroom')
-        profile_picture = request.FILES.get('profilePicture')
+        profile_picture = request.FILES.get('profile_picture')
         status = request.POST.get('status')  # Get the status field from the form
 
         if not first_name or not last_name:
