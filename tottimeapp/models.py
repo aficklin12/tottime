@@ -12,6 +12,7 @@ from django.conf import settings
 from datetime import timedelta
 from datetime import datetime
 import os
+from django.core.files.base import ContentFile
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 class Location(models.Model):
@@ -223,9 +224,13 @@ class Student(models.Model):
     date_of_birth = models.DateField()
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     code = models.CharField(max_length=4, unique=True)
-    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='students')
-    profile_picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True, default='student_pictures/default.jpg')  # New field for profile picture
-     # New status field
+    classroom = models.ForeignKey('Classroom', on_delete=models.CASCADE, related_name='students')
+    profile_picture = models.ImageField(
+        upload_to='student_pictures/',
+        blank=True,
+        null=True,
+        default='student_pictures/default.jpg'
+    )
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('inactive', 'Inactive'),
@@ -235,6 +240,46 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+    def save(self, *args, **kwargs):
+        # Only process if a new file is uploaded
+        if self.profile_picture and getattr(self.profile_picture, '_file', None):
+            # Check file size
+            if hasattr(self.profile_picture._file, 'size') and self.profile_picture._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Profile picture size exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+
+            try:
+                img = Image.open(self.profile_picture)
+                width, height = img.size
+                min_dimension = min(width, height)
+                # Center crop to a square
+                left = (width - min_dimension) / 2
+                top = (height - min_dimension) / 2
+                right = (width + min_dimension) / 2
+                bottom = (height + min_dimension) / 2
+                img = img.crop((left, top, right, bottom))
+                # Create circular mask
+                mask = Image.new('L', img.size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0, img.size[0], img.size[1]), fill=255)
+                img.putalpha(mask)
+                img = img.resize((60, 60), Image.Resampling.LANCZOS)
+                # Save image with a unique filename
+                img_io = BytesIO()
+                img.save(img_io, format='PNG')
+                img_io.seek(0)
+                ext = 'png'
+                filename = f"{self.first_name}_{self.last_name}_{uuid.uuid4().hex}.{ext}"
+                self.profile_picture.save(filename, ContentFile(img_io.read()), save=False)
+            except Exception as e:
+                print(f"Error processing student image: {e}")
+
+        # Set default if none
+        default_pic = 'student_pictures/default.jpg'
+        if not self.profile_picture or not self.profile_picture.name:
+            self.profile_picture.name = default_pic
+
+        super(Student, self).save(*args, **kwargs)
 
 class IncidentReport(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
