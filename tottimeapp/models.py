@@ -242,10 +242,11 @@ class Student(models.Model):
         return f"{self.first_name} {self.last_name}"
 
     def save(self, *args, **kwargs):
-        # Only process if a new file is uploaded
-        if self.profile_picture and getattr(self.profile_picture, '_file', None):
+        # Only process if a new file is uploaded (InMemoryUploadedFile)
+        from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+        if isinstance(self.profile_picture, (InMemoryUploadedFile, TemporaryUploadedFile)):
             # Check file size
-            if hasattr(self.profile_picture._file, 'size') and self.profile_picture._file.size > MAX_IMAGE_SIZE:
+            if hasattr(self.profile_picture, 'size') and self.profile_picture.size > MAX_IMAGE_SIZE:
                 raise ValidationError(f"Profile picture size exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
 
             try:
