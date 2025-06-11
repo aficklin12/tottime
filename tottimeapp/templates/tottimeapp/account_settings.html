@@ -46,11 +46,14 @@ h1 {
             <img src="{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 75px; height: 75px;">
             {% endif %}
             <input 
-                type="file" 
-                class="form-control mt-2 w-100"
-                style="max-width: 100%;"
-                id="profilePictureInput" 
-                name="profile_picture">
+            type="file" 
+            class="form-control mt-2 w-100"
+            style="max-width: 100%;"
+            id="profilePictureInput" 
+            name="profile_picture"
+            accept="image/*"
+            capture="environment"
+        >
             <button type="submit" class="btn btn-primary mt-2" style="height: 38px;">Save Changes</button>
         </div>
     </div>
