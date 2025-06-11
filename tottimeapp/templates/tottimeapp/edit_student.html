@@ -142,6 +142,18 @@
             </div>
         </div>
 
+      <!-- Profile Picture -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="profilePicture" class="form-label">Profile Picture</label>
+            {% if student.profile_picture %}
+                <img src="{{ student.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 150px; height: 150px;">
+            {% else %}
+                <img src="{% static 'student_pictures/default.jpg' %}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 150px; height: 150px;">
+            {% endif %}
+            <input type="file" class="form-control mt-2" id="profilePicture" name="profile_picture" accept="image/*">
+        </div>
+    </div>
 
         <!-- Submit and Cancel Buttons -->
         <div class="row">
