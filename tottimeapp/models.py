@@ -229,7 +229,7 @@ class Student(models.Model):
         upload_to='student_pictures/',
         blank=True,
         null=True,
-        default='student_pictures/default.jpg'
+        default='student_pictures/default.png'
     )
     STATUS_CHOICES = [
         ('active', 'Active'),
@@ -276,7 +276,7 @@ class Student(models.Model):
                 print(f"Error processing student image: {e}")
 
         # Set default if none
-        default_pic = 'student_pictures/default.jpg'
+        default_pic = 'student_pictures/default.png'
         if not self.profile_picture or not self.profile_picture.name:
             self.profile_picture.name = default_pic
 
@@ -452,7 +452,7 @@ class MainUser(AbstractUser):
         upload_to='profile_pictures/', 
         blank=True, 
         null=True, 
-        default='profile_pictures/Default_pfp.jpg'
+        default='profile_pictures/default.png'
     )
 
     is_account_owner = models.BooleanField(default=False)
@@ -509,7 +509,7 @@ class MainUser(AbstractUser):
                 print(f"Error processing image: {e}")
 
         # Set default profile picture if none is uploaded
-        default_pic = 'profile_pictures/Default_pfp.jpg'
+        default_pic = 'profile_pictures/default.png'
         if not self.profile_picture or not self.profile_picture.name:
             if default_storage.exists(default_pic):
                 self.profile_picture.name = default_pic
