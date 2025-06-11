@@ -145,7 +145,6 @@
       <!-- Profile Picture -->
     <div class="row mb-3">
         <div class="col-md-6">
-            <label for="profilePicture" class="form-label">Profile Picture</label>
             {% if student.profile_picture %}
                 <img src="{{ student.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 150px; height: 150px;">
             {% else %}
@@ -154,7 +153,9 @@
             <input type="file" class="form-control mt-2" id="profilePicture" name="profile_picture" accept="image/*">
         </div>
     </div>
-
+     <div class="form-text text-muted mt-1">
+            Take photo functionality currently unavailable.
+            </div>
         <!-- Submit and Cancel Buttons -->
         <div class="row">
             <div class="col-md-12">
