@@ -45,27 +45,23 @@ h1 {
             {% else %}
             <img src="{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 75px; height: 75px;">
             {% endif %}
-         <!-- Replace your file input with a button -->
-<button type="button" class="btn btn-secondary mt-2" onclick="chooseProfilePicture()">Choose Profile Picture</button>
-<input type="hidden" id="profilePictureInput" name="profile_picture">
- </div>
+          <input 
+                type="file" 
+                class="form-control mt-2 w-100"
+                style="max-width: 100%;"
+                id="profilePictureInput" 
+                name="profile_picture"
+                accept="image/*"
+            >
+            <div class="form-text text-muted mt-1">
+            Take photo functionality currently unavailable.
+            </div>
+            <button type="submit" class="btn btn-primary mt-2" style="height: 38px;">Save Changes</button>
+        </div>
     </div>
 </form>
 {% endblock %}
 
 {% block scripts %}
-<script>
-function chooseProfilePicture() {
-    if (window.fileChooser) {
-        window.fileChooser.open({ mime: 'image/*' }, function(uri) {
-            document.getElementById('profilePictureInput').value = uri;
-            alert('Image selected!');
-        }, function(error) {
-            alert('No file selected.');
-        });
-    } else {
-        alert('File chooser not available.');
-    }
-}
-</script>
+
 {% endblock %}
