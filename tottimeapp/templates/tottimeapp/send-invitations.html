@@ -94,7 +94,7 @@ input {
     {% endif %}
 </div>
 
-<!-- Edit Linked Students Modal (matching edit_parent.html) -->
+<!-- Edit Linked Students Modal -->
 <div class="modal fade" id="editStudentsModal" tabindex="-1" aria-labelledby="editStudentsModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -104,8 +104,8 @@ input {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body" style="max-height: 55vh; overflow-y: auto;">
-          <input type="text" id="studentSearch" class="form-control mb-2" placeholder="Search students..." onkeyup="filterStudents()">
-          <div id="studentList">
+          <input type="text" id="inviteStudentSearch" class="form-control mb-2" placeholder="Search students..." onkeyup="filterInviteStudents()">
+          <div id="inviteStudentList">
             {% for student in students %}
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="students" id="student{{ student.id }}" value="{{ student.id }}">
@@ -130,9 +130,9 @@ input {
 
 {% block scripts %}
 <script>
-function filterStudents() {
-    const searchInput = document.getElementById('studentSearch').value.toLowerCase();
-    const studentList = document.getElementById('studentList');
+function filterInviteStudents() {
+    const searchInput = document.getElementById('inviteStudentSearch').value.toLowerCase();
+    const studentList = document.getElementById('inviteStudentList');
     const students = studentList.getElementsByClassName('form-check');
     for (let student of students) {
         const label = student.getElementsByTagName('label')[0];
@@ -153,13 +153,12 @@ function toggleStudentModalButton() {
         document.getElementById('student_ids_hidden').value = '';
         document.getElementById('selected-students-summary').innerHTML = '';
         // Uncheck all checkboxes
-        var checks = document.querySelectorAll('#studentList input[type=checkbox]');
+        var checks = document.querySelectorAll('#inviteStudentList input[type=checkbox]');
         checks.forEach(c => c.checked = false);
     }
 }
-// Save selected students from modal to hidden input and summary
 function saveSelectedStudents() {
-    var checked = document.querySelectorAll('#studentList input[type=checkbox]:checked');
+    var checked = document.querySelectorAll('#inviteStudentList input[type=checkbox]:checked');
     var ids = Array.from(checked).map(cb => cb.value);
     document.getElementById('student_ids_hidden').value = ids.join(',');
     // Show summary
