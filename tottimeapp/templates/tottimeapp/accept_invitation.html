@@ -14,12 +14,12 @@
         background: #fff;
         border-radius: 1rem;
         box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.15);
-        padding: 2.5rem 2.5rem 2rem 2.5rem;
-        max-width: 430px;
+        padding: 2rem 1.5rem 1.5rem 1.5rem;
+        max-width: 300px;
         width: 100%;
         display: flex;
         flex-direction: column;
-        /* Remove align-items: center to avoid stretching */
+        align-items: center;
     }
     .center-box h1,
     .center-box h3 {
@@ -32,12 +32,22 @@
     .form-floating .form-control {
         width: 100%;
         text-align: center;
+        box-sizing: border-box;
     }
     .btn-block {
         width: 100%;
     }
     .text-center {
         width: 100%;
+    }
+    .row.mb-3 {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .col-6 {
+        padding-left: 0;
+        padding-right: 0;
     }
 </style>
 
@@ -69,7 +79,7 @@
                 <input class="form-control" id="inputUsername" type="text" name="username" placeholder="Username" required>
                 <label for="inputUsername">Username</label>
             </div>
-            <div class="row mb-3" style="width:100%;">
+            <div class="row mb-3">
                 <div class="col-6">
                     <div class="form-floating mb-3 mb-md-0">
                         <input class="form-control" id="inputPassword" type="password" name="password1" placeholder="Password" required>
