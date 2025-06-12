@@ -3115,13 +3115,15 @@ def send_invitation(request):
 
     success_message = ""
     roles = Group.objects.filter(id__in=range(2, 8)).exclude(id=6)
+    students = Student.objects.all()  # Add this line
 
     if request.method == 'POST':
         form = InvitationForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data['email']
-            role = form.cleaned_data['role']  # This is a Group instance
+            role = form.cleaned_data['role']
             token = str(uuid.uuid4())
+            student_ids = request.POST.getlist('student_ids')  # Get selected students
 
             invitation = Invitation.objects.create(
                 email=email,
@@ -3129,6 +3131,8 @@ def send_invitation(request):
                 invited_by=request.user,
                 token=token
             )
+
+            # Optionally, store student_ids in the invitation if you want to use them later
 
             invitation_link = f"https://tot-time.com/accept-invitation/{token}/"
 
@@ -3147,6 +3151,7 @@ def send_invitation(request):
         'form': form,
         'success_message': success_message,
         'roles': roles,
+        'students': students,  # Add this line
         **permissions_context,
     })
 
