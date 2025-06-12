@@ -3135,9 +3135,8 @@ def send_invitation(request):
                 token=token
             )
 
-            # Create the invitation link
-            invitation_link = f"http://127.0.0.1:8000/accept-invitation/{token}/"
-
+            invitation_link = f"https://tot-time.com/accept-invitation/{token}/"
+            
             # Send the email
             send_mail(
                 'Invitation to Join',
