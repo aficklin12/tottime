@@ -3129,7 +3129,8 @@ def send_invitation(request):
                 email=email,
                 role=role,
                 invited_by=request.user,
-                token=token
+                token=token,
+                student_ids=','.join(student_ids) if student_ids else None  # Save selected students
             )
 
             # Optionally, store student_ids in the invitation if you want to use them later
@@ -3177,11 +3178,15 @@ def accept_invitation(request, token):
                 last_name=last_name,
                 main_account_owner=invitation.invited_by
             )
-            SubUser.objects.create(
+            subuser = SubUser.objects.create(
                 user=user,
                 main_user=invitation.invited_by,
                 group_id=invitation.role
             )
+            # Link students if any
+            if invitation.student_ids:
+                student_ids = [int(sid) for sid in invitation.student_ids.split(',') if sid]
+                subuser.students.set(student_ids)
             invitation.delete()
             return redirect('login')
     except Invitation.DoesNotExist:

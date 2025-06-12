@@ -426,13 +426,12 @@ class RolePermission(models.Model):
 class Invitation(models.Model):
     email = models.EmailField()
     role = models.ForeignKey(Group, on_delete=models.CASCADE)
+    student_ids = models.CharField(max_length=255, blank=True, null=True)
     invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token = models.CharField(max_length=100, unique=True)  # To create unique links
     created_at = models.DateTimeField(auto_now_add=True)
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
-MAX_IMAGE_SIZE = 5 * 1024 * 1024
-
 class MainUser(AbstractUser):
     first_name = models.CharField(max_length=30, blank=False)
     last_name = models.CharField(max_length=30, blank=False)
