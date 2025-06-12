@@ -72,5 +72,13 @@ function toggleStudentSelect() {
         studentContainer.style.display = 'none';
     }
 }
+
+// Initialize Select2 on the student_ids select
+document.addEventListener('DOMContentLoaded', function() {
+    $('#student_ids').select2({
+        placeholder: "Select students...",
+        width: '100%'
+    });
+});
 </script>
 {% endblock %}
