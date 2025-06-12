@@ -79,7 +79,7 @@ input {
             <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editStudentsModal">
                 <i class="fas fa-edit"></i> Link Students
             </button>
-            <div id="selected-students-summary" style="margin-top:10px;"></div>
+            <ul id="selected-students-summary" class="list-group mt-2"></ul>
         </div>
         <!-- Hidden input to store selected student IDs -->
         <input type="hidden" name="student_ids" id="student_ids_hidden">
@@ -160,11 +160,15 @@ function saveSelectedStudents() {
     var checked = document.querySelectorAll('#inviteStudentList input[type=checkbox]:checked');
     var ids = Array.from(checked).map(cb => cb.value);
     document.getElementById('student_ids_hidden').value = ids.join(',');
-    // Show summary
+
+    // Show summary as a styled list-group
     var names = Array.from(checked).map(cb => cb.nextElementSibling.textContent.trim());
-    document.getElementById('selected-students-summary').innerHTML = names.length
-        ? '<strong>Linked Students:</strong> ' + names.join(', ')
-        : '';
+    var summary = document.getElementById('selected-students-summary');
+    if (names.length) {
+        summary.innerHTML = names.map(name => `<li class="list-group-item">${name}</li>`).join('');
+    } else {
+        summary.innerHTML = '<li class="list-group-item">No students linked to this invitation.</li>';
+    }
 }
 </script>
 {% endblock %}
