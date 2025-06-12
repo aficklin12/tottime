@@ -54,6 +54,10 @@ input {
 .modal-content {
     border-radius: 0.5rem !important;
 }
+.modal-body {
+    max-height: 55vh !important;
+    overflow-y: auto !important;
+}
 </style>
 {% endblock %}
 
@@ -92,15 +96,15 @@ input {
 
 <!-- Edit Linked Students Modal (matching edit_parent.html) -->
 <div class="modal fade" id="editStudentsModal" tabindex="-1" aria-labelledby="editStudentsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-scrollable">
+  <div class="modal-dialog">
     <div class="modal-content">
       <form onsubmit="event.preventDefault(); saveSelectedStudents();">
         <div class="modal-header">
           <h5 class="modal-title" id="editStudentsModalLabel">Link Students</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <input type="text" id="studentSearch" class="form-control mb-2" style="width:100%;max-width:350px;margin-left:0;" placeholder="Search students..." onkeyup="filterStudents()">
+        <div class="modal-body" style="max-height: 55vh; overflow-y: auto;">
+          <input type="text" id="studentSearch" class="form-control mb-2" placeholder="Search students..." onkeyup="filterStudents()">
           <div id="studentList">
             {% for student in students %}
             <div class="form-check">
