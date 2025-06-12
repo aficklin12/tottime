@@ -1,30 +1,42 @@
 {% extends 'tottimeapp/base_minimal.html' %}
 {% load static %}
 <style>
-    .invite-outer {
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: 100vh;
+    body {
         background: #f8f9fa;
     }
-    .invite-form-wrapper {
+    .center-outer {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .center-box {
         background: #fff;
         border-radius: 1rem;
-        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
-        padding: 2rem 2.5rem;
-        margin-top: 2rem;
-        width: 100%;
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.15);
+        padding: 2.5rem 2.5rem 2rem 2.5rem;
         max-width: 430px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
-    .invite-form-wrapper h1,
-    .invite-form-wrapper h3 {
+    .center-box h1,
+    .center-box h3 {
         text-align: center;
+        width: 100%;
+    }
+    .form-floating {
+        width: 100%;
     }
     .form-floating .form-control {
         width: 100%;
+        text-align: center;
     }
     .btn-block {
+        width: 100%;
+    }
+    .text-center {
         width: 100%;
     }
 </style>
@@ -32,14 +44,14 @@
 {% block title %}Accept Invitation{% endblock %}
 
 {% block content %}
-<div class="invite-outer">
-    <div class="invite-form-wrapper">
+<div class="center-outer">
+    <div class="center-box">
         <h1>Accept Invitation</h1>
         <h3 class="font-weight-light my-4">
             You have been invited to join as a: {{ invitation.role.name }}.<br>
             Please register to proceed.
         </h3>
-        <form method="POST">
+        <form method="POST" style="width:100%;">
             {% csrf_token %}
             <div class="form-floating mb-3">
                 <input class="form-control" id="inputFirstName" type="text" name="first_name" placeholder="First Name" required>
@@ -57,7 +69,7 @@
                 <input class="form-control" id="inputUsername" type="text" name="username" placeholder="Username" required>
                 <label for="inputUsername">Username</label>
             </div>
-            <div class="row mb-3">
+            <div class="row mb-3" style="width:100%;">
                 <div class="col-6">
                     <div class="form-floating mb-3 mb-md-0">
                         <input class="form-control" id="inputPassword" type="password" name="password1" placeholder="Password" required>
