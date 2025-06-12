@@ -3117,15 +3117,15 @@ def send_invitation(request):
 
     success_message = ""
     roles = Group.objects.filter(id__in=range(2, 8)).exclude(id=6)  # Fetch roles with group_id 2-7, excluding group_id 6
-    
-    # Process the invitation form
+
     if request.method == 'POST':
         form = InvitationForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data['email']
-            role_id = form.cleaned_data['role']
-            role = Group.objects.get(id=role_id)  # Fetch the selected role
-            token = str(uuid.uuid4())  # Generate a unique token
+            # Always convert role_id to int, since it comes from the form as a string
+            role_id = int(form.cleaned_data['role'])
+            role = Group.objects.get(id=role_id)
+            token = str(uuid.uuid4())
 
             # Create the invitation instance
             invitation = Invitation.objects.create(
@@ -3136,25 +3136,24 @@ def send_invitation(request):
             )
 
             invitation_link = f"https://tot-time.com/accept-invitation/{token}/"
-            
+
             # Send the email
             send_mail(
                 'Invitation to Join',
                 f'You have been invited to join with role: {role.name}. Click the link to accept: {invitation_link}',
-                'from@example.com',  # Replace with your sender email
+                'cutiepiesdaycare20@gmail.com',  # Use your production sender email
                 [email],
                 fail_silently=False,
             )
-            success_message = "Invitation email sent successfully."  # Set success message
+            success_message = "Invitation email sent successfully."
     else:
-        form = InvitationForm()  # Initialize the form if not a POST request
+        form = InvitationForm()
 
-    # Render the template with the form, success message, roles, and permission flags
     return render(request, 'send-invitations.html', {
         'form': form,
         'success_message': success_message,
-        'roles': roles,  # Pass roles to the template
-        **permissions_context,  # Include permission flags dynamically
+        'roles': roles,
+        **permissions_context,
     })
 
 def accept_invitation(request, token):
