@@ -3161,24 +3161,22 @@ def accept_invitation(request, token):
             # Extract the form data
             first_name = request.POST.get('first_name')
             last_name = request.POST.get('last_name')
-            email = request.POST.get('email')
             username = request.POST.get('username')
             password = request.POST.get('password1')
-            # Create the MainUser account for the invited user
+            # Always use invitation.email
             user = User.objects.create_user(
                 username=username,
-                email=email,
+                email=invitation.email,
                 password=password,
                 first_name=first_name,
-                last_name=last_name
+                last_name=last_name,
+                main_account_owner=invitation.invited_by
             )
-            # Create a SubUser instance linking to the MainUser who sent the invitation and add the selected group as group_id
             SubUser.objects.create(
                 user=user,
                 main_user=invitation.invited_by,
-                group_id=invitation.role  # This is the Group instance selected at invitation
+                group_id=invitation.role
             )
-            # Optionally, delete the invitation after it has been accepted
             invitation.delete()
             return redirect('login')
     except Invitation.DoesNotExist:
