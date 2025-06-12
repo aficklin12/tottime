@@ -431,6 +431,8 @@ class Invitation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
 class MainUser(AbstractUser):
     first_name = models.CharField(max_length=30, blank=False)
     last_name = models.CharField(max_length=30, blank=False)
@@ -514,11 +516,14 @@ class MainUser(AbstractUser):
             if default_storage.exists(default_pic):
                 self.profile_picture.name = default_pic
 
-        # Generate unique code for users not in 'Parent' or 'Free User' groups
-        if not self.code and not self.groups.filter(id__in=[5, 6]).exists():
-            self.code = self.generate_unique_code()
-
+        is_new = self.pk is None
         super(MainUser, self).save(*args, **kwargs)
+
+        # Generate unique code for users not in 'Parent' or 'Free User' groups
+        # (do this only after the first save, so self.groups is accessible)
+        if is_new and not self.code and not self.groups.filter(id__in=[5, 6]).exists():
+            self.code = self.generate_unique_code()
+            super(MainUser, self).save(update_fields=['code'])
 
     def generate_unique_code(self):
         """Generates a unique 4-digit code."""
