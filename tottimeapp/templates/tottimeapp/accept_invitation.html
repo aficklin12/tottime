@@ -1,11 +1,12 @@
 {% extends 'tottimeapp/base_minimal.html' %}
 {% load static %}
 <style>
-    .card {
-        margin-left: auto;
-        margin-right: auto;
-    }
 
+    .card-body .form-control {
+        width: calc(100% - 20px);
+        margin: 0 auto;
+        display: block;
+    }
 </style>
 
 {% block title %}Accept Invitation{% endblock %}
