@@ -3108,21 +3108,19 @@ def assign_user_to_role(user, role_name):
 
 @login_required
 def send_invitation(request):
-    # Check permissions for the specific page
-    required_permission_id = 157  # Permission ID for permissions view
+    required_permission_id = 157
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
     success_message = ""
-    roles = Group.objects.filter(id__in=range(2, 8)).exclude(id=6)  # Fetch roles with group_id 2-7, excluding group_id 6
+    roles = Group.objects.filter(id__in=range(2, 8)).exclude(id=6)
 
     if request.method == 'POST':
         form = InvitationForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data['email']
-            role = form.cleaned_data['role']  # Already a Group instance!
+            role = form.cleaned_data['role']  # This is a Group instance
             token = str(uuid.uuid4())
 
             invitation = Invitation.objects.create(
@@ -3137,7 +3135,7 @@ def send_invitation(request):
             send_mail(
                 'Invitation to Join',
                 f'You have been invited to join with role: {role.name}. Click the link to accept: {invitation_link}',
-                'cutiepiesdaycare20@gmail.com',
+                'cutiepieschilddevelopment@gmail.com',
                 [email],
                 fail_silently=False,
             )
@@ -3157,7 +3155,6 @@ def accept_invitation(request, token):
     try:
         invitation = Invitation.objects.get(token=token)
         if request.method == 'POST':
-            # Check if a user with the given email already exists
             existing_user = User.objects.filter(email=invitation.email).first()
             if existing_user:
                 return render(request, 'already_accepted.html', {'user': existing_user})
@@ -3166,24 +3163,26 @@ def accept_invitation(request, token):
             last_name = request.POST.get('last_name')
             email = request.POST.get('email')
             username = request.POST.get('username')
-            password = request.POST.get('password1')  # Use password1 as the password
-            # Create the user account for the invited user
+            password = request.POST.get('password1')
+            # Create the MainUser account for the invited user
             user = User.objects.create_user(
-                username=username, 
-                email=email,  
+                username=username,
+                email=email,
                 password=password,
                 first_name=first_name,
                 last_name=last_name
             )
-            # Assign the selected role to the new user
-            user.groups.add(invitation.role)
-            # Create a SubUser instance linking to the MainUser who sent the invitation and add the role
-            SubUser.objects.create(user=user, main_user=invitation.invited_by, role=invitation.role)
+            # Create a SubUser instance linking to the MainUser who sent the invitation and add the selected group as group_id
+            SubUser.objects.create(
+                user=user,
+                main_user=invitation.invited_by,
+                group_id=invitation.role  # This is the Group instance selected at invitation
+            )
             # Optionally, delete the invitation after it has been accepted
             invitation.delete()
-            return redirect('login')  # Redirect to the login page
+            return redirect('login')
     except Invitation.DoesNotExist:
-        return render(request, 'invalid_invitation.html')  # Handle invalid invitation
+        return render(request, 'invalid_invitation.html')
     return render(request, 'accept_invitation.html', {'invitation': invitation})
 
 def invalid_invitation(request):
