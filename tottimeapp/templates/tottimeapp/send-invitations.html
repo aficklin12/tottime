@@ -130,12 +130,22 @@ input {
 
 {% block scripts %}
 <script>
+function filterStudents() {
+    const searchInput = document.getElementById('studentSearch').value.toLowerCase();
+    const studentList = document.getElementById('studentList');
+    const students = studentList.getElementsByClassName('form-check');
+    for (let student of students) {
+        const label = student.getElementsByTagName('label')[0];
+        const text = label.textContent.toLowerCase();
+        student.style.display = text.includes(searchInput) ? '' : 'none';
+    }
+}
 function toggleStudentModalButton() {
     var roleSelect = document.getElementById('role');
     var selectedOption = roleSelect.options[roleSelect.selectedIndex];
     var roleName = selectedOption ? selectedOption.getAttribute('data-role-name') : '';
     var btnContainer = document.getElementById('student-modal-btn-container');
-    if (roleName === 'parent' || roleName === 'teacher - parent') {
+    if (roleName === 'parent' || roleName === 'teacher-parent') {
         btnContainer.style.display = '';
     } else {
         btnContainer.style.display = 'none';
@@ -147,18 +157,6 @@ function toggleStudentModalButton() {
         checks.forEach(c => c.checked = false);
     }
 }
-
-function filterStudents() {
-    const searchInput = document.getElementById('studentSearch').value.toLowerCase();
-    const studentList = document.getElementById('studentList');
-    const students = studentList.getElementsByClassName('form-check');
-    for (let student of students) {
-        const label = student.getElementsByTagName('label')[0];
-        const text = label.textContent.toLowerCase();
-        student.style.display = text.includes(searchInput) ? '' : 'none';
-    }
-}
-
 // Save selected students from modal to hidden input and summary
 function saveSelectedStudents() {
     var checked = document.querySelectorAll('#studentList input[type=checkbox]:checked');

@@ -77,6 +77,10 @@
 .btn-primary{
     margin-top: 25px;
 }
+.modal-body {
+    max-height: 55vh !important;
+    overflow-y: auto !important;
+}
 </style>
 {% endblock %}
 
@@ -161,7 +165,7 @@
 
 <!-- Edit Linked Students Modal -->
 <div class="modal fade" id="editStudentsModal" tabindex="-1" aria-labelledby="editStudentsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-scrollable">
+  <div class="modal-dialog">
     <div class="modal-content">
       <form method="post">
         {% csrf_token %}
@@ -170,7 +174,7 @@
           <h5 class="modal-title" id="editStudentsModalLabel">Edit Linked Students</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 55vh; overflow-y: auto;">
           <input type="text" id="studentSearch" class="form-control mb-2" placeholder="Search students..." onkeyup="filterStudents()">
           <div id="studentList">
             {% for student in all_students %}
