@@ -3122,12 +3122,9 @@ def send_invitation(request):
         form = InvitationForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data['email']
-            # Always convert role_id to int, since it comes from the form as a string
-            role_id = int(form.cleaned_data['role'])
-            role = Group.objects.get(id=role_id)
+            role = form.cleaned_data['role']  # Already a Group instance!
             token = str(uuid.uuid4())
 
-            # Create the invitation instance
             invitation = Invitation.objects.create(
                 email=email,
                 role=role,
@@ -3137,11 +3134,10 @@ def send_invitation(request):
 
             invitation_link = f"https://tot-time.com/accept-invitation/{token}/"
 
-            # Send the email
             send_mail(
                 'Invitation to Join',
                 f'You have been invited to join with role: {role.name}. Click the link to accept: {invitation_link}',
-                'cutiepiesdaycare20@gmail.com',  # Use your production sender email
+                'cutiepiesdaycare20@gmail.com',
                 [email],
                 fail_silently=False,
             )
