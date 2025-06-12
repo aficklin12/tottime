@@ -1,8 +1,17 @@
 {% extends 'tottimeapp/base_minimal.html' %}
 {% load static %}
 <style>
+    .container > .row > .col-md-8 {
+        width: calc(100% + 20px) !important;
+        margin-right: -20px !important;
+    }
     .card {
-        padding-right: 20px !important;
+        width: calc(100% + 20px) !important;
+        margin-right: -20px !important;
+    }
+    .card-body .form-control {
+        width: calc(100% - 20px) !important;
+ 
     }
 </style>
 
