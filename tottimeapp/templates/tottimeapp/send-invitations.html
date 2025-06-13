@@ -63,7 +63,7 @@ input {
 {% block content %}
 <div class="container-fluid px-4">
     <h1>Send Invite Link</h1>
-    <form id="invitation-form" method="post" action="{% url 'your_invitation_url' %}">
+    <form id="invitation-form" method="post" action="{% url 'send_invitation' %}">
         {% csrf_token %}
         <label for="email" class="form-label">Email:</label>
         <input type="email" id="email" name="email" class="form-control" required>
