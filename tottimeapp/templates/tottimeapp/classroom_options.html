@@ -100,6 +100,25 @@
 .btn-primary {
      margin-top: 20px!important;
 }
+
+/* Responsive navigation: tabs on desktop, dropdown on mobile */
+@media (max-width: 1000px) {
+  .tab-nav {
+    display: none;
+  }
+  .tab-dropdown {
+    display: block;
+  }
+}
+@media (min-width: 1001px) {
+  .tab-nav {
+    display: flex;
+    gap: 1rem;
+  }
+  .tab-dropdown {
+    display: none;
+  }
+}
 </style>
 {% endblock %}
 
@@ -111,7 +130,7 @@
     <div class="mb-2">
     <!-- Classroom Dropdown Row -->
     <div class="d-flex align-items-center gap-2 mb-2">
-        <select name="classroom" class="form-select" id="classroomSelect" style="width: 170px !important; margin-left: 20px;">
+        <select name="classroom" class="form-select" id="classroomSelect" style="width: 170px !important; margin-left: 25px;">
             <option value="">All Classrooms</option>
             {% for classroom in classrooms %}
             <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == selected_classroom %}selected{% endif %}>
@@ -205,6 +224,20 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Desktop Tabs -->
+<div class="tab-nav">
+  <a href="/students" class="nav-link">Students</a>
+  <a href="/teachers" class="nav-link">Teachers</a>
+  <a href="/classes" class="nav-link">Classes</a>
+</div>
+
+<!-- Mobile Dropdown -->
+<select class="tab-dropdown" onchange="location = this.value;">
+  <option value="/students">Students</option>
+  <option value="/teachers">Teachers</option>
+  <option value="/classes">Classes</option>
+</select>
 {% endblock %}
 
 {% block scripts %}
