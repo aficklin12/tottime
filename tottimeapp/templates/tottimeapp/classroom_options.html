@@ -111,7 +111,7 @@
     <div class="mb-2">
     <!-- Classroom Dropdown Row -->
     <div class="d-flex align-items-center gap-2 mb-2">
-        <select name="classroom" class="form-select" id="classroomSelect" style="width: 150px !important;">
+        <select name="classroom" class="form-select" id="classroomSelect" style="width: 170px !important; margin-left: 20px;">
             <option value="">All Classrooms</option>
             {% for classroom in classrooms %}
             <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == selected_classroom %}selected{% endif %}>
