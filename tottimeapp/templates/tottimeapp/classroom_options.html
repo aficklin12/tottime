@@ -100,19 +100,6 @@
 .btn-primary {
      margin-top: 20px!important;
 }
-
-/* Add this to your CSS file */
-@media (max-width: 1000px) {
-  .filters-container {
-    flex-direction: column; /* Stack vertically */
-    align-items: stretch;   /* Make children take full width */
-  }
-  .filter,
-  .filter-button {
-    width: 100%;            /* Make each filter/button full width */
-    margin-bottom: 10px;    /* Add spacing between items */
-  }
-}
 </style>
 {% endblock %}
 
@@ -120,10 +107,10 @@
 <h1>Classroom Options</h1>
 
 <form method="get" id="filter-form" class="mb-3">
-    <div class="d-flex align-items-center gap-2">
-        <!-- Search Filter -->
-        <input type="text" name="search" class="form-control" placeholder="Search by name" value="{{ search_query }}" id="searchInput" style="width: 200px;">
-        <!-- Classroom Filter -->
+   
+    <div class="mb-2">
+    <!-- Classroom Dropdown Row -->
+    <div class="d-flex align-items-center gap-2 mb-2">
         <select name="classroom" class="form-select" id="classroomSelect">
             <option value="">All Classrooms</option>
             {% for classroom in classrooms %}
@@ -132,19 +119,23 @@
             </option>
             {% endfor %}
         </select>
-        <!-- Status Filter -->
+    </div>
+    <!-- Status Dropdown Row -->
+    <div class="d-flex align-items-center gap-2 mb-2">
         <select name="status" class="form-select" id="statusSelect" onchange="this.form.submit()">
             <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
             <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
             <option value="transferred" {% if selected_status == 'transferred' %}selected{% endif %}>Transferred</option>
         </select>
-
-        <!-- Add Student Button -->
+    </div>
+    <!-- Search and Add Button Row -->
+    <div class="d-flex align-items-center gap-2">
+        <input type="text" name="search" class="form-control" placeholder="Search by name" value="{{ search_query }}" id="searchInput" style="width: 200px;">
         <button type="button" class="btn btn-table" data-bs-toggle="modal" data-bs-target="#addStudentModal">
             Add +
         </button>
+    </div>
 
-     </div>
     <div class="tabs mb-3">
         <a href="#" class="tab active-tab">Students</a>
         <a href="{% url 'classroom_options_parents' %}" class="tab">Parents</a>
