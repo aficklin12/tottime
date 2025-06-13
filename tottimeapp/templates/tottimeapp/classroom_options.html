@@ -101,39 +101,16 @@
      margin-top: 20px!important;
 }
 
-.filters {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.filter {
-  flex: 1 1 0;
-  min-width: 150px;
-}
-
+/* Add this to your CSS file */
 @media (max-width: 1000px) {
-  .filters {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    gap: 12px;
+  .filters-container {
+    flex-direction: column; /* Stack vertically */
+    align-items: stretch;   /* Make children take full width */
   }
-  .filter.classroom {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .filter.status {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .filter.search {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .filter.action {
-    grid-column: 2;
-    grid-row: 2;
+  .filter,
+  .filter-button {
+    width: 100%;            /* Make each filter/button full width */
+    margin-bottom: 10px;    /* Add spacing between items */
   }
 }
 </style>
@@ -240,12 +217,6 @@
         {% endfor %}
     </tbody>
 </table>
-<div class="filters">
-  <div class="filter classroom">Classroom</div>
-  <div class="filter status">Status</div>
-  <div class="filter search">Search</div>
-  <button class="filter action">Button</button>
-</div>
 {% endblock %}
 
 {% block scripts %}
