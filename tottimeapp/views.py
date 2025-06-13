@@ -3114,26 +3114,33 @@ def send_invitation(request):
         return permissions_context
 
     success_message = ""
-    roles = Group.objects.filter(id__in=range(2, 8)).exclude(id=6)
-    students = Student.objects.all()  # Add this line
+
+    # Only account owner can see Director (id=2)
+    if hasattr(request.user, 'is_account_owner') and request.user.is_account_owner:
+        roles = Group.objects.filter(id__in=range(2, 8)).exclude(id=6)
+    else:
+        roles = Group.objects.filter(id__in=range(3, 8)).exclude(id=6)  # Exclude Director (id=2)
+
+    students = Student.objects.all()
 
     if request.method == 'POST':
         form = InvitationForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data['email']
             role = form.cleaned_data['role']
+            # Prevent non-owners from inviting as Director (extra backend check)
+            if role.id == 2 and not (hasattr(request.user, 'is_account_owner') and request.user.is_account_owner):
+                return HttpResponseForbidden("You are not allowed to invite as Director.")
             token = str(uuid.uuid4())
-            student_ids = request.POST.getlist('student_ids')  # Get selected students
+            student_ids = request.POST.getlist('student_ids')
 
             invitation = Invitation.objects.create(
                 email=email,
                 role=role,
                 invited_by=request.user,
                 token=token,
-                student_ids=','.join(student_ids) if student_ids else None  # Save selected students
+                student_ids=','.join(student_ids) if student_ids else None
             )
-
-            # Optionally, store student_ids in the invitation if you want to use them later
 
             invitation_link = f"https://tot-time.com/accept-invitation/{token}/"
 
@@ -3152,7 +3159,7 @@ def send_invitation(request):
         'form': form,
         'success_message': success_message,
         'roles': roles,
-        'students': students,  # Add this line
+        'students': students,
         **permissions_context,
     })
 
