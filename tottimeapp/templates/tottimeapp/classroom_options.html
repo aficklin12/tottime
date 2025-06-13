@@ -111,15 +111,14 @@
     <div class="mb-2">
     <!-- Classroom Dropdown Row -->
     <div class="d-flex align-items-center gap-2 mb-2">
-        <select name="classroom" class="form-select" id="classroomSelect">
+        <select name="classroom" class="form-select" id="classroomSelect" style="width: 150px !important;">
             <option value="">All Classrooms</option>
             {% for classroom in classrooms %}
             <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == selected_classroom %}selected{% endif %}>
                 {{ classroom.name }}
             </option>
-            {% endfor %}
+                {% endfor %}
         </select>
-
         <select name="status" class="form-select" id="statusSelect" onchange="this.form.submit()">
             <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
             <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
@@ -128,7 +127,7 @@
     </div>
     <!-- Search and Add Button Row -->
     <div class="d-flex align-items-center gap-2">
-        <input type="text" name="search" class="form-control" placeholder="Search by name" value="{{ search_query }}" id="searchInput" style="width: 250px !important;">
+        <input type="text" name="search" class="form-control" placeholder="Search by name" value="{{ search_query }}" id="searchInput" style="width: 235px !important;">
         <button type="button" class="btn btn-table" data-bs-toggle="modal" data-bs-target="#addStudentModal">
             Add +
         </button>
