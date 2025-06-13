@@ -63,7 +63,7 @@ input {
 {% block content %}
 <div class="container-fluid px-4">
     <h1>Send Invite Link</h1>
-    <form method="post">
+    <form id="invitation-form" method="post" action="{% url 'your_invitation_url' %}">
         {% csrf_token %}
         <label for="email" class="form-label">Email:</label>
         <input type="email" id="email" name="email" class="form-control" required>
@@ -88,9 +88,7 @@ input {
         <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancel</button>
     </form>
 
-    {% if success_message %}
-        <p style="color: green;">{{ success_message }}</p>
-    {% endif %}
+   
 </div>
 
 <!-- Edit Linked Students Modal -->
@@ -144,7 +142,7 @@ function toggleStudentModalButton() {
     var selectedOption = roleSelect.options[roleSelect.selectedIndex];
     var roleName = selectedOption ? selectedOption.getAttribute('data-role-name') : '';
     var btnContainer = document.getElementById('student-modal-btn-container');
-    if (roleName === 'parent' || roleName === 'teacher-parent') {
+    if (roleName === 'parent' || roleName === 'teacher - parent') {
         btnContainer.style.display = '';
     } else {
         btnContainer.style.display = 'none';
@@ -170,5 +168,33 @@ function saveSelectedStudents() {
         summary.innerHTML = '<li class="list-group-item">No students linked to this invitation.</li>';
     }
 }
+
+document.getElementById('invitation-form').addEventListener('submit', function(e) {
+    e.preventDefault(); // Prevent default form submission
+
+    const form = e.target;
+    const formData = new FormData(form);
+
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData,
+    })
+    .then(response => {
+        if (response.ok) {
+            toastr.success('Invitation sent successfully!', 'Success');
+            // Optionally, reset the form or redirect
+            // form.reset();
+        } else {
+            toastr.error('Failed to send invitation.', 'Error');
+        }
+    })
+    .catch(() => {
+        toastr.error('An error occurred.', 'Error');
+    });
+});
 </script>
+
 {% endblock %}
