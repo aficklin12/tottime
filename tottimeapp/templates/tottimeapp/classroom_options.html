@@ -119,9 +119,7 @@
             </option>
             {% endfor %}
         </select>
-    </div>
-    <!-- Status Dropdown Row -->
-    <div class="d-flex align-items-center gap-2 mb-2">
+
         <select name="status" class="form-select" id="statusSelect" onchange="this.form.submit()">
             <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
             <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
