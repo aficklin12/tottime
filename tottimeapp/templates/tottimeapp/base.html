@@ -23,7 +23,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
     <!-- Block for page-specific styles -->
      
-    {% block styles %}{% endblock %}
+    
     
     <style>
         h1 {
@@ -120,17 +120,18 @@
     /* Center all content and titles on small screens */
 
      h1, h2, h3, h4, h5, h6 {
-        text-align: center !important;
-        justify-content: center !important;
-        align-items: center !important;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
     }
     .container, .card-container, .d-flex {
-        text-align: center !important;
-        justify-content: center !important;
-        align-items: center !important;
+        text-align: center;
+        justify-content: center;
+        align-items: center;
     }
 }
     </style>
+    {% block styles %}{% endblock %}
 </head>
 <body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
