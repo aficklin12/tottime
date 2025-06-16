@@ -162,11 +162,11 @@ def index(request):
     # Get order items for the Food Program section
     order_items = OrderList.objects.filter(user=user)
 
-    # --- New: Build classroom ratio cards with dynamic ratios ---
+    # --- Build classroom ratio cards with dynamic ratios ---
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
-        sign_out_time__isnull=True,  # Add this condition to filter only records with NULL sign_out_time
+        sign_out_time__isnull=True,  # Only records with NULL sign_out_time
         user=user
     )
     classrooms = Classroom.objects.filter(user=user)
@@ -187,10 +187,11 @@ def index(request):
         teacher_count = len(assigned_teachers)
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
 
-        # Add classroom data to the cards
+        # Add classroom data to the cards, including classroom id
         classroom_cards[classroom.name] = {
+            'id': classroom.id,         # <-- Added classroom id
             'count': count,
-            'ratio': adjusted_ratio  # Use the adjusted ratio
+            'ratio': adjusted_ratio     # Use the adjusted ratio
         }
 
     context = {
