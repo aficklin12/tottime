@@ -6,50 +6,43 @@
 
 {% block styles %}
 <style>
-
 .card-out-of-stock {
-    width: 280px; /* Adjust the width as needed */
+    width: 335px; /* Adjust the width as needed */
+    height: 500px;
     margin-left: 10px; /* Adjust the margin as needed */
+    
         }
        
-        .sb-nav-link-icon i {
-    color: rgb(57, 189, 180);
-    font-size: 1.2rem; /* Icon size */
-    vertical-align: middle; /* Adjust vertical alignment */
-    line-height: 1; /* Prevent icon from being too high */
-    
-}
-/* Style for the link text */
-.nav-link {
-    color: #ffffff !important; /* Ensure text is completely white */
-}
-
-/* Style for the arrow after the link */
-.sb-sidenav-collapse-arrow i {
-    color: rgb(228, 218, 79);
-}
-
-/* Optional: Hover effect for nav links */
-.nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
-    color: #ffffff !important; /* Retain white text on hover */
+.card-out-of-stock .card-body {
+    height: 590px; /* Set a fixed height to allow scrolling */
+    overflow-y: auto; /* Enable vertical scrolling */
+    align-items: center;
 }
 
 .card-out-of-stock .list-group-item {
-    width: 220px;
+    width: 260px;
+    
     
 }
-        .bg-faded-red {
-    background-color: rgba(255, 0, 0, 0.753); /* Adjust the alpha value (last parameter) for the desired opacity */
+
+@media (max-width: 999px) { /* Adjust the max-width as needed for your definition of smaller screens */
+    .card-out-of-stock {
+        margin-left: auto; /* Center horizontally */
+        margin-right: auto;
+    }
+}
+.bg-faded-red {
+    background-color:  #2d2c30; /* Adjust the alpha value (last parameter) for the desired opacity */
+    
 }
     .bg-faded-yellow {
-    background-color: rgba(255, 115, 0, 0.767); /* Adjust the alpha value (last parameter) for the desired opacity */
+    background-color:  #2d2c30; /* Adjust the alpha value (last parameter) for the desired opacity */
 }
 .bg-faded-blue {
-    background-color: rgba(30, 33, 255, 0.767); /* Adjust the alpha value (last parameter) for the desired opacity */
+    background-color:  #2d2c30; /* Adjust the alpha value (last parameter) for the desired opacity */
 }
 .bg-faded-green {
-    background-color: rgba(9, 114, 61, 0.836); /* Adjust the alpha value (last parameter) for the desired opacity */
+    background-color:  #2d2c30; /* Adjust the alpha value (last parameter) for the desired opacity */
 }
 .btn-smaller {
     padding: 0.25rem 0.5rem;
@@ -82,6 +75,36 @@
     margin-top: 10px;
 } 
 
+h1 {
+          
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600; /* Semi-bold for a stronger look */
+            color: #272630;
+            letter-spacing: 0.5px; /* Slight spacing for a playful effect */
+        
+        }
+.sb-nav-link-icon i {
+    color: rgb(57, 189, 180);
+    font-size: 1.2rem; /* Icon size */
+    vertical-align: middle; /* Adjust vertical alignment */
+    line-height: 1; /* Prevent icon from being too high */
+    
+}
+/* Style for the link text */
+.nav-link {
+    color: #ffffff !important; /* Ensure text is completely white */
+}
+
+/* Style for the arrow after the link */
+.sb-sidenav-collapse-arrow i {
+    color: rgb(228, 218, 79);
+}
+
+/* Optional: Hover effect for nav links */
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
+    color: #ffffff !important; /* Retain white text on hover */
+}
 .navbar-brand img {
     width: 100%; /* Ensure the logo takes up the full width of its container */
     max-width: 200px; /* Set a max-width to control the size of the logo */
@@ -91,14 +114,194 @@
     border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
     overflow: visible; /* Ensure no clipping occurs */
 }
+.ratio-card {
+  width: 320px;         /* wider */
+  height: 70px;         /* thinner */
+  background-color: #272630;
+  border: 2px solid transparent;
+  border-radius: 12px;
+}
+
+/* Glowing border effects */
+.over-capacity {
+  border-color: #dc3545;        
+  box-shadow: 0 0 8px #dc3545;   
+}
+
+.under-capacity {
+  border-color: rgb(57, 189, 180);        
+  box-shadow: 0 0 8px rgb(57, 189, 180);   
+}
+
+/* Text styling */
+.ratio-card .card-title {
+  font-size: 1.3rem;
+  color: #ffffff;
+  text-align: left!important; /* Left align */
+  margin: 0;
+}
+
+.ratio-card .card-text {
+  font-size: 1.55rem;
+  font-weight: bold;
+  color: #ffffff;
+  text-align: right!important; /* Right align */
+  margin: 0;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-                    <div class="container-fluid px-4">
-                        <h1 class="mt-4">Cook Dashboard</h1>
-                        
+                <div class="container-fluid px-4">
+                    <h1 class="mt-4">Ratios</h1>
+                    <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
+                      {% for classroom, data in classroom_cards.items %}
+                        <a href="/classroom/?classroom_id={{ data.id }}" style="text-decoration: none;">
+                          <div class="card ratio-card mx-2 my-1 {% if data.ratio and data.count > data.ratio %}over-capacity{% else %}under-capacity{% endif %}">
+                            <div class="card-body d-flex flex-row justify-content-between align-items-center p-2">
+                              <h6 class="card-title mb-0 text-start">{{ classroom }}</h6>
+                              <p class="card-text mb-0 text-end">
+                                {{ data.count }} / {{ data.ratio|default:"–" }}
+                              </p>
+                            </div>
+                          </div>
+                        </a>
+                      {% endfor %}
+                    </div>
+                  </div>
+                <div class="container-fluid px-4">
+                    <h1 class="mt-4">Food Program</h1>
+    
+                        <div class="row">
+                            <div class="card mb-4 card-out-of-stock bg-faded-red">
+                                <div class="card-header">
+                                    <i class="fas fa-ban me-1  text-danger"></i>
+                                    <strong class="text-white">Out Of Stock</strong>
+                                </div>
+                                <div class="card-body">
+                                    <ul id="outOfStockList" class="list-group">
+                                        <!-- Items will be dynamically added here -->
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="card mb-4 card-out-of-stock bg-faded-yellow">
+                                <div class="card-header">
+                                    <i class="fas fa-clock me-1" style="color: #f4e042;"></i>
+
+                                    <strong class="text-white">Order Soon</strong>
+                                </div>
+                                <div class="card-body">
+                                    <ul id="orderSoonList" class="list-group">
+                                        <!-- Items will be dynamically added here -->
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="card mb-4 card-out-of-stock bg-faded-blue">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <div class="col">
+                                        <i class="fas fa-list me-1" style="color: #289783;"></i>
+                                        <strong class="text-white">Shopping List</strong>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button id="shoppingListButton" type="button" class="btn btn-light btn-sm btn-smaller" onclick="toggleOrderForm()"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                    <button id="dropdownButton" type="button" class="btn btn-light btn-sm btn-smaller" onclick="toggleDropdown()">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                    
+                                </div>
+                                
+                                <div class="card-body">
+                                    <!-- Display the list of items -->
+                                    <ul id="shoppingList" class="list-group">
+                                        {% for item in order_items %}
+                                            <li class="list-group-item list-group-item-action">
+                                                {{ item.item }} 
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <div id="dropdownFormOverlay" class="popup-overlay" style="display: none;">
+                                    <div class="popup-form">
+                                        <h2>Delete Shopping Items</h2>
+                                        <form id="deleteItemsForm" method="post" action="{% url 'delete_shopping_items' %}">
+                                            {% csrf_token %}
+                                            <div class="form-check">
+                                                {% for item in order_items %}
+                                                <input class="form-check-input" type="checkbox" id="item{{ item.id }}" name="items[]" value="{{ item.id }}">
+                                                <label class="form-check-label" for="item{{ item.id }}">
+                                                    {{ item.item }}
+                                                </label><br>
+                                                {% endfor %}
+                                            </div>
+                                            <button type="submit" class="btn btn-warning btn-sm">Delete Selected</button>
+                                            <button type="button" class="btn btn-danger close-btn" onclick="closeDropdownForm()">Close</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-4 card-out-of-stock bg-faded-green">
+                                <div class="card-header">
+                                    <i class="fas fa-check me-1" style="color: #32b69e;"></i>
+                                    <strong class="text-white">Ordered</strong>
+                                
+                                    <button id="toggleEditFormButton" class="btn btn-light btn-sm btn-smaller" onclick="toggleEditForm()"><i class="fas fa-edit"></i></button>
+                                </div>
+                                
+                                <div class="card-body">
+                                  
+                                    <ul id="shoppingList" class="list-group">
+                                        {% for item in order_items %}
+                                            {% if item.ordered %}
+                                                <li class="list-group-item list-group-item-action">{{ item.item }}</li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                        </div>
+                    </div>
+                </main>
+                <div id="orderFormOverlay" class="popup-overlay">
+                    <div class="popup-form">
+                        <h2>Add to Shopping List</h2>
+                        <form action="{% url 'order_list' %}" method="post">
+                            {% csrf_token %}
+                            <!-- Item input field -->
+                            <div class="form-group mb-3">
+                                <label for="item">Item:</label>
+                                <input type="text" id="item" name="item" class="form-control">
+                            </div>
+                            <!-- Quantity input field -->
+                            <div class="form-group mb-3">
+                                <label for="quantity">Quantity:</label>
+                                <input type="number" id="quantity" name="quantity" class="form-control" value="1">
+                            </div>
+                            <button type="submit" class="btn btn-primary me-2">Add to Shopping List</button>
+                            <button type="button" class="btn btn-danger close-btn" onclick="closeOrderForm()">Close</button>
+                        </form>
+                    </div>
                 </div>
+                <div id="editFormOverlay" class="popup-overlay">
+                    <div class="popup-form">
+                        <h2>Items Ordered</h2>
+                        <form id="editShoppingListForm" method="post" action="{% url 'update_orders' %}">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                {% for item in order_items %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="item{{ item.id }}" name="items" value="{{ item.id }}">
+                                        <label class="form-check-label" for="item{{ item.id }}">
+                                            {{ item.item }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" class="btn btn-danger close-btn" onclick="closeEditForm()">Close</button>
+                        </form>
+                    </div>
+                </div>
+
 {% endblock %}
 {% block scripts %}
  <script>

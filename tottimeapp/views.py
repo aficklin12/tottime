@@ -360,8 +360,50 @@ def index_cook(request):
     # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    # Render the index_cook page with the permissions context
-    return render(request, 'index_cook.html', permissions_context)
+
+    user = get_user_for_view(request)
+
+    # Get order items for the Food Program section
+    order_items = OrderList.objects.filter(user=user)
+
+    # --- Build classroom ratio cards with dynamic ratios ---
+    today = date.today()
+    attendance_records = AttendanceRecord.objects.filter(
+        sign_in_time__date=today,
+        sign_out_time__isnull=True,
+        user=user
+    )
+    classrooms = Classroom.objects.filter(user=user)
+    classroom_cards = {}
+
+    for classroom in classrooms:
+        # Count attendance records where classroom_override equals the classroom name
+        count = attendance_records.filter(classroom_override=classroom.name).count()
+
+        # Fetch assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        assigned_teachers = [
+            assignment.mainuser or assignment.subuser for assignment in assignments
+        ]
+
+        # Calculate adjusted ratios based on the number of assigned teachers
+        base_ratio = classroom.ratios
+        teacher_count = len(assigned_teachers)
+        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+
+        # Add classroom data to the cards, including classroom id
+        classroom_cards[classroom.name] = {
+            'id': classroom.id,
+            'count': count,
+            'ratio': adjusted_ratio
+        }
+
+    context = {
+        'order_items': order_items,
+        'classroom_cards': classroom_cards,
+        **permissions_context,
+    }
+    return render(request, 'index_cook.html', context)
 
 @login_required(login_url='/login/')
 def index_parent(request):
