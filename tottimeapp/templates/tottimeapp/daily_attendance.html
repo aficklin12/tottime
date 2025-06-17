@@ -11,93 +11,90 @@
 {% endblock %}
 
 {% block content %}
-    <div>
-        <h1>Daily Attendance</h1>
-    </div>
-    <button type="button" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
-        Sign In
-    </button>
-    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()">
-        Delete
-    </button>
-    <a href="{% url 'attendance_record' %}">
-        Attendance Records
-    </a>
-    {% for classroom, records in attendance_data.items %}
-    <table>
-        <thead>
+                <div class="mt-4">
+                    <h1>Daily Attendance</h1>
+                </div>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
+                    Sign In
+                </button>
+                <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
+                    <i class="fas fa-trash-alt" style="color: red;"></i>
+                </button>
+                <a href="{% url 'attendance_record' %}" class="btn btn-secondary" style="margin-left: 15px;">
+                    Attendance Records
+                </a>
+               
+                {% for classroom, records in attendance_data.items %}
+    <h2>Classroom: {{ classroom.name }}</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Sign In Time</th>
+          <th>Sign Out Time</th>
+          <th>Classroom</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if records %}
+          {% for record in records %}
             <tr>
-                <th colspan="3">
-                    <h3>
-                        {{ classroom.name }}
-                        <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
-                    </h3>
-                </th>
-                <th colspan="2">
-                    <div>
-                        <select id="availableTeachers-{{ classroom.id }}">
-                            <option value="" disabled selected>Assign teacher</option>
-                            {% for teacher in available_teachers %}
-                                <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }}</option>
+              <td>{{ record.student }}</td>
+              <td>{{ record.sign_in_time|date:"H:i" }}</td>
+              <td>
+                {% if record.sign_out_time %}
+                  {{ record.sign_out_time|date:"H:i" }}
+                {% else %}
+                  Still Signed In
+                {% endif %}
+              </td>
+              <td>{{ record.classroom_override.name }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4">No students signed in today.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+                    
+           <!-- Manual Sign In Modal -->
+            <div class="modal fade" id="manualSignInModal" tabindex="-1" aria-labelledby="manualSignInModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                <div class="modal-content">
+                    <form id="manualSignInForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="manualSignInModalLabel">Manual Student Sign In</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                        <label for="studentSelect" class="form-label">Select Student:</label>
+                        <select class="form-select" id="studentSelect" name="student">
+                            {% for student in students %}
+                            <option value="{{ student.id }}">{{ student }}</option>
                             {% endfor %}
                         </select>
-                        <button class="assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
+                        </div>
+                        <div class="mb-3">
+                        <label for="signInTime" class="form-label">Sign In Time:</label>
+                        <!-- 
+                            Option 1: Use a context variable "default_time" passed from your view (formatted as "HH:MM")
+                            Option 2: Set a default value via JavaScript on modal open (see script below)
+                        -->
+                        <input type="time" class="form-control" id="signInTime" name="sign_in_time" value="{{ default_time }}">
+                        </div>
                     </div>
-                </th>
-            </tr>
-            <tr>
-                <th colspan="5">
-                    <div id="assignedTeachers-{{ classroom.id }}">
-                        {% for teacher in assigned_teachers|get_item:classroom.id %}
-                            <div>
-                                <span>{{ teacher.first_name }} {{ teacher.last_name }}</span>
-                                <button type="button" class="unassign-teacher-btn unassign-column" 
-                                        data-teacher-id="{{ teacher.id }}" 
-                                        data-classroom-id="{{ classroom.id }}">
-                                    Delete
-                                </button>
-                            </div>
-                        {% empty %}
-                            <span>No teachers assigned to this classroom.</span>
-                        {% endfor %}
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Sign In</button>
                     </div>
-                </th>
-            </tr>
-            <tr>
-                <th>Student</th>
-                <th>Sign In Time</th>
-                <th>Sign Out Time</th>
-                <th>Classroom</th>
-                <th class="delete-column" id="deleteColumnHeader">
-                    Delete
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for record in records %}
-                <tr id="record-{{ record.id }}">
-                    <td>{{ record.student }}</td>
-                    <td>
-                        <input type="time" class="sign-in-time" data-id="{{ record.id }}" value="{{ record.sign_in_time|time:"H:i" }}">
-                    </td>
-                    <td>
-                        <input type="time" class="sign-out-time" data-id="{{ record.id }}" value="{{ record.sign_out_time|time:"H:i" }}">
-                    </td>
-                    <td>
-                        <select class="classroom-select" data-id="{{ record.id }}">
-                            {% for option in classroom_options %}
-                                <option value="{{ option }}" {% if record.classroom_override == option %}selected{% endif %}>
-                                    {{ option }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                    <td class="delete-column">
-                        <button type="button" class="delete-record" data-id="{{ record.id }}">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
+                    </form>
+                </div>
+                </div>
+{% endblock %}
 {% block scripts %}
             <script>
     $(document).ready(function () {
