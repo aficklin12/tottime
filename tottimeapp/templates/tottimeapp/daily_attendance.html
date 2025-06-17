@@ -11,55 +11,50 @@
 {% endblock %}
 
 {% block content %}
-                <div class="mt-4">
-                    <h1>Daily Attendance</h1>
-                </div>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
-                    Sign In
-                </button>
-                <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
-                    <i class="fas fa-trash-alt" style="color: red;"></i>
-                </button>
-                <a href="{% url 'attendance_record' %}" class="btn btn-secondary" style="margin-left: 15px;">
-                    Attendance Records
-                </a>
-                {% for classroom, records in attendance_data.items %}
-                <table class="table table-bordered">
-                    <!-- Table Header -->
-                    <thead>
-                        <!-- First Row: Classroom Name, Ratios, and Assign Teachers -->
-                        <tr>
-                            <th colspan="3" style="text-align: left;">
-                                <h3 style="background-color: {{ classroom.color }}; color: #fff; padding: 8px;">
-                                    {{ classroom.name }}
-                                    <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
-                                </h3>
-                            </th>
-                            <th colspan="2" style="text-align: right; vertical-align: top;">
-                                <div class="assign-teacher-row" style="display: flex; gap: 10px; align-items: center; justify-content: flex-end; white-space: nowrap;">
-                                    <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: auto;">
-                                        <option value="" disabled selected>Assign teacher</option>
-                                        {% for teacher in available_teachers %}
-                                            <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                                </div>
-                            </th>
-                        </tr>
-
-            <!-- Second Row: Assigned Teachers -->
+    <div>
+        <h1>Daily Attendance</h1>
+    </div>
+    <button type="button" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
+        Sign In
+    </button>
+    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()">
+        Delete
+    </button>
+    <a href="{% url 'attendance_record' %}">
+        Attendance Records
+    </a>
+    {% for classroom, records in attendance_data.items %}
+    <table>
+        <thead>
             <tr>
-                <th colspan="5" style="text-align: left; vertical-align: top;">
-                    <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers" style="display: flex; gap: 10px; white-space: nowrap;">
+                <th colspan="3">
+                    <h3>
+                        {{ classroom.name }}
+                        <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
+                    </h3>
+                </th>
+                <th colspan="2">
+                    <div>
+                        <select id="availableTeachers-{{ classroom.id }}">
+                            <option value="" disabled selected>Assign teacher</option>
+                            {% for teacher in available_teachers %}
+                                <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
+                    </div>
+                </th>
+            </tr>
+            <tr>
+                <th colspan="5">
+                    <div id="assignedTeachers-{{ classroom.id }}">
                         {% for teacher in assigned_teachers|get_item:classroom.id %}
-                            <div style="display: flex; align-items: center; gap: 5px;">
+                            <div>
                                 <span>{{ teacher.first_name }} {{ teacher.last_name }}</span>
-                                <button type="button" class="btn btn-danger btn-sm unassign-teacher-btn unassign-column" 
+                                <button type="button" class="unassign-teacher-btn unassign-column" 
                                         data-teacher-id="{{ teacher.id }}" 
-                                        data-classroom-id="{{ classroom.id }}" 
-                                        style="display: none;">
-                                    <i class="fas fa-trash-alt" style="color: white;"></i>
+                                        data-classroom-id="{{ classroom.id }}">
+                                    Delete
                                 </button>
                             </div>
                         {% empty %}
@@ -68,20 +63,16 @@
                     </div>
                 </th>
             </tr>
-
-            <!-- Third Row: Attendance Records Header -->
             <tr>
                 <th>Student</th>
                 <th>Sign In Time</th>
                 <th>Sign Out Time</th>
                 <th>Classroom</th>
                 <th class="delete-column" id="deleteColumnHeader">
-                    <i class="fas fa-trash-alt" style="color: white;"></i>
+                    Delete
                 </th>
             </tr>
         </thead>
-
-        <!-- Table Body -->
         <tbody>
             {% for record in records %}
                 <tr id="record-{{ record.id }}">
@@ -102,56 +93,11 @@
                         </select>
                     </td>
                     <td class="delete-column">
-                        <button type="button" class="btn btn-danger delete-record" data-id="{{ record.id }}">
-                            <i class="fas fa-trash-alt"></i>
+                        <button type="button" class="delete-record" data-id="{{ record.id }}">
+                            Delete
                         </button>
                     </td>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% empty %}
-    <div style="margin: 20px 27px;">
-        <p>No attendance records available for today.</p>
-    </div>
-{% endfor %}
-            </main>
-           <!-- Manual Sign In Modal -->
-            <div class="modal fade" id="manualSignInModal" tabindex="-1" aria-labelledby="manualSignInModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                <div class="modal-content">
-                    <form id="manualSignInForm">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="manualSignInModalLabel">Manual Student Sign In</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                        <label for="studentSelect" class="form-label">Select Student:</label>
-                        <select class="form-select" id="studentSelect" name="student">
-                            {% for student in students %}
-                            <option value="{{ student.id }}">{{ student }}</option>
-                            {% endfor %}
-                        </select>
-                        </div>
-                        <div class="mb-3">
-                        <label for="signInTime" class="form-label">Sign In Time:</label>
-                        <!-- 
-                            Option 1: Use a context variable "default_time" passed from your view (formatted as "HH:MM")
-                            Option 2: Set a default value via JavaScript on modal open (see script below)
-                        -->
-                        <input type="time" class="form-control" id="signInTime" name="sign_in_time" value="{{ default_time }}">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Sign In</button>
-                    </div>
-                    </form>
-                </div>
-                </div>
-{% endblock %}
 {% block scripts %}
             <script>
     $(document).ready(function () {
