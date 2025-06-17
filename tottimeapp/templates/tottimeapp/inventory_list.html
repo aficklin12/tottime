@@ -98,9 +98,9 @@
                 <div class="text-center me-3">
                     <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
                 </div>
-                <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startWebBarcodeScanner(updateItemQuantity)">
+              <!--  <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startWebBarcodeScanner(updateItemQuantity)">
                     <i class="fas fa-barcode"></i> Scan
-                </button>
+                </button> -->
                 <div class="d-flex align-items-center">
                     <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addItemModal" style="font-weight: bold; font-size: 1em;">
                         <span>+Add</span>
@@ -110,7 +110,7 @@
                     </button>
                 </div>
             </div>
-
+<!-- barcode scanner modal
 <div class="modal fade" id="barcodeScannerModal" tabindex="-1" aria-labelledby="barcodeScannerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -121,13 +121,13 @@
             <div class="modal-body">
                 <div id="scanner-container" style="position: relative;">
                     <canvas></canvas>
-                    <!-- Guideline overlay -->
+                    Guideline overlay 
                     <div id="barcode-guideline"></div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</div>-->
 
 <div id="updateMessage" class="alert alert-success mt-2" style="display: none;">Inventory Updated Successfully!</div>
 
@@ -243,7 +243,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="mb-3">
+                 <!--  <div class="mb-3">
                         <label for="barcode" class="form-label">Barcode</label>
                         <div class="d-flex align-items-center">
                             <input type="text" 
@@ -259,7 +259,7 @@
                                 <i class="fas fa-barcode"></i> Scan
                             </button>
                         </div>
-                    </div>
+                    </div>--> 
                     <button type="submit" class="btn btn-primary">Add Item</button>
                 </form>
             </div>
@@ -758,3 +758,4 @@ function startWebBarcodeScanner(onDetectedCallback) {
 }
 </script>
 {% endblock %}
+ 
