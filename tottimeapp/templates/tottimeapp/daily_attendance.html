@@ -6,7 +6,10 @@
 
 {% block styles %}
 <style>
-  
+  /* This will cause errors */
+h3 {
+    background-color: {{ classroom.color }};
+}
 </style>
 {% endblock %}
 
@@ -30,12 +33,15 @@
             <!-- First Row: Classroom Name, Ratios, and Assign Teachers -->
             <tr>
                 <th colspan="3" style="text-align: left;">
-                    <h1>
-                        <strong>{{ classroom }} - Ratio: </strong>
-                        <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
-                            <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
-                        </span>
-                    </h1>
+                    {% for classroom, records in attendance_data.items %}
+                        <h3 style="color: #fff; background-color: {{ classroom.color }}; padding: 10px;">
+                            {{ classroom.name }}
+                        </h3>
+                    {% endfor %}
+                    <strong>{{ classroom }} - Ratio: </strong>
+                    <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
+                        <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
+                    </span>
                 </th>
                 <th colspan="2" style="text-align: right; vertical-align: top;">
                     <div class="assign-teacher-row" style="display: flex; gap: 10px; align-items: center; justify-content: flex-end; white-space: nowrap;">
