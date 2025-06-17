@@ -14,13 +14,13 @@
                 <div class="mt-4">
                     <h1>Daily Attendance</h1>
                 </div>
-                <button type="button" class="btn btn-primaryoff" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
                     Sign In
                 </button>
                 <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
                     <i class="fas fa-trash-alt" style="color: red;"></i>
                 </button>
-                <a href="{% url 'attendance_record' %}" class="btn btn-rec" style="margin-left: 15px;">
+                <a href="{% url 'attendance_record' %}" class="btn btn-secondary" style="margin-left: 15px;">
                     Attendance Records
                 </a>
                 {% for classroom, records in attendance_data.items %}
