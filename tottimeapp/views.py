@@ -1469,18 +1469,35 @@ def attendance_record(request):
 
 @login_required
 def daily_attendance(request):
-    # Check permissions for the specific page
     required_permission_id = 274  # Permission ID for daily_attendance view
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    # Fetch attendance data
+
     today = date.today()
     user = get_user_for_view(request)
-    
+
+    # Get all classrooms for this user
+    classrooms = Classroom.objects.filter(user=user)
+    classroom_data = []
+    for classroom in classrooms:
+        # Get current assignments (active only)
+        assignments = classroom.assignments.filter(unassigned_at__isnull=True)
+        teachers = []
+        for assignment in assignments:
+            if assignment.subuser:
+                teachers.append(assignment.subuser.user.get_full_name())
+            elif assignment.mainuser:
+                teachers.append(assignment.mainuser.get_full_name())
+        classroom_data.append({
+            'name': classroom.name,
+            'ratios': classroom.ratios,
+            'teachers': teachers,
+        })
+
     return render(request, 'daily_attendance.html', {
-        **permissions_context,  # Include permission flags dynamically
+        **permissions_context,
+        'classroom_data': classroom_data,
     })
 
 @login_required

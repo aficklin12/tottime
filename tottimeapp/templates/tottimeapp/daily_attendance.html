@@ -17,7 +17,30 @@
                 <a href="{% url 'attendance_record' %}" class="btn btn-secondary" style="margin-left: 15px;">
                     Attendance Records
                 </a>
-
+<table>
+    <thead>
+        <tr>
+            <th>Classroom</th>
+            <th>Ratio</th>
+            <th>Assigned Teachers</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for classroom in classroom_data %}
+        <tr>
+            <td>{{ classroom.name }}</td>
+            <td>{{ classroom.ratios }}</td>
+            <td>
+                {% if classroom.teachers %}
+                    {{ classroom.teachers|join:", " }}
+                {% else %}
+                    <em>No teachers assigned</em>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
          
 {% endblock %}
 {% block scripts %}
