@@ -204,16 +204,13 @@ def index(request):
 @login_required(login_url='/login/')
 def index_director(request):
     user = get_user_for_view(request)
-    # Check permissions using the utility function
     required_permission_id = 157  # Example permission ID for "permissions"
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):  # Redirect if no access
         return permissions_context
 
-    # Ensure order items are always retrieved
     order_items = OrderList.objects.filter(user=user)
 
-    # --- Build classroom ratio cards with dynamic ratios ---
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
@@ -227,10 +224,15 @@ def index_director(request):
         # Count attendance records where classroom_override equals the classroom name
         count = attendance_records.filter(classroom_override=classroom.name).count()
 
-        # Fetch assigned teachers for the classroom
-        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        # Fetch only active assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(
+            classroom=classroom,
+            unassigned_at__isnull=True
+        )
         assigned_teachers = [
-            assignment.mainuser or assignment.subuser for assignment in assignments
+            assignment.mainuser or assignment.subuser
+            for assignment in assignments
+            if assignment.mainuser or assignment.subuser
         ]
 
         # Calculate adjusted ratios based on the number of assigned teachers
@@ -238,14 +240,12 @@ def index_director(request):
         teacher_count = len(assigned_teachers)
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
 
-        # Add classroom data to the cards, including classroom id
         classroom_cards[classroom.name] = {
-            'id': classroom.id,         # <-- Added classroom id
+            'id': classroom.id,
             'count': count,
             'ratio': adjusted_ratio
         }
 
-    # Combine permissions context with other context data
     context = {
         'order_items': order_items,
         'classroom_cards': classroom_cards,
