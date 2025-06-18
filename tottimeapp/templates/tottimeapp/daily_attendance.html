@@ -14,16 +14,43 @@
                 <div class="mt-4">
                     <h1>Daily Attendance</h1>
                 </div>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
-                    Sign In
-                </button>
-                <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
-                    <i class="fas fa-trash-alt" style="color: red;"></i>
-                </button>
                 <a href="{% url 'attendance_record' %}" class="btn btn-secondary" style="margin-left: 15px;">
                     Attendance Records
                 </a>
                
+                <table border="1">
+                <thead>
+                    <tr>
+                        <th>Classroom</th>
+                        <th>Assigned Teachers</th>
+                        <th>Students Signed In</th>
+                        <th>Students Signed Out</th>
+                        <th>Adjusted Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for classroom, records in attendance_data.items %}
+                    <tr>
+                        <td>{{ classroom.name }}</td>
+                        <td>
+                            {% for teacher in assigned_teachers.classroom.id %}
+                                {{ teacher.get_full_name|default:teacher.username }}{% if not forloop.last %}, {% endif %}
+                            {% empty %}
+                                None
+                            {% endfor %}
+                        </td>
+                        <td>{{ relative_counts.classroom }}</td>
+                        <td>
+                            {{
+                                records|length|add:"-"
+                                |add:relative_counts.classroom
+                            }}
+                        </td>
+                        <td>{{ adjusted_ratios.classroom.id }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
          
 {% endblock %}
 {% block scripts %}
