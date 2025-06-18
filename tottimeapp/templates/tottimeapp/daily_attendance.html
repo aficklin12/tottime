@@ -17,36 +17,30 @@
                 <a href="{% url 'attendance_record' %}" class="btn btn-secondary" style="margin-left: 15px;">
                     Attendance Records
                 </a>
-               
-                <table border="1">
+               <table>
                 <thead>
                     <tr>
-                        <th>Classroom</th>
+                        <th>Classroom Name</th>
                         <th>Assigned Teachers</th>
-                        <th>Students Signed In</th>
-                        <th>Students Signed Out</th>
-                        <th>Adjusted Ratio</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for classroom, records in attendance_data.items %}
+                    {% for classroom, teachers in assigned_teachers.items %}
                     <tr>
                         <td>{{ classroom.name }}</td>
                         <td>
-                            {% for teacher in assigned_teachers.classroom.id %}
-                                {{ teacher.get_full_name|default:teacher.username }}{% if not forloop.last %}, {% endif %}
-                            {% empty %}
-                                None
-                            {% endfor %}
+                            {% if teachers %}
+                                <ul>
+                                    {% for teacher in teachers %}
+                                        <li>
+                                            {{ teacher.get_full_name|default:teacher.username }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <em>No teachers assigned</em>
+                            {% endif %}
                         </td>
-                        <td>{{ relative_counts.classroom }}</td>
-                        <td>
-                            {{
-                                records|length|add:"-"
-                                |add:relative_counts.classroom
-                            }}
-                        </td>
-                        <td>{{ adjusted_ratios.classroom.id }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
