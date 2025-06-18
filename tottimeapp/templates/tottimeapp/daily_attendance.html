@@ -19,32 +19,40 @@
                 </a>
                <table>
                 <thead>
-                    <tr>
-                        <th>Classroom Name</th>
-                        <th>Assigned Teachers</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for classroom, teachers in assigned_teachers.items %}
-                    <tr>
-                        <td>{{ classroom.name }}</td>
-                        <td>
-                            {% if teachers %}
-                                <ul>
-                                    {% for teacher in teachers %}
-                                        <li>
-                                            {{ teacher.get_full_name|default:teacher.username }}
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <em>No teachers assigned</em>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <tr>
+            <th>Classroom Name</th>
+            <th>Assigned Teachers</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for classroom_id, teachers in assigned_teachers.items %}
+            {% with classroom=classroom_options|get_classroom_by_id:classroom_id %}
+            <tr>
+                <td>
+                    {% if classroom %}
+                        {{ classroom.name }}
+                    {% else %}
+                        Unknown Classroom (ID: {{ classroom_id }})
+                    {% endif %}
+                </td>
+                <td>
+                    {% if teachers %}
+                        <ul>
+                            {% for teacher in teachers %}
+                                <li>
+                                    {{ teacher.get_full_name|default:teacher.username }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <em>No teachers assigned</em>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endwith %}
+        {% endfor %}
+    </tbody>
+</table>
          
 {% endblock %}
 {% block scripts %}
