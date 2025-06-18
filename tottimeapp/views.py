@@ -201,41 +201,58 @@ def index(request):
     }
     return render(request, 'index.html', context)
 
-@login_required
-def daily_attendance(request):
-    required_permission_id = 274
+@login_required(login_url='/login/')
+def index_director(request):
+    user = get_user_for_view(request)
+    # Check permissions using the utility function
+    required_permission_id = 157  # Example permission ID for "permissions"
     permissions_context = check_permissions(request, required_permission_id)
-    if isinstance(permissions_context, HttpResponseRedirect):
+    if isinstance(permissions_context, HttpResponseRedirect):  # Redirect if no access
         return permissions_context
 
-    today = date.today()
-    user = get_user_for_view(request)
+    # Ensure order items are always retrieved
+    order_items = OrderList.objects.filter(user=user)
 
+    # --- Build classroom ratio cards with dynamic ratios ---
+    today = date.today()
+    attendance_records = AttendanceRecord.objects.filter(
+        sign_in_time__date=today,
+        sign_out_time__isnull=True,
+        user=user
+    )
     classrooms = Classroom.objects.filter(user=user)
-    classroom_data = []
+    classroom_cards = {}
+
     for classroom in classrooms:
-        # Only active assignments
-        assignments = classroom.assignments.filter(unassigned_at__isnull=True)
-        teachers = []
-        for assignment in assignments:
-            if assignment.subuser:
-                teachers.append(assignment.subuser.user.get_full_name())
-            elif assignment.mainuser:
-                teachers.append(assignment.mainuser.get_full_name())
-        teacher_count = len(teachers)
+        # Count attendance records where classroom_override equals the classroom name
+        count = attendance_records.filter(classroom_override=classroom.name).count()
+
+        # Fetch assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        assigned_teachers = [
+            assignment.mainuser or assignment.subuser for assignment in assignments
+        ]
+
+        # Calculate adjusted ratios based on the number of assigned teachers
         base_ratio = classroom.ratios
+        teacher_count = len(assigned_teachers)
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
 
-        classroom_data.append({
-            'name': classroom.name,
-            'adjusted_ratio': adjusted_ratio,
-            'teachers': teachers,
-        })
+        # Add classroom data to the cards, including classroom id
+        classroom_cards[classroom.name] = {
+            'id': classroom.id,         # <-- Added classroom id
+            'count': count,
+            'ratio': adjusted_ratio
+        }
 
-    return render(request, 'daily_attendance.html', {
+    # Combine permissions context with other context data
+    context = {
+        'order_items': order_items,
+        'classroom_cards': classroom_cards,
         **permissions_context,
-        'classroom_data': classroom_data,
-    })
+    }
+
+    return render(request, 'index_director.html', context)
 
 @login_required(login_url='/login/')
 def index_teacher(request):
