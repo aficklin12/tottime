@@ -1469,7 +1469,7 @@ def attendance_record(request):
 
 @login_required
 def daily_attendance(request):
-    required_permission_id = 274  # Permission ID for daily_attendance view
+    required_permission_id = 274
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
@@ -1477,10 +1477,30 @@ def daily_attendance(request):
     today = date.today()
     user = get_user_for_view(request)
 
+    # Handle assignment POST
+    if request.method == "POST":
+        classroom_id = request.POST.get("classroom_id")
+        teacher_type = request.POST.get("teacher_type")
+        teacher_id = request.POST.get("teacher_id")
+        classroom = Classroom.objects.get(id=classroom_id, user=user)
+
+        # Unassign all current teachers
+        ClassroomAssignment.objects.filter(classroom=classroom, unassigned_at__isnull=True).update(unassigned_at=timezone.now())
+
+        # Assign new teacher
+        if teacher_type == "main":
+            mainuser = MainUser.objects.get(id=teacher_id)
+            ClassroomAssignment.objects.create(classroom=classroom, mainuser=mainuser)
+        elif teacher_type == "sub":
+            subuser = SubUser.objects.get(id=teacher_id)
+            ClassroomAssignment.objects.create(classroom=classroom, subuser=subuser)
+        return redirect("daily_attendance")
+
     classrooms = Classroom.objects.filter(user=user)
+    main_teachers = MainUser.objects.all()
+    sub_teachers = SubUser.objects.all()
     classroom_data = []
     for classroom in classrooms:
-        # Get current assignments (active only)
         assignments = classroom.assignments.filter(unassigned_at__isnull=True)
         teachers = []
         for assignment in assignments:
@@ -1493,6 +1513,7 @@ def daily_attendance(request):
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
 
         classroom_data.append({
+            'id': classroom.id,
             'name': classroom.name,
             'ratio': adjusted_ratio,
             'teachers': teachers,
@@ -1501,6 +1522,8 @@ def daily_attendance(request):
     return render(request, 'daily_attendance.html', {
         **permissions_context,
         'classroom_data': classroom_data,
+        'main_teachers': main_teachers,
+        'sub_teachers': sub_teachers,
     })
 
 @login_required
