@@ -26,20 +26,20 @@
         </tr>
     </thead>
     <tbody>
-            {% for classroom in classroom_data %}
-            <tr>
-                <td>{{ classroom.name }}</td>
-                <td>{{ classroom.adjusted_ratio }}</td>
-                <td>
-                    {% if classroom.teachers %}
-                        {{ classroom.teachers|join:", " }}
-                    {% else %}
-                        <em>No teachers assigned</em>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
+        {% for classroom in classroom_data %}
+        <tr>
+            <td>{{ classroom.name }}</td>
+            <td>{{ classroom.ratio|default:"–" }}</td>
+            <td>
+                {% if classroom.teachers %}
+                    {{ classroom.teachers|join:", " }}
+                {% else %}
+                    <em>No teachers assigned</em>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
          
 {% endblock %}

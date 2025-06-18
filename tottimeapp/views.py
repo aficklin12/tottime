@@ -1477,7 +1477,6 @@ def daily_attendance(request):
     today = date.today()
     user = get_user_for_view(request)
 
-    # Get all classrooms for this user
     classrooms = Classroom.objects.filter(user=user)
     classroom_data = []
     for classroom in classrooms:
@@ -1489,9 +1488,13 @@ def daily_attendance(request):
                 teachers.append(assignment.subuser.user.get_full_name())
             elif assignment.mainuser:
                 teachers.append(assignment.mainuser.get_full_name())
+        teacher_count = len(teachers)
+        base_ratio = classroom.ratios if classroom.ratios else 1
+        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+
         classroom_data.append({
             'name': classroom.name,
-            'ratios': classroom.ratios,
+            'ratio': adjusted_ratio,
             'teachers': teachers,
         })
 
