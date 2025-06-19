@@ -31,6 +31,22 @@
     background-color: #007b8a;
     border-color: #007b8a;
 }
+.btn-unassign {
+
+    background-color:rgb(205, 37, 37); /* Change success button color */
+    border-color: rgb(205, 37, 37);
+    color: rgb(33, 31, 39);
+    font-size: 17px;
+    font-weight: 500;
+    padding: 4px 6px !important; /* Add padding for more space */
+    
+}
+
+/* Additional hover styles (optional) */
+.btn-unassign:hover {
+    background-color: rgb(141, 27, 27);
+    border-color: rgb(141, 27, 27);
+}
 .btn-rec {
 margin-top: 10px;
 background-color: rgb(153, 158, 158); /* Change success button color */
@@ -259,9 +275,7 @@ h1 {
                         {% endfor %}
                     </select>
                     <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
-                    <i class="fas fa-trash-alt" style="color: red;"></i>
-                </button>
+                    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-assign unassign-teacher-btn">Unassign</button>
                 </div>
             </th>
         </tr>
