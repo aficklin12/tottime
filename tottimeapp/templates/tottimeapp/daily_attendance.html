@@ -239,13 +239,6 @@ h1 {
         max-width: 85px !important;
         white-space: nowrap;
     }
-    table th:nth-child(4),
-    table td:nth-child(4) {
-        width: 85px !important;
-        min-width: 85px !important;
-        max-width: 85px !important;
-        white-space: nowrap;
-    }
 }
 </style>
 {% endblock %}
@@ -339,12 +332,13 @@ h1 {
                         <input type="time" class="sign-out-time" data-id="{{ record.id }}" value="{{ record.sign_out_time|time:"H:i" }}">
                     </td>
                     <td>
-                   <select name="classroom" class="form-select">
-                        <option value="" disabled selected>Reassign</option>
-                        {% for classroom in classrooms %}
-                            <option value="{{ classroom.id }}">{{ classroom.name }}</option>
-                        {% endfor %}
-                    </select>
+                        <select class="classroom-select" data-id="{{ record.id }}">
+                            {% for option in classroom_options %}
+                                <option value="{{ option }}" {% if record.classroom_override == option %}selected{% endif %}>
+                                    {{ option }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </td>
                     <td class="delete-column">
                         <button type="button" class="btn btn-danger delete-record" data-id="{{ record.id }}">
