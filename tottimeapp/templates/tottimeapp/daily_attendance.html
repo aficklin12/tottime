@@ -27,68 +27,22 @@
     </thead>
     <tbody>
         {% for classroom in classroom_data %}
-  <div class="classroom-block">
-    <h3>{{ classroom.name }} (Ratio: {{ classroom.ratio }})</h3>
-    <p>
-      <strong>Assigned Teachers:</strong>
-      {% if classroom.teachers %}
-        <ul>
-          {% for teacher in classroom.teachers %}
-            <li>{{ teacher.name }} ({{ teacher.type }})</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <em>No teacher assigned.</em>
-      {% endif %}
-    </p>
-
-    <form method="post" style="margin-bottom: 1em;">
-      {% csrf_token %}
-      <input type="hidden" name="classroom_id" value="{{ classroom.id }}">
-
-      <label for="teacher_type_{{ classroom.id }}">Assign/Reassign Teacher:</label>
-      <select name="teacher_type" id="teacher_type_{{ classroom.id }}" required>
-        <option value="">Select type</option>
-        {% if available_mainusers %}
-          <option value="mainuser">MainUser</option>
-        {% endif %}
-        {% if available_subusers %}
-          <option value="subuser">SubUser</option>
-        {% endif %}
-      </select>
-
-      <select name="teacher_id" id="teacher_id_{{ classroom.id }}" required>
-        <option value="">Select teacher</option>
-        {% for mainuser in available_mainusers %}
-          <option value="{{ mainuser.id }}" data-type="mainuser">{{ mainuser.get_full_name }}</option>
+        <tr>
+            <td>{{ classroom.name }}</td>
+            <td>{{ classroom.ratio|default:"–" }}</td>
+            <td>
+                {% if classroom.teachers %}
+                    {{ classroom.teachers|join:", " }}
+                {% else %}
+                    <em>No teachers assigned</em>
+                {% endif %}
+            </td>
+        </tr>
         {% endfor %}
-        {% for subuser in available_subusers %}
-          <option value="{{ subuser.id }}" data-type="subuser">{{ subuser.user.get_full_name }}</option>
-        {% endfor %}
-      </select>
-
-      <button type="submit">Assign/Reassign</button>
-    </form>
-  </div>
-{% endfor %}
     </tbody>
 </table>
          
 {% endblock %}
 {% block scripts %}
-<script>
-  // Optional: Filter teacher_id dropdown based on teacher_type selection
-  document.querySelectorAll('select[name="teacher_type"]').forEach(function(typeSelect) {
-    typeSelect.addEventListener('change', function() {
-      var classroomId = this.id.split('_')[2];
-      var teacherSelect = document.getElementById('teacher_id_' + classroomId);
-      var selectedType = this.value;
-      Array.from(teacherSelect.options).forEach(function(opt) {
-        if (!opt.value) return; // skip placeholder
-        opt.style.display = (opt.getAttribute('data-type') === selectedType) ? '' : 'none';
-      });
-      teacherSelect.value = '';
-    });
-  });
-</script>
+
 {% endblock %}
