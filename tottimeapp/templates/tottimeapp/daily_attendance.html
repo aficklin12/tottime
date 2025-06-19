@@ -215,40 +215,60 @@ input[type="time"].sign-out-time:focus {
     min-width: 100px; /* or adjust as needed */
     width: auto;
     text-align: center;
-  }
-h1 {
-    margin-left: 0px!important; /* Adjust margin for mobile view */
-        
- }
- table tbody {
-        font-size: 0.92rem;
-    }
-    table tbody tr {
-        height: 32px;
-    }
-    table td, table th {
-        padding-top: 4px;
-        padding-bottom: 4px;
-    }
-  table th:nth-child(2),
-    table td:nth-child(2),
-    table th:nth-child(3),
-    table td:nth-child(3) {
-        width: 125px !important;
-        min-width: 75px !important;
-        max-width: 125px !important;
-        white-space: nowrap;
-    }
-    .table-column {
     overflow: hidden;
-    }
-    .classroom-select {
-    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  h1 {
+    margin-left: 0px!important; /* Adjust margin for mobile view */
+  }
+  table tbody {
+    font-size: 0.92rem;
+  }
+  table tbody tr {
+    height: 32px;
+  }
+  table td, table th {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  table th:nth-child(2),
+  table td:nth-child(2),
+  table th:nth-child(3),
+  table td:nth-child(3) {
+    width: 125px !important;
+    min-width: 75px !important;
+    max-width: 125px !important;
+    white-space: nowrap;
+  }
+  input[type="time"].sign-in-time,
+  input[type="time"].sign-out-time {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     box-sizing: border-box;
-}
-}
-}
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    border-color: rgba(204, 204, 204, 0.03);
+  }
+  input[type="time"].sign-in-time::-webkit-calendar-picker-indicator,
+  input[type="time"].sign-out-time::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+  input[type="time"].sign-in-time:hover,
+  input[type="time"].sign-in-time:focus,
+  input[type="time"].sign-out-time:hover,
+  input[type="time"].sign-out-time:focus {
+    border-color: #39bdb4;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
+  }
 </style>
 {% endblock %}
 
