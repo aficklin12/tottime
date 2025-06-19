@@ -242,9 +242,11 @@ h1 {
                 <button type="button" class="btn btn-primaryoff" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
                     Sign In
                 </button>
-                <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
-                    <i class="fas fa-trash-alt" style="color: red;"></i>
-                </button>
+                <button class="btn btn-link btn-sm order-1 order-lg-0 toggle-delete-column-btn"
+        onclick="toggleDeleteColumn()"
+        style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
+    <i class="fas fa-trash-alt" style="color: red;"></i>
+</button>
                 <a href="{% url 'attendance_record' %}" class="btn btn-rec" style="margin-left: 15px;">
                     Attendance Records
                 </a>
@@ -275,9 +277,11 @@ h1 {
                         {% endfor %}
                     </select>
                     <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-unassign unassign-teacher-btn" type="button">
-                        Unassign
-                    </button>    
+                    <button class="btn btn-unassign unassign-teacher-btn toggle-delete-column-btn"
+        type="button"
+        onclick="toggleDeleteColumn()">
+    Unassign
+</button>    
                 </div>
             </th>
         </tr>
