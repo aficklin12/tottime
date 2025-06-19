@@ -230,7 +230,7 @@ h1 {
         padding-top: 4px;
         padding-bottom: 4px;
     }
-    table th:nth-child(2),
+  table th:nth-child(2),
     table td:nth-child(2),
     table th:nth-child(3),
     table td:nth-child(3) {
@@ -339,7 +339,7 @@ h1 {
                         <input type="time" class="sign-out-time" data-id="{{ record.id }}" value="{{ record.sign_out_time|time:"H:i" }}">
                     </td>
                     <td>
-                    <select name="classroom" class="form-select">
+                   <select name="classroom" class="form-select">
                         <option value="" disabled selected>Reassign</option>
                         {% for classroom in classrooms %}
                             <option value="{{ classroom.id }}">{{ classroom.name }}</option>
