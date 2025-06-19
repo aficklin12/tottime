@@ -204,6 +204,17 @@ h1 {
     margin-left: 0px!important; /* Adjust margin for mobile view */
         
  }
+ table tbody {
+        font-size: 0.92rem;
+    }
+    table tbody tr {
+        height: 32px;
+    }
+    table td, table th {
+        padding-top: 4px;
+        padding-bottom: 4px;
+    }
+
 }
 </style>
 {% endblock %}
@@ -272,8 +283,8 @@ h1 {
         <!-- Fourth Row: Attendance Records Header -->
         <tr>
             <th>Student</th>
-            <th>Sign In Time</th>
-            <th>Sign Out Time</th>
+            <th>Sign In</th>
+            <th>Sign Out</th>
             <th>Classroom</th>
             <th class="delete-column" id="deleteColumnHeader">
                 <i class="fas fa-trash-alt" style="color: white;"></i>
