@@ -1469,35 +1469,83 @@ def attendance_record(request):
 
 @login_required
 def daily_attendance(request):
+    # Check permissions for the specific page
     required_permission_id = 274  # Permission ID for daily_attendance view
     permissions_context = check_permissions(request, required_permission_id)
+    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-
+    # Fetch attendance data
     today = date.today()
     user = get_user_for_view(request)
+    students = Student.objects.all()
+    attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=today, user=user)
+    # Get classroom names from Classroom model
+    classroom_options = Classroom.objects.filter(user=user).values_list('name', flat=True)
+    attendance_data = {}
+    relative_counts = {}
+    assigned_teachers = {}
+    adjusted_ratios = {}
+    # Fetch attendance data and calculate relative counts for each classroom
+    for classroom in Classroom.objects.filter(user=user):
+        populated_records = AttendanceRecord.objects.filter(
+            classroom_override=classroom,
+            sign_in_time__date=today,
+            user=user
+        )
+        if populated_records.exists():
+            attendance_data[classroom] = populated_records
+            relative_counts[classroom] = populated_records.filter(sign_out_time__isnull=True).count()
 
-    classrooms = Classroom.objects.filter(user=user)
-    classroom_data = []
-    for classroom in classrooms:
-        # Get current assignments (active only)
-        assignments = classroom.assignments.filter(unassigned_at__isnull=True)
-        teachers = []
-        for assignment in assignments:
-            if assignment.subuser:
-                teachers.append(assignment.subuser.user.get_full_name())
-            elif assignment.mainuser:
-                teachers.append(assignment.mainuser.get_full_name())
-        teacher_count = len(teachers)
-        base_ratio = classroom.ratios if classroom.ratios else 1
-        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+        # Fetch assigned teachers for the classroom
+        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
+        assigned_teachers[classroom.id] = [
+            assignment.mainuser or assignment.subuser for assignment in assignments
+        ]
 
-        classroom_data.append({
-            'id': classroom.id,  # Add this line
-            'name': classroom.name,
-            'ratio': adjusted_ratio,
-            'teachers': teachers,
-        })
+        # Calculate adjusted ratios based on the number of assigned teachers
+        base_ratio = classroom.ratios
+        teacher_count = len(assigned_teachers[classroom.id])
+        adjusted_ratios[classroom.id] = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
+    # Add empty classrooms if there are no records
+    for classroom in Classroom.objects.filter(user=user):
+        if classroom not in attendance_data:
+            attendance_data[classroom] = []
+            relative_counts[classroom] = 0  # No students signed in
+    # Fetch available teachers
+    if isinstance(user, MainUser):
+        # Get all MainUsers who are either the current MainUser or linked via SubUser
+        available_teachers = MainUser.objects.filter(
+            models.Q(id=user.id) |  # Current MainUser
+            models.Q(id__in=SubUser.objects.filter(
+                main_user=user,
+                group_id_id__in=[1, 2, 3, 4, 7]  # Filter SubUsers by group_id_id
+            ).values_list('user_id', flat=True))
+        )
+    else:
+        # If the user is a SubUser, get the MainUser and all SubUsers linked to the same MainUser
+        available_teachers = MainUser.objects.filter(
+            models.Q(id=user.main_user.id) |  # MainUser of the SubUser
+            models.Q(id__in=SubUser.objects.filter(
+                main_user=user.main_user,
+                group_id_id__in=[1, 2, 3, 4, 7]  # Filter SubUsers by group_id_id
+            ).values_list('user_id', flat=True))
+        )
+    # Exclude teachers already assigned to any classroom
+    assigned_teacher_ids = ClassroomAssignment.objects.values_list('mainuser_id', flat=True).distinct()
+    available_teachers = available_teachers.exclude(id__in=assigned_teacher_ids)
+    # Render the template with all required context
+    return render(request, 'daily_attendance.html', {
+        'attendance_records': attendance_records,
+        'relative_counts': relative_counts,
+        'students': students,
+        'available_teachers': available_teachers,
+        'classroom_options': classroom_options,
+        'attendance_data': attendance_data,
+        'assigned_teachers': assigned_teachers,
+        'adjusted_ratios': adjusted_ratios,  # Pass adjusted ratios to the template
+        **permissions_context,  # Include permission flags dynamically
+    })
 
 @login_required
 def classroom(request):
