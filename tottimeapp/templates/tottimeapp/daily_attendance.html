@@ -275,7 +275,9 @@ h1 {
                         {% endfor %}
                     </select>
                     <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-unassign unassign-teacher-btn">Unassign</button>
+                    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-unassign unassign-teacher-btn" type="button" style="font-weight: bold; font-size: 1.1em; margin-top: 8px;">
+                        Unassign
+                    </button>    
                 </div>
             </th>
         </tr>
@@ -532,36 +534,12 @@ h1 {
 </script>
 
 <script>
-    // Toggle delete column (no toastr, no AJAX)
-    $('#toggleDeleteColumn').on('click', function () {
-        $('.delete-column, .unassign-column').toggle(); // Example toggle logic
-    });
+    function toggleDeleteColumn() {
+        $('.delete-column').toggle();
+        $('.unassign-column').toggle();
+    }
 
     $(document).ready(function () {
-        $('.unassign-teacher-btn').on('click', function () {
-            var classroomId = $(this).data('classroom-id');
-            var teacherId = $(this).data('teacher-id');
-
-
-            $.ajax({
-                url: '{% url "unassign_teacher_from_classroom" %}',
-                method: 'POST',
-                data: {
-                    'classroom_id': classroomId,
-                    'teacher_id': teacherId,
-                    'csrfmiddlewaretoken': '{{ csrf_token }}'
-                },
-                success: function (response) {
-                    if (response.success) {
-                        toastr.success(response.message);
-                        location.reload();
-                    } else {
-                        toastr.error('Error: ' + (response.error || 'Unknown error.'));
-                    }
-                },
-            });
-        });
-
         $('.assign-teacher-btn').on('click', function () {
             var classroomId = $(this).data('classroom-id');
             var teacherId = $('#availableTeachers-' + classroomId).val();
@@ -582,7 +560,7 @@ h1 {
                 success: function (response) {
                     if (response.success) {
                         toastr.success(response.message);
-                        location.reload();  // Reload the page to reflect changes
+                        location.reload();
                     } else {
                         toastr.error('Error: ' + (response.error || 'Unknown error.'));
                     }
