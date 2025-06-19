@@ -1469,38 +1469,92 @@ def attendance_record(request):
 
 @login_required
 def daily_attendance(request):
-    required_permission_id = 274  # Permission ID for daily_attendance view
+    required_permission_id = 274
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
     today = date.today()
     user = get_user_for_view(request)
-
     classrooms = Classroom.objects.filter(user=user)
+
+    # Handle assignment/reassignment POST
+    if request.method == "POST":
+        classroom_id = request.POST.get("classroom_id")
+        teacher_type = request.POST.get("teacher_type")  # 'mainuser' or 'subuser'
+        teacher_id = request.POST.get("teacher_id")
+        # Unassign all current assignments for this classroom
+        ClassroomAssignment.objects.filter(
+            classroom_id=classroom_id,
+            unassigned_at__isnull=True
+        ).update(unassigned_at=timezone.now())
+        # Assign new teacher
+        if teacher_type == "mainuser":
+            ClassroomAssignment.objects.create(
+                classroom_id=classroom_id,
+                mainuser_id=teacher_id,
+                ratio=1  # or your logic
+            )
+        elif teacher_type == "subuser":
+            ClassroomAssignment.objects.create(
+                classroom_id=classroom_id,
+                subuser_id=teacher_id,
+                ratio=1  # or your logic
+            )
+        return redirect("daily_attendance")
+
+    # Get all assigned teacher IDs (MainUser and SubUser)
+    assigned_mainuser_ids = ClassroomAssignment.objects.filter(
+        unassigned_at__isnull=True, mainuser__isnull=False
+    ).values_list("mainuser_id", flat=True)
+    assigned_subuser_ids = ClassroomAssignment.objects.filter(
+        unassigned_at__isnull=True, subuser__isnull=False
+    ).values_list("subuser_id", flat=True)
+
+    # Available MainUsers (account owner)
+    available_mainusers = MainUser.objects.filter(
+        models.Q(id=user.id) | models.Q(id__in=user.linked_users.values_list('id', flat=True))
+    ).exclude(id__in=assigned_mainuser_ids)
+
+    # Available SubUsers (linked to this main user)
+    available_subusers = SubUser.objects.filter(
+        main_user=user
+    ).exclude(id__in=assigned_subuser_ids)
+
+    # Prepare classroom data
     classroom_data = []
     for classroom in classrooms:
-        # Get current assignments (active only)
         assignments = classroom.assignments.filter(unassigned_at__isnull=True)
         teachers = []
         for assignment in assignments:
             if assignment.subuser:
-                teachers.append(assignment.subuser.user.get_full_name())
+                teachers.append({
+                    "type": "subuser",
+                    "id": assignment.subuser.id,
+                    "name": assignment.subuser.user.get_full_name()
+                })
             elif assignment.mainuser:
-                teachers.append(assignment.mainuser.get_full_name())
+                teachers.append({
+                    "type": "mainuser",
+                    "id": assignment.mainuser.id,
+                    "name": assignment.mainuser.get_full_name()
+                })
         teacher_count = len(teachers)
         base_ratio = classroom.ratios if classroom.ratios else 1
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
 
         classroom_data.append({
-            'name': classroom.name,
-            'ratio': adjusted_ratio,
-            'teachers': teachers,
+            "id": classroom.id,
+            "name": classroom.name,
+            "ratio": adjusted_ratio,
+            "teachers": teachers,
         })
 
-    return render(request, 'daily_attendance.html', {
+    return render(request, "daily_attendance.html", {
         **permissions_context,
-        'classroom_data': classroom_data,
+        "classroom_data": classroom_data,
+        "available_mainusers": available_mainusers,
+        "available_subusers": available_subusers,
     })
 
 @login_required
