@@ -220,7 +220,7 @@ h1 {
     <thead>
         <!-- First Row: Classroom and Ratio -->
         <tr>
-            <th colspan="5" class="classroom-header">
+            <th colspan="5" class="classroom-header" style="background: {{ classroom.color }};">
                 <h3>
                     <strong>{{ classroom }} - Ratio: </strong>
                     <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
