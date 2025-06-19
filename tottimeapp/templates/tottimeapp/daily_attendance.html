@@ -112,6 +112,43 @@ table {
         gap: 8px;
         flex-wrap: wrap;
     }
+    th {
+            background-color: #272630 !important;
+            color: #ffffff !important;
+        }
+    select.classroom-select {
+    width: auto;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    border-color: rgba(204, 204, 204, 0.03); /* Adjust opacity here (0.5 for 50% opacity) */
+    font-size: 14px;
+    color: #333;
+    background-size: 16px;
+    cursor: pointer;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    appearance: none; /* Remove default dropdown arrow */
+    background-image: url('path-to-your-icon.svg'); /* Custom arrow or icon */
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    text-align: center;
+}
+
+/* Change opacity of the dropdown arrow */
+select.classroom-select::after {
+    content: '\f0d7'; /* Unicode for dropdown arrow (FontAwesome example) */
+    font-family: 'FontAwesome'; /* FontAwesome or other icon font */
+    opacity: 0.5; /* Adjust opacity here */
+}
+
+/* Hover and focus states for dropdown */
+select.classroom-select:hover,
+select.classroom-select:focus {
+    border-color: #39bdb4;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
+}
 @media (max-width: 1000px) {
   table {
     width: 100%;
