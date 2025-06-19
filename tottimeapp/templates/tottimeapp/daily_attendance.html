@@ -92,6 +92,26 @@ table {
 
     margin-top: 10px;
   }
+   .classroom-header, .assign-teacher-header, .assigned-teachers-header {
+        background: #f8f9fa;
+        text-align: left;
+        vertical-align: middle;
+        padding: 12px 8px;
+    }
+    .assign-teacher-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .assigned-teachers-header .teacher-row span {
+        margin-right: 10px;
+    }
+    .assigned-teachers-header .teacher-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
 @media (max-width: 1000px) {
   table {
     width: 100%;
@@ -128,63 +148,62 @@ h1 {
                     Attendance Records
                 </a>
                 {% for classroom, records in attendance_data.items %}
-    <table>
-        <!-- Table Header -->
-        <thead>
-            <!-- First Row: Classroom Name, Ratios, and Assign Teachers -->
-            <tr>
-                <th style="text-align: left;">
-                    <h2>
-                        <strong>{{ classroom }} - Ratio: </strong>
-                        <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
-                            <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
-                        </span>
-                    </h2>
-                </th>
-                <th>
-                    <div class="assign-teacher-row" >
-                        <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: auto;">
-                            <option value="" disabled selected>Assign teacher</option>
-                            {% for teacher in available_teachers %}
-                                <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }}</option>
-                            {% endfor %}
-                        </select>
-                        <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                    </div>
-                </th>
-            </tr>
-
-            <!-- Second Row: Assigned Teachers -->
-            <tr>
-                <th>
-                    <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers"
-                        {% for teacher in assigned_teachers|get_item:classroom.id %}>
-                                <span>{{ teacher.first_name }} {{ teacher.last_name }}</span>
-                                <button type="button" class="btn btn-danger btn-sm unassign-teacher-btn unassign-column" 
-                                        data-teacher-id="{{ teacher.id }}" 
-                                        data-classroom-id="{{ classroom.id }}" 
-                                        style="display: none;">
-                                    <i class="fas fa-trash-alt" style="color: white;"></i>
-                                </button>
-                            </div>
-                        {% empty %}
-                            <span>No teachers assigned to this classroom.</span>
+    <table class="table table-bordered attendance-table">
+    <thead>
+        <!-- First Row: Classroom and Ratio -->
+        <tr>
+            <th colspan="5" class="classroom-header">
+                <h2>
+                    <strong>{{ classroom }} - Ratio: </strong>
+                    <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
+                        <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
+                    </span>
+                </h2>
+            </th>
+        </tr>
+        <!-- Second Row: Assign Teacher -->
+        <tr>
+            <th colspan="5" class="assign-teacher-header">
+                <div class="assign-teacher-row">
+                    <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: auto;">
+                        <option value="" disabled selected>Assign teacher</option>
+                        {% for teacher in available_teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }}</option>
                         {% endfor %}
-                    </div>
-                </th>
-            </tr>
-
-            <!-- Third Row: Attendance Records Header -->
-            <tr>
-                <th>Student</th>
-                <th>Sign In Time</th>
-                <th>Sign Out Time</th>
-                <th>Classroom</th>
-                <th class="delete-column" id="deleteColumnHeader">
-                    <i class="fas fa-trash-alt" style="color: white;"></i>
-                </th>
-            </tr>
-        </thead>
+                    </select>
+                    <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
+                </div>
+            </th>
+        </tr>
+        <!-- Third Row: Assigned Teachers -->
+        <tr>
+            <th colspan="5" class="assigned-teachers-header">
+                <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers">
+                    {% for teacher in assigned_teachers|get_item:classroom.id %}
+                        <span>{{ teacher.first_name }} {{ teacher.last_name }}</span>
+                        <button type="button" class="btn btn-danger btn-sm unassign-teacher-btn unassign-column" 
+                                data-teacher-id="{{ teacher.id }}" 
+                                data-classroom-id="{{ classroom.id }}" 
+                                style="display: none;">
+                            <i class="fas fa-trash-alt" style="color: white;"></i>
+                        </button>
+                    {% empty %}
+                        <span>No teachers assigned to this classroom.</span>
+                    {% endfor %}
+                </div>
+            </th>
+        </tr>
+        <!-- Fourth Row: Attendance Records Header -->
+        <tr>
+            <th>Student</th>
+            <th>Sign In Time</th>
+            <th>Sign Out Time</th>
+            <th>Classroom</th>
+            <th class="delete-column" id="deleteColumnHeader">
+                <i class="fas fa-trash-alt" style="color: white;"></i>
+            </th>
+        </tr>
+    </thead>
 
         <!-- Table Body -->
         <tbody>
