@@ -532,10 +532,10 @@ h1 {
 </script>
 
 <script>
-    function toggleDeleteColumn() {
-        $('.delete-column').toggle();
-        $('.unassign-column').toggle();
-    }
+    // Toggle delete column (no toastr, no AJAX)
+    $('#toggleDeleteColumn').on('click', function () {
+        $('.delete-column, .unassign-column').toggle(); // Example toggle logic
+    });
 
     $(document).ready(function () {
         $('.unassign-teacher-btn').on('click', function () {
