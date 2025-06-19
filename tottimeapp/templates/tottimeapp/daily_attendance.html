@@ -7,6 +7,116 @@
 {% block styles %}
 <style>
 
+
+.over-ratio {
+        color: red;
+    }
+.under-ratio {
+        color: rgb(57, 189, 180);
+    }
+
+.btn-assign {
+
+    background-color: rgb(57, 189, 180); /* Change success button color */
+    border-color: rgb(57, 189, 180);
+    color: rgb(33, 31, 39);
+    font-size: 17px;
+    font-weight: 500;
+    padding: 4px 6px !important; /* Add padding for more space */
+    
+}
+
+/* Additional hover styles (optional) */
+.btn-assign:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+}
+.btn-rec {
+margin-top: 10px;
+background-color: rgb(153, 158, 158); /* Change success button color */
+border-color: rgb(153, 158, 158);
+color: rgb(33, 31, 39);
+font-size: 17px;
+font-weight: 550;
+padding: 4px 6px !important; /* Add padding for more space */
+
+}
+
+/* Additional hover styles (optional) */
+.btn-rec:hover {
+color: rgb(255, 255, 255);
+background-color: rgb(54, 56, 56);
+border-color: rgb(54, 56, 56);
+}
+.delete-column {
+    display: none;
+  }
+
+
+.unassign-teacher-btn {
+    width: 18px; /* Adjust button width */
+    height: 22px; /* Adjust button height */
+    padding: 1px; /* Adjust padding */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.unassign-teacher-btn i {
+    font-size: 0.7rem; /* Adjust icon size */
+}
+
+    /* Reduce padding and size for delete buttons within the table */
+    .table .delete-record {
+        padding: 2px 6px; /* Smaller padding */
+        font-size: 0.9rem; /* Smaller font size */
+        height: 24px; /* Adjust height */
+        width: 24px; /* Adjust width */
+        line-height: 1; /* Ensure proper alignment */
+        align-items: center;
+    }
+
+    .table .delete-record i {
+        font-size: 0.7rem; /* Adjust icon size */
+    }
+
+    /* Center the header and items in the delete column */
+    th.delete-column, td.delete-column {
+        text-align: center; /* Center text horizontally */
+        vertical-align: middle; /* Center text vertically */
+    }
+
+    /* Adjust the unassign button */
+    .unassign-teacher-btn {
+        width: 18px; /* Increase width by 2px */
+        height: 22px; /* Keep the height consistent */
+        padding: 1px; /* Adjust padding for better alignment */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Adjust the trash can icon size */
+    .unassign-teacher-btn i {
+        font-size: 0.7rem; /* Make the icon smaller */
+    }
+
+ 
+    .btn-primaryoff {
+            background-color: rgb(57, 189, 180); /* Change success button color */
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+            margin-top: 10px!important;
+            margin-left: 27px;
+            margin-right:15px;
+        }
+    
+.btn-primaryoff:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }
 @media (max-width: 1000px) {
   table {
     width: 100%;
