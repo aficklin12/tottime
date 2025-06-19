@@ -52,20 +52,6 @@ border-color: rgb(54, 56, 56);
     display: none;
   }
 
-
-.unassign-teacher-btn {
-    width: 18px; /* Adjust button width */
-    height: 22px; /* Adjust button height */
-    padding: 1px; /* Adjust padding */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.unassign-teacher-btn i {
-    font-size: 0.7rem; /* Adjust icon size */
-}
-
     /* Reduce padding and size for delete buttons within the table */
     .table .delete-record {
         padding: 2px 6px; /* Smaller padding */
@@ -84,21 +70,6 @@ border-color: rgb(54, 56, 56);
     th.delete-column, td.delete-column {
         text-align: center; /* Center text horizontally */
         vertical-align: middle; /* Center text vertically */
-    }
-
-    /* Adjust the unassign button */
-    .unassign-teacher-btn {
-        width: 18px; /* Increase width by 2px */
-        height: 22px; /* Keep the height consistent */
-        padding: 1px; /* Adjust padding for better alignment */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    /* Adjust the trash can icon size */
-    .unassign-teacher-btn i {
-        font-size: 0.7rem; /* Make the icon smaller */
     }
 
  
@@ -162,7 +133,7 @@ h1 {
         <thead>
             <!-- First Row: Classroom Name, Ratios, and Assign Teachers -->
             <tr>
-                <th colspan="3" style="text-align: left;">
+                <th style="text-align: left;">
                     <h2>
                         <strong>{{ classroom }} - Ratio: </strong>
                         <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
@@ -170,8 +141,8 @@ h1 {
                         </span>
                     </h2>
                 </th>
-                <th colspan="2" style="text-align: right; vertical-align: top;">
-                    <div class="assign-teacher-row" style="display: flex; gap: 10px; align-items: center; justify-content: flex-end; white-space: nowrap;">
+                <th>
+                    <div class="assign-teacher-row" >
                         <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: auto;">
                             <option value="" disabled selected>Assign teacher</option>
                             {% for teacher in available_teachers %}
