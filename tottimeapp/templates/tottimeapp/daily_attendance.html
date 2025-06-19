@@ -116,7 +116,7 @@ table {
             background-color: #272630 !important;
             color: #ffffff !important;
         }
-    select.classroom-select {
+select.classroom-select {
     width: auto;
     padding: 6px 10px;
     border: 1px solid #ccc;
@@ -149,6 +149,37 @@ select.classroom-select:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
 }
+
+/* Style for the time inputs */
+input[type="time"].sign-in-time,
+input[type="time"].sign-out-time {
+   
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    border-color: rgba(204, 204, 204, 0.03);
+}
+input[type="time"].sign-in-time::-webkit-calendar-picker-indicator,
+input[type="time"].sign-out-time::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}
+
+
+/* Hover and focus states for time inputs */
+input[type="time"].sign-in-time:hover,
+input[type="time"].sign-in-time:focus,
+input[type="time"].sign-out-time:hover,
+input[type="time"].sign-out-time:focus {
+    border-color: #39bdb4;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
+}
+
 @media (max-width: 1000px) {
   table {
     width: 100%;
