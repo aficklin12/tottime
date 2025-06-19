@@ -23,7 +23,6 @@
             <th>Classroom</th>
             <th>Ratio</th>
             <th>Assigned Teachers</th>
-            <th>Assign/Reassign Teacher</th>
         </tr>
     </thead>
     <tbody>
@@ -37,19 +36,6 @@
                 {% else %}
                     <em>No teachers assigned</em>
                 {% endif %}
-            </td>
-            <td>
-                <form method="post" style="display:inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="classroom_id" value="{{ classroom.id }}">
-                    <select name="teacher_id" required>
-                        <option value="{{ main_teacher.id }}">{{ main_teacher.get_full_name }}</option>
-                        {% for teacher in sub_teachers %}
-                            <option value="{{ teacher.id }}">{{ teacher.user.get_full_name }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="btn btn-sm btn-primary">Assign</button>
-                </form>
             </td>
         </tr>
         {% endfor %}
