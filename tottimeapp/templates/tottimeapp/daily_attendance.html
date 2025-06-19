@@ -128,7 +128,7 @@ h1 {
                     Attendance Records
                 </a>
                 {% for classroom, records in attendance_data.items %}
-    <table class="table table-bordered">
+    <table>
         <!-- Table Header -->
         <thead>
             <!-- First Row: Classroom Name, Ratios, and Assign Teachers -->
@@ -156,10 +156,9 @@ h1 {
 
             <!-- Second Row: Assigned Teachers -->
             <tr>
-                <th colspan="5" style="text-align: left; vertical-align: top;">
-                    <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers" style="display: flex; gap: 10px; white-space: nowrap;">
-                        {% for teacher in assigned_teachers|get_item:classroom.id %}
-                            <div style="display: flex; align-items: center; gap: 5px;">
+                <th>
+                    <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers"
+                        {% for teacher in assigned_teachers|get_item:classroom.id %}>
                                 <span>{{ teacher.first_name }} {{ teacher.last_name }}</span>
                                 <button type="button" class="btn btn-danger btn-sm unassign-teacher-btn unassign-column" 
                                         data-teacher-id="{{ teacher.id }}" 
