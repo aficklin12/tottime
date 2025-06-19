@@ -275,9 +275,10 @@ h1 {
                         {% endfor %}
                     </select>
                     <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                    <button class="btn btn-unassign toggle-delete-column-btn" type="button" onclick="toggleDeleteColumn()">
+                   <button onclick="toggleDeleteColumn()" class="btn btn-unassign" type="button">
                         Unassign
-                    </button> 
+                    </button>
+                    
                 </div>
             </th>
         </tr>
