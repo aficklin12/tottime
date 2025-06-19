@@ -1493,15 +1493,11 @@ def daily_attendance(request):
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
 
         classroom_data.append({
+            'id': classroom.id,  # Add this line
             'name': classroom.name,
             'ratio': adjusted_ratio,
             'teachers': teachers,
         })
-
-    return render(request, 'daily_attendance.html', {
-        **permissions_context,
-        'classroom_data': classroom_data,
-    })
 
 @login_required
 def classroom(request):

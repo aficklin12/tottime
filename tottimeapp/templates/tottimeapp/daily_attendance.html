@@ -42,6 +42,18 @@
     </tbody>
 </table>
          
+{% for classroom in classroom_data %}
+  <div>
+    <h3>{{ classroom.name }}</h3>
+    <p>Ratio: {{ classroom.ratio }}</p>
+    <p>Teachers: {{ classroom.teachers|join:", " }}</p>
+    <form method="get" action="{% url 'assign_teacher' classroom.id %}">
+      <button type="submit">
+        Add/Reassign Teacher
+      </button>
+    </form>
+  </div>
+{% endfor %}
 {% endblock %}
 {% block scripts %}
 
