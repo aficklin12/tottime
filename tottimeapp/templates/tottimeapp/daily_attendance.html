@@ -184,7 +184,15 @@ input[type="time"].sign-out-time:focus {
   .classroom-header-bg {
     background-color: var(--classroom-color, #f8f9fa) !important;
   }
-
+.attendance-table th:nth-child(2),
+.attendance-table td:nth-child(2),
+.attendance-table th:nth-child(3),
+.attendance-table td:nth-child(3) {
+    width: 110px;
+    min-width: 90px;
+    max-width: 130px;
+    white-space: nowrap;
+}
 @media (max-width: 1000px) {
   table {
     margin-left: 5px !important;
