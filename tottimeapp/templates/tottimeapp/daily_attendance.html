@@ -230,7 +230,15 @@ h1 {
         padding-top: 4px;
         padding-bottom: 4px;
     }
-
+  table th:nth-child(2),
+    table td:nth-child(2),
+    table th:nth-child(3),
+    table td:nth-child(3) {
+        width: 75px !important;
+        min-width: 75px !important;
+        max-width: 75px !important;
+        white-space: nowrap;
+    }
 }
 </style>
 {% endblock %}
