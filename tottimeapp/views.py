@@ -1477,28 +1477,28 @@ def daily_attendance(request):
     today = date.today()
     user = get_user_for_view(request)
 
+    # Only the current main user and their subusers
+    main_teacher = user
+    sub_teachers = user.subuser_set.all()
+
     # Handle assignment POST
     if request.method == "POST":
         classroom_id = request.POST.get("classroom_id")
-        teacher_type = request.POST.get("teacher_type")
         teacher_id = request.POST.get("teacher_id")
         classroom = Classroom.objects.get(id=classroom_id, user=user)
 
         # Unassign all current teachers
         ClassroomAssignment.objects.filter(classroom=classroom, unassigned_at__isnull=True).update(unassigned_at=timezone.now())
 
-        # Assign new teacher
-        if teacher_type == "main":
-            mainuser = MainUser.objects.get(id=teacher_id)
-            ClassroomAssignment.objects.create(classroom=classroom, mainuser=mainuser)
-        elif teacher_type == "sub":
-            subuser = SubUser.objects.get(id=teacher_id)
+        # Assign new teacher (mainuser or subuser)
+        if str(main_teacher.id) == teacher_id:
+            ClassroomAssignment.objects.create(classroom=classroom, mainuser=main_teacher)
+        else:
+            subuser = sub_teachers.get(id=teacher_id)
             ClassroomAssignment.objects.create(classroom=classroom, subuser=subuser)
         return redirect("daily_attendance")
 
     classrooms = Classroom.objects.filter(user=user)
-    main_teachers = MainUser.objects.all()
-    sub_teachers = SubUser.objects.all()
     classroom_data = []
     for classroom in classrooms:
         assignments = classroom.assignments.filter(unassigned_at__isnull=True)
@@ -1522,7 +1522,7 @@ def daily_attendance(request):
     return render(request, 'daily_attendance.html', {
         **permissions_context,
         'classroom_data': classroom_data,
-        'main_teachers': main_teachers,
+        'main_teacher': main_teacher,
         'sub_teachers': sub_teachers,
     })
 

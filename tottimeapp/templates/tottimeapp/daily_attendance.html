@@ -42,21 +42,11 @@
                 <form method="post" style="display:inline;">
                     {% csrf_token %}
                     <input type="hidden" name="classroom_id" value="{{ classroom.id }}">
-                    <select name="teacher_type">
-                        <option value="main">MainUser</option>
-                        <option value="sub">SubUser</option>
-                    </select>
-                    <select name="teacher_id">
-                        <optgroup label="Main Users">
-                            {% for teacher in main_teachers %}
-                                <option value="{{ teacher.id }}">{{ teacher.get_full_name }}</option>
-                            {% endfor %}
-                        </optgroup>
-                        <optgroup label="Sub Users">
-                            {% for teacher in sub_teachers %}
-                                <option value="{{ teacher.id }}">{{ teacher.user.get_full_name }}</option>
-                            {% endfor %}
-                        </optgroup>
+                    <select name="teacher_id" required>
+                        <option value="{{ main_teacher.id }}">{{ main_teacher.get_full_name }}</option>
+                        {% for teacher in sub_teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.user.get_full_name }}</option>
+                        {% endfor %}
                     </select>
                     <button type="submit" class="btn btn-sm btn-primary">Assign</button>
                 </form>
