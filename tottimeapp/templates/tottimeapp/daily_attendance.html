@@ -268,7 +268,7 @@ h1 {
         <tr>
             <th colspan="5" class="assign-teacher-header">
                 <div class="assign-teacher-row">
-                    <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: 160px;">
+                    <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: 170px;">
                         <option value="" disabled selected>Assign teacher</option>
                         {% for teacher in available_teachers %}
                             <option value="{{ teacher.id }}">{{ teacher.first_name }} {{ teacher.last_name }}</option>
