@@ -229,7 +229,7 @@ th:nth-child(5), td:nth-child(5) {
 
     /* Fixed widths for specific columns */
     th:nth-child(1), td:nth-child(1) { 
-        width: 30%; /* Fixed width for Student column */
+        width: 15%; /* Fixed width for Student column */
     }
 
     th:nth-child(2), td:nth-child(2), /* Sign In Time column */
@@ -365,6 +365,21 @@ th:nth-child(5), td:nth-child(5) {
             border-color: #007b8a;
             color: #fff;
         }
+@media (max-width: 1000px) {
+  table {
+    width: 100%;
+    margin: 0 auto;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-collapse: collapse;
+  }
+  th, td {
+    min-width: 100px; /* or adjust as needed */
+    width: auto;
+    text-align: center;
+  }
+}
 </style>
 {% endblock %}
 
