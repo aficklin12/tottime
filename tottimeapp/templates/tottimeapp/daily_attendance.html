@@ -179,9 +179,11 @@ input[type="time"].sign-out-time:focus {
     outline: none;
     box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
 }
-.classroom-header-{{ classroom.id }} {
-        background: {{ classroom.color }};
-    }
+
+  .classroom-header-bg {
+    background-color: var(--classroom-color, #f8f9fa) !important;
+  }
+
 @media (max-width: 1000px) {
   table {
     width: 100%;
@@ -221,8 +223,10 @@ h1 {
     <table>
     <thead>
         <!-- First Row: Classroom and Ratio -->
-        <tr>
-            <th colspan="5" class="classroom-header classroom-header-{{ classroom.id }}">
+       <tr>
+            <th colspan="5"
+                class="classroom-header classroom-header-bg"
+                style="{% if classroom and classroom.color %}--classroom-color: {{ classroom.color }};{% endif %}">
                 <h3>
                     <strong>{{ classroom }} - Ratio: </strong>
                     <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
