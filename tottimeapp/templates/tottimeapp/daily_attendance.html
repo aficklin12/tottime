@@ -275,9 +275,9 @@ h1 {
                         {% endfor %}
                     </select>
                     <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                    <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-unassign unassign-teacher-btn" type="button">
+                    <button class="btn btn-unassign toggle-delete-column-btn" type="button" onclick="toggleDeleteColumn()">
                         Unassign
-                    </button>    
+                    </button> 
                 </div>
             </th>
         </tr>
@@ -287,9 +287,9 @@ h1 {
                 <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers">
                     {% for teacher in assigned_teachers|get_item:classroom.id %}
                         <span>{{ teacher.first_name }} {{ teacher.last_name }}</span>
-                        <button type="button" class="btn btn-danger btn-sm unassign-teacher-btn unassign-column" 
-                                data-teacher-id="{{ teacher.id }}" 
-                                data-classroom-id="{{ classroom.id }}" 
+                        <button type="button" class="btn btn-danger btn-sm unassign-teacher-btn unassign-column"
+                                data-teacher-id="{{ teacher.id }}"
+                                data-classroom-id="{{ classroom.id }}"
                                 style="display: none;">
                             <i class="fas fa-trash-alt" style="color: white;"></i>
                         </button>
@@ -534,11 +534,46 @@ h1 {
 </script>
 
 <script>
-    function toggleDeleteColumn() {
-        $('.delete-column').toggle();
-        $('.unassign-column').toggle();
-    }
-    
+     // Toggle button handler (just toggles columns)
+    $('.toggle-delete-column-btn').on('click', function () {
+        toggleDeleteColumn();
+    });
+
+    // Row trash button handler (deletes teacher)
+    $('.unassign-teacher-btn').on('click', function () {
+        var classroomId = $(this).data('classroom-id');
+        var teacherId = $(this).data('teacher-id');
+
+        // Remove confirmation if not needed
+
+        $.ajax({
+            url: '{% url "unassign_teacher_from_classroom" %}',
+            method: 'POST',
+            data: {
+                'classroom_id': classroomId,
+                'teacher_id': teacherId,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function (response) {
+                if (response.success) {
+                    toastr.success(response.message);
+                    location.reload();
+                } else {
+                    toastr.error('Error: ' + (response.error || 'Unknown error.'));
+                }
+            },
+            error: function () {
+                toastr.error('An error occurred while unassigning the teacher.');
+            }
+        });
+    });
+
+
+// Toggle function
+function toggleDeleteColumn() {
+    $('.delete-column').toggle();
+    $('.unassign-column').toggle();
+}
     $(document).ready(function () {
         $('.assign-teacher-btn').on('click', function () {
             var classroomId = $(this).data('classroom-id');
