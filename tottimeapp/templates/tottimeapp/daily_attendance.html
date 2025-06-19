@@ -221,12 +221,12 @@ h1 {
         <!-- First Row: Classroom and Ratio -->
         <tr>
             <th colspan="5" class="classroom-header">
-                <h2>
+                <h3>
                     <strong>{{ classroom }} - Ratio: </strong>
                     <span class="{% if relative_counts|get_item:classroom > adjusted_ratios|get_item:classroom.id %}over-ratio{% else %}under-ratio{% endif %}">
                         <strong>{{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}</strong>
                     </span>
-                </h2>
+                </h3>
             </th>
         </tr>
         <!-- Second Row: Assign Teacher -->
