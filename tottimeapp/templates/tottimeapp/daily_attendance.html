@@ -234,9 +234,9 @@ h1 {
     table td:nth-child(2),
     table th:nth-child(3),
     table td:nth-child(3) {
-        width: 115px !important;
-        min-width: 115px !important;
-        max-width: 115px !important;
+        width: 125px !important;
+        min-width: 75px !important;
+        max-width: 125px !important;
         white-space: nowrap;
     }
 }
@@ -333,6 +333,9 @@ h1 {
                     </td>
                     <td>
                         <select class="classroom-select" data-id="{{ record.id }}">
+                            <option value="" disabled {% if not record.classroom_override %}selected{% endif %}>
+                                Reassign
+                            </option>
                             {% for option in classroom_options %}
                                 <option value="{{ option }}" {% if record.classroom_override == option %}selected{% endif %}>
                                     {{ option }}
