@@ -2270,6 +2270,7 @@ def classroom_options(request):
         'classrooms': classrooms,  # Pass the list of classrooms for the dropdown
         'selected_classroom': classroom_id,  # Keep track of the selected classroom
         'search_query': search_query,  # Keep track of the search query
+        'active_tab': 'students', 
         'selected_status': status_filter,  # Keep track of the selected status
     })
 
@@ -2308,6 +2309,7 @@ def classroom_options_classrooms(request):
     return render(request, 'tottimeapp/classroom_options_classrooms.html', {
         **permissions_context,
         'classroom_data': classroom_data,
+        'active_tab': 'classrooms',
         'search_query': search_query,
     })
 
@@ -2488,6 +2490,7 @@ def classroom_options_parents(request):
         **permissions_context,
         'subuser_data': subuser_data,  # Only subuser data is passed
         'search_query': search_query,  # Keep track of the search query
+        'active_tab': 'parents',
         'user_status': user_status,  # Pass the selected user status
     })
 
