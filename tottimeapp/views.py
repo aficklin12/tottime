@@ -2399,6 +2399,7 @@ def classroom_options_teachers(request):
             'first_name': subuser.user.first_name,
             'last_name': subuser.user.last_name,
             'code': subuser.user.code,
+            'active_tab': 'teachers',
             'group_name': subuser.group_id.name if subuser.group_id else 'N/A',
             'classroom_name': subuser_classroom_name
         })
