@@ -92,6 +92,19 @@
 .btn-primary {
      margin-top: 20px!important;
 }
+@media (max-width: 999px) {
+    .tabs {
+        display: none !important;
+    }
+    #optionsDropdownContainer {
+        display: block !important;
+    }
+}
+@media (min-width: 1000px) {
+    #optionsDropdownContainer {
+        display: none !important;
+    }
+}
     </style>
 {% endblock %}
 
@@ -114,6 +127,16 @@
         <a href="{% url 'classroom_options_parents' %}" class="tab">Parents</a>
         <a href="#"class="tab active-tab">Teachers</a>
         <a href="{% url 'classroom_options_classrooms' %}" class="tab">Classrooms</a>
+    </div>
+
+    <!-- Dropdown for small screens -->
+    <div class="d-block d-md-none mb-3" id="optionsDropdownContainer">
+        <select class="form-select" id="optionsDropdown" aria-label="Select option">
+            <option value="{% url 'classroom_options' %}" {% if active_tab == 'students' %}selected{% endif %}>Students</option>
+            <option value="{% url 'classroom_options_parents' %}" {% if active_tab == 'parents' %}selected{% endif %}>Parents</option>
+            <option value="{% url 'classroom_options_teachers' %}" {% if active_tab == 'teachers' %}selected{% endif %}>Teachers</option>
+            <option value="{% url 'classroom_options_classrooms' %}" {% if active_tab == 'classrooms' %}selected{% endif %}>Classrooms</option>
+        </select>
     </div>
 </form>
 
@@ -182,6 +205,13 @@
                 }
             });
         });
+
+        const dropdown = document.getElementById('optionsDropdown');
+        if (dropdown) {
+            dropdown.addEventListener('change', function () {
+                window.location.href = this.value;
+            });
+        }
     });
 </script>
 {% endblock %}
