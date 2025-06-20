@@ -2399,7 +2399,6 @@ def classroom_options_teachers(request):
             'first_name': subuser.user.first_name,
             'last_name': subuser.user.last_name,
             'code': subuser.user.code,
-            'active_tab': 'teachers',
             'group_name': subuser.group_id.name if subuser.group_id else 'N/A',
             'classroom_name': subuser_classroom_name
         })
@@ -2430,6 +2429,7 @@ def classroom_options_teachers(request):
         'classrooms': classrooms,  # Pass the list of classrooms for the dropdown
         'selected_classroom': classroom_id,  # Keep track of the selected classroom
         'search_query': search_query,  # Keep track of the search query
+        'active_tab': 'teachers',
         'user_status': user_status,  # Pass the selected user status
     })
 
