@@ -739,11 +739,12 @@
             veg: document.getElementById('createVegButton'),
             wg: document.getElementById('createWGButton')
         };
+        const dropdown = document.getElementById('recipeCategoryDropdown');
 
         // Initially hide the delete column
         deleteColumnHeader.style.display = 'none';
 
-       toggleDeleteButton.addEventListener('click', function () {
+        toggleDeleteButton.addEventListener('click', function () {
             const isHidden = deleteColumnHeader.style.display === 'none' || deleteColumnHeader.style.display === '';
             deleteColumnHeader.style.display = isHidden ? 'table-cell' : 'none';
 
@@ -864,8 +865,33 @@
                 fetchRecipes(category);
                 toggleButtons(category);
                 updateActiveTab(this); // Update the active tab styling
+                // Sync dropdown value
+                if (dropdown) {
+                    dropdown.value = category;
+                }
             });
         });
+
+        // Event listener for dropdown changes (MOBILE)
+        if (dropdown) {
+            // Set dropdown to match the active tab on load
+            const activeTab = document.querySelector('#recipeTabs .active-tab');
+            if (activeTab) {
+                dropdown.value = activeTab.getAttribute('data-category');
+            }
+            dropdown.addEventListener('change', function () {
+                const category = this.value;
+                fetchRecipes(category);
+                toggleButtons(category);
+                // Update tab styling for consistency if user resizes window
+                tabs.forEach(tab => {
+                    tab.classList.remove('active-tab');
+                    if (tab.getAttribute('data-category') === category) {
+                        tab.classList.add('active-tab');
+                    }
+                });
+            });
+        }
 
         // Load the first tab (Breakfast) by default
         fetchRecipes('breakfast');
