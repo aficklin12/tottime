@@ -115,6 +115,9 @@
 }
 #optionsDropdownContainer {
     margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 #optionsDropdown {
     width: 320px;
@@ -123,6 +126,17 @@
     margin-top: 20px;
     margin-bottom: 20px;
     display: block;
+}
+@media (max-width: 999px) {
+    table {
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: 5px;
+        margin-bottom: 5px;
+        display: block;
+        width: auto;
+        max-width: 98vw;
+    }
 }
 </style>
 {% endblock %}
