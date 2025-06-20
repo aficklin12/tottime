@@ -88,6 +88,19 @@
 #barcodeScannerModal + .modal-backdrop {
     z-index: 1079 !important;
 }
+@media (max-width: 999px) {
+    #categoryTabs {
+        display: none !important;
+    }
+    #categoryDropdownContainer {
+        display: block !important;
+    }
+}
+@media (min-width: 1000px) {
+    #categoryDropdownContainer {
+        display: none !important;
+    }
+}
 </style>
 {% endblock %}
 
@@ -131,8 +144,17 @@
 
 <div id="updateMessage" class="alert alert-success mt-2" style="display: none;">Inventory Updated Successfully!</div>
 
+<!-- Category Dropdown for small screens -->
+<div class="d-block d-md-none mb-3" id="categoryDropdownContainer">
+    <select class="form-select" id="categoryDropdown" aria-label="Select category">
+        {% for category in categories %}
+        <option value="category-{{ category }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
+        {% endfor %}
+    </select>
+</div>
+
 <!-- Tabs for categories -->
-<ul class="nav table-tabs" id="categoryTabs" role="tablist">
+<ul class="nav table-tabs d-none d-md-flex" id="categoryTabs" role="tablist">
     {% for category in categories %}
     <li class="nav-item" role="presentation">
         <button class="table-link {% if forloop.first %}active{% endif %}" id="tab-{{ category }}" data-bs-toggle="tab" data-bs-target="#category-{{ category }}" type="button" role="tab" aria-controls="category-{{ category }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
@@ -757,5 +779,23 @@ function startWebBarcodeScanner(onDetectedCallback) {
     }
 }
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dropdown = document.getElementById('categoryDropdown');
+    if (dropdown) {
+        dropdown.addEventListener('change', function () {
+            const tabId = this.value;
+            // Hide all tab panes
+            document.querySelectorAll('.tab-pane').forEach(function (pane) {
+                pane.classList.remove('show', 'active');
+            });
+            // Show selected tab pane
+            const selectedPane = document.getElementById(tabId);
+            if (selectedPane) {
+                selectedPane.classList.add('show', 'active');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
- 
