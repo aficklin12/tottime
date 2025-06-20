@@ -92,6 +92,26 @@
     #pmIngredient5Container {
         display: none;
     }
+    @media (max-width: 999px) {
+    .tabs {
+        display: none !important;
+    }
+    #recipeDropdownContainer {
+        display: block !important;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    #recipeCategoryDropdown {
+        width: 220px;
+        margin: 10px auto;
+        display: inline-block;
+    }
+}
+@media (min-width: 1000px) {
+    #recipeDropdownContainer {
+        display: none !important;
+    }
+}
 </style>
 {% endblock %}
 
@@ -139,6 +159,19 @@
         <button class="tab" id="fruit-tab" data-category="fruit" role="tab">Fruits</button>
         <button class="tab" id="veg-tab" data-category="veg" role="tab">Vegetables</button>
         <button class="tab" id="wg-tab" data-category="wg" role="tab">Whole Grains</button>
+    </div>
+
+    <!-- Mobile Dropdown for recipe categories -->
+    <div class="d-block d-md-none mb-3" id="recipeDropdownContainer">
+        <select class="form-select" id="recipeCategoryDropdown" aria-label="Select recipe category">
+            <option value="breakfast">Breakfast</option>
+            <option value="am">AM Snack</option>
+            <option value="lunch">Lunch</option>
+            <option value="pm">PM Snack</option>
+            <option value="fruit">Fruits</option>
+            <option value="veg">Vegetables</option>
+            <option value="wg">Whole Grains</option>
+        </select>
     </div>
 
     <!-- Table for displaying recipes -->
@@ -469,7 +502,7 @@
                     <div class="mb-3">
                         <label for="breakfastRule" class="form-label">Rule</label>
                         <select class="form-select" id="breakfastRule" name="breakfastRule">
-                            <!-- Rules will be populated dynamically here -->
+                            <!-- Rules will be populated dynamically -->
                         </select>
                     </div>
                     <!-- Instructions text area -->
@@ -1360,5 +1393,43 @@
             });
         });
     });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dropdown = document.getElementById('recipeCategoryDropdown');
+    const tabs = document.querySelectorAll('#recipeTabs .tab');
+
+    if (dropdown) {
+        dropdown.addEventListener('change', function () {
+            const category = this.value;
+
+            // Fetch and update recipes for the selected category
+            if (typeof fetchRecipes === "function") {
+                fetchRecipes(category);
+            }
+
+            // Toggle the correct button for the selected category
+            if (typeof toggleButtons === "function") {
+                toggleButtons(category);
+            }
+
+            // Update tab styling for consistency if user resizes window
+            tabs.forEach(tab => {
+                tab.classList.remove('active-tab');
+                if (tab.getAttribute('data-category') === category) {
+                    tab.classList.add('active-tab');
+                }
+            });
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+    // ...existing code...
+    // Set dropdown to match the active tab on load
+    const activeTab = document.querySelector('#recipeTabs .active-tab');
+    if (activeTab && dropdown) {
+        dropdown.value = activeTab.getAttribute('data-category');
+    }
+});
+
 </script>
 {% endblock %}
