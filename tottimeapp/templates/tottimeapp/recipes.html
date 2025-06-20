@@ -1399,6 +1399,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const dropdown = document.getElementById('recipeCategoryDropdown');
     const tabs = document.querySelectorAll('#recipeTabs .tab');
 
+    // Set dropdown to match the active tab on load
+    const activeTab = document.querySelector('#recipeTabs .active-tab');
+    if (activeTab && dropdown) {
+        dropdown.value = activeTab.getAttribute('data-category');
+    }
+
     if (dropdown) {
         dropdown.addEventListener('change', function () {
             const category = this.value;
@@ -1422,14 +1428,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
-    document.addEventListener('DOMContentLoaded', function () {
-    // ...existing code...
-    // Set dropdown to match the active tab on load
-    const activeTab = document.querySelector('#recipeTabs .active-tab');
-    if (activeTab && dropdown) {
-        dropdown.value = activeTab.getAttribute('data-category');
-    }
 });
-
 </script>
 {% endblock %}
