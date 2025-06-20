@@ -148,7 +148,7 @@
 <div class="d-block d-md-none mb-3" id="categoryDropdownContainer">
     <select class="form-select" id="categoryDropdown" aria-label="Select category">
         {% for category in categories %}
-        <option value="category-{{ category }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
+        <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
     </select>
 </div>
@@ -157,7 +157,7 @@
 <ul class="nav table-tabs d-none d-md-flex" id="categoryTabs" role="tablist">
     {% for category in categories %}
     <li class="nav-item" role="presentation">
-        <button class="table-link {% if forloop.first %}active{% endif %}" id="tab-{{ category }}" data-bs-toggle="tab" data-bs-target="#category-{{ category }}" type="button" role="tab" aria-controls="category-{{ category }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+        <button class="table-link {% if forloop.first %}active{% endif %}" id="tab-{{ category }}" data-bs-toggle="tab" data-bs-target="#category-{{ category|slugify }}" type="button" role="tab" aria-controls="category-{{ category|slugify }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
             {{ category }}
         </button>
     </li>
@@ -167,7 +167,7 @@
 <!-- Single table with dynamic content -->
 <div class="tab-content" id="categoryTabContent">
     {% for category in categories %}
-    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="category-{{ category }}" role="tabpanel" aria-labelledby="tab-{{ category }}">
+    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="category-{{ category|slugify }}" role="tabpanel" aria-labelledby="tab-{{ category }}">
         <table >
             <thead>
                 <tr>
