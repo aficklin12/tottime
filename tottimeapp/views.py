@@ -190,14 +190,23 @@ def index(request):
 
         # Add classroom data to the cards, including classroom id
         classroom_cards[classroom.name] = {
-            'id': classroom.id,         # <-- Added classroom id
+            'id': classroom.id,
             'count': count,
-            'ratio': adjusted_ratio     # Use the adjusted ratio
+            'ratio': adjusted_ratio
         }
+
+    # Fetch active announcements for this user (not expired)
+    now = timezone.now()
+    announcements = Announcement.objects.filter(
+        user=user
+    ).filter(
+        models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
+    ).order_by('-created_at')
 
     context = {
         'order_items': order_items,
         'classroom_cards': classroom_cards,
+        'announcements': announcements,  # Add announcements to context
         **permissions_context,  # Include permission flags dynamically
     }
     return render(request, 'index.html', context)
@@ -445,12 +454,11 @@ def add_announcement(request):
     expires_at = request.POST.get('expires_at')
     user = get_user_for_view(request)
 
-    # Parse expires_at if provided
     from django.utils.dateparse import parse_datetime
     expires_at_parsed = parse_datetime(expires_at) if expires_at else None
 
-    if not title or not message:
-        return JsonResponse({'error': 'Title and message are required.'}, status=400)
+    if not title or not message or not expires_at_parsed:
+        return JsonResponse({'error': 'Title, message, and expiration are required.'}, status=400)
 
     Announcement.objects.create(
         user=user,
