@@ -152,6 +152,55 @@ h1 {
 {% endblock %}
 
 {% block content %}
+<!-- Student Announcements -->
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Student Announcements</h1>
+    <div class="mb-3">
+        {% if student_announcements %}
+            <ul class="list-group">
+                {% for announcement in student_announcements %}
+                    <li class="list-group-item">
+                        <strong>{{ announcement.title }}</strong><br>
+                        <span>{{ announcement.message }}</span>
+                        <div class="text-muted" style="font-size: 0.85em;">
+                            Posted: {{ announcement.created_at|date:"M d, Y H:i" }}
+                            {% if announcement.expires_at %}
+                                | Expires: {{ announcement.expires_at|date:"M d, Y H:i" }}
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted">No announcements at this time.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Teacher Announcements -->
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Teacher Announcements</h1>
+    <div class="mb-3">
+        {% if teacher_announcements %}
+            <ul class="list-group">
+                {% for announcement in teacher_announcements %}
+                    <li class="list-group-item">
+                        <strong>{{ announcement.title }}</strong><br>
+                        <span>{{ announcement.message }}</span>
+                        <div class="text-muted" style="font-size: 0.85em;">
+                            Posted: {{ announcement.created_at|date:"M d, Y H:i" }}
+                            {% if announcement.expires_at %}
+                                | Expires: {{ announcement.expires_at|date:"M d, Y H:i" }}
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted">No announcements at this time.</div>
+        {% endif %}
+    </div>
+</div>
                 <div class="container-fluid px-4">
                     <h1 class="mt-4">Ratios</h1>
                     <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
