@@ -150,7 +150,7 @@
 <div id="updateMessage" class="alert alert-success mt-2" style="display: none;">Inventory Updated Successfully!</div>
 
 <!-- Category Dropdown for small screens -->
-<div class="d-block d-md-none mb-3" id="categoryDropdownContainer">
+<div class="d-block d-md-none mb-3 d-flex justify-content-center" id="categoryDropdownContainer">
     <select class="form-select" id="categoryDropdown" aria-label="Select category" style="width: 300px;">
         {% for category in categories %}
         <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
