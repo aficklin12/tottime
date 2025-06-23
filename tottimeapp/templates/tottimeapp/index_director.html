@@ -30,6 +30,10 @@
                 margin-left: auto; /* Center horizontally */
                 margin-right: auto;
             }
+             h1 {
+            margin-left: -25px!important; /* Adjust margin for mobile view */
+                
+        }
         }
         .bg-faded-red {
             background-color:  #2d2c30; /* Adjust the alpha value (last parameter) for the desired opacity */
@@ -148,6 +152,7 @@
           text-align: right!important;    
           margin: 0;
         }
+        
 </style>
 {% endblock %}
 
@@ -359,7 +364,7 @@
       <form method="post" action="{% url 'add_announcement' %}">
         {% csrf_token %}
         <div class="modal-header">
-          <h5 class="modal-title" id="addAnnouncementModalLabel">Add Announcement</h5>
+          <h5 class="modal-title" id="addAnnouncementModalLabel">Add Student Announcement</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
