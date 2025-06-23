@@ -13,7 +13,7 @@ from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.core.files.storage import default_storage
@@ -246,9 +246,18 @@ def index_director(request):
             'ratio': adjusted_ratio
         }
 
+    # Fetch active announcements for this user (not expired)
+    now = timezone.now()
+    announcements = Announcement.objects.filter(
+        user=user
+    ).filter(
+        models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now)
+    ).order_by('-created_at')
+
     context = {
         'order_items': order_items,
         'classroom_cards': classroom_cards,
+        'announcements': announcements,  # Add announcements to context
         **permissions_context,
     }
 

@@ -153,6 +153,32 @@
 
 {% block content %}
                     <div class="container-fluid px-4">
+                        <h1 class="mt-4">Announcements</h1>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
+                            <i class="fas fa-plus"></i> Add Announcement
+                        </button>
+                        <div class="mb-3">
+                            {% if announcements %}
+                                <ul class="list-group">
+                                    {% for announcement in announcements %}
+                                        <li class="list-group-item">
+                                            <strong>{{ announcement.title }}</strong><br>
+                                            <span>{{ announcement.message }}</span>
+                                            <div class="text-muted" style="font-size: 0.85em;">
+                                                Posted: {{ announcement.created_at|date:"M d, Y H:i" }}
+                                                {% if announcement.expires_at %}
+                                                    | Expires: {{ announcement.expires_at|date:"M d, Y H:i" }}
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <div class="text-muted">No announcements at this time.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="container-fluid px-4">
                         <h1 class="mt-4">Ratios</h1>
                         <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
                           {% for classroom, data in classroom_cards.items %}
@@ -303,6 +329,38 @@
                     </div>
                 </div>
             </div>
+            <!-- Add Announcement Modal -->
+<div class="modal fade" id="addAnnouncementModal" tabindex="-1" aria-labelledby="addAnnouncementModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'add_announcement' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="addAnnouncementModalLabel">Add Announcement</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="announcementTitle" class="form-label">Title</label>
+            <input type="text" class="form-control" id="announcementTitle" name="title" required>
+          </div>
+          <div class="mb-3">
+            <label for="announcementMessage" class="form-label">Message</label>
+            <textarea class="form-control" id="announcementMessage" name="message" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="announcementExpiresAt" class="form-label">Expires At (optional)</label>
+            <input type="datetime-local" class="form-control" id="announcementExpiresAt" name="expires_at">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -517,5 +575,28 @@
             // Allow the form to be submitted
         });
     });
+    $(document).ready(function() {
+    $('#addAnnouncementModal form').submit(function(event) {
+        event.preventDefault();
+        var $form = $(this);
+        var formData = $form.serialize();
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                // Hide the modal
+                $('#addAnnouncementModal').modal('hide');
+                // Optionally, clear the form fields
+                $form[0].reset();
+                // Reload the page to show the new announcement
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('Error adding announcement.');
+            }
+        });
+    });
+});
     </script>
    {% endblock %}
