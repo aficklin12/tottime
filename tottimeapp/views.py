@@ -130,20 +130,15 @@ def app_redirect(request):
 
 @login_required(login_url='/login/')
 def index(request):
-    # Check permissions for the specific page
-    required_permission_id = None  # No specific permission required for this page
+    required_permission_id = None
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    # Get the main user or subuser
     user = get_user_for_view(request)
-    # Check if the user is a SubUser and redirect accordingly
     try:
         sub_user = SubUser.objects.get(user=request.user)
-        group_id = sub_user.group_id_id  # Get group_id_id from SubUser table
-
+        group_id = sub_user.group_id_id
         if group_id == 2:
             return redirect('index_director')
         elif group_id == 3:
@@ -157,48 +152,44 @@ def index(request):
         elif group_id == 6:
             return redirect('index_free_user')
     except SubUser.DoesNotExist:
-        # If the user is not a SubUser, assume they are the owner (ID 1)
         pass
 
-    # Get order items for the Food Program section
     order_items = OrderList.objects.filter(user=user)
-
-    # --- Build classroom ratio cards with dynamic ratios ---
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
-        sign_out_time__isnull=True,  # Only records with NULL sign_out_time
+        sign_out_time__isnull=True,
         user=user
     )
     classrooms = Classroom.objects.filter(user=user)
     classroom_cards = {}
 
     for classroom in classrooms:
-        # Count attendance records where classroom_override equals the classroom name
         count = attendance_records.filter(classroom_override=classroom.name).count()
-
-        # Fetch assigned teachers for the classroom
         assignments = ClassroomAssignment.objects.filter(classroom=classroom)
         assigned_teachers = [
             assignment.mainuser or assignment.subuser for assignment in assignments
         ]
-
-        # Calculate adjusted ratios based on the number of assigned teachers
         base_ratio = classroom.ratios
         teacher_count = len(assigned_teachers)
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
-
-        # Add classroom data to the cards, including classroom id
         classroom_cards[classroom.name] = {
             'id': classroom.id,
             'count': count,
             'ratio': adjusted_ratio
         }
 
-    # Fetch active announcements for this user (not expired)
     now = timezone.now()
-    announcements = Announcement.objects.filter(
-        user=user
+    student_announcements = Announcement.objects.filter(
+        user=user,
+        recipient_type='student'
+    ).filter(
+        models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
+    ).order_by('-created_at')
+
+    teacher_announcements = Announcement.objects.filter(
+        user=user,
+        recipient_type='teacher'
     ).filter(
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
@@ -206,8 +197,9 @@ def index(request):
     context = {
         'order_items': order_items,
         'classroom_cards': classroom_cards,
-        'announcements': announcements,  # Add announcements to context
-        **permissions_context,  # Include permission flags dynamically
+        'student_announcements': student_announcements,
+        'teacher_announcements': teacher_announcements,
+        **permissions_context,
     }
     return render(request, 'index.html', context)
 
