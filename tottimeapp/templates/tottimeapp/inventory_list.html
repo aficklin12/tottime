@@ -100,6 +100,11 @@
     #categoryDropdownContainer {
         display: none !important;
     }
+    
+}
+/* Add to your <style> block */
+#categoryDropdown {
+    width: 300px;
 }
 </style>
 {% endblock %}
@@ -146,7 +151,7 @@
 
 <!-- Category Dropdown for small screens -->
 <div class="d-block d-md-none mb-3" id="categoryDropdownContainer">
-    <select class="form-select" id="categoryDropdown" aria-label="Select category">
+    <select class="form-select" id="categoryDropdown" aria-label="Select category" style="width: 300px;">
         {% for category in categories %}
         <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
