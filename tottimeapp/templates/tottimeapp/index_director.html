@@ -120,7 +120,9 @@
 {% block content %}
                 <div class="container-fluid px-4">
                     <h1 class="mt-4">Student Announcements</h1>
-                    <!-- ...existing student announcement modal and list... -->
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
+                        <i class="fas fa-plus"></i> Add Student Announcement
+                    </button>
                     <div class="mb-3">
                         {% if student_announcements %}
                             <ul class="list-group">
@@ -145,7 +147,9 @@
 
                 <div class="container-fluid px-4">
                     <h1 class="mt-4">Teacher Announcements</h1>
-                    <!-- ...teacher announcement modal and list (can reuse modal, just set recipient_type)... -->
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTeacherAnnouncementModal">
+                        <i class="fas fa-plus"></i> Add Teacher Announcement
+                    </button>
                     <div class="mb-3">
                         {% if teacher_announcements %}
                             <ul class="list-group">
@@ -386,9 +390,7 @@
     </div>
   </div>
 </div>
-<button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTeacherAnnouncementModal">
-    <i class="fas fa-plus"></i> Add Teacher Announcement
-</button>
+
 {% endblock %}
 {% block scripts %}
 <script>
