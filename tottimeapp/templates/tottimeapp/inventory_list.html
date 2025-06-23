@@ -102,9 +102,10 @@
     }
     
 }
-/* Add to your <style> block */
 #categoryDropdown {
     width: 300px;
+    margin-left: auto!important;
+    margin-right: auto!important;
 }
 </style>
 {% endblock %}
@@ -150,8 +151,8 @@
 <div id="updateMessage" class="alert alert-success mt-2" style="display: none;">Inventory Updated Successfully!</div>
 
 <!-- Category Dropdown for small screens -->
-<div class="d-block d-md-none mb-3 d-flex justify-content-center" id="categoryDropdownContainer">
-    <select class="form-select" id="categoryDropdown" aria-label="Select category" style="width: 300px;">
+<div class="d-block d-md-none mb-3 d-flex justify-content-center align-items-center" id="categoryDropdownContainer" style="width: 100%;">
+    <select class="form-select" id="categoryDropdown" aria-label="Select category">
         {% for category in categories %}
         <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
