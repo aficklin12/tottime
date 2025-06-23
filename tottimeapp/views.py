@@ -16,6 +16,7 @@ from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageF
 from .models import Classroom, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
+from django.views.decorators.http import require_POST
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import cv2
@@ -435,6 +436,29 @@ def index_free_user(request):
         return permissions_context
     # Render the index_free_user page with the permissions context
     return render(request, 'index_free_user.html', permissions_context)
+
+@require_POST
+@login_required(login_url='/login/')
+def add_announcement(request):
+    title = request.POST.get('title')
+    message = request.POST.get('message')
+    expires_at = request.POST.get('expires_at')
+    user = get_user_for_view(request)
+
+    # Parse expires_at if provided
+    from django.utils.dateparse import parse_datetime
+    expires_at_parsed = parse_datetime(expires_at) if expires_at else None
+
+    if not title or not message:
+        return JsonResponse({'error': 'Title and message are required.'}, status=400)
+
+    Announcement.objects.create(
+        user=user,
+        title=title,
+        message=message,
+        expires_at=expires_at_parsed
+    )
+    return JsonResponse({'success': True})
 
 @login_required
 def recipes(request):

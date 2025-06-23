@@ -158,6 +158,7 @@ urlpatterns = [
     path('attendance_record/', login_required(views.attendance_record), name='attendance_record'),
     path('inbox_perms/', login_required(views.inbox_perms), name='inbox_perms'),
     path('get-allowed-receivers/', login_required(views.get_allowed_receivers), name='get_allowed_receivers'),
+    path('add-announcement/', login_required(views.add_announcement), name='add_announcement'),
 
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
