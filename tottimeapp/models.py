@@ -779,11 +779,16 @@ class UserMessagingPermission(models.Model):
         return f"{self.sender} -> {self.receiver}: {'Allowed' if self.can_message else 'Not Allowed'}"
 
 class Announcement(models.Model):
+    RECIPIENT_CHOICES = [
+        ('student', 'Student'),
+        ('teacher', 'Teacher'),
+    ]
     user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='announcements')
     title = models.CharField(max_length=200)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(null=True, blank=True)
+    recipient_type = models.CharField(max_length=10, choices=RECIPIENT_CHOICES, default='student')
 
     def __str__(self):
         return self.title

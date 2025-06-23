@@ -119,32 +119,59 @@
 {% endblock %}
 
 {% block content %}
-                <div class="container-fluid px-4">
-                    <h1 class="mt-4">Announcements</h1>
-                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
-                        <i class="fas fa-plus"></i> Add Announcement
-                    </button>
-                    <div class="mb-3">
-                        {% if announcements %}
-                            <ul class="list-group">
-                                {% for announcement in announcements %}
-                                    <li class="list-group-item">
-                                        <strong>{{ announcement.title }}</strong><br>
-                                        <span>{{ announcement.message }}</span>
-                                        <div class="text-muted" style="font-size: 0.85em;">
-                                            Posted: {{ announcement.created_at|date:"M d, Y H:i" }}
-                                            {% if announcement.expires_at %}
-                                                | Expires: {{ announcement.expires_at|date:"M d, Y H:i" }}
-                                            {% endif %}
-                                        </div>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <div class="text-muted">No announcements at this time.</div>
-                        {% endif %}
-                    </div>
-                </div>
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Student Announcements</h1>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
+        <i class="fas fa-plus"></i> Add Announcement
+    </button>
+    <div class="mb-3">
+        {% if student_announcements %}
+            <ul class="list-group">
+                {% for announcement in student_announcements %}
+                    <li class="list-group-item">
+                        <strong>{{ announcement.title }}</strong><br>
+                        <span>{{ announcement.message }}</span>
+                        <div class="text-muted" style="font-size: 0.85em;">
+                            Posted: {{ announcement.created_at|date:"M d, Y H:i" }}
+                            {% if announcement.expires_at %}
+                                | Expires: {{ announcement.expires_at|date:"M d, Y H:i" }}
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted">No announcements at this time.</div>
+        {% endif %}
+    </div>
+</div>
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Teacher Announcements</h1>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTeacherAnnouncementModal">
+        <i class="fas fa-plus"></i> Add Teacher Announcement
+    </button>
+    <div class="mb-3">
+        {% if teacher_announcements %}
+            <ul class="list-group">
+                {% for announcement in teacher_announcements %}
+                    <li class="list-group-item">
+                        <strong>{{ announcement.title }}</strong><br>
+                        <span>{{ announcement.message }}</span>
+                        <div class="text-muted" style="font-size: 0.85em;">
+                            Posted: {{ announcement.created_at|date:"M d, Y H:i" }}
+                            {% if announcement.expires_at %}
+                                | Expires: {{ announcement.expires_at|date:"M d, Y H:i" }}
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted">No announcements at this time.</div>
+        {% endif %}
+    </div>
+</div>
+
                 <div class="container-fluid px-4">
                     <h1 class="mt-4">Ratios</h1>
                     <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
@@ -294,14 +321,15 @@
                         </form>
                     </div>
                 </div>
-<!-- Add Announcement Modal -->
+<!-- Student Announcement Modal -->
 <div class="modal fade" id="addAnnouncementModal" tabindex="-1" aria-labelledby="addAnnouncementModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <form method="post" action="{% url 'add_announcement' %}">
         {% csrf_token %}
+        <input type="hidden" name="recipient_type" value="student">
         <div class="modal-header">
-          <h5 class="modal-title" id="addAnnouncementModalLabel">Add Announcement</h5>
+          <h5 class="modal-title" id="addAnnouncementModalLabel">Add Student Announcement</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -316,6 +344,39 @@
           <div class="mb-3">
             <label for="announcementExpiresAt" class="form-label">Expires At</label>
             <input type="datetime-local" class="form-control" id="announcementExpiresAt" name="expires_at" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Teacher Announcement Modal -->
+<div class="modal fade" id="addTeacherAnnouncementModal" tabindex="-1" aria-labelledby="addTeacherAnnouncementModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'add_announcement' %}" id="teacherAnnouncementForm">
+        {% csrf_token %}
+        <input type="hidden" name="recipient_type" value="teacher">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addTeacherAnnouncementModalLabel">Add Teacher Announcement</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="teacherAnnouncementTitle" class="form-label">Title</label>
+            <input type="text" class="form-control" id="teacherAnnouncementTitle" name="title" required>
+          </div>
+          <div class="mb-3">
+            <label for="teacherAnnouncementMessage" class="form-label">Message</label>
+            <textarea class="form-control" id="teacherAnnouncementMessage" name="message" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="teacherAnnouncementExpiresAt" class="form-label">Expires At</label>
+            <input type="datetime-local" class="form-control" id="teacherAnnouncementExpiresAt" name="expires_at" required>
           </div>
         </div>
         <div class="modal-footer">
@@ -561,6 +622,31 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 alert('Error adding announcement.');
+            }
+        });
+    });
+});
+$(document).ready(function() {
+    $('#teacherAnnouncementForm').submit(function(event) {
+        event.preventDefault();
+        var $form = $(this);
+        var expiresAt = $('#teacherAnnouncementExpiresAt').val();
+        if (!expiresAt) {
+            alert('Expiration date and time is required.');
+            return false;
+        }
+        var formData = $form.serialize();
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                $('#addTeacherAnnouncementModal').modal('hide');
+                $form[0].reset();
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('Error adding teacher announcement.');
             }
         });
     });

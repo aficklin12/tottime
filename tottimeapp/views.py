@@ -214,13 +214,12 @@ def index(request):
 @login_required(login_url='/login/')
 def index_director(request):
     user = get_user_for_view(request)
-    required_permission_id = 157  # Example permission ID for "permissions"
+    required_permission_id = 157
     permissions_context = check_permissions(request, required_permission_id)
-    if isinstance(permissions_context, HttpResponseRedirect):  # Redirect if no access
+    if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
     order_items = OrderList.objects.filter(user=user)
-
     today = date.today()
     attendance_records = AttendanceRecord.objects.filter(
         sign_in_time__date=today,
@@ -231,10 +230,7 @@ def index_director(request):
     classroom_cards = {}
 
     for classroom in classrooms:
-        # Count attendance records where classroom_override equals the classroom name
         count = attendance_records.filter(classroom_override=classroom.name).count()
-
-        # Fetch only active assigned teachers for the classroom
         assignments = ClassroomAssignment.objects.filter(
             classroom=classroom,
             unassigned_at__isnull=True
@@ -244,22 +240,26 @@ def index_director(request):
             for assignment in assignments
             if assignment.mainuser or assignment.subuser
         ]
-
-        # Calculate adjusted ratios based on the number of assigned teachers
         base_ratio = classroom.ratios
         teacher_count = len(assigned_teachers)
         adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
-
         classroom_cards[classroom.name] = {
             'id': classroom.id,
             'count': count,
             'ratio': adjusted_ratio
         }
 
-    # Fetch active announcements for this user (not expired)
     now = timezone.now()
-    announcements = Announcement.objects.filter(
-        user=user
+    student_announcements = Announcement.objects.filter(
+        user=user,
+        recipient_type='student'
+    ).filter(
+        models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now)
+    ).order_by('-created_at')
+
+    teacher_announcements = Announcement.objects.filter(
+        user=user,
+        recipient_type='teacher'
     ).filter(
         models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now)
     ).order_by('-created_at')
@@ -267,7 +267,8 @@ def index_director(request):
     context = {
         'order_items': order_items,
         'classroom_cards': classroom_cards,
-        'announcements': announcements,  # Add announcements to context
+        'student_announcements': student_announcements,
+        'teacher_announcements': teacher_announcements,
         **permissions_context,
     }
 
@@ -452,19 +453,21 @@ def add_announcement(request):
     title = request.POST.get('title')
     message = request.POST.get('message')
     expires_at = request.POST.get('expires_at')
+    recipient_type = request.POST.get('recipient_type')
     user = get_user_for_view(request)
 
     from django.utils.dateparse import parse_datetime
     expires_at_parsed = parse_datetime(expires_at) if expires_at else None
 
-    if not title or not message or not expires_at_parsed:
-        return JsonResponse({'error': 'Title, message, and expiration are required.'}, status=400)
+    if not title or not message or not expires_at_parsed or recipient_type not in ['student', 'teacher']:
+        return JsonResponse({'error': 'All fields are required.'}, status=400)
 
     Announcement.objects.create(
         user=user,
         title=title,
         message=message,
-        expires_at=expires_at_parsed
+        expires_at=expires_at_parsed,
+        recipient_type=recipient_type
     )
     return JsonResponse({'success': True})
 
