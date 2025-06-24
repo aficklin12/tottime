@@ -224,7 +224,7 @@ th {
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    // Incident report click handler (already present)
+    // Incident report click handler
     $('.clickable-name').on('click', function() {
         const incidentId = $(this).data('incident-id');
         if (incidentId) {
@@ -233,12 +233,17 @@ $(document).ready(function() {
                 type: "GET",
                 data: { id: incidentId },
                 success: function(data) {
-                    $('#incidentReportModalBody').html(
-                        `<strong>Date:</strong> ${data.date_of_incident}<br>
-                         <strong>Description:</strong> ${data.incident_description}<br>
-                         <strong>Injury:</strong> ${data.injury_description}<br>
-                         <strong>Treatment:</strong> ${data.treatment_administered}`
-                    );
+                    let html = `
+                        <strong>Date:</strong> ${data.date_of_incident}<br>
+                        <strong>Description:</strong> ${data.incident_description}<br>
+                        <strong>Injury:</strong> ${data.injury_description}<br>
+                        <strong>Treatment:</strong> ${data.treatment_administered}<br>
+                    `;
+                    if (data.parent_signature) {
+                        html += `<strong>Signed:</strong><br>
+                                 <img src="${data.parent_signature}" alt="Parent Signature" style="border:1px solid #ccc;max-width:400px;">`;
+                    }
+                    $('#incidentReportModalBody').html(html);
                     $('#incidentReportViewModal').modal('show');
                 },
                 error: function() {
