@@ -40,37 +40,37 @@
     <div class="mb-3">
         {% if snapshot_data %}
             <ul class="list-group">
-                {% for snap in snapshot_data %}
-                    <li class="list-group-item">
-                        <span>
-                            {% if snap.sign_in_time %}
-                                <strong>{{ snap.student }}</strong> was signed in at {{ snap.sign_in_time|date:"H:i" }}.<br>
-                            {% endif %}
-                            {% if snap.sign_out_time %}
-                                <strong>{{ snap.student }}</strong> was signed out at {{ snap.sign_out_time|date:"H:i" }}.<br>
-                            {% endif %}
-                            {% if snap.outside_time_out_1 %}
-                                <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_1|date:"H:i" }}.
-                                {% if snap.outside_time_in_1 %}
-                                    and came in at {{ snap.outside_time_in_1|date:"H:i" }}.
+                    {% for snap in snapshot_data %}
+                        <li class="list-group-item">
+                            <span>
+                                {% if snap.sign_in_time %}
+                                    <strong>{{ snap.student }}</strong> was signed in at {{ snap.sign_in_time|date:"g:i A" }}.<br>
                                 {% endif %}
-                                <br>
-                            {% endif %}
-                            {% if snap.outside_time_out_2 %}
-                                <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_2|date:"H:i" }}.
-                                {% if snap.outside_time_in_2 %}
-                                    and came in at {{ snap.outside_time_in_2|date:"H:i" }}.
+                                {% if snap.sign_out_time %}
+                                    <strong>{{ snap.student }}</strong> was signed out at {{ snap.sign_out_time|date:"g:i A" }}.<br>
                                 {% endif %}
-                                <br>
-                            {% endif %}
-                            {% if snap.incident_report %}
-                                There was an incident report for <strong>{{ snap.student }}</strong>. 
-                                <span style="color: red; font-weight: bold;">Signature required</span>
-                            {% endif %}
-                        </span>
-                    </li>
-                {% endfor %}
-            </ul>
+                                {% if snap.outside_time_out_1 %}
+                                    <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_1|date:"g:i A" }}.
+                                    {% if snap.outside_time_in_1 %}
+                                        and came in at {{ snap.outside_time_in_1|date:"g:i A" }}.
+                                    {% endif %}
+                                    <br>
+                                {% endif %}
+                                {% if snap.outside_time_out_2 %}
+                                    <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_2|date:"g:i A" }}.
+                                    {% if snap.outside_time_in_2 %}
+                                        and came in at {{ snap.outside_time_in_2|date:"g:i A" }}.
+                                    {% endif %}
+                                    <br>
+                                {% endif %}
+                                {% if snap.incident_report %}
+                                    There was an incident report for <strong>{{ snap.student }}</strong>. 
+                                    <span style="color: red; font-weight: bold;">Signature required</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
         {% else %}
             <div class="text-muted">No attendance today.</div>
         {% endif %}
