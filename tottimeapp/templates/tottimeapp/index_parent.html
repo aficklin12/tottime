@@ -64,8 +64,31 @@
                                     <br>
                                 {% endif %}
                                 {% if snap.incident_report %}
-                                    There was an incident report for <strong>{{ snap.student }}</strong>. 
+                                    There was an incident report for 
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#incidentModal{{ snap.incident_report.id }}">
+                                        <strong>{{ snap.student }}</strong>
+                                    </a>. 
                                     <span style="color: red; font-weight: bold;">Signature required</span>
+                                    <!-- Modal -->
+                                    <div class="modal fade" id="incidentModal{{ snap.incident_report.id }}" tabindex="-1" aria-labelledby="incidentModalLabel{{ snap.incident_report.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="incidentModalLabel{{ snap.incident_report.id }}">Incident Report for {{ snap.student }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p><strong>Date of Incident:</strong> {{ snap.incident_report.date_of_incident }}</p>
+                                            <p><strong>Incident Description:</strong> {{ snap.incident_report.incident_description }}</p>
+                                            <p><strong>Injury Description:</strong> {{ snap.incident_report.injury_description }}</p>
+                                            <p><strong>Treatment Administered:</strong> {{ snap.incident_report.treatment_administered }}</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        </div>
+                                        </div>
+                                    </div>
+                                    </div>
                                 {% endif %}
                             </span>
                         </li>
