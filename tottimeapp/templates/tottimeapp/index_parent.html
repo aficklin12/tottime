@@ -82,14 +82,20 @@
                                             <p><strong>Incident Description:</strong> {{ snap.incident_report.incident_description }}</p>
                                             <p><strong>Injury Description:</strong> {{ snap.incident_report.injury_description }}</p>
                                             <p><strong>Treatment Administered:</strong> {{ snap.incident_report.treatment_administered }}</p>
+                                            {% if snap.incident_report.parent_signature %}
+                                                <p><strong>Signed by:</strong> {{ snap.incident_report.parent_signature }}</p>
+                                            {% else %}
+                                                <form class="signature-form" data-report-id="{{ snap.incident_report.id }}">
+                                                    <div class="mb-3">
+                                                        <label for="signatureInput{{ snap.incident_report.id }}" class="form-label">Parent Signature (type your name):</label>
+                                                        <input type="text" class="form-control" id="signatureInput{{ snap.incident_report.id }}" name="signature" required>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">Sign</button>
+                                                    <div class="signature-success text-success mt-2" style="display:none;">Signature saved!</div>
+                                                    <div class="signature-error text-danger mt-2" style="display:none;">Error saving signature.</div>
+                                                </form>
+                                            {% endif %}
                                         </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        </div>
-                                        </div>
-                                    </div>
-                                    </div>
-                                {% endif %}
                             </span>
                         </li>
                     {% endfor %}
@@ -310,6 +316,31 @@ $(document).ready(function() {
         // Optionally, you can add more validation here, e.g., ensuring quantity is valid
 
         // Allow the form to be submitted
+    });
+});
+$(document).ready(function() {
+    $('.signature-form').on('submit', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var reportId = form.data('report-id');
+        var signature = form.find('input[name="signature"]').val();
+        $.ajax({
+            url: '/incident-report/sign/' + reportId + '/',
+            method: 'POST',
+            data: {
+                signature: signature,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                form.find('.signature-success').show();
+                form.find('.signature-error').hide();
+                setTimeout(function() { location.reload(); }, 1000);
+            },
+            error: function() {
+                form.find('.signature-success').hide();
+                form.find('.signature-error').show();
+            }
+        });
     });
 });
 </script>

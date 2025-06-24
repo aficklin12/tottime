@@ -1820,7 +1820,19 @@ def incident_report_detail(request):
         })
     except IncidentReport.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
-    
+
+@require_POST
+@login_required
+def sign_incident_report(request, report_id):
+    signature = request.POST.get('signature')
+    try:
+        report = IncidentReport.objects.get(id=report_id)
+        report.parent_signature = signature
+        report.save()
+        return JsonResponse({'success': True})
+    except IncidentReport.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Report not found'}, status=404)
+
 @login_required
 def add_diaper_change(request):
     if request.method == 'POST':
