@@ -40,66 +40,70 @@
     <div class="mb-3">
         {% if snapshot_data %}
             <ul class="list-group">
-                    {% for snap in snapshot_data %}
-                        <li class="list-group-item">
-                            <span>
-                                {% if snap.sign_in_time %}
-                                    <strong>{{ snap.student }}</strong> was signed in at {{ snap.sign_in_time|date:"g:i A" }}.<br>
-                                {% endif %}
-                                {% if snap.sign_out_time %}
-                                    <strong>{{ snap.student }}</strong> was signed out at {{ snap.sign_out_time|date:"g:i A" }}.<br>
-                                {% endif %}
-                                {% if snap.outside_time_out_1 %}
-                                    <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_1|date:"g:i A" }}.
-                                    {% if snap.outside_time_in_1 %}
-                                        and came in at {{ snap.outside_time_in_1|date:"g:i A" }}.
+    {% for snap in snapshot_data %}
+        <li class="list-group-item">
+            <span>
+                {% if snap.sign_in_time %}
+                    <strong>{{ snap.student }}</strong> was signed in at {{ snap.sign_in_time|date:"g:i A" }}.<br>
+                {% endif %}
+                {% if snap.sign_out_time %}
+                    <strong>{{ snap.student }}</strong> was signed out at {{ snap.sign_out_time|date:"g:i A" }}.<br>
+                {% endif %}
+                {% if snap.outside_time_out_1 %}
+                    <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_1|date:"g:i A" }}.
+                    {% if snap.outside_time_in_1 %}
+                        and came in at {{ snap.outside_time_in_1|date:"g:i A" }}.
+                    {% endif %}
+                    <br>
+                {% endif %}
+                {% if snap.outside_time_out_2 %}
+                    <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_2|date:"g:i A" }}.
+                    {% if snap.outside_time_in_2 %}
+                        and came in at {{ snap.outside_time_in_2|date:"g:i A" }}.
+                    {% endif %}
+                    <br>
+                {% endif %}
+                {% if snap.incident_report %}
+                    There was an incident report for 
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#incidentModal{{ snap.incident_report.id }}">
+                        <strong>{{ snap.student }}</strong>
+                    </a>. 
+                    <span style="color: red; font-weight: bold;">Signature required</span>
+                    <!-- Modal -->
+                    <div class="modal fade" id="incidentModal{{ snap.incident_report.id }}" tabindex="-1" aria-labelledby="incidentModalLabel{{ snap.incident_report.id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="incidentModalLabel{{ snap.incident_report.id }}">Incident Report for {{ snap.student }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Date of Incident:</strong> {{ snap.incident_report.date_of_incident }}</p>
+                                    <p><strong>Incident Description:</strong> {{ snap.incident_report.incident_description }}</p>
+                                    <p><strong>Injury Description:</strong> {{ snap.incident_report.injury_description }}</p>
+                                    <p><strong>Treatment Administered:</strong> {{ snap.incident_report.treatment_administered }}</p>
+                                    {% if snap.incident_report.parent_signature %}
+                                        <p><strong>Signed by:</strong> {{ snap.incident_report.parent_signature }}</p>
+                                    {% else %}
+                                        <form class="signature-form" data-report-id="{{ snap.incident_report.id }}">
+                                            <div class="mb-3">
+                                                <label for="signatureInput{{ snap.incident_report.id }}" class="form-label">Parent Signature (type your name):</label>
+                                                <input type="text" class="form-control" id="signatureInput{{ snap.incident_report.id }}" name="signature" required>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Sign</button>
+                                            <div class="signature-success text-success mt-2" style="display:none;">Signature saved!</div>
+                                            <div class="signature-error text-danger mt-2" style="display:none;">Error saving signature.</div>
+                                        </form>
                                     {% endif %}
-                                    <br>
-                                {% endif %}
-                                {% if snap.outside_time_out_2 %}
-                                    <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_2|date:"g:i A" }}.
-                                    {% if snap.outside_time_in_2 %}
-                                        and came in at {{ snap.outside_time_in_2|date:"g:i A" }}.
-                                    {% endif %}
-                                    <br>
-                                {% endif %}
-                                {% if snap.incident_report %}
-                                    There was an incident report for 
-                                    <a href="#" data-bs-toggle="modal" data-bs-target="#incidentModal{{ snap.incident_report.id }}">
-                                        <strong>{{ snap.student }}</strong>
-                                    </a>. 
-                                    <span style="color: red; font-weight: bold;">Signature required</span>
-                                    <!-- Modal -->
-                                    <div class="modal fade" id="incidentModal{{ snap.incident_report.id }}" tabindex="-1" aria-labelledby="incidentModalLabel{{ snap.incident_report.id }}" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg">
-                                        <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="incidentModalLabel{{ snap.incident_report.id }}">Incident Report for {{ snap.student }}</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <p><strong>Date of Incident:</strong> {{ snap.incident_report.date_of_incident }}</p>
-                                            <p><strong>Incident Description:</strong> {{ snap.incident_report.incident_description }}</p>
-                                            <p><strong>Injury Description:</strong> {{ snap.incident_report.injury_description }}</p>
-                                            <p><strong>Treatment Administered:</strong> {{ snap.incident_report.treatment_administered }}</p>
-                                            {% if snap.incident_report.parent_signature %}
-                                                <p><strong>Signed by:</strong> {{ snap.incident_report.parent_signature }}</p>
-                                            {% else %}
-                                                <form class="signature-form" data-report-id="{{ snap.incident_report.id }}">
-                                                    <div class="mb-3">
-                                                        <label for="signatureInput{{ snap.incident_report.id }}" class="form-label">Parent Signature (type your name):</label>
-                                                        <input type="text" class="form-control" id="signatureInput{{ snap.incident_report.id }}" name="signature" required>
-                                                    </div>
-                                                    <button type="submit" class="btn btn-primary">Sign</button>
-                                                    <div class="signature-success text-success mt-2" style="display:none;">Signature saved!</div>
-                                                    <div class="signature-error text-danger mt-2" style="display:none;">Error saving signature.</div>
-                                                </form>
-                                            {% endif %}
-                                        </div>
-                            </span>
-                        </li>
-                    {% endfor %}
-                </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </span>
+        </li>
+    {% endfor %}
+</ul>
         {% else %}
             <div class="text-muted">No attendance today.</div>
         {% endif %}
