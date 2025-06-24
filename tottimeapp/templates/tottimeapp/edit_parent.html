@@ -14,19 +14,14 @@
     max-height: 55vh !important;
     overflow-y: auto !important;
 }
-@media (max-width: 1000px) {
 
-    h1 {
-        margin-top: 10px!important;
-        margin-left: -24px!important;
-    }
-}
 </style>
 {% endblock %}
 
 {% block content %}
+<h1>Edit Parent Information</h1>
 <div class="container-fluid px-4">
-    <h1>Edit Parent Information</h1>
+
     {% if error %}
     <div class="alert alert-danger" role="alert">
         {{ error }}
