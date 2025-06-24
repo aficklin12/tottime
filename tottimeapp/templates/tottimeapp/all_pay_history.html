@@ -108,112 +108,82 @@ table {
            text-align: center;
            font-weight: bold;
        }
-       .filter-form-custom {
-    max-width: 700px;
-    margin: 0 auto 20px auto;
-}
-.filter-form-custom .row {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 10px;
-}
-.filter-form-custom .col {
-    flex: 1 1 0;
-    min-width: 0;
-}
-.filter-form-custom .row-bottom .col {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-}
-@media (max-width: 1000px) {
-    .filter-form-custom .row-top {
-        flex-direction: row;
-    }
-    .filter-form-custom .row-bottom {
-        flex-direction: column;
-        gap: 12px;
-        align-items: center;
-    }
-    .filter-form-custom .row-bottom .col {
-        width: 100%;
-        max-width: 350px;
-    }
-}
-@media (max-width: 600px) {
-    .filter-form-custom .row-top,
-    .filter-form-custom .row-bottom {
-        flex-direction: column;
-        gap: 12px;
-        align-items: center;
-    }
-    .filter-form-custom .col {
-        width: 100%;
-        max-width: 350px;
-    }
-}
+.d-flex.align-items-center {
+            gap: 10px;
+        }
+        @media (max-width: 1000px) {
+            .d-flex.align-items-center {
+                flex-direction: column !important;
+                align-items: center !important;
+                gap: 15px;
+                width: 100%;
+            }
+            .d-flex.align-items-center > * {
+                width: 100% !important;
+                max-width: 350px;
+            }
+            .responsive-table-container {
+                overflow-x: auto;
+                width: 100%;
+            }
+            table {
+                width: 100% !important;
+                font-size: 14px;
+            }
+            th, td {
+                padding: 6px;
+                font-size: 13px;
+                word-break: break-word;
+            }
+        }
     </style>
 {% endblock %}
 
 {% block content %}
 <h1>Payment History</h1>
-                <div class="container mt-5">
-                    <form method="get" class="mb-3">
-    <div class="filter-form-custom">
-        <div class="row row-top">
-            <div class="col">
-                <label for="start_date" class="form-label me-2 mb-0">Start Date:</label>
-                <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
-            </div>
-            <div class="col">
-                <label for="end_date" class="form-label me-2 mb-0">End Date:</label>
-                <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
-            </div>
+<div class="container mt-5">
+    <form method="get" class="mb-3">
+        <div class="d-flex align-items-center">
+            <label for="start_date" class="form-label me-2 mb-0">Start Date:</label>
+            <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
+            <label for="end_date" class="form-label me-2 mb-0">End Date:</label>
+            <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
+            <button type="submit" class="btn btn-filter">Filter</button>
+            <label for="searchInput" class="form-label" style="font-weight: bold; color: #272630;">Search</label>
+            <input type="text" id="searchInput" class="form-control" placeholder="Search by Student or Parent Name" style="width: 300px;">
         </div>
-        <div class="row row-bottom">
-            <div class="col">
-                <button type="submit" class="btn btn-filter w-100">Filter</button>
-            </div>
-            <div class="col">
-                <label for="searchInput" class="form-label" style="font-weight: bold; color: #272630;">Search</label>
-                <input type="text" id="searchInput" class="form-control" placeholder="Search by Student or Parent Name" style="width: 100%;">
-            </div>
-        </div>
+    </form>
+    <div class="responsive-table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Parent</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Source</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody id="paymentTableBody">
+                {% for data in payment_data %}
+                <tr>
+                    <td>{{ data.student_names }}</td>
+                    <td>{{ data.subuser_name }}</td>
+                    <td>{{ data.record.timestamp|date:"Y-m-d H:i" }}</td>
+                    <td>${{ data.record.amount }}</td>
+                    <td>{{ data.record.source|default:"-" }}</td>
+                    <td>{{ data.record.note|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">No payment records for selected month.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-</form>
-
-                    
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Student</th>
-                                <th>Parent</th>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Source</th>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody id="paymentTableBody">
-                            {% for data in payment_data %}
-                            <tr>
-                                <td>{{ data.student_names }}</td>
-                                <td>{{ data.subuser_name }}</td>
-                                <td>{{ data.record.timestamp|date:"Y-m-d H:i" }}</td>
-                                <td>${{ data.record.amount }}</td>
-                                <td>{{ data.record.source|default:"-" }}</td>
-                                <td>{{ data.record.note|default:"-" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center">No payment records for selected month.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+</div>
         {% endblock %}
         {% block scripts %}
 <script>
