@@ -121,6 +121,34 @@
         {% endif %}
     </div>
 </div>
+<h1 class="mt-4">Today's Summary</h1>
+    <div class="mb-3">
+        {% if snapshot_data %}
+            <ul class="list-group">
+                {% for snap in snapshot_data %}
+                    <li class="list-group-item">
+                        <strong>{{ snap.student }}</strong><br>
+                        <span>
+                            <b>Sign In:</b> {{ snap.sign_in_time|date:"H:i" }}<br>
+                            <b>Sign Out:</b> {{ snap.sign_out_time|date:"H:i" }}<br>
+                            <b>Outside 1:</b> 
+                                {% if snap.outside_time_out_1 %}Out: {{ snap.outside_time_out_1|date:"H:i" }}{% endif %}
+                                {% if snap.outside_time_in_1 %} | In: {{ snap.outside_time_in_1|date:"H:i" }}{% endif %}<br>
+                            <b>Outside 2:</b> 
+                                {% if snap.outside_time_out_2 %}Out: {{ snap.outside_time_out_2|date:"H:i" }}{% endif %}
+                                {% if snap.outside_time_in_2 %} | In: {{ snap.outside_time_in_2|date:"H:i" }}{% endif %}<br>
+                            {% if snap.incident_report %}
+                                <b>Incident Report:</b> {{ snap.incident_report }}
+                            {% endif %}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted">No attendance records for today.</div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
