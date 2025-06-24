@@ -7,51 +7,6 @@
 {% block styles %}
 <style>
 
-.card-out-of-stock {
-    width: 280px; /* Adjust the width as needed */
-    margin-left: 10px; /* Adjust the margin as needed */
-        }
-       
-
-.card-out-of-stock .list-group-item {
-    width: 220px;
-    
-}
-        .bg-faded-red {
-    background-color: rgba(255, 0, 0, 0.753); /* Adjust the alpha value (last parameter) for the desired opacity */
-}
-    .bg-faded-yellow {
-    background-color: rgba(255, 115, 0, 0.767); /* Adjust the alpha value (last parameter) for the desired opacity */
-}
-.bg-faded-blue {
-    background-color: rgba(30, 33, 255, 0.767); /* Adjust the alpha value (last parameter) for the desired opacity */
-}
-.bg-faded-green {
-    background-color: rgba(9, 114, 61, 0.836); /* Adjust the alpha value (last parameter) for the desired opacity */
-}
-.sb-nav-link-icon i {
-    color: rgb(57, 189, 180);
-    font-size: 1.2rem; /* Icon size */
-    vertical-align: middle; /* Adjust vertical alignment */
-    line-height: 1; /* Prevent icon from being too high */
-    
-}
-/* Style for the link text */
-.nav-link {
-    color: #ffffff !important; /* Ensure text is completely white */
-}
-
-/* Style for the arrow after the link */
-.sb-sidenav-collapse-arrow i {
-    color: rgb(228, 218, 79);
-}
-
-/* Optional: Hover effect for nav links */
-.nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.1); /* Slight background change on hover */
-    color: #ffffff !important; /* Retain white text on hover */
-}
-
 .btn-smaller {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
@@ -82,15 +37,7 @@
 .close-btn {
     margin-top: 10px;
 } 
-.navbar-brand img {
-    width: 100%; /* Ensure the logo takes up the full width of its container */
-    max-width: 200px; /* Set a max-width to control the size of the logo */
-    height: auto; /* Maintain aspect ratio */
-    object-fit: contain; /* Make sure the logo doesn't get distorted */
-    margin-left: 0; /* Reset any left margin if needed */
-    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
-    overflow: visible; /* Ensure no clipping occurs */
-}
+
 .ratio-card {
   width: 320px;
   height: 70px;
@@ -129,9 +76,8 @@
 {% endblock %}
 
 {% block content %}
-<!-- Student Announcements -->
+<h1 class="mt-4">Student Announcements</h1>
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Student Announcements</h1>
     <div class="mb-3">
         {% if student_announcements %}
             <ul class="list-group">
@@ -154,9 +100,8 @@
     </div>
 </div>
 
-<!-- Teacher Announcements -->
+<h1 class="mt-4">Teacher Announcements</h1>
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Teacher Announcements</h1>
     <div class="mb-3">
         {% if teacher_announcements %}
             <ul class="list-group">
@@ -178,8 +123,8 @@
         {% endif %}
     </div>
 </div>
+<h1 class="mt-4">Ratios</h1>
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Ratios</h1>
     <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
       {% for classroom, data in classroom_cards.items %}
         <a href="/classroom/?classroom_id={{ data.id }}" style="text-decoration: none;">

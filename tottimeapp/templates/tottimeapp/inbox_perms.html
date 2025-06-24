@@ -3,14 +3,7 @@
 {% block title %}Messaging Permissions{% endblock %}
 {% block styles %}
 <style>
-h1 {
-    margin-top: 20px;
-    margin-left: 27px !important;
-    font-weight: 400;
-    line-height: 1.2;
-    font-weight: bold;
-    font-size: 40px;
-}
+
 .table {
     margin-top: 15px;
     margin-left: 27px;
@@ -93,8 +86,9 @@ td input[type="checkbox"] {
 </style>
     {% endblock %}
 {% block content %}
+<h1>Messaging Permissions Settings</h1>
 <div class="container mt-4">
-    <h1>Messaging Permissions Settings</h1>
+    
       
     <form method="POST">
         {% csrf_token %}

@@ -109,18 +109,13 @@
   text-align: right!important; /* Right align */
   margin: 0;
 }
-@media (max-width: 1000px) {
 
- h1 {
-    margin-left: -25px!important; /* Adjust margin for mobile view */
-        
- }}
 </style>
 {% endblock %}
 
 {% block content %}
+<h1 class="mt-4">Student Announcements</h1>
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Student Announcements</h1>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
         <i class="fas fa-plus"></i> Add Student Announcement
     </button>
@@ -145,8 +140,8 @@
         {% endif %}
     </div>
 </div>
+<h1 class="mt-4">Teacher Announcements</h1>
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Teacher Announcements</h1>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTeacherAnnouncementModal">
         <i class="fas fa-plus"></i> Add Teacher Announcement
     </button>
@@ -171,9 +166,8 @@
         {% endif %}
     </div>
 </div>
-
+<h1 class="mt-4">Ratios</h1>
                 <div class="container-fluid px-4">
-                    <h1 class="mt-4">Ratios</h1>
                     <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
                       {% for classroom, data in classroom_cards.items %}
                         <a href="/classroom/?classroom_id={{ data.id }}" style="text-decoration: none;">
@@ -189,9 +183,8 @@
                       {% endfor %}
                     </div>
                   </div>
+<h1 class="mt-4">Food Program</h1>                  
                 <div class="container-fluid px-4">
-                    <h1 class="mt-4">Food Program</h1>
-    
                         <div class="row">
                             <div class="card mb-4 card-out-of-stock bg-faded-red">
                                 <div class="card-header">
