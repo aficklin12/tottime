@@ -1817,6 +1817,8 @@ def incident_report_detail(request):
             'incident_description': incident.incident_description,
             'injury_description': incident.injury_description,
             'treatment_administered': incident.treatment_administered,
+            'parent_signature': incident.parent_signature,  # Add this line
+            'id': incident.id,
         })
     except IncidentReport.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
