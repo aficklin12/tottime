@@ -6,7 +6,23 @@
 
 {% block styles %}
 <style>
-
+.signature-canvas-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+}
+.signature-canvas {
+    width: 100% !important;
+    max-width: 400px;
+    height: 150px !important;
+    display: block;
+}
+@media (max-width: 600px) {
+    .signature-canvas {
+        max-width: 100vw;
+        height: 100px !important;
+    }
+}
    
 </style>
 {% endblock %}
@@ -92,17 +108,18 @@
                                                    <form class="signature-form" data-report-id="{{ snap.incident_report.id }}">
                                                         <div class="mb-3">
                                                             <label class="form-label">Parent Signature (draw below):</label>
-                                                            <br>
-                                                            <canvas class="signature-canvas" 
-                                                                    data-report-id="{{ snap.incident_report.id }}" 
-                                                                    id="signaturePad{{ snap.incident_report.id }}" 
-                                                                    width="400" height="150" style="border:1px solid #ccc;"></canvas>
+                                                            <div class="signature-canvas-wrapper" style="width:100%; max-width:100%; overflow-x:auto;">
+                                                                <canvas class="signature-canvas"
+                                                                        data-report-id="{{ snap.incident_report.id }}"
+                                                                        id="signaturePad{{ snap.incident_report.id }}"
+                                                                        style="border:1px solid #ccc; width:100%; max-width:400px; height:150px;"
+                                                                        height="150"></canvas>
+                                                            </div>
                                                             <input type="hidden" name="signature" id="signatureInput{{ snap.incident_report.id }}">
-                                                            <br>
                                                         </div>
                                                         <div class="modal-footer d-flex justify-content-between align-items-center p-0 mt-2">
                                                             <button type="button" class="btn btn-secondary btn-sm clear-signature-btn ms-2" data-sigid="{{ snap.incident_report.id }}">Clear</button>
-                                                            <button type="submit" class="btn btn-primary me-2">Sign</button>
+                                                            <button type="submit" class="btn btn-primary me-2" style="margin-top: 10px;">Sign</button>
                                                         </div>
                                                         <div class="signature-success text-success mt-2" style="display:none;">Signature saved!</div>
                                                         <div class="signature-error text-danger mt-2" style="display:none;">Error saving signature.</div>
