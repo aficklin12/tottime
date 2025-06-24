@@ -67,8 +67,10 @@
                                 There was an incident report for 
                                 <a href="#" data-bs-toggle="modal" data-bs-target="#incidentModal{{ snap.incident_report.id }}">
                                     <strong>{{ snap.student }}</strong>
-                                </a>. 
-                                <span style="color: red; font-weight: bold;">Signature required</span>
+                                </a>.
+                                {% if not snap.incident_report.parent_signature %}
+                                    <span style="color: red; font-weight: bold;">Signature required</span>
+                                {% endif %}
                                 <!-- Modal -->
                                 <div class="modal fade" id="incidentModal{{ snap.incident_report.id }}" tabindex="-1" aria-labelledby="incidentModalLabel{{ snap.incident_report.id }}" aria-hidden="true">
                                     <div class="modal-dialog modal-lg">
