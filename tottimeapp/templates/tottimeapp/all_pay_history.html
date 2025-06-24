@@ -108,21 +108,48 @@ table {
            text-align: center;
            font-weight: bold;
        }
- @media (max-width: 1000px) {
-    .d-flex.align-items-center {
-        flex-direction: column !important;
-        align-items: center !important;
+       .filter-form-custom {
+    max-width: 700px;
+    margin: 0 auto 20px auto;
+}
+.filter-form-custom .row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+.filter-form-custom .col {
+    flex: 1 1 0;
+    min-width: 0;
+}
+.filter-form-custom .row-bottom .col {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+@media (max-width: 1000px) {
+    .filter-form-custom .row-top {
+        flex-direction: row;
+    }
+    .filter-form-custom .row-bottom {
+        flex-direction: column;
         gap: 12px;
+        align-items: center;
     }
-    .d-flex.align-items-center > * {
-        width: 100% !important;
-        max-width: 350px;
-        margin-right: 0 !important;
-        margin-bottom: 8px;
-        text-align: center;
-    }
-    .btn-filter {
+    .filter-form-custom .row-bottom .col {
         width: 100%;
+        max-width: 350px;
+    }
+}
+@media (max-width: 600px) {
+    .filter-form-custom .row-top,
+    .filter-form-custom .row-bottom {
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+    .filter-form-custom .col {
+        width: 100%;
+        max-width: 350px;
     }
 }
     </style>
@@ -132,19 +159,28 @@ table {
 <h1>Payment History</h1>
                 <div class="container mt-5">
                     <form method="get" class="mb-3">
-                        
-                            <div class="d-flex align-items-center">
-                                <label for="start_date" class="form-label me-2 mb-0">Start Date:</label>
-                                <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
-                                <label for="end_date" class="form-label me-2 mb-0">End Date:</label>
-                                <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
-                                <button type="submit" class="btn btn-filter">Filter</button>
-                                <label for="searchInput" class="form-label" style="font-weight: bold; color: #272630;">Search</label>
-                                <input type="text" id="searchInput" class="form-control" placeholder="Search by Student or Parent Name" style="width: 300px;">
-                                
-                            </div>
-                        </div>
-                    </form>
+    <div class="filter-form-custom">
+        <div class="row row-top">
+            <div class="col">
+                <label for="start_date" class="form-label me-2 mb-0">Start Date:</label>
+                <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
+            </div>
+            <div class="col">
+                <label for="end_date" class="form-label me-2 mb-0">End Date:</label>
+                <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
+            </div>
+        </div>
+        <div class="row row-bottom">
+            <div class="col">
+                <button type="submit" class="btn btn-filter w-100">Filter</button>
+            </div>
+            <div class="col">
+                <label for="searchInput" class="form-label" style="font-weight: bold; color: #272630;">Search</label>
+                <input type="text" id="searchInput" class="form-control" placeholder="Search by Student or Parent Name" style="width: 100%;">
+            </div>
+        </div>
+    </div>
+</form>
 
                     
 
