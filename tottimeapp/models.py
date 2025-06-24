@@ -288,7 +288,7 @@ class IncidentReport(models.Model):
     incident_description = models.TextField()
     injury_description = models.TextField()
     treatment_administered = models.TextField()
-    parent_signature = models.CharField(max_length=255, blank=True, null=True)  # Add this line
+    parent_signature = models.TextField(blank=True, null=True)  # For base64 image
 
     def __str__(self):
         return f"{self.student.first_name} {self.student.last_name} on {self.date_of_incident}"
