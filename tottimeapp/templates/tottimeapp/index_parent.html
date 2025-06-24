@@ -42,30 +42,29 @@
             <ul class="list-group">
                 {% for snap in snapshot_data %}
                     <li class="list-group-item">
-                        <strong>{{ snap.student }}</strong><br>
                         <span>
                             {% if snap.sign_in_time %}
-                                {{ snap.student }} was signed in at {{ snap.sign_in_time|date:"H:i" }}.<br>
+                                <strong>{{ snap.student }}</strong> was signed in at {{ snap.sign_in_time|date:"H:i" }}.<br>
                             {% endif %}
                             {% if snap.sign_out_time %}
-                                {{ snap.student }} was signed out at {{ snap.sign_out_time|date:"H:i" }}.<br>
+                                <strong>{{ snap.student }}</strong> was signed out at {{ snap.sign_out_time|date:"H:i" }}.<br>
                             {% endif %}
                             {% if snap.outside_time_out_1 %}
-                                {{ snap.student }} went outside 1 at {{ snap.outside_time_out_1|date:"H:i" }}.
+                                <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_1|date:"H:i" }}.
                                 {% if snap.outside_time_in_1 %}
                                     and came in at {{ snap.outside_time_in_1|date:"H:i" }}.
                                 {% endif %}
                                 <br>
                             {% endif %}
                             {% if snap.outside_time_out_2 %}
-                                {{ snap.student }} went outside 2 at {{ snap.outside_time_out_2|date:"H:i" }}.
+                                <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_2|date:"H:i" }}.
                                 {% if snap.outside_time_in_2 %}
                                     and came in at {{ snap.outside_time_in_2|date:"H:i" }}.
                                 {% endif %}
                                 <br>
                             {% endif %}
                             {% if snap.incident_report %}
-                                <b>Incident Report:</b> {{ snap.incident_report }}
+                                There was an incident report for <strong>{{ snap.student }}</strong>: {{ snap.incident_report }}
                             {% endif %}
                         </span>
                     </li>
