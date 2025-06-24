@@ -451,23 +451,23 @@ def index_parent(request):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    user = get_user_for_view(request)
+    # Use request.user to get the subuser
+    try:
+        subuser = SubUser.objects.get(user=request.user)
+        students = subuser.students.all()
+        main_user = subuser.main_user
+    except SubUser.DoesNotExist:
+        students = []
+        main_user = request.user
 
-    # Fetch only active student announcements (not expired)
+    # Fetch only active student announcements (not expired) for the main user
     now = timezone.now()
     student_announcements = Announcement.objects.filter(
-        user=user,
+        user=main_user,
         recipient_type='student'
     ).filter(
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
-
-    # Get the subuser and their students
-    try:
-        subuser = SubUser.objects.get(user=user)
-        students = subuser.students.all()
-    except SubUser.DoesNotExist:
-        students = []
 
     today = timezone.localdate()
     snapshot_data = []
