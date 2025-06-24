@@ -220,9 +220,7 @@ input[type="time"].sign-out-time:focus {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  h1 {
-    margin-left: 0px!important; /* Adjust margin for mobile view */
-  }
+
   table tbody tr {
     height: 32px;
   }
@@ -285,9 +283,8 @@ input[type="time"].sign-out-time:focus {
 {% endblock %}
 
 {% block content %}
-                <div class="mt-4">
-                    <h1>Daily Attendance</h1>
-                </div>
+<h1>Daily Attendance</h1>
+
                 <button type="button" class="btn btn-primaryoff" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
                     Sign In
                 </button>
