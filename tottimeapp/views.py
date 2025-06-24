@@ -126,7 +126,10 @@ def check_permissions(request, required_permission_id=None):
     return permissions_context
 
 def app_redirect(request):
-    return render(request, 'app_redirect.html')
+    permissions_context = check_permissions(request)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    return render(request, 'app_redirect.html', permissions_context)
 
 @login_required(login_url='/login/')
 def index(request):
