@@ -329,7 +329,7 @@ def index_teacher(request):
 
 @login_required(login_url='/login/')
 def index_teacher_parent(request):
-    required_permission_id = None  # No specific permission required for this page
+    required_permission_id = None
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
@@ -361,7 +361,6 @@ def index_teacher_parent(request):
             'ratio': adjusted_ratio
         }
 
-    # Fetch active student and teacher announcements (not expired)
     now = timezone.now()
     student_announcements = Announcement.objects.filter(
         user=user,
@@ -377,12 +376,16 @@ def index_teacher_parent(request):
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
 
-    # --- Build snapshot_data for Today's Summary (only linked students) ---
+    # --- Build snapshot_data for Today's Summary (only linked students for SubUser) ---
     today = timezone.localdate()
+    students = []
     try:
         subuser = SubUser.objects.get(user=user)
         students = subuser.students.all()
     except SubUser.DoesNotExist:
+        # Optionally, if you want teachers to see students in their classrooms, add logic here
+        # For example:
+        # students = Student.objects.filter(classroom__in=classrooms)
         students = []
 
     snapshot_data = []
