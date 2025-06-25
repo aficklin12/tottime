@@ -377,10 +377,32 @@ def index_teacher_parent(request):
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
     
+    # Get today's attendance snapshot data for all students
+    today = timezone.localdate()
+    snapshot_data = []
+    # Get all attendance records for today for this user
+    todays_attendance = AttendanceRecord.objects.filter(
+        sign_in_time__date=today,
+        user=user
+    ).select_related('student', 'incident_report').order_by('-sign_in_time')
+    
+    for attendance in todays_attendance:
+        snapshot_data.append({
+            'student': attendance.student,
+            'sign_in_time': attendance.sign_in_time,
+            'sign_out_time': attendance.sign_out_time,
+            'outside_time_out_1': attendance.outside_time_out_1,
+            'outside_time_in_1': attendance.outside_time_in_1,  
+            'outside_time_out_2': attendance.outside_time_out_2,
+            'outside_time_in_2': attendance.outside_time_in_2,
+            'incident_report': attendance.incident_report,
+        })
+    
     context = {
         'classroom_cards': classroom_cards,
         'student_announcements': student_announcements,
         'teacher_announcements': teacher_announcements,
+        'snapshot_data': snapshot_data,
         **permissions_context,
     }
     return render(request, 'index_teacher_parent.html', context)
