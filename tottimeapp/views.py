@@ -361,18 +361,10 @@ def index_teacher_parent(request):
             'ratio': adjusted_ratio
         }
 
-    # --- Use SubUser logic for linked students, just like index_parent ---
-    try:
-        subuser = SubUser.objects.get(user=user)
-        students = subuser.students.all()
-        main_user = subuser.main_user
-    except SubUser.DoesNotExist:
-        students = []
-        main_user = user
-
+    # Fetch active student and teacher announcements (not expired)
     now = timezone.now()
     student_announcements = Announcement.objects.filter(
-        user=main_user,
+        user=user,
         recipient_type='student'
     ).filter(
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
@@ -384,31 +376,11 @@ def index_teacher_parent(request):
     ).filter(
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
-
-    today = timezone.localdate()
-    snapshot_data = []
-    for student in students:
-        attendance = AttendanceRecord.objects.filter(
-            student=student,
-            sign_in_time__date=today
-        ).order_by('-sign_in_time').first()
-        if attendance:
-            snapshot_data.append({
-                'student': student,
-                'sign_in_time': attendance.sign_in_time,
-                'sign_out_time': attendance.sign_out_time,
-                'outside_time_out_1': attendance.outside_time_out_1,
-                'outside_time_in_1': attendance.outside_time_in_1,
-                'outside_time_out_2': attendance.outside_time_out_2,
-                'outside_time_in_2': attendance.outside_time_in_2,
-                'incident_report': attendance.incident_report,
-            })
-
+    
     context = {
         'classroom_cards': classroom_cards,
         'student_announcements': student_announcements,
         'teacher_announcements': teacher_announcements,
-        'snapshot_data': snapshot_data,
         **permissions_context,
     }
     return render(request, 'index_teacher_parent.html', context)
