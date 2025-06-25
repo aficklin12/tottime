@@ -137,8 +137,96 @@
               </p>
             </div>
           </div>
-        </a>
+        </a> 
       {% endfor %}
+    </div>
+</div>
+<h1 class="mt-4">Today's Summary</h1>
+<div class="container-fluid px-4">
+    <div class="mb-3">
+        {% if snapshot_data %}
+            <ul class="list-group">
+                {% for snap in snapshot_data %}
+                    <li class="list-group-item">
+                        <span>
+                            {% if snap.sign_in_time %}
+                                <strong>{{ snap.student }}</strong> was signed in at {{ snap.sign_in_time|date:"g:i A" }}.<br>
+                            {% endif %}
+                            {% if snap.sign_out_time %}
+                                <strong>{{ snap.student }}</strong> was signed out at {{ snap.sign_out_time|date:"g:i A" }}.<br>
+                            {% endif %}
+                            {% if snap.outside_time_out_1 %}
+                                <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_1|date:"g:i A" }}.
+                                {% if snap.outside_time_in_1 %}
+                                    and came in at {{ snap.outside_time_in_1|date:"g:i A" }}.
+                                {% endif %}
+                                <br>
+                            {% endif %}
+                            {% if snap.outside_time_out_2 %}
+                                <strong>{{ snap.student }}</strong> went outside at {{ snap.outside_time_out_2|date:"g:i A" }}.
+                                {% if snap.outside_time_in_2 %}
+                                    and came in at {{ snap.outside_time_in_2|date:"g:i A" }}.
+                                {% endif %}
+                                <br>
+                            {% endif %}
+                            {% if snap.incident_report %}
+                                There was an incident report for 
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#incidentModal{{ snap.incident_report.id }}">
+                                    <strong>{{ snap.student }}</strong>
+                                </a>.
+                                {% if not snap.incident_report.parent_signature %}
+                                    <span style="color: red; font-weight: bold;">Signature required</span>
+                                {% endif %}
+                                <!-- Modal -->
+                                <div class="modal fade" id="incidentModal{{ snap.incident_report.id }}" tabindex="-1" aria-labelledby="incidentModalLabel{{ snap.incident_report.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="incidentModalLabel{{ snap.incident_report.id }}">Incident Report for {{ snap.student }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p><strong>Date of Incident:</strong> {{ snap.incident_report.date_of_incident }}</p>
+                                                <p><strong>Incident Description:</strong> {{ snap.incident_report.incident_description }}</p>
+                                                <p><strong>Injury Description:</strong> {{ snap.incident_report.injury_description }}</p>
+                                                <p><strong>Treatment Administered:</strong> {{ snap.incident_report.treatment_administered }}</p>
+                                                {% if snap.incident_report.parent_signature %}
+                                                    <p><strong>Signed:</strong><br>
+                                                        <img src="{{ snap.incident_report.parent_signature }}" alt="Parent Signature" style="border:1px solid #ccc;max-width:400px;">
+                                                    </p>
+                                                {% else %}
+                                                   <form class="signature-form" data-report-id="{{ snap.incident_report.id }}">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Parent Signature (draw below):</label>
+                                                            <div class="signature-canvas-wrapper" style="width:100%; max-width:100%; overflow-x:auto;">
+                                                                <canvas class="signature-canvas"
+                                                                        data-report-id="{{ snap.incident_report.id }}"
+                                                                        id="signaturePad{{ snap.incident_report.id }}"
+                                                                        style="border:1px solid #ccc; width:100%; max-width:400px; height:150px;"
+                                                                        height="150"></canvas>
+                                                            </div>
+                                                            <input type="hidden" name="signature" id="signatureInput{{ snap.incident_report.id }}">
+                                                        </div>
+                                                        <div class="modal-footer d-flex justify-content-between align-items-center p-0 mt-2">
+                                                            <button type="button" class="btn btn-secondary btn-sm clear-signature-btn ms-2" data-sigid="{{ snap.incident_report.id }}">Clear</button>
+                                                            <button type="submit" class="btn btn-primary me-2" style="margin-top: 10px;">Sign</button>
+                                                        </div>
+                                                        <div class="signature-success text-success mt-2" style="display:none;">Signature saved!</div>
+                                                        <div class="signature-error text-danger mt-2" style="display:none;">Error saving signature.</div>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted">No attendance today.</div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -353,6 +441,61 @@ $(document).ready(function() {
         // Optionally, you can add more validation here, e.g., ensuring quantity is valid
 
         // Allow the form to be submitted
+    });
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Initialize all signature pads
+    document.querySelectorAll('.signature-canvas').forEach(function(canvas) {
+        var reportId = canvas.getAttribute('data-report-id');
+        window['signaturePad' + reportId] = new SignaturePad(canvas);
+    });
+
+    // Clear button handler
+    document.querySelectorAll('.clear-signature-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-sigid');
+            if (window['signaturePad'+id]) {
+                window['signaturePad'+id].clear();
+            }
+        });
+    });
+
+    // Form submit handler
+    document.querySelectorAll('.signature-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var reportId = form.getAttribute('data-report-id');
+            var sigPad = window['signaturePad'+reportId];
+            if (sigPad && sigPad.isEmpty()) {
+                alert('Please provide a signature.');
+                return false;
+            }
+            document.getElementById('signatureInput'+reportId).value = sigPad.toDataURL();
+            var formData = new FormData(form);
+            fetch('/incident-report/sign/' + reportId + '/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    form.querySelector('.signature-success').style.display = 'block';
+                    form.querySelector('.signature-error').style.display = 'none';
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    form.querySelector('.signature-success').style.display = 'none';
+                    form.querySelector('.signature-error').style.display = 'block';
+                }
+            })
+            .catch(() => {
+                form.querySelector('.signature-success').style.display = 'none';
+                form.querySelector('.signature-error').style.display = 'block';
+            });
+        });
     });
 });
 </script>
