@@ -376,15 +376,28 @@ def index_teacher_parent(request):
     ).filter(
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
-    
-    # Get today's attendance snapshot data for all students
+      # Get today's attendance snapshot data for students linked to this subuser
     today = timezone.localdate()
     snapshot_data = []
-    # Get all attendance records for today for this user
-    todays_attendance = AttendanceRecord.objects.filter(
-        sign_in_time__date=today,
-        user=user
-    ).select_related('student', 'incident_report').order_by('-sign_in_time')
+    
+    # Check if this is a subuser (teacher-parent) and get their linked students
+    try:
+        subuser = SubUser.objects.get(user=request.user)
+        linked_students = subuser.students.all()
+        
+        # Get attendance records for today for only the linked students
+        todays_attendance = AttendanceRecord.objects.filter(
+            sign_in_time__date=today,
+            student__in=linked_students,
+            user=subuser.main_user  # Use the main_user for the attendance records
+        ).select_related('student', 'incident_report').order_by('-sign_in_time')
+        
+    except SubUser.DoesNotExist:
+        # If not a subuser, show all students (fallback behavior)
+        todays_attendance = AttendanceRecord.objects.filter(
+            sign_in_time__date=today,
+            user=user
+        ).select_related('student', 'incident_report').order_by('-sign_in_time')
     
     for attendance in todays_attendance:
         snapshot_data.append({
