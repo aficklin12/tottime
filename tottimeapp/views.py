@@ -377,33 +377,10 @@ def index_teacher_parent(request):
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
 
-    # --- Build snapshot_data for Today's Summary ---
-    today = timezone.localdate()
-    # Get all students for this user (teacher/parent)
-    students = Student.objects.filter(user=user)
-    snapshot_data = []
-    for student in students:
-        attendance = AttendanceRecord.objects.filter(
-            student=student,
-            sign_in_time__date=today
-        ).order_by('-sign_in_time').first()
-        if attendance:
-            snapshot_data.append({
-                'student': student,
-                'sign_in_time': attendance.sign_in_time,
-                'sign_out_time': attendance.sign_out_time,
-                'outside_time_out_1': attendance.outside_time_out_1,
-                'outside_time_in_1': attendance.outside_time_in_1,
-                'outside_time_out_2': attendance.outside_time_out_2,
-                'outside_time_in_2': attendance.outside_time_in_2,
-                'incident_report': attendance.incident_report,
-            })
-
     context = {
         'classroom_cards': classroom_cards,
         'student_announcements': student_announcements,
         'teacher_announcements': teacher_announcements,
-        'snapshot_data': snapshot_data,  # <-- Add this line
         **permissions_context,
     }
     return render(request, 'index_teacher_parent.html', context)
@@ -471,65 +448,31 @@ def index_cook(request):
     return render(request, 'index_cook.html', context)
 
 @login_required(login_url='/login/')
-def index_teacher_parent(request):
+def index_parent(request):
     required_permission_id = None  # No specific permission required for this page
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    user = get_user_for_view(request)
+    # Use request.user to get the subuser
+    try:
+        subuser = SubUser.objects.get(user=request.user)
+        students = subuser.students.all()
+        main_user = subuser.main_user
+    except SubUser.DoesNotExist:
+        students = []
+        main_user = request.user
 
-    # --- Build classroom ratio cards with dynamic ratios ---
-    today = date.today()
-    attendance_records = AttendanceRecord.objects.filter(
-        sign_in_time__date=today,
-        sign_out_time__isnull=True,
-        user=user
-    )
-    classrooms = Classroom.objects.filter(user=user)
-    classroom_cards = {}
-
-    for classroom in classrooms:
-        count = attendance_records.filter(classroom_override=classroom.name).count()
-        assignments = ClassroomAssignment.objects.filter(classroom=classroom)
-        assigned_teachers = [
-            assignment.mainuser or assignment.subuser for assignment in assignments
-        ]
-        base_ratio = classroom.ratios
-        teacher_count = len(assigned_teachers)
-        adjusted_ratio = base_ratio * (2 ** (teacher_count - 1)) if teacher_count > 0 else base_ratio
-        classroom_cards[classroom.name] = {
-            'id': classroom.id,
-            'count': count,
-            'ratio': adjusted_ratio
-        }
-
-    # Fetch active student and teacher announcements (not expired)
+    # Fetch only active student announcements (not expired) for the main user
     now = timezone.now()
     student_announcements = Announcement.objects.filter(
-        user=user,
+        user=main_user,
         recipient_type='student'
     ).filter(
         models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
     ).order_by('-created_at')
 
-    teacher_announcements = Announcement.objects.filter(
-        user=user,
-        recipient_type='teacher'
-    ).filter(
-        models.Q(expires_at__isnull=False) & models.Q(expires_at__gt=now)
-    ).order_by('-created_at')
-
-    # --- Build snapshot_data for Today's Summary ---
     today = timezone.localdate()
-    try:
-        subuser = SubUser.objects.get(user=user)
-        students = subuser.students.all()
-        main_user = subuser.main_user
-    except SubUser.DoesNotExist:
-        students = []
-        main_user = user
-
     snapshot_data = []
     for student in students:
         attendance = AttendanceRecord.objects.filter(
@@ -549,13 +492,11 @@ def index_teacher_parent(request):
             })
 
     context = {
-        'classroom_cards': classroom_cards,
         'student_announcements': student_announcements,
-        'teacher_announcements': teacher_announcements,
         'snapshot_data': snapshot_data,
         **permissions_context,
     }
-    return render(request, 'index_teacher_parent.html', context)
+    return render(request, 'tottimeapp/index_parent.html', context)
 
 @login_required(login_url='/login/')
 def index_free_user(request):
