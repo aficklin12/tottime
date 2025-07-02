@@ -118,41 +118,30 @@
         justify-content: center;
     }
 @media (max-width: 1000px) {
-    body {
-        background-color: #272630;
-    }
-    
-    body::before {
-        content: '';
-        position: fixed;
+    .sb-topnav {
+        position: fixed !important;
         top: 0;
         left: 0;
         right: 0;
-        height: env(safe-area-inset-top, 0px);
-        background-color: #272630;
-        z-index: 9999;
+        z-index: 1030;
+        /* Handle notch area for devices with notches */
+        padding-top: env(safe-area-inset-top);
     }
     
-    .sb-topnav {
-        padding-top: env(safe-area-inset-top, 0px);
+    #layoutSidenav_content {
+        /* Add top padding to account for fixed navbar */
+        padding-top: calc(56px + env(safe-area-inset-top));
     }
     
-    .container, .card-container, .d-flex {
-        text-align: center;
-        justify-content: center;
-        align-items: center;
+    /* Ensure body doesn't have margin/padding that interferes */
+    body {
+        padding-top: 0 !important;
     }
-    h1 {
-        font-size: 1.6rem!important;
-        text-align: left;
-        background-color: rgb(57, 189, 180);
-        color: #fff !important;
-        width: 100vw; 
-        padding: 0.5em 1em;
-        border-radius: 0;
-        box-sizing: border-box;
-        display: block;
-        margin-top: 25px;
+    
+    /* Adjust sidebar positioning if needed */
+    #layoutSidenav_nav {
+        top: calc(56px + env(safe-area-inset-top));
+        height: calc(100vh - 56px - env(safe-area-inset-top));
     }
 }
     </style>
