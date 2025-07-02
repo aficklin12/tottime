@@ -127,11 +127,11 @@
         background-color: rgb(57, 189, 180);
         color: #fff !important;
         width: 100vw; 
-        padding: 0.5em 1em;
+        padding: 0.5em 1em;  /* Add padding for spacing */
         border-radius: 0;
         box-sizing: border-box;
         display: block;
-        margin-top: 0; /* Remove margin-top since we're using padding on content */
+        margin-top: 25px;
     }
     .sb-topnav {
         position: fixed !important;
@@ -139,18 +139,11 @@
         left: 0;
         right: 0;
         z-index: 1030;
+        /* Handle notch area for devices with notches */
         padding-top: env(safe-area-inset-top);
     }
     
-    #layoutSidenav_content {
-        /* Reduced padding to match original spacing */
-        padding-top: calc(56px + env(safe-area-inset-top) + 25px);
-    }
-    
-    body {
-        padding-top: 0 !important;
-    }
-    
+    /* Adjust sidebar positioning if needed */
     #layoutSidenav_nav {
         top: calc(56px + env(safe-area-inset-top));
         height: calc(100vh - 56px - env(safe-area-inset-top));
