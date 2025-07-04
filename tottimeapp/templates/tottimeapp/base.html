@@ -116,6 +116,26 @@
         justify-content: center;
     }
 @media (max-width: 1000px) {
+    /* Prevent body from scrolling into notch area */
+    html, body {
+        overflow-x: hidden;
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    
+    /* Create unmovable notch area */
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-top);
+        background-color: #000;
+        z-index: 9999;
+        pointer-events: none;
+    }
+    
     .container, .card-container, .d-flex {
         text-align: center;
         justify-content: center;
@@ -135,12 +155,18 @@
     }
     .sb-topnav {
         position: fixed !important;
-        top: 0;
+        top: env(safe-area-inset-top);
         left: 0;
         right: 0;
         z-index: 1030;
         /* Handle notch area for devices with notches */
-        padding-top: env(safe-area-inset-top);
+        padding-top: 0;
+    }
+    
+    /* Prevent content from scrolling behind navbar */
+    #layoutSidenav {
+        margin-top: calc(56px + env(safe-area-inset-top));
+        min-height: calc(100vh - 56px - env(safe-area-inset-top));
     }
     
     /* Adjust sidebar positioning if needed */
