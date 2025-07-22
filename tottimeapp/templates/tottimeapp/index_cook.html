@@ -161,8 +161,9 @@
         {% endif %}
     </div>
 </div>
-
-                    <h1 class="mt-4">Ratios</h1>
+                
+<h1 class="mt-4">Ratios</h1>
+<div class="container-fluid px-4">    
                     <div class="d-flex flex-row flex-wrap align-items-center justify-content-start">
                       {% for classroom, data in classroom_cards.items %}
                         <a href="/classroom/?classroom_id={{ data.id }}" style="text-decoration: none;">
@@ -178,9 +179,8 @@
                       {% endfor %}
                     </div>
                   </div>
-
-                    <h1 class="mt-4">Food Program</h1>
-    
+<h1 class="mt-4">Food Program</h1>
+                <div class="container-fluid px-4">
                         <div class="row">
                             <div class="card mb-4 card-out-of-stock bg-faded-red">
                                 <div class="card-header">
