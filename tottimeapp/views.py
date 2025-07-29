@@ -3392,6 +3392,7 @@ def send_invitation(request):
         return permissions_context
 
     success_message = ""
+    error_message = ""
 
     # Only account owner can see Director (id=2)
     if hasattr(request.user, 'is_account_owner') and request.user.is_account_owner:
@@ -3409,33 +3410,46 @@ def send_invitation(request):
             # Prevent non-owners from inviting as Director (extra backend check)
             if role.id == 2 and not (hasattr(request.user, 'is_account_owner') and request.user.is_account_owner):
                 return HttpResponseForbidden("You are not allowed to invite as Director.")
-            token = str(uuid.uuid4())
-            student_ids = request.POST.getlist('student_ids')
+            
+            try:
+                token = str(uuid.uuid4())
+                student_ids = request.POST.getlist('student_ids')
 
-            invitation = Invitation.objects.create(
-                email=email,
-                role=role,
-                invited_by=request.user,
-                token=token,
-                student_ids=','.join(student_ids) if student_ids else None
-            )
+                invitation = Invitation.objects.create(
+                    email=email,
+                    role=role,
+                    invited_by=request.user,
+                    token=token,
+                    student_ids=','.join(student_ids) if student_ids else None
+                )
 
-            invitation_link = f"https://tot-time.com/accept-invitation/{token}/"
+                invitation_link = f"https://tot-time.com/accept-invitation/{token}/"
 
-            send_mail(
-                'Invitation to Join',
-                f'You have been invited to join with role: {role.name}. Click the link to accept: {invitation_link}',
-                'cutiepieschilddevelopment@gmail.com',
-                [email],
-                fail_silently=False,
-            )
-            success_message = "Invitation email sent successfully."
+                send_mail(
+                    'Invitation to Join',
+                    f'You have been invited to join with role: {role.name}. Click the link to accept: {invitation_link}',
+                    'cutiepieschilddevelopment@gmail.com',
+                    [email],
+                    fail_silently=False,
+                )
+                success_message = "Invitation email sent successfully."
+                logger.info(f"Invitation sent successfully to {email} by user {request.user.id}")
+                
+            except Exception as e:
+                logger.error(f"Failed to send invitation to {email} by user {request.user.id}: {str(e)}")
+                error_message = f"Failed to send invitation: {str(e)}"
+                # Delete the invitation if email failed
+                if 'invitation' in locals():
+                    invitation.delete()
+        else:
+            error_message = "Please check the form data."
     else:
         form = InvitationForm()
 
     return render(request, 'send-invitations.html', {
         'form': form,
         'success_message': success_message,
+        'error_message': error_message,
         'roles': roles,
         'students': students,
         **permissions_context,
