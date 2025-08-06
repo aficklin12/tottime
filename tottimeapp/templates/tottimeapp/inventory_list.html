@@ -3,106 +3,74 @@
 {% load custom_filters %}
 {% load dict_extras %}
 {% block title %}Inventory{% endblock %}
+
 {% block styles %}
 <style>
 .table-tabs {
-    margin-left: 50px;
-    white-space: nowrap; /* Prevent tabs from wrapping */
-    overflow-x: auto; /* Add horizontal scroll if needed */
-}
+        margin-left: 50px;
+    }
 
-/* Tab styles */
-.table-tabs .table-link {
-    padding: 5px 15px; /* Reduce padding for smaller tabs */
-    text-decoration: none;
-    color: #000; /* Default text color */
-    background-color: #f8f9fa; /* Light gray background */
-    border: 1px solid #ddd; /* Light gray border */
-    border-bottom: none; /* Remove bottom border */
-    border-radius: 10px 10px 0 0; /* Curved corners */
-    margin-right: 5px; /* Spacing between tabs */
-    cursor: pointer; /* Pointer cursor for tabs */
-    transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
-    display: inline-block; /* Ensure tabs stay inline */
-    flex-shrink: 0; /* Prevent tabs from shrinking */
-}
+    /* Tab styles */
+    .table-tabs .table-link {
+        padding: 5px 15px; /* Reduce padding for smaller tabs */
+        text-decoration: none;
+        color: #000; /* Default text color */
+        background-color: #f8f9fa; /* Light gray background */
+        border: 1px solid #ddd; /* Light gray border */
+        border-bottom: none; /* Remove bottom border */
+        border-radius: 10px 10px 0 0; /* Curved corners */
+        margin-right: 5px; /* Spacing between tabs */
+        cursor: pointer; /* Pointer cursor for tabs */
+        transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+    }
 
-/* Hover effect for inactive tabs */
-.table-tabs .table-link:hover:not(.active) {
-    background-color: #e9ecef; /* Slightly darker gray on hover */
-    color: rgb(57, 189, 180); /* Change hover text color */
-}
+    /* Hover effect for inactive tabs */
+    .table-tabs .table-link:hover:not(.active) {
+        background-color: #e9ecef; /* Slightly darker gray on hover */
+        color: rgb(57, 189, 180); /* Change hover text color */
+    }
 
-/* Active tab styles */
-.table-tabs .table-link.active {
-    background-color: #272630; /* Dark background for active tab */
-    color: rgb(57, 189, 180) ;/* White text for active tab */
-    font-weight: bold; /* Bold text for active tab */
-    cursor: default; /* Default cursor for active tab */
-    border-radius: 10px 10px 0 0; /* Match curved corners */
-    border-color: #272630; /* Match border color with background */
-}
+    /* Active tab styles */
+    .table-tabs .table-link.active {
+        background-color: #272630; /* Dark background for active tab */
+        color: rgb(57, 189, 180) ;/* White text for active tab */
+        font-weight: bold; /* Bold text for active tab */
+        cursor: default; /* Default cursor for active tab */
+        border-radius: 10px 10px 0 0; /* Match curved corners */
+        border-color: #272630; /* Match border color with background */
+    }
 
-/* Optional: Hover effect for active tab */
-.table-tabs .table-link.active:hover {
-    color: rgb(57, 189, 180); /* Change text color on hover */
-}
-
-/* Dynamic table width based on content */
-.tab-content table {
-    width: 100%;
-    min-width: fit-content; /* Allow table to grow with content */
-    table-layout: auto; /* Let the table size automatically */
-}
-
-/* Ensure the tab content container can grow */
-.tab-content {
-    width: 100%;
-    overflow-x: auto; /* Add horizontal scroll if table gets too wide */
-}
-
-/* Make the entire page container flexible */
-.container-fluid, .container {
-    max-width: none; /* Remove max-width restrictions */
-}
-
-.item-header, td:first-child {
-    width: 560px;
-    min-width: 560px; /* Ensure minimum width but allow growth */
-}
-
-.quantity-header {
-    width: auto;
-    min-width: 100px;
-}
-
-.delete-item-header {
-    width: auto;
-    min-width: 60px;
-}
-
-.btn-primary {
-    margin-top: 25px;
-    margin-left: 25px!important;
-}
-
-#scanner-container canvas {
-    display: none; /* Hide the canvas used by QuaggaJS for processing */
-}
-
-.btn-warning {
-    margin-right:25px;
-}
-
-/* Quantity input styling */
-input[type="number"][id^="new_quantity_"], 
-input[type="number"][id^="extra_milk_quantity_"] {
-    width: 85px !important; /* Increased width to accommodate 3+ digits */
-    padding: 2px 5px; /* Add some padding for better appearance */
-    text-align: center; /* Center the text */
-    border: 1px solid #ccc; /* Add a subtle border */
-    border-radius: 3px; /* Slight rounding */
-}
+    /* Optional: Hover effect for active tab */
+    .table-tabs .table-link.active:hover {
+        color: rgb(57, 189, 180); /* Change text color on hover */
+    }
+    
+    .item-header, td:first-child {
+        width: 560px;
+    }
+    
+    .btn-primary {
+        margin-top: 25px;
+        margin-left: 25px!important;
+    }
+    
+    #scanner-container canvas {
+        display: none; /* Hide the canvas used by QuaggaJS for processing */
+    }
+    
+    .btn-warning {
+        margin-right:25px;
+    }
+    
+    /* Quantity input styling - wider for all screen sizes */
+    input[type="number"][id^="new_quantity_"], 
+    input[type="number"][id^="extra_milk_quantity_"] {
+        width: 85px !important; /* Increased width to accommodate 3+ digits */
+        padding: 2px 5px; /* Add some padding for better appearance */
+        text-align: center; /* Center the text */
+        border: 1px solid #ccc; /* Add a subtle border */
+        border-radius: 3px; /* Slight rounding */
+    }
 
 #scanner-container {
     width: 340px;
@@ -154,12 +122,25 @@ input[type="number"][id^="extra_milk_quantity_"] {
         display: none !important;
     }
     
-    /* On larger screens, allow tabs to scroll horizontally if needed */
+    /* Dynamic table width for larger screens only */
+    .tab-content table {
+        width: auto;
+        min-width: fit-content;
+        margin: 0 5vw; /* 5% margin on each side relative to viewport width */
+        table-layout: auto;
+    }
+    
+    /* Allow tabs to scroll horizontally if needed on large screens */
     .table-tabs {
         display: flex;
         flex-wrap: nowrap;
         overflow-x: auto;
         scrollbar-width: thin;
+    }
+    
+    .table-tabs .table-link {
+        display: inline-block;
+        flex-shrink: 0;
     }
     
     .table-tabs::-webkit-scrollbar {
@@ -177,6 +158,12 @@ input[type="number"][id^="extra_milk_quantity_"] {
     
     .table-tabs::-webkit-scrollbar-thumb:hover {
         background: #555;
+    }
+    
+    /* Flexible container for large screens */
+    .tab-content {
+        overflow-x: auto;
+        max-width: 90vw; /* Don't exceed 90% of viewport width */
     }
 }
 
