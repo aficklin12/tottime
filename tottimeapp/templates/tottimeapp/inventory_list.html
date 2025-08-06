@@ -272,7 +272,7 @@
                     <td style="width: 100px;">
                         <form id="updateForm_{{ item.id }}" method="post" action="{% url 'edit_quantity' item.id %}" onsubmit="updateQuantity(event, item.id)">
                             {% csrf_token %}
-                            <input type="number" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity|floatformat:0 }}" required style="width: 85px;">
+                            <input type="number" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity }}" required style="width: 85px;">
                             {% if "Milk" in item.item %}
                             <input type="number" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 85px;">
                             {% endif %}
