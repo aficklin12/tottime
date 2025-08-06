@@ -272,9 +272,9 @@
                     <td style="width: 100px;">
                         <form id="updateForm_{{ item.id }}" method="post" action="{% url 'edit_quantity' item.id %}" onsubmit="updateQuantity(event, item.id)">
                             {% csrf_token %}
-                            <input type="number" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity }}" required style="width: 85px;">
+                            <input type="number" step="1" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity }}" required style="width: 85px;" data-original-value="{{ item.quantity }}">
                             {% if "Milk" in item.item %}
-                            <input type="number" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 85px;">
+                            <input type="number" step="1" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 85px;">
                             {% endif %}
                         </form>
                     </td>
@@ -330,11 +330,11 @@
                     </div>
                     <div class="mb-3">
                         <label for="itemQuantity" class="form-label">Quantity</label>
-                        <input type="number" min="0" class="form-control" id="itemQuantity" name="quantity" required>
+                        <input type="number" step="1" min="0" class="form-control" id="itemQuantity" name="quantity" required>
                     </div>
                     <div class="mb-3">
                         <label for="itemResupply" class="form-label">Resupply Threshold</label>
-                        <input type="number" min="0" class="form-control" id="itemResupply" name="resupply" required>
+                        <input type="number" step="1" min="0" class="form-control" id="itemResupply" name="resupply" required>
                     </div>
                     <div class="mb-3">
                         <label for="itemRule" class="form-label">Rule</label>
@@ -370,6 +370,43 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script>
+// Format quantity display on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Format all existing quantity inputs to show decimals only when needed
+    document.querySelectorAll('input[id^="new_quantity_"]').forEach(function(input) {
+        formatQuantityDisplay(input);
+    });
+});
+
+function formatQuantityDisplay(input) {
+    const originalValue = parseFloat(input.dataset.originalValue || input.value);
+    
+    // If it's a whole number, display without decimals
+    if (originalValue === Math.floor(originalValue)) {
+        input.value = Math.floor(originalValue);
+    } else {
+        // If it has decimals, show the full decimal value
+        input.value = originalValue;
+    }
+}
+
+// Optional: Format display when user finishes editing (on blur)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[id^="new_quantity_"]').forEach(function(input) {
+        input.addEventListener('blur', function() {
+            const value = parseFloat(this.value);
+            if (!isNaN(value)) {
+                if (value === Math.floor(value)) {
+                    this.value = Math.floor(value);
+                } else {
+                    this.value = value;
+                }
+            }
+        });
+    });
+});
+</script>
 <script>
         // Flag to track if there are unsaved changes
         let isFormChanged = false;
