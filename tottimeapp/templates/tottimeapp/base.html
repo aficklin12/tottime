@@ -195,12 +195,12 @@
         <a class="navbar-brand" href="{% url 'index' %}" onclick="window.location.replace(this.href); return false;">
             <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
         </a>
-        <!-- Account Owner Switcher Dropdown -->
+                <!-- Account Owner Switcher Dropdown -->
         {% if user.is_authenticated and user.can_switch %}
         <div class="dropdown ms-3">
             <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="accountSwitcher" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="fas fa-exchange-alt me-1"></i>
-                Switch Account
+                Switch Location
             </button>
             <ul class="dropdown-menu" aria-labelledby="accountSwitcher">
                 {% for account_owner in available_account_owners %}
@@ -208,7 +208,7 @@
                     <a class="dropdown-item switch-account-btn {% if user.main_account_owner_id == account_owner.main_account_owner.id %}active{% endif %}" 
                        href="#" 
                        data-account-id="{{ account_owner.main_account_owner.id }}">
-                        {{ account_owner.main_account_owner.first_name }} {{ account_owner.main_account_owner.last_name }}
+                        {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
                         {% if account_owner.is_primary %}(Primary){% endif %}
                     </a>
                 </li>

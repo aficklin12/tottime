@@ -444,6 +444,7 @@ class Company(models.Model):
 class CompanyAccountOwner(models.Model):
     company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='account_owners')
     main_account_owner = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='company_ownerships')
+    location_name = models.CharField(max_length=255, blank=True, null=True)  # Add this field
     is_primary = models.BooleanField(default=False)  # To designate primary account owner
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -452,8 +453,9 @@ class CompanyAccountOwner(models.Model):
         
     def __str__(self):
         primary_text = " (Primary)" if self.is_primary else ""
-        return f"{self.company.name} - {self.main_account_owner.username}{primary_text}"
-
+        location_text = f" - {self.location_name}" if self.location_name else ""
+        return f"{self.company.name}{location_text} - {self.main_account_owner.username}{primary_text}"
+    
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 class MainUser(AbstractUser):
     first_name = models.CharField(max_length=30, blank=False)
