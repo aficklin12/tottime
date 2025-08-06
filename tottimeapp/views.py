@@ -13,7 +13,7 @@ from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -4651,6 +4651,7 @@ def pay_history(request, subuser_id):
 
 @login_required
 def all_pay_history(request):
+
     # Check permissions for the specific page
     required_permission_id = 331  # Permission ID for "billing"
     permissions_context = check_permissions(request, required_permission_id)
@@ -4703,3 +4704,36 @@ def all_pay_history(request):
         **permissions_context,
     }
     return render(request, 'tottimeapp/all_pay_history.html', context)
+
+@login_required
+@csrf_exempt
+def switch_account(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            account_owner_id = data.get('account_owner_id')
+            
+            # Verify user has permission to switch
+            if not request.user.can_switch:
+                return JsonResponse({'success': False, 'error': 'Permission denied'})
+            
+            # Verify the account owner exists and is in the same company
+            if request.user.company:
+                account_owner = get_object_or_404(
+                    CompanyAccountOwner, 
+                    main_account_owner_id=account_owner_id,
+                    company=request.user.company
+                )
+                
+                # Update the user's main_account_owner
+                request.user.main_account_owner_id = account_owner_id
+                request.user.save()
+                
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'error': 'No company associated'})
+                
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})

@@ -160,6 +160,7 @@ urlpatterns = [
     path('get-allowed-receivers/', login_required(views.get_allowed_receivers), name='get_allowed_receivers'),
     path('add-announcement/', login_required(views.add_announcement), name='add_announcement'),
     path('incident-report/sign/<int:report_id>/', login_required(views.sign_incident_report), name='sign_incident_report'),
+    path('switch-account/', login_required(views.switch_account), name='switch_account'),
 
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

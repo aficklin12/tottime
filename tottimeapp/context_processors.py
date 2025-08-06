@@ -1,5 +1,5 @@
 from django.db.models import Q, Count, Sum
-from tottimeapp.models import Conversation
+from tottimeapp.models import Conversation, CompanyAccountOwner
 
 def unread_messages_count(request):
     if request.user.is_authenticated:
@@ -32,3 +32,11 @@ def show_back_button(request):
     resolver_match = getattr(request, 'resolver_match', None)
     current_view_name = resolver_match.view_name if resolver_match else None
     return {'show_back_button': current_view_name not in hide_view_names}
+
+def account_switcher_context(request):
+    if request.user.is_authenticated and request.user.can_switch and request.user.company:
+        available_account_owners = CompanyAccountOwner.objects.filter(
+            company=request.user.company
+        ).select_related('main_account_owner')
+        return {'available_account_owners': available_account_owners}
+    return {'available_account_owners': []}

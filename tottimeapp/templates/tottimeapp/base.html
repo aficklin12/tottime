@@ -194,6 +194,30 @@
         <a class="navbar-brand" href="{% url 'index' %}" onclick="window.location.replace(this.href); return false;">
             <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
         </a>
+        <!-- Account Owner Switcher Dropdown -->
+        {% if user.is_authenticated and user.can_switch %}
+        <div class="dropdown ms-3">
+            <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="accountSwitcher" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-exchange-alt me-1"></i>
+                Switch Account
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="accountSwitcher">
+                {% for account_owner in available_account_owners %}
+                <li>
+                    <a class="dropdown-item switch-account-btn {% if user.main_account_owner_id == account_owner.main_account_owner.id %}active{% endif %}" 
+                       href="#" 
+                       data-account-id="{{ account_owner.main_account_owner.id }}">
+                        {{ account_owner.main_account_owner.first_name }} {{ account_owner.main_account_owner.last_name }}
+                        {% if account_owner.is_primary %}(Primary){% endif %}
+                    </a>
+                </li>
+                {% empty %}
+                <li><span class="dropdown-item-text text-muted">No accounts available</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
         <!-- Navbar-->
         <div class="ms-auto">
             <ul class="navbar-nav me-lg-4">
@@ -361,7 +385,59 @@
             </main>
         </div>
     </div>
-   
+      <script>
+    function switchAccount(accountOwnerId) {
+        // Get CSRF token from a meta tag or cookie instead of template tag
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                         document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ||
+                         getCookie('csrftoken');
+        
+        fetch('/switch-account/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                'account_owner_id': accountOwnerId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.success('Account switched successfully');
+                }
+                window.location.reload();
+            } else {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(data.error || 'Failed to switch account');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof toastr !== 'undefined') {
+                toastr.error('An error occurred while switching accounts');
+            }
+        });
+    }
+
+    // Helper function to get cookie value
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
     </script>
     <!-- JavaScript imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>

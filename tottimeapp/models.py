@@ -431,12 +431,36 @@ class Invitation(models.Model):
     token = models.CharField(max_length=100, unique=True)  # To create unique links
     created_at = models.DateTimeField(auto_now_add=True)
 
+class Company(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        verbose_name_plural = "Companies"
+
+class CompanyAccountOwner(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='account_owners')
+    main_account_owner = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='company_ownerships')
+    is_primary = models.BooleanField(default=False)  # To designate primary account owner
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('company', 'main_account_owner')
+        
+    def __str__(self):
+        primary_text = " (Primary)" if self.is_primary else ""
+        return f"{self.company.name} - {self.main_account_owner.username}{primary_text}"
+
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 class MainUser(AbstractUser):
     first_name = models.CharField(max_length=30, blank=False)
     last_name = models.CharField(max_length=30, blank=False)
     email = models.EmailField(unique=True, blank=False)
     company_name = models.CharField(max_length=255, blank=True, null=True)
+    company = models.ForeignKey('Company', on_delete=models.SET_NULL, null=True, blank=True, related_name='centers')
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     groups = models.ManyToManyField(Group, related_name='mainuser_set', blank=True)
@@ -455,7 +479,7 @@ class MainUser(AbstractUser):
         null=True, 
         default='profile_pictures/default.png'
     )
-
+    can_switch = models.BooleanField(default=False)
     is_account_owner = models.BooleanField(default=False)
     main_account_owner = models.ForeignKey(
         'self',
@@ -537,6 +561,7 @@ class SubUser(models.Model):
     group_id = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="subusers", null=True, blank=True)
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Acts as wallet (can be positive or negative)
     students = models.ManyToManyField('Student', related_name='parents', blank=True)  # Changed to ManyToManyField
+    can_switch = models.BooleanField(default=False)
 
     def __str__(self):
         return f"SubUser: {self.user.username} linked to MainUser: {self.main_user.username}"
