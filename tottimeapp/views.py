@@ -4719,13 +4719,14 @@ def switch_account(request):
             
             # Verify the account owner exists and is in the same company
             if request.user.company:
+                # Check if the account owner ID exists in the CompanyAccountOwner table for this company
                 account_owner = get_object_or_404(
                     CompanyAccountOwner, 
                     main_account_owner_id=account_owner_id,
                     company=request.user.company
                 )
                 
-                # Update the user's main_account_owner
+                # Update the user's main_account_owner_id
                 request.user.main_account_owner_id = account_owner_id
                 request.user.save()
                 
