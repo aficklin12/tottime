@@ -43,12 +43,11 @@ class Inventory(models.Model):
     item = models.CharField(max_length=100, unique=True)
     category = models.CharField(max_length=100)
     units = models.CharField(max_length=50, null=True, blank=True)
-    quantity = models.IntegerField()
-    rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)  # Allow null and blank values permanently
-    resupply = models.IntegerField()
-    total_quantity = models.IntegerField(default=0)
-    barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)  # Add barcode field
-
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)  # Changed from IntegerField
+    rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
+    resupply = models.DecimalField(max_digits=10, decimal_places=2)  # Also changed resupply for consistency
+    total_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Also changed total_quantity
+    barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)
 
     def __str__(self):
         return self.item
