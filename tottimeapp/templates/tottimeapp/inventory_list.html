@@ -134,7 +134,7 @@
     .tab-content {
         overflow-x: auto;
         width: 100%;
-        max-width: calc(100vw - 40px); /* Prevent exceeding viewport width */
+        max-width: calc(100vw - 50px); /* Prevent exceeding viewport width */
         margin: 0;
         padding: 0;
     }
@@ -272,9 +272,9 @@
                     <td style="width: 100px;">
                         <form id="updateForm_{{ item.id }}" method="post" action="{% url 'edit_quantity' item.id %}" onsubmit="updateQuantity(event, item.id)">
                             {% csrf_token %}
-                            <input type="number" step="0.01" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity }}" required style="width: 60px;">
+                            <input type="number" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity|floatformat:0 }}" required style="width: 85px;">
                             {% if "Milk" in item.item %}
-                            <input type="number" step="0.01" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 60px;">
+                            <input type="number" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 85px;">
                             {% endif %}
                         </form>
                     </td>
@@ -330,11 +330,11 @@
                     </div>
                     <div class="mb-3">
                         <label for="itemQuantity" class="form-label">Quantity</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="itemQuantity" name="quantity" required>
+                        <input type="number" min="0" class="form-control" id="itemQuantity" name="quantity" required>
                     </div>
                     <div class="mb-3">
                         <label for="itemResupply" class="form-label">Resupply Threshold</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="itemResupply" name="resupply" required>
+                        <input type="number" min="0" class="form-control" id="itemResupply" name="resupply" required>
                     </div>
                     <div class="mb-3">
                         <label for="itemRule" class="form-label">Rule</label>
