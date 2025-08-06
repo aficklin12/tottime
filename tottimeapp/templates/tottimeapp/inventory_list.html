@@ -121,13 +121,22 @@
         display: none !important;
     }
     
-    /* Make table span full width with only right margin on larger screens */
+    /* Make table responsive with proper margins on larger screens */
     .tab-content table {
-        width: calc(100vw - 50px); /* Full viewport width minus right margin */
+        width: calc(100% - 40px); /* Full container width minus left and right margins */
         min-width: fit-content;
-        margin-left: 0; /* No left margin */
-        margin-right: 50px; /* Right margin gap */
+        margin-left: 15px; /* Left margin */
+        margin-right: 25px; /* Right margin */
         table-layout: auto;
+    }
+    
+    /* Ensure the tab content container doesn't exceed viewport */
+    .tab-content {
+        overflow-x: auto;
+        width: 100%;
+        max-width: calc(100vw - 40px); /* Prevent exceeding viewport width */
+        margin: 0;
+        padding: 0;
     }
     
     /* Allow tabs to scroll horizontally if needed on large screens */
@@ -136,6 +145,7 @@
         flex-wrap: nowrap;
         overflow-x: auto;
         scrollbar-width: thin;
+        margin-left: 50px; /* Keep existing tab margin */
     }
     
     .table-tabs .table-link {
