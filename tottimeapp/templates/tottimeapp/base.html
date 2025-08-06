@@ -209,7 +209,6 @@
                        href="#" 
                        data-account-id="{{ account_owner.main_account_owner.id }}">
                         {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
-                        {% if account_owner.is_primary %}(Primary){% endif %}
                     </a>
                 </li>
                 {% empty %}
