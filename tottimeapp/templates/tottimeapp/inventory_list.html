@@ -3,7 +3,6 @@
 {% load custom_filters %}
 {% load dict_extras %}
 {% block title %}Inventory{% endblock %}
-
 {% block styles %}
 <style>
 .table-tabs {
@@ -122,11 +121,12 @@
         display: none !important;
     }
     
-    /* Dynamic table width for larger screens only */
+    /* Make table span full width with only right margin on larger screens */
     .tab-content table {
-        width: auto;
+        width: calc(100vw - 50px); /* Full viewport width minus right margin */
         min-width: fit-content;
-        margin: 0 5vw; /* 5% margin on each side relative to viewport width */
+        margin-left: 0; /* No left margin */
+        margin-right: 50px; /* Right margin gap */
         table-layout: auto;
     }
     
@@ -163,7 +163,8 @@
     /* Flexible container for large screens */
     .tab-content {
         overflow-x: auto;
-        max-width: 90vw; /* Don't exceed 90% of viewport width */
+        width: 100%; /* Use full width */
+        margin-left: 0; /* No left margin */
     }
 }
 
