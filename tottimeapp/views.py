@@ -4726,9 +4726,23 @@ def switch_account(request):
                     company=request.user.company
                 )
                 
+                # Get the MainUser object for the selected account owner
+                new_main_account_owner = get_object_or_404(MainUser, id=account_owner_id)
+                
                 # Update the user's main_account_owner_id
                 request.user.main_account_owner_id = account_owner_id
                 request.user.save()
+                
+                # Check if this user is also a SubUser and update accordingly
+                try:
+                    subuser = SubUser.objects.get(user=request.user)
+                    if subuser.can_switch:
+                        subuser.main_user = new_main_account_owner
+                        subuser.save()
+                        print(f"Updated SubUser {subuser.id} main_user to {new_main_account_owner.id}")
+                except SubUser.DoesNotExist:
+                    # User is not a SubUser, which is fine
+                    pass
                 
                 return JsonResponse({'success': True})
             else:
