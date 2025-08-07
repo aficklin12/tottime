@@ -398,6 +398,30 @@ border-color: rgb(54, 56, 56);
     {% block scripts %}
     <script>
     $(document).ready(function() {
+    // Prevent Enter key from triggering the Generate Menu button
+    $('#generateMenuBtn').on('keydown keypress', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    });
+
+    // Also prevent the form from submitting when Enter is pressed anywhere except on the Save button
+    $('#menuForm').on('keydown keypress', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            // Only allow Enter if the target is the save button or specific input fields
+            if (!$(e.target).is('#saveMenuBtn') && !$(e.target).hasClass('input-box')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }
+    });
+
+    // Remove focus from the Generate Menu button to prevent accidental activation
+    $('#generateMenuBtn').blur();
+
      // Handle Generate Menu button click event
      $('#generateMenuBtn').click(function() {
          // AJAX request to generate main menu
