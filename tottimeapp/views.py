@@ -3168,11 +3168,10 @@ def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_ke
     snack_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     recipes = list(model.objects.filter(user=user))  # Fetch recipes for the determined user
-    
     for day in days_of_week:
-        if recipes:  # Check if there are still recipes available
+        if recipes:
             selected_recipe = random.choice(recipes)
-            recipes.remove(selected_recipe)  # Remove to prevent repeats
+            recipes.remove(selected_recipe)
             snack_data[day] = {
                 fluid_key: selected_recipe.fluid,
                 fruit_key: selected_recipe.fruit_veg,
@@ -3180,12 +3179,11 @@ def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_ke
                 meat_key: selected_recipe.meat
             }
         else:
-            # No more unique recipes available
             snack_data[day] = {
-                fluid_key: "No items available",
-                fruit_key: "No items available", 
-                bread_key: "No items available",
-                meat_key: "No items available"
+                fluid_key: "",
+                fruit_key: "",
+                bread_key: "",
+                meat_key: ""
             }
     return JsonResponse(snack_data)  # Return the snack data as a JSON response
 
