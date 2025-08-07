@@ -588,14 +588,33 @@ def menu(request):
     # If it's a mobile request, redirect to the app_redirect page
     if is_mobile:
         return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
+    
     # Check permissions for the specific page
     required_permission_id = 271  # Permission ID for menu view
     permissions_context = check_permissions(request, required_permission_id)
     # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
+    
+    # Get the company account owner for the current user
+    try:
+        company_account_owner = CompanyAccountOwner.objects.select_related('company', 'main_account_owner').get(
+            main_account_owner=request.user
+        )
+        facility_name = company_account_owner.location_name or "Not Set"
+        sponsor_name = company_account_owner.company.name
+    except CompanyAccountOwner.DoesNotExist:
+        facility_name = "Not Set"
+        sponsor_name = "Not Set"
+    
+    # Add facility and sponsor to the context
+    permissions_context.update({
+        'facility_name': facility_name,
+        'sponsor_name': sponsor_name,
+    })
+    
     # If access is allowed, proceed with rendering the menu
-    return render(request, 'weekly-menu.html', permissions_context)
+    return render(request, 'tottimeapp/weekly-menu.html', permissions_context)
 
 @login_required
 def account_settings(request):
