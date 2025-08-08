@@ -254,12 +254,15 @@
         <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm" style="text-decoration: none; font-weight: bold; font-size: 1.2em;">
             <i class="fas fa-trash-alt" style="color: red;"></i>
         </button>
-        <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
-            <i class="fas fa-plus"></i> Add to Shopping List
-        </button>
-        <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
-            <i class="fas fa-edit"></i> Mark as Ordered
-        </button>
+         <!-- Shopping List buttons - wrapped in container with ID -->
+        <div id="shoppingListButtons" class="shopping-list-buttons">
+            <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
+                <i class="fas fa-plus"></i> Add to Shopping List
+            </button>
+            <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
+                <i class="fas fa-edit"></i> Mark as Ordered
+            </button>
+        </div>
     </div>
 </div>
 <!-- barcode scanner modal
@@ -1235,8 +1238,8 @@ $(document).ready(function() {
         }
     }
     
-    // Hide buttons initially
-    toggleShoppingListButtons(false);
+    // Hide buttons initially - force hide on page load
+    $('#shoppingListButtons').hide();
     
     // Show buttons when shopping list tab is clicked
     $('#tab-shopping-list').on('click', function() {
