@@ -230,6 +230,8 @@
         {% for category in categories %}
         <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
+        <option value="category-shopping-list">Shopping List</option>
+        <option value="category-ordered-items">Ordered Items</option>
     </select>
 </div>
 
@@ -242,6 +244,17 @@
         </button>
     </li>
     {% endfor %}
+    <!-- Add Shopping List and Ordered Items tabs -->
+    <li class="nav-item" role="presentation">
+        <button class="table-link" id="tab-shopping-list" data-bs-toggle="tab" data-bs-target="#category-shopping-list" type="button" role="tab" aria-controls="category-shopping-list" aria-selected="false">
+            Shopping List
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="table-link" id="tab-ordered-items" data-bs-toggle="tab" data-bs-target="#category-ordered-items" type="button" role="tab" aria-controls="category-ordered-items" aria-selected="false">
+            Ordered Items
+        </button>
+    </li>
 </ul>
 
 <!-- Single table with dynamic content -->
@@ -293,6 +306,50 @@
         </table>
     </div>
     {% endfor %}
+    
+    <!-- Shopping List Tab -->
+    <div class="tab-pane fade" id="category-shopping-list" role="tabpanel" aria-labelledby="tab-shopping-list">
+        <div class="d-flex justify-content-between align-items-center mb-3" style="margin-left: 15px; margin-right: 25px;">
+            <h5>Shopping List Items</h5>
+            <button type="button" class="btn btn-primary btn-sm" onclick="toggleOrderForm()">
+                <i class="fas fa-plus"></i> Add Item
+            </button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="item-header">Item</th>
+                    <th class="quantity-header">Qty</th>
+                    <th class="delete-item-header delete-column"><i class="fas fa-trash-alt" style="color: white;"></i></th>
+                </tr>
+            </thead>
+            <tbody id="shoppingListTableBody">
+                <!-- Items will be populated via AJAX -->
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Ordered Items Tab -->
+    <div class="tab-pane fade" id="category-ordered-items" role="tabpanel" aria-labelledby="tab-ordered-items">
+        <div class="d-flex justify-content-between align-items-center mb-3" style="margin-left: 15px; margin-right: 25px;">
+            <h5>Ordered Items</h5>
+            <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
+                <i class="fas fa-edit"></i> Mark as Ordered
+            </button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th class="item-header">Item</th>
+                    <th class="quantity-header">Qty</th>
+                    <th class="delete-item-header delete-column"><i class="fas fa-check" style="color: white;"></i></th>
+                </tr>
+            </thead>
+            <tbody id="orderedItemsTableBody">
+                <!-- Items will be populated via AJAX -->
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Add Item Modal -->
@@ -912,5 +969,91 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+</script>
+<script>
+// Function to fetch and display shopping list items in table format
+function fetchShoppingListItemsForTable() {
+    $.ajax({
+        url: '/api/shopping-list',
+        method: 'GET',
+        success: function(response) {
+            $('#shoppingListTableBody').empty();
+            response.forEach(function(item) {
+                $('#shoppingListTableBody').append(
+                    '<tr>' +
+                    '<td style="width: 150px;">' + item.name + '</td>' +
+                    '<td style="width: 100px;">1</td>' + // Default quantity
+                    '<td class="delete-item-column delete-column">' +
+                    '<button type="button" class="btn btn-sm btn-danger">' +
+                    '<i class="fas fa-trash-alt"></i>' +
+                    '</button>' +
+                    '</td>' +
+                    '</tr>'
+                );
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching shopping list items:', error);
+        }
+    });
+}
+
+// Function to fetch and display ordered items in table format
+function fetchOrderedItemsForTable() {
+    $.ajax({
+        url: '/api/shopping-list',
+        method: 'GET',
+        success: function(response) {
+            $('#orderedItemsTableBody').empty();
+            // You'll need to modify this to only show ordered items
+            // For now, this is a placeholder
+            $('#orderedItemsTableBody').append(
+                '<tr><td colspan="3" style="text-align: center; color: #666;">No ordered items yet</td></tr>'
+            );
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching ordered items:', error);
+        }
+    });
+}
+
+// Function to populate the edit form with current shopping list items
+function populateEditForm() {
+    $.ajax({
+        url: '/api/shopping-list',
+        method: 'GET',
+        success: function(response) {
+            $('#editFormItemsList').empty();
+            response.forEach(function(item, index) {
+                $('#editFormItemsList').append(
+                    '<div class="form-check">' +
+                    '<input class="form-check-input" type="checkbox" id="editItem' + index + '" name="items" value="' + index + '">' +
+                    '<label class="form-check-label" for="editItem' + index + '">' + item.name + '</label>' +
+                    '</div>'
+                );
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching shopping list items for edit form:', error);
+        }
+    });
+}
+
+// Update existing functions
+window.toggleOrderForm = function() {
+    $("#orderFormOverlay").toggle();
+};
+
+window.closeOrderForm = function() {
+    $("#orderFormOverlay").hide();
+};
+
+window.toggleEditForm = function() {
+    $("#editFormOverlay").toggle();
+};
+
+window.closeEditForm = function() {
+    $("#editFormOverlay").hide();
+};
 </script>
 {% endblock %}
