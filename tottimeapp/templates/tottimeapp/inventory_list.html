@@ -299,11 +299,6 @@
             Shopping List
         </button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="table-link" id="tab-ordered-items" data-bs-toggle="tab" data-bs-target="#category-ordered-items" type="button" role="tab" aria-controls="category-ordered-items" aria-selected="false">
-            Ordered Items
-        </button>
-    </li>
 </ul>
 
 <!-- Single table with dynamic content -->
@@ -358,14 +353,13 @@
     
     <!-- Shopping List Tab -->
     <div class="tab-pane fade" id="category-shopping-list" role="tabpanel" aria-labelledby="tab-shopping-list">
-        <button type="button" class="btn btn-primary btn-sm" onclick="toggleOrderForm()">
-            <i class="fas fa-plus"></i> Add Item
-        </button>
-        <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()" style="margin-left: 10px;">
-            <i class="fas fa-edit"></i> Mark as Ordered
-        </button>
-        <div class="d-flex justify-content-between align-items-center mb-3" style="margin-left: 15px; margin-right: 25px;">
-           
+        <div class="d-flex justify-content-start align-items-center mb-3" style="margin-left: 15px; margin-top: 20px;">
+            <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
+                <i class="fas fa-plus"></i> Add Item
+            </button>
+            <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
+                <i class="fas fa-edit"></i> Mark as Ordered
+            </button>
         </div>
         <table>
             <thead>
@@ -373,7 +367,6 @@
                     <th class="item-header">Item</th>
                     <th class="quantity-header">Qty</th>
                     <th class="status-header">Status</th>
-                    <th class="delete-item-header delete-column"><i class="fas fa-trash-alt" style="color: white;"></i></th>
                 </tr>
             </thead>
             <tbody id="shoppingListTableBody">
@@ -1047,7 +1040,7 @@ function fetchShoppingListItemsForTable() {
             $('#shoppingListTableBody').empty();
             if (response.length === 0) {
                 $('#shoppingListTableBody').append(
-                    '<tr><td colspan="4" style="text-align: center; color: #666;">No items in shopping list</td></tr>'
+                    '<tr><td colspan="3" style="text-align: center; color: #666;">No items in shopping list</td></tr>'
                 );
             } else {
                 response.forEach(function(item, index) {
@@ -1060,11 +1053,6 @@ function fetchShoppingListItemsForTable() {
                         '<td style="width: 150px;">' + item.name + '</td>' +
                         '<td style="width: 100px;">' + (item.quantity || 1) + '</td>' +
                         '<td style="width: 100px; text-align: center;">' + statusBadge + '</td>' +
-                        '<td class="delete-item-column delete-column">' +
-                        '<button type="button" class="btn btn-sm btn-danger" onclick="deleteShoppingListItem(' + (item.id || index) + ')">' +
-                        '<i class="fas fa-trash-alt"></i>' +
-                        '</button>' +
-                        '</td>' +
                         '</tr>'
                     );
                 });
@@ -1073,7 +1061,7 @@ function fetchShoppingListItemsForTable() {
         error: function(xhr, status, error) {
             console.error('Error fetching shopping list items:', error);
             $('#shoppingListTableBody').append(
-                '<tr><td colspan="4" style="text-align: center; color: #ff0000;">Error loading shopping list</td></tr>'
+                '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading shopping list</td></tr>'
             );
         }
     });
