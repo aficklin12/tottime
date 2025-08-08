@@ -284,6 +284,16 @@
     </select>
 </div>
 
+<!-- Add this right before the tabs -->
+<div id="shoppingListButtons" class="d-flex justify-content-start align-items-center mb-3" style="margin-left: 50px; display: none;">
+    <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
+        <i class="fas fa-plus"></i> Add to Shopping List
+    </button>
+    <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
+        <i class="fas fa-edit"></i> Mark as Ordered
+    </button>
+</div>
+
 <!-- Tabs for categories -->
 <ul class="nav table-tabs d-none d-md-flex" id="categoryTabs" role="tablist">
     {% for category in categories %}
@@ -293,7 +303,7 @@
         </button>
     </li>
     {% endfor %}
-    <!-- Add Shopping List and Ordered Items tabs -->
+    <!-- Add Shopping List tab -->
     <li class="nav-item" role="presentation">
         <button class="table-link" id="tab-shopping-list" data-bs-toggle="tab" data-bs-target="#category-shopping-list" type="button" role="tab" aria-controls="category-shopping-list" aria-selected="false">
             Shopping List
@@ -355,7 +365,7 @@
     <div class="tab-pane fade" id="category-shopping-list" role="tabpanel" aria-labelledby="tab-shopping-list">
         <div class="d-flex justify-content-start align-items-center mb-3" style="margin-left: 15px; margin-top: 20px;">
             <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
-                <i class="fas fa-plus"></i> Add Item
+                <i class="fas fa-plus"></i> Add to Shopping List
             </button>
             <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
                 <i class="fas fa-edit"></i> Mark as Ordered
@@ -1223,6 +1233,44 @@ $(document).ready(function() {
                 toastr.error('Error updating orders', 'Error');
             }
         });
+    });
+    
+    // Function to show/hide shopping list buttons
+    function toggleShoppingListButtons(show) {
+        if (show) {
+            $('#shoppingListButtons').show();
+        } else {
+            $('#shoppingListButtons').hide();
+        }
+    }
+    
+    // Hide buttons initially
+    toggleShoppingListButtons(false);
+    
+    // Show buttons when shopping list tab is clicked
+    $('#tab-shopping-list').on('click', function() {
+        toggleShoppingListButtons(true);
+        setTimeout(function() {
+            fetchShoppingListItemsForTable();
+        }, 100);
+    });
+    
+    // Hide buttons when other tabs are clicked
+    $('button[id^="tab-"]:not(#tab-shopping-list)').on('click', function() {
+        toggleShoppingListButtons(false);
+    });
+    
+    // Handle dropdown changes for mobile
+    $('#categoryDropdown').on('change', function() {
+        var selectedValue = $(this).val();
+        if (selectedValue === 'category-shopping-list') {
+            toggleShoppingListButtons(true);
+            setTimeout(function() {
+                fetchShoppingListItemsForTable();
+            }, 100);
+        } else {
+            toggleShoppingListButtons(false);
+        }
     });
 });
 </script>
