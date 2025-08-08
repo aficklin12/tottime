@@ -183,6 +183,55 @@
     margin-left: auto!important;
     margin-right: auto!important;
 }
+
+.status-header {
+    width: 100px;
+    text-align: center;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.status-ordered {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: none;
+}
+
+.popup-form {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    min-width: 300px;
+}
+
+.close-btn {
+    margin-top: 10px;
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -309,17 +358,21 @@
     
     <!-- Shopping List Tab -->
     <div class="tab-pane fade" id="category-shopping-list" role="tabpanel" aria-labelledby="tab-shopping-list">
+        <button type="button" class="btn btn-primary btn-sm" onclick="toggleOrderForm()">
+            <i class="fas fa-plus"></i> Add Item
+        </button>
+        <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()" style="margin-left: 10px;">
+            <i class="fas fa-edit"></i> Mark as Ordered
+        </button>
         <div class="d-flex justify-content-between align-items-center mb-3" style="margin-left: 15px; margin-right: 25px;">
-            <h5>Shopping List Items</h5>
-            <button type="button" class="btn btn-primary btn-sm" onclick="toggleOrderForm()">
-                <i class="fas fa-plus"></i> Add Item
-            </button>
+           
         </div>
         <table>
             <thead>
                 <tr>
                     <th class="item-header">Item</th>
                     <th class="quantity-header">Qty</th>
+                    <th class="status-header">Status</th>
                     <th class="delete-item-header delete-column"><i class="fas fa-trash-alt" style="color: white;"></i></th>
                 </tr>
             </thead>
@@ -328,29 +381,7 @@
             </tbody>
         </table>
     </div>
-    
-    <!-- Ordered Items Tab -->
-    <div class="tab-pane fade" id="category-ordered-items" role="tabpanel" aria-labelledby="tab-ordered-items">
-        <div class="d-flex justify-content-between align-items-center mb-3" style="margin-left: 15px; margin-right: 25px;">
-            <h5>Ordered Items</h5>
-            <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
-                <i class="fas fa-edit"></i> Mark as Ordered
-            </button>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th class="item-header">Item</th>
-                    <th class="quantity-header">Qty</th>
-                    <th class="delete-item-header delete-column"><i class="fas fa-check" style="color: white;"></i></th>
-                </tr>
-            </thead>
-            <tbody id="orderedItemsTableBody">
-                <!-- Items will be populated via AJAX -->
-            </tbody>
-        </table>
-    </div>
-</div>
+
 
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
@@ -423,6 +454,42 @@
                 </form>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Add the popup overlays after your existing modals -->
+<div id="orderFormOverlay" class="popup-overlay" style="display: none;">
+    <div class="popup-form">
+        <h2>Add to Shopping List</h2>
+        <form action="{% url 'order_list' %}" method="post">
+            {% csrf_token %}
+            <!-- Item input field -->
+            <div class="form-group mb-3">
+                <label for="item">Item:</label>
+                <input type="text" id="item" name="item" class="form-control">
+            </div>
+            <!-- Quantity input field -->
+            <div class="form-group mb-3">
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" name="quantity" class="form-control" value="1">
+            </div>
+            <button type="submit" class="btn btn-primary me-2">Add to Shopping List</button>
+            <button type="button" class="btn btn-danger close-btn" onclick="closeOrderForm()">Close</button>
+        </form>
+    </div>
+</div>
+
+<div id="editFormOverlay" class="popup-overlay" style="display: none;">
+    <div class="popup-form">
+        <h2>Mark Items as Ordered</h2>
+        <form id="editShoppingListForm" method="post" action="{% url 'update_orders' %}">
+            {% csrf_token %}
+            <div class="form-group" id="editFormItemsList">
+                <!-- Items will be populated via AJAX -->
+            </div>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-danger close-btn" onclick="closeEditForm()">Close</button>
+        </form>
     </div>
 </div>
 {% endblock %}
@@ -971,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <script>
-// Function to fetch and display shopping list items in table format
+// Function to fetch and display shopping list items in table format with status column
 function fetchShoppingListItemsForTable() {
     $.ajax({
         url: '/api/shopping-list',
@@ -980,16 +1047,21 @@ function fetchShoppingListItemsForTable() {
             $('#shoppingListTableBody').empty();
             if (response.length === 0) {
                 $('#shoppingListTableBody').append(
-                    '<tr><td colspan="3" style="text-align: center; color: #666;">No items in shopping list</td></tr>'
+                    '<tr><td colspan="4" style="text-align: center; color: #666;">No items in shopping list</td></tr>'
                 );
             } else {
                 response.forEach(function(item, index) {
+                    var statusBadge = item.ordered ? 
+                        '<span class="status-badge status-ordered"><i class="fas fa-check me-1"></i>Ordered</span>' : 
+                        '<span class="status-badge status-pending"><i class="fas fa-clock me-1"></i>Pending</span>';
+                    
                     $('#shoppingListTableBody').append(
                         '<tr>' +
                         '<td style="width: 150px;">' + item.name + '</td>' +
                         '<td style="width: 100px;">' + (item.quantity || 1) + '</td>' +
+                        '<td style="width: 100px; text-align: center;">' + statusBadge + '</td>' +
                         '<td class="delete-item-column delete-column">' +
-                        '<button type="button" class="btn btn-sm btn-danger" onclick="deleteShoppingListItem(' + index + ')">' +
+                        '<button type="button" class="btn btn-sm btn-danger" onclick="deleteShoppingListItem(' + (item.id || index) + ')">' +
                         '<i class="fas fa-trash-alt"></i>' +
                         '</button>' +
                         '</td>' +
@@ -1001,7 +1073,7 @@ function fetchShoppingListItemsForTable() {
         error: function(xhr, status, error) {
             console.error('Error fetching shopping list items:', error);
             $('#shoppingListTableBody').append(
-                '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading shopping list</td></tr>'
+                '<tr><td colspan="4" style="text-align: center; color: #ff0000;">Error loading shopping list</td></tr>'
             );
         }
     });
@@ -1077,22 +1149,34 @@ function populateEditForm() {
     });
 }
 
-// Update your document ready function
+// Toggle functions for the popup forms
+window.toggleOrderForm = function() {
+    $("#orderFormOverlay").toggle();
+};
+
+window.closeOrderForm = function() {
+    $("#orderFormOverlay").hide();
+};
+
+window.toggleEditForm = function() {
+    populateEditForm(); // Populate form before showing
+    $("#editFormOverlay").toggle();
+};
+
+window.closeEditForm = function() {
+    $("#editFormOverlay").hide();
+};
+
+// Add event listeners for the shopping list tab
 $(document).ready(function() {
     // Hide overlays initially
     $("#orderFormOverlay").hide();
     $("#editFormOverlay").hide();
     
-    // Load shopping list and ordered items when their tabs are clicked
+    // Load shopping list when the tab is clicked
     $('#tab-shopping-list').on('click', function() {
         setTimeout(function() {
             fetchShoppingListItemsForTable();
-        }, 100);
-    });
-    
-    $('#tab-ordered-items').on('click', function() {
-        setTimeout(function() {
-            fetchOrderedItemsForTable();
         }, 100);
     });
     
@@ -1103,11 +1187,54 @@ $(document).ready(function() {
             setTimeout(function() {
                 fetchShoppingListItemsForTable();
             }, 100);
-        } else if (selectedValue === 'category-ordered-items') {
-            setTimeout(function() {
-                fetchOrderedItemsForTable();
-            }, 100);
         }
+    });
+    
+    // Handle form submissions with AJAX to avoid page refresh
+    $('#orderFormOverlay form').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Clean the item input
+        var itemInput = $("#item");
+        var cleanedItem = itemInput.val().trim().toLowerCase().replace(/\b\w/g, function(match) {
+            return match.toUpperCase();
+        });
+        itemInput.val(cleanedItem);
+        
+        // Submit via AJAX
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                closeOrderForm();
+                fetchShoppingListItemsForTable(); // Refresh the shopping list table
+                toastr.success('Item added to shopping list!', 'Success');
+                $('#orderFormOverlay form')[0].reset(); // Reset form
+            },
+            error: function(xhr, status, error) {
+                toastr.error('Error adding item to shopping list', 'Error');
+            }
+        });
+    });
+    
+    // Handle edit form submission
+    $('#editShoppingListForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                closeEditForm();
+                fetchShoppingListItemsForTable(); // Refresh shopping list
+                toastr.success('Orders updated successfully!', 'Success');
+            },
+            error: function(xhr, status, error) {
+                toastr.error('Error updating orders', 'Error');
+            }
+        });
     });
 });
 </script>
