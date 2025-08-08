@@ -775,6 +775,9 @@ def inventory_list(request):
     categories = Inventory.objects.filter(user_id=user.id).values_list('category', flat=True).distinct()
     # Retrieve all rules
     rules = Rule.objects.all()
+    
+    # ADD THIS: Get order items for shopping list and ordered items tabs
+    order_items = OrderList.objects.filter(user=user)
 
     # Handle AJAX request for category filtering
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -789,6 +792,7 @@ def inventory_list(request):
         'inventory_items': inventory_items,
         'categories': categories,
         'rules': rules,  # Pass the rules to the template
+        'order_items': order_items,  # ADD THIS LINE
         **permissions_context,  # Include permission flags dynamically
     })
 

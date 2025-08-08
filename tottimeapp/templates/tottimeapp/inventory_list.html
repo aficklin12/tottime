@@ -978,22 +978,31 @@ function fetchShoppingListItemsForTable() {
         method: 'GET',
         success: function(response) {
             $('#shoppingListTableBody').empty();
-            response.forEach(function(item) {
+            if (response.length === 0) {
                 $('#shoppingListTableBody').append(
-                    '<tr>' +
-                    '<td style="width: 150px;">' + item.name + '</td>' +
-                    '<td style="width: 100px;">1</td>' + // Default quantity
-                    '<td class="delete-item-column delete-column">' +
-                    '<button type="button" class="btn btn-sm btn-danger">' +
-                    '<i class="fas fa-trash-alt"></i>' +
-                    '</button>' +
-                    '</td>' +
-                    '</tr>'
+                    '<tr><td colspan="3" style="text-align: center; color: #666;">No items in shopping list</td></tr>'
                 );
-            });
+            } else {
+                response.forEach(function(item, index) {
+                    $('#shoppingListTableBody').append(
+                        '<tr>' +
+                        '<td style="width: 150px;">' + item.name + '</td>' +
+                        '<td style="width: 100px;">' + (item.quantity || 1) + '</td>' +
+                        '<td class="delete-item-column delete-column">' +
+                        '<button type="button" class="btn btn-sm btn-danger" onclick="deleteShoppingListItem(' + index + ')">' +
+                        '<i class="fas fa-trash-alt"></i>' +
+                        '</button>' +
+                        '</td>' +
+                        '</tr>'
+                    );
+                });
+            }
         },
         error: function(xhr, status, error) {
             console.error('Error fetching shopping list items:', error);
+            $('#shoppingListTableBody').append(
+                '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading shopping list</td></tr>'
+            );
         }
     });
 }
@@ -1005,55 +1014,101 @@ function fetchOrderedItemsForTable() {
         method: 'GET',
         success: function(response) {
             $('#orderedItemsTableBody').empty();
-            // You'll need to modify this to only show ordered items
-            // For now, this is a placeholder
-            $('#orderedItemsTableBody').append(
-                '<tr><td colspan="3" style="text-align: center; color: #666;">No ordered items yet</td></tr>'
-            );
+            // Filter for ordered items only (you'll need to modify the API to include the 'ordered' field)
+            var orderedItems = response.filter(function(item) {
+                return item.ordered === true;
+            });
+            
+            if (orderedItems.length === 0) {
+                $('#orderedItemsTableBody').append(
+                    '<tr><td colspan="3" style="text-align: center; color: #666;">No ordered items yet</td></tr>'
+                );
+            } else {
+                orderedItems.forEach(function(item, index) {
+                    $('#orderedItemsTableBody').append(
+                        '<tr>' +
+                        '<td style="width: 150px;">' + item.name + '</td>' +
+                        '<td style="width: 100px;">' + (item.quantity || 1) + '</td>' +
+                        '<td class="delete-item-column delete-column">' +
+                        '<i class="fas fa-check" style="color: green; font-size: 1.2em;"></i>' +
+                        '</td>' +
+                        '</tr>'
+                    );
+                });
+            }
         },
         error: function(xhr, status, error) {
             console.error('Error fetching ordered items:', error);
+            $('#orderedItemsTableBody').append(
+                '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading ordered items</td></tr>'
+            );
         }
     });
 }
 
-// Function to populate the edit form with current shopping list items
+// Function to populate the edit form with current shopping list items and their actual IDs
 function populateEditForm() {
     $.ajax({
         url: '/api/shopping-list',
         method: 'GET',
         success: function(response) {
             $('#editFormItemsList').empty();
-            response.forEach(function(item, index) {
-                $('#editFormItemsList').append(
-                    '<div class="form-check">' +
-                    '<input class="form-check-input" type="checkbox" id="editItem' + index + '" name="items" value="' + index + '">' +
-                    '<label class="form-check-label" for="editItem' + index + '">' + item.name + '</label>' +
-                    '</div>'
-                );
-            });
+            if (response.length === 0) {
+                $('#editFormItemsList').append('<p>No items available to mark as ordered.</p>');
+            } else {
+                response.forEach(function(item, index) {
+                    // Use actual item ID if available, otherwise use index
+                    var itemId = item.id || index;
+                    $('#editFormItemsList').append(
+                        '<div class="form-check">' +
+                        '<input class="form-check-input" type="checkbox" id="editItem' + itemId + '" name="items" value="' + itemId + '">' +
+                        '<label class="form-check-label" for="editItem' + itemId + '">' +
+                        item.name + ' (Qty: ' + (item.quantity || 1) + ')' +
+                        '</label>' +
+                        '</div>'
+                    );
+                });
+            }
         },
         error: function(xhr, status, error) {
             console.error('Error fetching shopping list items for edit form:', error);
+            $('#editFormItemsList').append('<p style="color: red;">Error loading items.</p>');
         }
     });
 }
 
-// Update existing functions
-window.toggleOrderForm = function() {
-    $("#orderFormOverlay").toggle();
-};
-
-window.closeOrderForm = function() {
+// Update your document ready function
+$(document).ready(function() {
+    // Hide overlays initially
     $("#orderFormOverlay").hide();
-};
-
-window.toggleEditForm = function() {
-    $("#editFormOverlay").toggle();
-};
-
-window.closeEditForm = function() {
     $("#editFormOverlay").hide();
-};
+    
+    // Load shopping list and ordered items when their tabs are clicked
+    $('#tab-shopping-list').on('click', function() {
+        setTimeout(function() {
+            fetchShoppingListItemsForTable();
+        }, 100);
+    });
+    
+    $('#tab-ordered-items').on('click', function() {
+        setTimeout(function() {
+            fetchOrderedItemsForTable();
+        }, 100);
+    });
+    
+    // Also load when dropdown changes (for mobile)
+    $('#categoryDropdown').on('change', function() {
+        var selectedValue = $(this).val();
+        if (selectedValue === 'category-shopping-list') {
+            setTimeout(function() {
+                fetchShoppingListItemsForTable();
+            }, 100);
+        } else if (selectedValue === 'category-ordered-items') {
+            setTimeout(function() {
+                fetchOrderedItemsForTable();
+            }, 100);
+        }
+    });
+});
 </script>
 {% endblock %}
