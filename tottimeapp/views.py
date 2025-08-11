@@ -982,18 +982,19 @@ def order_soon_items_view(request):
         if lunch_grain:
             add_single_ingredient_recipe(WgRecipe, lunch_grain)
     
-    # Filter ingredients where current quantity is less than required quantity
+    # Filter ingredients where total_quantity is less than required quantity
     order_soon_items = []
     for ingredient_data in ingredient_requirements.values():
         ingredient = ingredient_data['ingredient']
         total_required = ingredient_data['total_required']
         
-        if ingredient.quantity < total_required:
+        # Compare against total_quantity instead of quantity
+        if ingredient.total_quantity < total_required:
             order_soon_items.append({
                 'name': ingredient.item,
-                'current_qty': float(ingredient.quantity),
+                'current_qty': float(ingredient.total_quantity),  # Use total_quantity
                 'required_qty': total_required,
-                'shortage': total_required - float(ingredient.quantity)
+                'shortage': total_required - float(ingredient.total_quantity)  # Use total_quantity
             })
     
     # Sort by name
