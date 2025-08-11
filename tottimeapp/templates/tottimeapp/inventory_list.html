@@ -235,6 +235,88 @@
 .shopping-list-buttons {
     display: none; /* Hide by default */
 }
+
+.status-dropdown {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+.status-dropdown:focus {
+    outline: none;
+}
+
+/* Fix dropdown positioning to extend beyond table */
+.dropdown-menu {
+    min-width: 120px;
+    z-index: 1050; /* Ensure dropdown appears above other elements */
+}
+
+/* Allow dropdown to extend beyond table container */
+.tab-content {
+    overflow: visible !important; /* Override any overflow hidden */
+}
+
+.tab-pane {
+    overflow: visible !important; /* Override any overflow hidden */
+}
+
+table {
+    overflow: visible !important; /* Override any overflow hidden */
+}
+
+tbody {
+    overflow: visible !important; /* Override any overflow hidden */
+}
+
+/* Ensure dropdown container allows overflow */
+.dropdown {
+    position: relative;
+    z-index: 1000;
+}
+
+/* Make sure the dropdown menu can extend outside its parent */
+.dropdown-menu {
+    position: absolute !important;
+    will-change: transform;
+    top: 100% !important;
+    left: 0 !important;
+    z-index: 1050 !important;
+    min-width: 150px;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.dropdown-item {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    width: 16px;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Ensure the entire page container allows overflow for dropdowns */
+#categoryTabContent {
+    overflow: visible !important;
+}
+
+/* Specifically for the shopping list table */
+#category-shopping-list {
+    overflow: visible !important;
+}
+
+#category-shopping-list table {
+    overflow: visible !important;
+}
 </style>
 {% endblock %}
 {% block content %}
