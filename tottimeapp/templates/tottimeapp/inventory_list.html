@@ -318,50 +318,45 @@ tbody {
     overflow: visible !important;
 }
 @media (max-width: 999px) {
-    #categoryTabs {
-        display: none !important;
-    }
-    #categoryDropdownContainer {
-        display: block !important;
-    }
     
     /* Make status badges smaller on mobile */
     .status-badge {
         padding: 2px 6px;
         border-radius: 8px;
-        font-size: 0.7em; /* Smaller text */
+        font-size: 0.7em; /* Made even smaller */
         font-weight: bold;
     }
     
-    /* Adjust table column widths for mobile */
+    /* Add specific styling for shopping list table on mobile */
     #category-shopping-list table {
         width: 100%;
         table-layout: fixed;
     }
     
+    #category-shopping-list th:first-child,
     #category-shopping-list td:first-child {
-        width: 35%; /* Item name - reduced slightly */
+        width: 35%; /* Item name */
     }
     
+    #category-shopping-list th:nth-child(2),
     #category-shopping-list td:nth-child(2) {
-        width: 15%; /* Quantity - reduced */
+        width: 15%; /* Quantity */
     }
     
+    #category-shopping-list th:nth-child(3),
     #category-shopping-list td:nth-child(3) {
-        width: 50%; /* Status - increased to prevent cutoff */
-        padding: 4px 2px;
+        width: 50%; /* Status - wider to fit the badges */
         text-align: center;
+        padding: 4px 2px;
     }
     
     /* Adjust dropdown positioning for mobile */
     .dropdown-menu {
-        position: absolute !important;
+        position: fixed !important;
         z-index: 1050;
         min-width: 120px;
         max-width: 150px;
-        font-size: 0.85em;
-        right: 0 !important; /* Align to right edge */
-        left: auto !important;
+        font-size: 0.85em; /* Slightly smaller dropdown text */
     }
     
     /* Ensure dropdown items fit on mobile */
@@ -386,10 +381,17 @@ tbody {
     /* Ensure dropdown menu positions correctly on mobile */
     .dropdown {
         position: relative;
-        width: 100%;
+    }
+    
+    .dropdown-menu {
+        position: absolute !important;
+        top: 100% !important;
+        left: auto !important;
+        right: 0 !important; /* Align to right edge to prevent cutoff */
+        transform: none !important;
+        will-change: auto !important;
     }
 }
-
 </style>
 {% endblock %}
 {% block content %}
