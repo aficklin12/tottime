@@ -978,10 +978,10 @@ def order_soon_items_view(request):
             ingredients = get_single_ingredient_recipe(WgRecipe, lunch_grain)
             ingredients_to_order.update(ingredients)
     
-    # Filter ingredients that are below resupply threshold
+    # Filter ingredients that are below resupply threshold (including 0 quantity items)
     order_soon_items = []
     for ingredient in ingredients_to_order:
-        if ingredient.quantity < ingredient.resupply and ingredient.quantity > 0:
+        if ingredient.quantity < ingredient.resupply:  # Removed the > 0 condition
             order_soon_items.append({'name': ingredient.item})
     
     # Remove duplicates and sort
