@@ -215,28 +215,7 @@
                         </div>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                 <!-- Account Owner Switcher Dropdown -->
-                        {% if user.is_authenticated and user.can_switch %}
-                        <div class="dropdown ms-3">
-                            <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="accountSwitcher" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-exchange-alt me-1"></i>
-                                Switch Location
-                            </button>
-                            <ul class="dropdown-menu" aria-labelledby="accountSwitcher">
-                                {% for account_owner in available_account_owners %}
-                                <li>
-                                    <a class="dropdown-item switch-account-btn {% if user.main_account_owner_id == account_owner.main_account_owner.id %}active{% endif %}" 
-                                    href="#" 
-                                    data-account-id="{{ account_owner.main_account_owner.id }}">
-                                        {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
-                                    </a>
-                                </li>
-                                {% empty %}
-                                <li><span class="dropdown-item-text text-muted">No accounts available</span></li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
+                      
                         {% if user.is_authenticated %}
                             <li>
                                 <a class="dropdown-item" href="{% url 'message_inbox' %}">
@@ -376,6 +355,28 @@
                 </div>
                 <div class="sb-sidenav-footer">
                     <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
+                               <!-- Account Owner Switcher Dropdown -->
+                        {% if user.is_authenticated and user.can_switch %}
+                        <div class="dropdown ms-3">
+                            <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="accountSwitcher" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-exchange-alt me-1"></i>
+                                Switch Location
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="accountSwitcher">
+                                {% for account_owner in available_account_owners %}
+                                <li>
+                                    <a class="dropdown-item switch-account-btn {% if user.main_account_owner_id == account_owner.main_account_owner.id %}active{% endif %}" 
+                                    href="#" 
+                                    data-account-id="{{ account_owner.main_account_owner.id }}">
+                                        {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
+                                    </a>
+                                </li>
+                                {% empty %}
+                                <li><span class="dropdown-item-text text-muted">No accounts available</span></li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
                 </div>
             </nav>
         </div>
