@@ -893,37 +893,45 @@ def order_soon_items_view(request):
         # If no menus exist, return empty list
         return JsonResponse([], safe=False)
     
-    # Set to store unique ingredients that need ordering
-    ingredients_to_order = set()
+    # Dictionary to store ingredients and their total required quantities
+    ingredient_requirements = {}
     
-    # Helper function to get recipe ingredients
-    def get_recipe_ingredients(recipe_model, recipe_name):
+    # Helper function to get recipe ingredients and add to requirements
+    def add_recipe_ingredients(recipe_model, recipe_name):
         if not recipe_name:
-            return []
+            return
         
         try:
             recipe = recipe_model.objects.get(user=user, name=recipe_name)
-            ingredients = []
             for i in range(1, 6):  # Check ingredient1 through ingredient5
                 ingredient = getattr(recipe, f'ingredient{i}', None)
-                if ingredient:
-                    ingredients.append(ingredient)
-            return ingredients
+                qty = getattr(recipe, f'qty{i}', None)
+                if ingredient and qty:
+                    if ingredient.id not in ingredient_requirements:
+                        ingredient_requirements[ingredient.id] = {
+                            'ingredient': ingredient,
+                            'total_required': 0
+                        }
+                    ingredient_requirements[ingredient.id]['total_required'] += qty
         except recipe_model.DoesNotExist:
-            return []
+            pass
     
     # Helper function for single ingredient recipes
-    def get_single_ingredient_recipe(recipe_model, recipe_name):
+    def add_single_ingredient_recipe(recipe_model, recipe_name):
         if not recipe_name:
-            return []
+            return
         
         try:
             recipe = recipe_model.objects.get(user=user, name=recipe_name)
-            if recipe.ingredient1:
-                return [recipe.ingredient1]
-            return []
+            if recipe.ingredient1 and recipe.qty1:
+                if recipe.ingredient1.id not in ingredient_requirements:
+                    ingredient_requirements[recipe.ingredient1.id] = {
+                        'ingredient': recipe.ingredient1,
+                        'total_required': 0
+                    }
+                ingredient_requirements[recipe.ingredient1.id]['total_required'] += recipe.qty1
         except recipe_model.DoesNotExist:
-            return []
+            pass
     
     # Process each menu entry in the latest week
     for menu in latest_menus:
@@ -962,37 +970,36 @@ def order_soon_items_view(request):
         # Process regular menu fields
         for field_name, recipe_model in menu_fields:
             recipe_name = getattr(menu, field_name, None)
-            ingredients = get_recipe_ingredients(recipe_model, recipe_name)
-            ingredients_to_order.update(ingredients)
+            add_recipe_ingredients(recipe_model, recipe_name)
         
         # Process special lunch fields
         if lunch_vegetable:
-            ingredients = get_single_ingredient_recipe(VegRecipe, lunch_vegetable)
-            ingredients_to_order.update(ingredients)
+            add_single_ingredient_recipe(VegRecipe, lunch_vegetable)
         
         if lunch_fruit:
-            ingredients = get_single_ingredient_recipe(FruitRecipe, lunch_fruit)
-            ingredients_to_order.update(ingredients)
+            add_single_ingredient_recipe(FruitRecipe, lunch_fruit)
         
         if lunch_grain:
-            ingredients = get_single_ingredient_recipe(WgRecipe, lunch_grain)
-            ingredients_to_order.update(ingredients)
+            add_single_ingredient_recipe(WgRecipe, lunch_grain)
     
-    # Filter ingredients that are below resupply threshold (including 0 quantity items)
+    # Filter ingredients where current quantity is less than required quantity
     order_soon_items = []
-    for ingredient in ingredients_to_order:
-        if ingredient.quantity < ingredient.resupply:  # Removed the > 0 condition
-            order_soon_items.append({'name': ingredient.item})
+    for ingredient_data in ingredient_requirements.values():
+        ingredient = ingredient_data['ingredient']
+        total_required = ingredient_data['total_required']
+        
+        if ingredient.quantity < total_required:
+            order_soon_items.append({
+                'name': ingredient.item,
+                'current_qty': float(ingredient.quantity),
+                'required_qty': total_required,
+                'shortage': total_required - float(ingredient.quantity)
+            })
     
-    # Remove duplicates and sort
-    unique_items = {}
-    for item in order_soon_items:
-        unique_items[item['name']] = item
+    # Sort by name
+    order_soon_items.sort(key=lambda x: x['name'])
     
-    order_soon_items_data = list(unique_items.values())
-    order_soon_items_data.sort(key=lambda x: x['name'])
-    
-    return JsonResponse(order_soon_items_data, safe=False)
+    return JsonResponse(order_soon_items, safe=False)
 
 def fetch_ingredients(request):
     user = get_user_for_view(request)
