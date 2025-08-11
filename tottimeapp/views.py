@@ -886,11 +886,11 @@ def get_out_of_stock_items(request):
 def order_soon_items_view(request):
     user = get_user_for_view(request)
     
-    # Get the newest menu for the user
-    newest_menu = WeeklyMenu.objects.filter(user=user).order_by('-date').first()
+    # Get the latest 5 menu entries for the user (representing the current week)
+    latest_menus = WeeklyMenu.objects.filter(user=user).order_by('-date')[:5]
     
-    if not newest_menu:
-        # If no menu exists, return empty list
+    if not latest_menus:
+        # If no menus exist, return empty list
         return JsonResponse([], safe=False)
     
     # Set to store unique ingredients that need ordering
@@ -925,60 +925,58 @@ def order_soon_items_view(request):
         except recipe_model.DoesNotExist:
             return []
     
-    # Check all menu fields and their associated recipes
-    menu_fields = [
-        # AM Snack fields
-        ('am_fluid_milk', AMRecipe),
-        ('am_fruit_veg', AMRecipe),
-        ('am_bread', AMRecipe),
-        ('am_additional', AMRecipe),
+    # Process each menu entry in the latest week
+    for menu in latest_menus:
+        # Define menu fields and their associated recipe models
+        menu_fields = [
+            # AM Snack fields
+            ('am_fluid_milk', AMRecipe),
+            ('am_fruit_veg', AMRecipe),
+            ('am_bread', AMRecipe),
+            ('am_additional', AMRecipe),
+            
+            # AMS fields
+            ('ams_fluid_milk', BreakfastRecipe),
+            ('ams_fruit_veg', BreakfastRecipe),
+            ('ams_bread', BreakfastRecipe),
+            ('ams_meat', BreakfastRecipe),
+            
+            # Lunch fields
+            ('lunch_main_dish', Recipe),
+            ('lunch_fluid_milk', Recipe),
+            ('lunch_additional', Recipe),
+            ('lunch_meat', Recipe),
+            
+            # PM Snack fields
+            ('pm_fluid_milk', PMRecipe),
+            ('pm_fruit_veg', PMRecipe),
+            ('pm_bread', PMRecipe),
+            ('pm_meat', PMRecipe),
+        ]
         
-        # AMS fields
-        ('ams_fluid_milk', BreakfastRecipe),
-        ('ams_fruit_veg', BreakfastRecipe),
-        ('ams_bread', BreakfastRecipe),
-        ('ams_meat', BreakfastRecipe),
+        # Special fields with specific recipe types
+        lunch_vegetable = getattr(menu, 'lunch_vegetable', None)
+        lunch_fruit = getattr(menu, 'lunch_fruit', None)
+        lunch_grain = getattr(menu, 'lunch_grain', None)
         
-        # Lunch fields
-        ('lunch_main_dish', Recipe),
-        ('lunch_fluid_milk', Recipe),
-        ('lunch_additional', Recipe),
+        # Process regular menu fields
+        for field_name, recipe_model in menu_fields:
+            recipe_name = getattr(menu, field_name, None)
+            ingredients = get_recipe_ingredients(recipe_model, recipe_name)
+            ingredients_to_order.update(ingredients)
         
-        # PM Snack fields
-        ('pm_fluid_milk', PMRecipe),
-        ('pm_fruit_veg', PMRecipe),
-        ('pm_bread', PMRecipe),
-        ('pm_meat', PMRecipe),
-    ]
-    
-    # Special fields with specific recipe types
-    lunch_vegetable = getattr(newest_menu, 'lunch_vegetable', None)
-    lunch_fruit = getattr(newest_menu, 'lunch_fruit', None)
-    lunch_grain = getattr(newest_menu, 'lunch_grain', None)
-    lunch_meat = getattr(newest_menu, 'lunch_meat', None)
-    
-    # Process regular menu fields
-    for field_name, recipe_model in menu_fields:
-        recipe_name = getattr(newest_menu, field_name, None)
-        ingredients = get_recipe_ingredients(recipe_model, recipe_name)
-        ingredients_to_order.update(ingredients)
-    
-    # Process special lunch fields
-    if lunch_vegetable:
-        ingredients = get_single_ingredient_recipe(VegRecipe, lunch_vegetable)
-        ingredients_to_order.update(ingredients)
-    
-    if lunch_fruit:
-        ingredients = get_single_ingredient_recipe(FruitRecipe, lunch_fruit)
-        ingredients_to_order.update(ingredients)
-    
-    if lunch_grain:
-        ingredients = get_single_ingredient_recipe(WgRecipe, lunch_grain)
-        ingredients_to_order.update(ingredients)
-    
-    if lunch_meat:
-        ingredients = get_recipe_ingredients(Recipe, lunch_meat)
-        ingredients_to_order.update(ingredients)
+        # Process special lunch fields
+        if lunch_vegetable:
+            ingredients = get_single_ingredient_recipe(VegRecipe, lunch_vegetable)
+            ingredients_to_order.update(ingredients)
+        
+        if lunch_fruit:
+            ingredients = get_single_ingredient_recipe(FruitRecipe, lunch_fruit)
+            ingredients_to_order.update(ingredients)
+        
+        if lunch_grain:
+            ingredients = get_single_ingredient_recipe(WgRecipe, lunch_grain)
+            ingredients_to_order.update(ingredients)
     
     # Filter ingredients that are below resupply threshold
     order_soon_items = []
