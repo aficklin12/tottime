@@ -247,52 +247,44 @@
     outline: none;
 }
 
-/* Update your existing dropdown CSS with higher z-index values */
+/* TABLE-SPECIFIC DROPDOWN STYLES - RENAMED TO AVOID CONFLICTS */
 
-/* Fix dropdown positioning to extend beyond table */
-.dropdown-menu {
-    min-width: 120px;
-    z-index: 9999 !important; /* Much higher z-index */
-    position: absolute !important;
-    background-color: white !important;
-    border: 1px solid #dee2e6 !important;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Ensure dropdown container allows overflow */
-.dropdown {
+/* Fix table dropdown positioning to extend beyond table */
+.table-status-dropdown {
     position: relative;
     z-index: 1000;
 }
 
-/* When dropdown is open, bring it to front */
-.dropdown.show {
+/* When table dropdown is open, bring it to front */
+.table-status-dropdown.show {
     z-index: 9998 !important;
 }
 
-.dropdown.show .dropdown-menu {
+.table-status-dropdown.show .table-dropdown-menu {
     z-index: 9999 !important;
 }
 
-/* Make sure the dropdown menu can extend outside its parent */
-.dropdown-menu {
+/* Make sure the table dropdown menu can extend outside its parent */
+.table-dropdown-menu {
+    min-width: 120px;
+    z-index: 9999 !important;
     position: absolute !important;
+    background-color: white !important;
+    border: 1px solid #dee2e6 !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
     will-change: transform;
     top: 100% !important;
     left: 0 !important;
-    z-index: 9999 !important;
     min-width: 150px;
     max-height: none !important;
     overflow: visible !important;
-    background-color: white !important;
-    border: 1px solid rgba(0,0,0,.15) !important;
     border-radius: 0.375rem !important;
 }
 
-/* For mobile devices, ensure even higher z-index */
+/* For mobile devices, ensure even higher z-index for table dropdowns */
 @media (max-width: 999px) {
-    /* Adjust dropdown positioning for mobile */
-    .dropdown-menu {
+    /* Adjust table dropdown positioning for mobile */
+    .table-dropdown-menu {
         position: fixed !important; /* Use fixed positioning for mobile */
         z-index: 10000 !important; /* Even higher for mobile */
         min-width: 100px;
@@ -304,22 +296,13 @@
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.25) !important;
     }
     
-    .dropdown.show {
+    .table-status-dropdown.show {
         z-index: 9999 !important;
     }
     
-    .dropdown.show .dropdown-menu {
+    .table-status-dropdown.show .table-dropdown-menu {
         z-index: 10000 !important;
     }
-}
-/* Fix dropdown positioning to extend beyond table */
-.dropdown-menu {
-    min-width: 120px;
-    z-index: 9999 !important; /* Ensure dropdown appears above other elements */
-    position: absolute !important;
-    background-color: white !important;
-    border: 1px solid #dee2e6 !important;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Allow dropdown to extend beyond table container */
@@ -339,37 +322,19 @@ tbody {
     overflow: visible !important; /* Override any overflow hidden */
 }
 
-/* Ensure dropdown container allows overflow */
-.dropdown {
-    position: relative;
-    z-index: 1000;
-}
-
-/* Make sure the dropdown menu can extend outside its parent */
-.dropdown-menu {
-    position: absolute !important;
-    will-change: transform;
-    top: 100% !important;
-    left: 0 !important;
-    z-index: 9999 !important;
-    min-width: 150px;
-    max-height: none !important;
-    overflow: visible !important;
-}
-
-.dropdown-item {
+.table-dropdown-item {
     cursor: pointer;
     display: flex;
     align-items: center;
     padding: 8px 12px;
 }
 
-.dropdown-item i {
+.table-dropdown-item i {
     margin-right: 8px;
     width: 16px;
 }
 
-.dropdown-item:hover {
+.table-dropdown-item:hover {
     background-color: #f8f9fa;
 }
 
@@ -386,6 +351,7 @@ tbody {
 #category-shopping-list table {
     overflow: visible !important;
 }
+
 @media (max-width: 999px) {
     #categoryTabs {
         display: none !important;
@@ -431,8 +397,8 @@ tbody {
         white-space: nowrap;
     }
     
-    /* Adjust dropdown positioning for mobile */
-    .dropdown-menu {
+    /* Adjust table dropdown positioning for mobile */
+    .table-dropdown-menu {
         position: absolute !important;
         z-index: 1050;
         min-width: 100px;
@@ -441,13 +407,13 @@ tbody {
         left: auto !important;
     }
     
-    /* Ensure dropdown items fit on mobile */
-    .dropdown-item {
+    /* Ensure table dropdown items fit on mobile */
+    .table-dropdown-item {
         padding: 4px 8px;
         white-space: nowrap;
     }
     
-    .dropdown-item i {
+    .table-dropdown-item i {
         margin-right: 4px;
         width: 12px;
     }
@@ -1284,15 +1250,15 @@ function fetchShoppingListItemsForTable() {
                         '<td style="width: 150px;">' + item.name + '</td>' +
                         '<td style="width: 100px;">' + (item.quantity || 1) + '</td>' +
                         '<td style="width: 100px; text-align: center;">' +
-                        '<div class="dropdown">' +
+                        '<div class="table-status-dropdown">' +
                         '<button class="status-dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">' +
                         statusBadge +
                         '</button>' +
-                        '<ul class="dropdown-menu">' +
-                        '<li><a class="dropdown-item" href="#" onclick="updateItemStatus(' + itemId + ', false)"><i class="fas fa-clock text-warning"></i>Pending</a></li>' +
-                        '<li><a class="dropdown-item" href="#" onclick="updateItemStatus(' + itemId + ', true)"><i class="fas fa-check text-success"></i>Ordered</a></li>' +
+                        '<ul class="table-dropdown-menu dropdown-menu">' +
+                        '<li><a class="table-dropdown-item dropdown-item" href="#" onclick="updateItemStatus(' + itemId + ', false)"><i class="fas fa-clock text-warning"></i>Pending</a></li>' +
+                        '<li><a class="table-dropdown-item dropdown-item" href="#" onclick="updateItemStatus(' + itemId + ', true)"><i class="fas fa-check text-success"></i>Ordered</a></li>' +
                         '<li><hr class="dropdown-divider"></li>' +
-                        '<li><a class="dropdown-item text-danger" href="#" onclick="deleteShoppingListItem(' + itemId + ')"><i class="fas fa-trash-alt text-danger"></i>Delete</a></li>' +
+                        '<li><a class="table-dropdown-item dropdown-item text-danger" href="#" onclick="deleteShoppingListItem(' + itemId + ')"><i class="fas fa-trash-alt text-danger"></i>Delete</a></li>' +
                         '</ul>' +
                         '</div>' +
                         '</td>' +
@@ -1481,21 +1447,21 @@ $(document).ready(function() {
         }
     });
     
-    // Handle dropdown show/hide events to manage z-index
-    $(document).on('show.bs.dropdown', '.dropdown', function() {
+    // Handle table dropdown show/hide events to manage z-index
+    $(document).on('show.bs.dropdown', '.table-status-dropdown', function() {
         $(this).css('z-index', '9998');
-        $(this).find('.dropdown-menu').css('z-index', '9999');
+        $(this).find('.table-dropdown-menu').css('z-index', '9999');
     });
     
-    $(document).on('hide.bs.dropdown', '.dropdown', function() {
+    $(document).on('hide.bs.dropdown', '.table-status-dropdown', function() {
         $(this).css('z-index', '1000');
-        $(this).find('.dropdown-menu').css('z-index', '1050');
+        $(this).find('.table-dropdown-menu').css('z-index', '1050');
     });
     
-    // Close other dropdowns when one is opened
-    $(document).on('show.bs.dropdown', '.dropdown', function() {
-        $('.dropdown').not(this).removeClass('show');
-        $('.dropdown-menu').not($(this).find('.dropdown-menu')).removeClass('show');
+    // Close other table dropdowns when one is opened
+    $(document).on('show.bs.dropdown', '.table-status-dropdown', function() {
+        $('.table-status-dropdown').not(this).removeClass('show');
+        $('.table-dropdown-menu').not($(this).find('.table-dropdown-menu')).removeClass('show');
     });
 });
 </script>
