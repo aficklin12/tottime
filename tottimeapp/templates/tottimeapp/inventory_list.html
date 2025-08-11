@@ -318,76 +318,90 @@ tbody {
     overflow: visible !important;
 }
 @media (max-width: 999px) {
-    
-    /* Make status badges smaller on mobile */
-    .status-badge {
-        padding: 2px 6px;
-        border-radius: 8px;
-        font-weight: bold;
+    #categoryTabs {
+        display: none !important;
+    }
+    #categoryDropdownContainer {
+        display: block !important;
     }
     
-    /* Add specific styling for shopping list table on mobile */
+    /* Make the shopping list table responsive */
     #category-shopping-list table {
-        width: 100%;
+        width: 100% !important;
+        table-layout: fixed;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
+    /* Set specific column widths for mobile */
     #category-shopping-list th:first-child,
     #category-shopping-list td:first-child {
-        width: 45%; /* Item name */
+        width: 40%; /* Item name */
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     #category-shopping-list th:nth-child(2),
     #category-shopping-list td:nth-child(2) {
-        width: 10%; /* Quantity */
+        width: 20%; /* Quantity */
+        text-align: center;
     }
     
     #category-shopping-list th:nth-child(3),
     #category-shopping-list td:nth-child(3) {
-        width: 45%; /* Status - wider to fit the badges */
+        width: 40%; /* Status */
         text-align: center;
         padding: 4px 2px;
     }
     
+    /* Make status badges much smaller on mobile */
+    .status-badge {
+        padding: 1px 4px;
+        border-radius: 6px;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+    
     /* Adjust dropdown positioning for mobile */
     .dropdown-menu {
-        position: fixed !important;
+        position: absolute !important;
         z-index: 1050;
-        min-width: 120px;
-        max-width: 150px;
-
+        min-width: 100px;
+        max-width: 120px;
+        right: 0 !important;
+        left: auto !important;
     }
     
     /* Ensure dropdown items fit on mobile */
     .dropdown-item {
-        padding: 6px 10px;
-        font-size: 0.8em;
+        padding: 4px 8px;
         white-space: nowrap;
     }
     
     .dropdown-item i {
-        margin-right: 6px;
-        width: 14px;
+        margin-right: 4px;
+        width: 12px;
     }
     
     /* Make sure status column content fits */
     .status-dropdown {
-        font-size: 0.8em;
-        padding: 2px;
+        font-size: 0.7em;
+        padding: 1px;
         width: 100%;
+        border: none;
+        background: transparent;
     }
     
-    /* Ensure dropdown menu positions correctly on mobile */
-    .dropdown {
-        position: relative;
+    /* Ensure the tab content doesn't overflow */
+    .tab-content {
+        overflow-x: auto;
+        width: 100%;
+        padding: 0 10px;
     }
     
-    .dropdown-menu {
-        position: absolute !important;
-        top: 100% !important;
-        left: auto !important;
-        right: 0 !important; /* Align to right edge to prevent cutoff */
-        transform: none !important;
-        will-change: auto !important;
+    .tab-pane {
+        overflow-x: auto;
+        width: 100%;
     }
 }
 </style>
