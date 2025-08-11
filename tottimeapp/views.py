@@ -885,10 +885,115 @@ def get_out_of_stock_items(request):
 
 def order_soon_items_view(request):
     user = get_user_for_view(request)
-    order_soon_items = Inventory.objects.filter(user=user, quantity__lt=F('resupply'), quantity__gt=0)
-    # Convert queryset to a list of dictionaries containing item names
-    order_soon_items_data = [{'name': item.item} for item in order_soon_items]
-    # Return the items as a JSON response
+    
+    # Get the newest menu for the user
+    newest_menu = WeeklyMenu.objects.filter(user=user).order_by('-date').first()
+    
+    if not newest_menu:
+        # If no menu exists, return empty list
+        return JsonResponse([], safe=False)
+    
+    # Set to store unique ingredients that need ordering
+    ingredients_to_order = set()
+    
+    # Helper function to get recipe ingredients
+    def get_recipe_ingredients(recipe_model, recipe_name):
+        if not recipe_name:
+            return []
+        
+        try:
+            recipe = recipe_model.objects.get(user=user, name=recipe_name)
+            ingredients = []
+            for i in range(1, 6):  # Check ingredient1 through ingredient5
+                ingredient = getattr(recipe, f'ingredient{i}', None)
+                if ingredient:
+                    ingredients.append(ingredient)
+            return ingredients
+        except recipe_model.DoesNotExist:
+            return []
+    
+    # Helper function for single ingredient recipes
+    def get_single_ingredient_recipe(recipe_model, recipe_name):
+        if not recipe_name:
+            return []
+        
+        try:
+            recipe = recipe_model.objects.get(user=user, name=recipe_name)
+            if recipe.ingredient1:
+                return [recipe.ingredient1]
+            return []
+        except recipe_model.DoesNotExist:
+            return []
+    
+    # Check all menu fields and their associated recipes
+    menu_fields = [
+        # AM Snack fields
+        ('am_fluid_milk', AMRecipe),
+        ('am_fruit_veg', AMRecipe),
+        ('am_bread', AMRecipe),
+        ('am_additional', AMRecipe),
+        
+        # AMS fields
+        ('ams_fluid_milk', BreakfastRecipe),
+        ('ams_fruit_veg', BreakfastRecipe),
+        ('ams_bread', BreakfastRecipe),
+        ('ams_meat', BreakfastRecipe),
+        
+        # Lunch fields
+        ('lunch_main_dish', Recipe),
+        ('lunch_fluid_milk', Recipe),
+        ('lunch_additional', Recipe),
+        
+        # PM Snack fields
+        ('pm_fluid_milk', PMRecipe),
+        ('pm_fruit_veg', PMRecipe),
+        ('pm_bread', PMRecipe),
+        ('pm_meat', PMRecipe),
+    ]
+    
+    # Special fields with specific recipe types
+    lunch_vegetable = getattr(newest_menu, 'lunch_vegetable', None)
+    lunch_fruit = getattr(newest_menu, 'lunch_fruit', None)
+    lunch_grain = getattr(newest_menu, 'lunch_grain', None)
+    lunch_meat = getattr(newest_menu, 'lunch_meat', None)
+    
+    # Process regular menu fields
+    for field_name, recipe_model in menu_fields:
+        recipe_name = getattr(newest_menu, field_name, None)
+        ingredients = get_recipe_ingredients(recipe_model, recipe_name)
+        ingredients_to_order.update(ingredients)
+    
+    # Process special lunch fields
+    if lunch_vegetable:
+        ingredients = get_single_ingredient_recipe(VegRecipe, lunch_vegetable)
+        ingredients_to_order.update(ingredients)
+    
+    if lunch_fruit:
+        ingredients = get_single_ingredient_recipe(FruitRecipe, lunch_fruit)
+        ingredients_to_order.update(ingredients)
+    
+    if lunch_grain:
+        ingredients = get_single_ingredient_recipe(WgRecipe, lunch_grain)
+        ingredients_to_order.update(ingredients)
+    
+    if lunch_meat:
+        ingredients = get_recipe_ingredients(Recipe, lunch_meat)
+        ingredients_to_order.update(ingredients)
+    
+    # Filter ingredients that are below resupply threshold
+    order_soon_items = []
+    for ingredient in ingredients_to_order:
+        if ingredient.quantity < ingredient.resupply and ingredient.quantity > 0:
+            order_soon_items.append({'name': ingredient.item})
+    
+    # Remove duplicates and sort
+    unique_items = {}
+    for item in order_soon_items:
+        unique_items[item['name']] = item
+    
+    order_soon_items_data = list(unique_items.values())
+    order_soon_items_data.sort(key=lambda x: x['name'])
+    
     return JsonResponse(order_soon_items_data, safe=False)
 
 def fetch_ingredients(request):
