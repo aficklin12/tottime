@@ -247,10 +247,79 @@
     outline: none;
 }
 
+/* Update your existing dropdown CSS with higher z-index values */
+
 /* Fix dropdown positioning to extend beyond table */
 .dropdown-menu {
     min-width: 120px;
-    z-index: 1050; /* Ensure dropdown appears above other elements */
+    z-index: 9999 !important; /* Much higher z-index */
+    position: absolute !important;
+    background-color: white !important;
+    border: 1px solid #dee2e6 !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Ensure dropdown container allows overflow */
+.dropdown {
+    position: relative;
+    z-index: 1000;
+}
+
+/* When dropdown is open, bring it to front */
+.dropdown.show {
+    z-index: 9998 !important;
+}
+
+.dropdown.show .dropdown-menu {
+    z-index: 9999 !important;
+}
+
+/* Make sure the dropdown menu can extend outside its parent */
+.dropdown-menu {
+    position: absolute !important;
+    will-change: transform;
+    top: 100% !important;
+    left: 0 !important;
+    z-index: 9999 !important;
+    min-width: 150px;
+    max-height: none !important;
+    overflow: visible !important;
+    background-color: white !important;
+    border: 1px solid rgba(0,0,0,.15) !important;
+    border-radius: 0.375rem !important;
+}
+
+/* For mobile devices, ensure even higher z-index */
+@media (max-width: 999px) {
+    /* Adjust dropdown positioning for mobile */
+    .dropdown-menu {
+        position: fixed !important; /* Use fixed positioning for mobile */
+        z-index: 10000 !important; /* Even higher for mobile */
+        min-width: 100px;
+        max-width: 120px;
+        right: 10px !important; /* Position from right edge */
+        left: auto !important;
+        background-color: white !important;
+        border: 1px solid #dee2e6 !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.25) !important;
+    }
+    
+    .dropdown.show {
+        z-index: 9999 !important;
+    }
+    
+    .dropdown.show .dropdown-menu {
+        z-index: 10000 !important;
+    }
+}
+/* Fix dropdown positioning to extend beyond table */
+.dropdown-menu {
+    min-width: 120px;
+    z-index: 9999 !important; /* Ensure dropdown appears above other elements */
+    position: absolute !important;
+    background-color: white !important;
+    border: 1px solid #dee2e6 !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Allow dropdown to extend beyond table container */
@@ -282,7 +351,7 @@ tbody {
     will-change: transform;
     top: 100% !important;
     left: 0 !important;
-    z-index: 1050 !important;
+    z-index: 9999 !important;
     min-width: 150px;
     max-height: none !important;
     overflow: visible !important;
@@ -1410,6 +1479,23 @@ $(document).ready(function() {
         } else {
             toggleShoppingListButtons(false);
         }
+    });
+    
+    // Handle dropdown show/hide events to manage z-index
+    $(document).on('show.bs.dropdown', '.dropdown', function() {
+        $(this).css('z-index', '9998');
+        $(this).find('.dropdown-menu').css('z-index', '9999');
+    });
+    
+    $(document).on('hide.bs.dropdown', '.dropdown', function() {
+        $(this).css('z-index', '1000');
+        $(this).find('.dropdown-menu').css('z-index', '1050');
+    });
+    
+    // Close other dropdowns when one is opened
+    $(document).on('show.bs.dropdown', '.dropdown', function() {
+        $('.dropdown').not(this).removeClass('show');
+        $('.dropdown-menu').not($(this).find('.dropdown-menu')).removeClass('show');
     });
 });
 </script>
