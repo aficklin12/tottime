@@ -1467,13 +1467,13 @@ def order_list(request):
         order_items = OrderList.objects.filter(user=user)
         return render(request, 'index.html', {'order_items': order_items})
 
+# Update your existing shopping_list_api view in views.py
 @login_required
 def shopping_list_api(request):
     if request.method == 'GET':
-        # Get the user using get_user_for_view
         user = get_user_for_view(request)
         shopping_list_items = OrderList.objects.filter(user=user)
-        serialized_items = [{'name': item.item} for item in shopping_list_items]
+        serialized_items = [{'id': item.id, 'name': item.item, 'quantity': item.quantity, 'ordered': item.ordered} for item in shopping_list_items]
         return JsonResponse(serialized_items, safe=False)
     else:
         return HttpResponseNotAllowed(['GET'])
@@ -1482,18 +1482,36 @@ def update_orders(request):
     if request.method == 'POST':
         item_ids = request.POST.getlist('items')
         try:
-            # Get the user using get_user_for_view
             user = get_user_for_view(request)
             for item_id in item_ids:
                 order_item = get_object_or_404(OrderList, id=item_id, user=user)
                 order_item.ordered = True
                 order_item.save()
+                
+                # Add ordered item to inventory automatically
+                inventory_item, created = Inventory.objects.get_or_create(
+                    user=user,
+                    item=order_item.item,
+                    defaults={
+                        'quantity': order_item.quantity,
+                        'category': order_item.category or 'Other',
+                        'units': 'units',
+                        'resupply': 5,
+                        'total_quantity': order_item.quantity,
+                    }
+                )
+                
+                if not created:
+                    inventory_item.quantity += order_item.quantity
+                    inventory_item.total_quantity += order_item.quantity
+                    inventory_item.save()
+                    
             return JsonResponse({'success': True, 'message': 'Orders updated successfully'})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     else:
         return HttpResponseNotAllowed(['POST'])
-
+    
 def delete_shopping_items(request):
     if request.method == 'POST':
         item_ids = request.POST.getlist('items[]')

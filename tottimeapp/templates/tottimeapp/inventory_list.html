@@ -1299,4 +1299,13 @@ $(document).ready(function() {
     });
 });
 </script>
+<script>
+window.toggleOrderForm = function() {
+    $("#orderFormOverlay").toggle();
+};
+
+window.closeOrderForm = function() {
+    $("#orderFormOverlay").hide();
+};
+</script>
 {% endblock %}
