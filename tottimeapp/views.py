@@ -889,8 +889,6 @@ def order_soon_items_view(request):
     # Get the latest 5 menu entries for the user (representing the current week)
     latest_menus = WeeklyMenu.objects.filter(user=user).order_by('-date')[:5]
     
-    print(f"Found {len(latest_menus)} menus for user {user.id}")
-    
     if not latest_menus:
         # If no menus exist, return empty list
         return JsonResponse([], safe=False)
@@ -910,10 +908,8 @@ def order_soon_items_view(request):
                 ingredient = getattr(recipe, f'ingredient{i}', None)
                 if ingredient:
                     ingredients.append(ingredient)
-            print(f"Found {len(ingredients)} ingredients for recipe {recipe_name}")
             return ingredients
         except recipe_model.DoesNotExist:
-            print(f"Recipe {recipe_name} not found in {recipe_model.__name__}")
             return []
     
     # Helper function for single ingredient recipes
@@ -924,17 +920,13 @@ def order_soon_items_view(request):
         try:
             recipe = recipe_model.objects.get(user=user, name=recipe_name)
             if recipe.ingredient1:
-                print(f"Found 1 ingredient for single recipe {recipe_name}")
                 return [recipe.ingredient1]
             return []
         except recipe_model.DoesNotExist:
-            print(f"Single recipe {recipe_name} not found in {recipe_model.__name__}")
             return []
     
     # Process each menu entry in the latest week
     for menu in latest_menus:
-        print(f"Processing menu for {menu.date} - {menu.day_of_week}")
-        
         # Define menu fields and their associated recipe models
         menu_fields = [
             # AM Snack fields
@@ -970,38 +962,27 @@ def order_soon_items_view(request):
         # Process regular menu fields
         for field_name, recipe_model in menu_fields:
             recipe_name = getattr(menu, field_name, None)
-            if recipe_name:
-                print(f"Processing {field_name}: {recipe_name}")
             ingredients = get_recipe_ingredients(recipe_model, recipe_name)
             ingredients_to_order.update(ingredients)
         
         # Process special lunch fields
         if lunch_vegetable:
-            print(f"Processing lunch_vegetable: {lunch_vegetable}")
             ingredients = get_single_ingredient_recipe(VegRecipe, lunch_vegetable)
             ingredients_to_order.update(ingredients)
         
         if lunch_fruit:
-            print(f"Processing lunch_fruit: {lunch_fruit}")
             ingredients = get_single_ingredient_recipe(FruitRecipe, lunch_fruit)
             ingredients_to_order.update(ingredients)
         
         if lunch_grain:
-            print(f"Processing lunch_grain: {lunch_grain}")
             ingredients = get_single_ingredient_recipe(WgRecipe, lunch_grain)
             ingredients_to_order.update(ingredients)
     
-    print(f"Total unique ingredients found: {len(ingredients_to_order)}")
-    
-    # Filter ingredients that are below resupply threshold using total_quantity
+    # Filter ingredients that are below resupply threshold (including 0 quantity items)
     order_soon_items = []
     for ingredient in ingredients_to_order:
-        print(f"Checking {ingredient.item}: total_quantity={ingredient.total_quantity}, resupply={ingredient.resupply}")
-        if ingredient.total_quantity < ingredient.resupply:
+        if ingredient.quantity < ingredient.resupply:  # Removed the > 0 condition
             order_soon_items.append({'name': ingredient.item})
-            print(f"Added {ingredient.item} to order soon list")
-    
-    print(f"Final order soon items: {len(order_soon_items)}")
     
     # Remove duplicates and sort
     unique_items = {}
