@@ -317,6 +317,88 @@ tbody {
 #category-shopping-list table {
     overflow: visible !important;
 }
+@media (max-width: 999px) {
+    #categoryTabs {
+        display: none !important;
+    }
+    #categoryDropdownContainer {
+        display: block !important;
+    }
+    
+    /* Make status badges smaller on mobile */
+    .status-badge {
+        padding: 2px 6px;
+        border-radius: 8px;
+        font-size: 0.7em; /* Smaller text */
+        font-weight: bold;
+    }
+    
+    /* Adjust dropdown positioning for mobile */
+    .dropdown-menu {
+        position: fixed !important;
+        z-index: 1050;
+        min-width: 120px;
+        max-width: 150px;
+        font-size: 0.85em; /* Slightly smaller dropdown text */
+    }
+    
+    /* Ensure dropdown items fit on mobile */
+    .dropdown-item {
+        padding: 6px 10px;
+        font-size: 0.8em;
+        white-space: nowrap;
+    }
+    
+    .dropdown-item i {
+        margin-right: 6px;
+        width: 14px;
+    }
+    
+    /* Adjust table for mobile */
+    #category-shopping-list table {
+        width: 100%;
+        table-layout: fixed;
+    }
+    
+    #category-shopping-list td:first-child {
+        width: 40%; /* Item name */
+    }
+    
+    #category-shopping-list td:nth-child(2) {
+        width: 20%; /* Quantity */
+    }
+    
+    #category-shopping-list td:nth-child(3) {
+        width: 40%; /* Status */
+        padding: 4px;
+    }
+    
+    /* Make sure status column content fits */
+    .status-dropdown {
+        font-size: 0.8em;
+        padding: 2px;
+    }
+    
+    /* Ensure dropdown menu positions correctly on mobile */
+    .dropdown {
+        position: relative;
+    }
+    
+    .dropdown-menu {
+        position: absolute !important;
+        top: 100% !important;
+        left: auto !important;
+        right: 0 !important; /* Align to right edge to prevent cutoff */
+        transform: none !important;
+        will-change: auto !important;
+    }
+}
+
+/* Ensure dropdowns work properly on all screen sizes */
+.dropdown-menu {
+    min-width: 120px;
+    z-index: 1050;
+}
 </style>
 {% endblock %}
 {% block content %}
