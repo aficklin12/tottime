@@ -161,7 +161,9 @@ urlpatterns = [
     path('add-announcement/', login_required(views.add_announcement), name='add_announcement'),
     path('incident-report/sign/<int:report_id>/', login_required(views.sign_incident_report), name='sign_incident_report'),
     path('switch-account/', login_required(views.switch_account), name='switch_account'),
-
+    path('api/update-shopping-item-status/', views.update_shopping_item_status, name='update_shopping_item_status'),
+    path('api/delete-shopping-item/<int:item_id>/', views.delete_shopping_item, name='delete_shopping_item'),
+    
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

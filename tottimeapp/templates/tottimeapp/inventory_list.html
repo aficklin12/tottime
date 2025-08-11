@@ -263,9 +263,6 @@
         <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
             <i class="fas fa-plus"></i> Add to Shopping List
         </button>
-        <button type="button" class="btn btn-success btn-sm" onclick="toggleEditForm()">
-            <i class="fas fa-edit"></i> Mark as Ordered
-        </button>
     </div>
 </div>
 
@@ -480,19 +477,6 @@
     </div>
 </div>
 
-<div id="editFormOverlay" class="popup-overlay" style="display: none;">
-    <div class="popup-form">
-        <h2>Mark Items as Ordered</h2>
-        <form id="editShoppingListForm" method="post" action="{% url 'update_orders' %}">
-            {% csrf_token %}
-            <div class="form-group" id="editFormItemsList">
-                <!-- Items will be populated via AJAX -->
-            </div>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
-            <button type="button" class="btn btn-danger close-btn" onclick="closeEditForm()">Close</button>
-        </form>
-    </div>
-</div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -1039,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <script>
-// Function to fetch and display shopping list items in table format with status column
+// Function to fetch and display shopping list items with dropdown status buttons
 function fetchShoppingListItemsForTable() {
     $.ajax({
         url: '/api/shopping-list',
@@ -1052,6 +1036,7 @@ function fetchShoppingListItemsForTable() {
                 );
             } else {
                 response.forEach(function(item, index) {
+                    var itemId = item.id || index;
                     var statusBadge = item.ordered ? 
                         '<span class="status-badge status-ordered"><i class="fas fa-check me-1"></i>Ordered</span>' : 
                         '<span class="status-badge status-pending"><i class="fas fa-clock me-1"></i>Pending</span>';
@@ -1060,7 +1045,19 @@ function fetchShoppingListItemsForTable() {
                         '<tr>' +
                         '<td style="width: 150px;">' + item.name + '</td>' +
                         '<td style="width: 100px;">' + (item.quantity || 1) + '</td>' +
-                        '<td style="width: 100px; text-align: center;">' + statusBadge + '</td>' +
+                        '<td style="width: 100px; text-align: center;">' +
+                        '<div class="dropdown">' +
+                        '<button class="status-dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">' +
+                        statusBadge +
+                        '</button>' +
+                        '<ul class="dropdown-menu">' +
+                        '<li><a class="dropdown-item" href="#" onclick="updateItemStatus(' + itemId + ', false)"><i class="fas fa-clock text-warning"></i>Pending</a></li>' +
+                        '<li><a class="dropdown-item" href="#" onclick="updateItemStatus(' + itemId + ', true)"><i class="fas fa-check text-success"></i>Ordered</a></li>' +
+                        '<li><hr class="dropdown-divider"></li>' +
+                        '<li><a class="dropdown-item text-danger" href="#" onclick="deleteShoppingListItem(' + itemId + ')"><i class="fas fa-trash-alt text-danger"></i>Delete</a></li>' +
+                        '</ul>' +
+                        '</div>' +
+                        '</td>' +
                         '</tr>'
                     );
                 });
@@ -1075,99 +1072,72 @@ function fetchShoppingListItemsForTable() {
     });
 }
 
-// Function to fetch and display ordered items in table format
-function fetchOrderedItemsForTable() {
+// Function to update individual item status
+function updateItemStatus(itemId, ordered) {
     $.ajax({
-        url: '/api/shopping-list',
-        method: 'GET',
+        url: '/api/update-shopping-item-status/',
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val(),
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify({
+            'item_id': itemId,
+            'ordered': ordered
+        }),
         success: function(response) {
-            $('#orderedItemsTableBody').empty();
-            // Filter for ordered items only (you'll need to modify the API to include the 'ordered' field)
-            var orderedItems = response.filter(function(item) {
-                return item.ordered === true;
-            });
-            
-            if (orderedItems.length === 0) {
-                $('#orderedItemsTableBody').append(
-                    '<tr><td colspan="3" style="text-align: center; color: #666;">No ordered items yet</td></tr>'
-                );
-            } else {
-                orderedItems.forEach(function(item, index) {
-                    $('#orderedItemsTableBody').append(
-                        '<tr>' +
-                        '<td style="width: 150px;">' + item.name + '</td>' +
-                        '<td style="width: 100px;">' + (item.quantity || 1) + '</td>' +
-                        '<td class="delete-item-column delete-column">' +
-                        '<i class="fas fa-check" style="color: green; font-size: 1.2em;"></i>' +
-                        '</td>' +
-                        '</tr>'
-                    );
-                });
-            }
+            var statusText = ordered ? 'ordered' : 'pending';
+            toastr.success('Item marked as ' + statusText + '!', 'Success');
+            fetchShoppingListItemsForTable(); // Refresh the table
         },
         error: function(xhr, status, error) {
-            console.error('Error fetching ordered items:', error);
-            $('#orderedItemsTableBody').append(
-                '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading ordered items</td></tr>'
-            );
+            toastr.error('Error updating item status', 'Error');
         }
     });
 }
 
-// Function to populate the edit form with current shopping list items and their actual IDs
-function populateEditForm() {
+// Function to delete shopping list item with confirmation
+function deleteShoppingListItem(itemId) {
+    // Show confirmation toastr
+    toastr.warning(
+        '<div>Are you sure you want to delete this item?</div>' +
+        '<br><button type="button" class="btn btn-sm btn-danger" onclick="confirmDeleteItem(' + itemId + ')">Yes, Delete</button> ' +
+        '<button type="button" class="btn btn-sm btn-secondary" onclick="toastr.clear()">Cancel</button>',
+        'Confirm Delete',
+        {
+            allowHtml: true,
+            timeOut: 0,
+            extendedTimeOut: 0,
+            closeButton: false,
+            tapToDismiss: false
+        }
+    );
+}
+
+// Function to actually delete the item after confirmation
+function confirmDeleteItem(itemId) {
+    toastr.clear(); // Clear the confirmation toastr
+    
     $.ajax({
-        url: '/api/shopping-list',
-        method: 'GET',
+        url: '/api/delete-shopping-item/' + itemId + '/',
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+        },
         success: function(response) {
-            $('#editFormItemsList').empty();
-            if (response.length === 0) {
-                $('#editFormItemsList').append('<p>No items available to mark as ordered.</p>');
-            } else {
-                response.forEach(function(item, index) {
-                    // Use actual item ID if available, otherwise use index
-                    var itemId = item.id || index;
-                    $('#editFormItemsList').append(
-                        '<div class="form-check">' +
-                        '<input class="form-check-input" type="checkbox" id="editItem' + itemId + '" name="items" value="' + itemId + '">' +
-                        '<label class="form-check-label" for="editItem' + itemId + '">' +
-                        item.name + ' (Qty: ' + (item.quantity || 1) + ')' +
-                        '</label>' +
-                        '</div>'
-                    );
-                });
-            }
+            fetchShoppingListItemsForTable(); // Refresh the table
+            toastr.success('Item deleted successfully!', 'Success');
         },
         error: function(xhr, status, error) {
-            console.error('Error fetching shopping list items for edit form:', error);
-            $('#editFormItemsList').append('<p style="color: red;">Error loading items.</p>');
+            toastr.error('Error deleting item', 'Error');
         }
     });
 }
 
-// Toggle functions for the popup forms
-window.toggleOrderForm = function() {
-    $("#orderFormOverlay").toggle();
-};
-
-window.closeOrderForm = function() {
-    $("#orderFormOverlay").hide();
-};
-
-window.toggleEditForm = function() {
-    populateEditForm(); // Populate form before showing
-    $("#editFormOverlay").toggle();
-};
-
-window.closeEditForm = function() {
-    $("#editFormOverlay").hide();
-};
-
-// Add event listeners for the shopping list tab
+// Update your document ready function
 $(document).ready(function() {
     // Hide overlays initially
     $("#orderFormOverlay").hide();
-    $("#editFormOverlay").hide();
     
     // Load shopping list when the tab is clicked
     $('#tab-shopping-list').on('click', function() {
@@ -1214,25 +1184,6 @@ $(document).ready(function() {
         });
     });
     
-    // Handle edit form submission
-    $('#editShoppingListForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        $.ajax({
-            url: $(this).attr('action'),
-            type: 'POST',
-            data: $(this).serialize(),
-            success: function(response) {
-                closeEditForm();
-                fetchShoppingListItemsForTable(); // Refresh shopping list
-                toastr.success('Orders updated successfully!', 'Success');
-            },
-            error: function(xhr, status, error) {
-                toastr.error('Error updating orders', 'Error');
-            }
-        });
-    });
-    
     // Function to show/hide shopping list buttons
     function toggleShoppingListButtons(show) {
         if (show) {
@@ -1242,7 +1193,7 @@ $(document).ready(function() {
         }
     }
     
-    // Hide buttons initially - force hide on page load
+    // Hide buttons initially
     $('#shoppingListButtons').hide();
     
     // Show buttons when shopping list tab is clicked

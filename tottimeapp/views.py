@@ -1504,6 +1504,39 @@ def delete_shopping_items(request):
         # Handle other HTTP methods if needed
         pass
 
+# Add these to your views.py
+@login_required
+def update_shopping_item_status(request):
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        item_id = data.get('item_id')
+        ordered = data.get('ordered')
+        
+        try:
+            user = get_user_for_view(request)
+            order_item = get_object_or_404(OrderList, id=item_id, user=user)
+            order_item.ordered = ordered
+            order_item.save()
+            return JsonResponse({'success': True, 'message': 'Status updated successfully'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    else:
+        return HttpResponseNotAllowed(['POST'])
+
+@login_required
+def delete_shopping_item(request, item_id):
+    if request.method == 'DELETE':
+        try:
+            user = get_user_for_view(request)
+            order_item = get_object_or_404(OrderList, id=item_id, user=user)
+            order_item.delete()
+            return JsonResponse({'success': True, 'message': 'Item deleted successfully'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    else:
+        return HttpResponseNotAllowed(['DELETE'])
+
 @login_required
 def sign_in(request):
     # Check permissions for the specific page
