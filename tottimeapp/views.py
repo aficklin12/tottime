@@ -1483,6 +1483,14 @@ def save_menu(request):
 
             # Get the user using get_user_for_view
             user = get_user_for_view(request)
+            
+            # Ensure we're using the main account owner for saving menu data
+            if user.main_account_owner:
+                # If this is a linked user, use their main account owner
+                menu_user = user.main_account_owner
+            else:
+                # If this is the main account owner or regular user, use them directly
+                menu_user = user
 
             # Loop through each day to save menu data
             for day_key, day_abbr in days_of_week.items():
@@ -1490,7 +1498,7 @@ def save_menu(request):
 
                 # Create or update the WeeklyMenu for each day
                 WeeklyMenu.objects.update_or_create(
-                    user=user,  # Use the retrieved user
+                    user=menu_user,  # Use the determined menu_user
                     date=week_dates[list(days_of_week.keys()).index(day_key)],  # Use calculated date
                     day_of_week=day_abbr,
                     defaults={
@@ -1522,13 +1530,7 @@ def save_menu(request):
         except json.JSONDecodeError as e:
             # Log decoding errors
             return JsonResponse({'status': 'fail', 'error': 'Invalid JSON'}, status=400)
-
-        except Exception as e:
-            # Log any other errors
-            return JsonResponse({'status': 'fail', 'error': 'Unexpected error occurred'}, status=500)
-
-    return JsonResponse({'status': 'fail', 'error': 'Invalid request method'}, status=400)
-
+        
 @login_required
 def delete_recipe(request, recipe_id, category):
     if request.method == 'DELETE':
