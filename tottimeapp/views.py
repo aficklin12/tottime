@@ -877,9 +877,10 @@ def remove_item(request, item_id):
     # Redirect back to the inventory list page
     return redirect('inventory_list')
 
+@login_required
 def get_out_of_stock_items(request):
     user = get_user_for_view(request)
-    out_of_stock_items = Inventory.objects.filter(user=user,quantity=0)
+    out_of_stock_items = Inventory.objects.filter(user=user, quantity=0)
     data = [{'name': item.item} for item in out_of_stock_items]
     return JsonResponse(data, safe=False)
 

@@ -5,8 +5,9 @@
 {% block title %}Inventory{% endblock %}
 {% block styles %}
 <style>
+
 .table-tabs {
-        margin-left: 50px;
+        margin-left: 30px!important;
     }
 
     /* Tab styles */
@@ -519,6 +520,124 @@ tbody {
         font-size: 0.9em;
     }
 }
+
+/* Out of Stock tab specific styling */
+#category-out-of-stock table {
+    overflow: visible !important;
+}
+
+#category-out-of-stock th:first-child,
+#category-out-of-stock td:first-child {
+    width: 100%; /* Item name takes full width */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Mobile responsive adjustments for Out of Stock */
+@media (max-width: 999px) {
+    #category-out-of-stock th:first-child,
+    #category-out-of-stock td:first-child {
+        width: 100%; /* Item name takes full width */
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+}
+table {
+    border-collapse: separate !important;
+    border-spacing: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+    margin-bottom: 50px;
+}
+
+/* Default: Left corners always on first column */
+table thead th:first-child {
+    border-top-left-radius: 10px;
+}
+
+table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+}
+
+/* Right corners for quantity column (2nd) on regular inventory tabs when delete is hidden */
+table thead th:nth-child(2) {
+    border-top-right-radius: 10px;
+}
+
+table tbody tr:last-child td:nth-child(2) {
+    border-bottom-right-radius: 10px;
+}
+
+/* When delete column is visible, remove radius from quantity column and apply to delete column */
+.delete-column[style*="display: table-cell"] ~ th:nth-child(2),
+.delete-column:not([style*="display: none"]) ~ th:nth-child(2) {
+    border-top-right-radius: 0 !important;
+}
+
+.delete-column[style*="display: table-cell"] ~ td:nth-child(2),
+.delete-column:not([style*="display: none"]) ~ td:nth-child(2) {
+    border-bottom-right-radius: 0 !important;
+}
+
+/* Apply radius to delete column when visible */
+table thead th.delete-column[style*="display: table-cell"],
+table thead th.delete-column:not([style*="display: none"]) {
+    border-top-right-radius: 10px;
+}
+
+table tbody tr:last-child td.delete-column[style*="display: table-cell"],
+table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
+    border-bottom-right-radius: 10px;
+}
+
+/* Override rounded corners for special tabs (Shopping List, Order Soon, Out of Stock) */
+#category-shopping-list table thead th:nth-child(2),
+#category-order-soon table thead th:nth-child(2),
+#category-out-of-stock table thead th:nth-child(2) {
+    border-top-right-radius: 0 !important;
+}
+
+#category-shopping-list table tbody tr:last-child td:nth-child(2),
+#category-order-soon table tbody tr:last-child td:nth-child(2),
+#category-out-of-stock table tbody tr:last-child td:nth-child(2) {
+    border-bottom-right-radius: 0 !important;
+}
+
+/* Apply right corners to the actual last column in special tabs */
+#category-shopping-list table thead th:last-child,
+#category-order-soon table thead th:last-child,
+#category-out-of-stock table thead th:last-child {
+    border-top-right-radius: 10px !important;
+}
+
+#category-shopping-list table tbody tr:last-child td:last-child,
+#category-order-soon table tbody tr:last-child td:last-child,
+#category-out-of-stock table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 10px !important;
+}
+
+/* Delete column width constraint */
+.delete-item-header,
+.delete-item-column {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    text-align: center;
+    padding: 8px 4px !important;
+}
+
+/* Make sure the delete button fits in the narrow column */
+.delete-item-column .btn {
+    padding: 2px 6px;
+    font-size: 0.8em;
+}
+
+/* Ensure the trash icon fits */
+.delete-item-column .fas {
+    font-size: 0.9em;
+}
+
 </style>
 {% endblock %}
 {% block content %}
@@ -579,6 +698,7 @@ tbody {
         {% endfor %}
         <option value="category-shopping-list">Shopping List</option>
         <option value="category-order-soon">Order Soon</option>
+        <option value="category-out-of-stock">Out of Stock</option>
     </select>
 </div>
 
@@ -602,6 +722,12 @@ tbody {
     <li class="nav-item" role="presentation">
         <button class="table-link" id="tab-order-soon" data-bs-toggle="tab" data-bs-target="#category-order-soon" type="button" role="tab" aria-controls="category-order-soon" aria-selected="false">
             Order Soon
+        </button>
+    </li>
+    <!-- Add Out of Stock tab -->
+    <li class="nav-item" role="presentation">
+        <button class="table-link" id="tab-out-of-stock" data-bs-toggle="tab" data-bs-target="#category-out-of-stock" type="button" role="tab" aria-controls="category-out-of-stock" aria-selected="false">
+            Out of Stock
         </button>
     </li>
 </ul>
@@ -687,7 +813,19 @@ tbody {
         </tbody>
     </table>
 </div>
-
+<!-- Out of Stock Tab -->
+<div class="tab-pane fade" id="category-out-of-stock" role="tabpanel" aria-labelledby="tab-out-of-stock">
+    <table>
+        <thead>
+            <tr>
+                <th class="item-header">Item</th>
+            </tr>
+        </thead>
+        <tbody id="outOfStockTableBody">
+            <!-- Items will be populated via AJAX -->
+        </tbody>
+    </table>
+</div>
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -1806,6 +1944,77 @@ $(document).ready(function() {
     // Hide shopping list buttons when other tabs are clicked (update existing code)
     $('button[id^="tab-"]:not(#tab-shopping-list)').on('click', function() {
         toggleShoppingListButtons(false);
+    });
+});
+</script>
+<script>
+// Move this outside of $(document).ready() to ensure it's always available
+function fetchOutOfStockItemsForTable() {
+    $.ajax({
+        url: '/api/out-of-stock-items/',
+        method: 'GET',
+        success: function(response) {
+            // Try multiple ways to target the element
+            var tableBody = $('#outOfStockTableBody');
+            var tableBodyAlt = $('#category-out-of-stock tbody');
+            
+            // Use the method that works
+            var targetElement = tableBody.length > 0 ? tableBody : tableBodyAlt;
+            
+            if (targetElement.length === 0) {
+                console.error('Could not find target table body element!');
+                return;
+            }
+            
+            // Clear and populate
+            targetElement.empty();
+            
+            if (response.length === 0) {
+                targetElement.append(
+                    '<tr><td style="text-align: center; color: #666;">No items are out of stock</td></tr>'
+                );
+            } else {
+                response.forEach(function(item) {
+                    targetElement.append(
+                        '<tr>' +
+                        '<td style="width: 100%; word-wrap: break-word; overflow-wrap: break-word;">' + 
+                        item.name + 
+                        '</td>' +
+                        '</tr>'
+                    );
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching out of stock items:', error);
+            $('#outOfStockTableBody, #category-out-of-stock tbody').append(
+                '<tr><td style="text-align: center; color: #ff0000;">Error loading out of stock items</td></tr>'
+            );
+        }
+    });
+}
+
+$(document).ready(function() {
+    // Load out of stock items when the tab is clicked
+    $('#tab-out-of-stock').on('click', function() {
+        setTimeout(function() {
+            fetchOutOfStockItemsForTable();
+        }, 100);
+    });
+    
+    // Listen for Bootstrap tab shown event
+    $('#tab-out-of-stock').on('shown.bs.tab', function() {
+        fetchOutOfStockItemsForTable();
+    });
+    
+    // Load when dropdown changes (for mobile)
+    $('#categoryDropdown').on('change', function() {
+        var selectedValue = $(this).val();
+        if (selectedValue === 'category-out-of-stock') {
+            setTimeout(function() {
+                fetchOutOfStockItemsForTable();
+            }, 100);
+        }
     });
 });
 </script>
