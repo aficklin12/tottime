@@ -1460,15 +1460,24 @@ def save_menu(request):
         try:
             # Parse JSON data from the request body
             raw_body = request.body.decode('utf-8')
+            print(f"Raw request body received: {raw_body[:500]}...")  # First 500 chars
+            
             data = json.loads(raw_body)
+            print(f"Parsed JSON keys: {list(data.keys())}")
+            print(f"Facility name from request: {data.get('facility_name')}")
+            print(f"Sponsor name from request: {data.get('sponsor_name')}")
 
             # Get today's date
             today = datetime.now()
+            print(f"Today's date: {today}")
 
             # Calculate the next Monday
             next_monday = today + timedelta(days=(7 - today.weekday()))
+            print(f"Next Monday: {next_monday}")
+            
             # Create a list of the next week dates (Monday to Friday)
             week_dates = [(next_monday + timedelta(days=i)).date() for i in range(5)]
+            print(f"Week dates: {week_dates}")
 
             # Define the days of the week
             days_of_week = {
@@ -1480,57 +1489,118 @@ def save_menu(request):
             }
 
             # Get the user using get_user_for_view
+            print(f"Request user: {request.user} (ID: {request.user.id})")
             user = get_user_for_view(request)
+            print(f"get_user_for_view returned: {user} (ID: {user.id if user else 'None'})")
+            print(f"User type: {type(user)}")
             
             # Ensure we're using the main account owner for saving menu data
-            if user.main_account_owner:
+            if hasattr(user, 'main_account_owner') and user.main_account_owner:
                 # If this is a linked user, use their main account owner
                 menu_user = user.main_account_owner
+                print(f"Using main account owner: {menu_user} (ID: {menu_user.id})")
             else:
                 # If this is the main account owner or regular user, use them directly
                 menu_user = user
+                print(f"Using current user as menu_user: {menu_user} (ID: {menu_user.id})")
 
             # Get facility and sponsor names from the request data
             facility_name = data.get('facility_name', 'Default Facility')
             sponsor_name = data.get('sponsor_name', 'Default Sponsor')
+            
+            print(f"Final facility_name: '{facility_name}'")
+            print(f"Final sponsor_name: '{sponsor_name}'")
+            print(f"Final menu_user: {menu_user} (ID: {menu_user.id})")
 
-            print(f"Menu User: {menu_user.id} - {menu_user.username}")
-            print(f"Facility: {facility_name}")
-            print(f"Sponsor: {sponsor_name}")
+            # Test creating a single menu entry first
+            print("Testing creation of first menu entry...")
+            try:
+                test_menu = WeeklyMenu.objects.create(
+                    user=menu_user,
+                    date=week_dates[0],
+                    day_of_week='Mon',
+                    facility=facility_name,
+                    sponsor=sponsor_name,
+                    am_fluid_milk='Test',
+                    am_fruit_veg='Test',
+                    am_bread='Test',
+                    am_additional='Test'
+                )
+                print(f"Test menu created successfully: {test_menu.id}")
+                test_menu.delete()  # Clean up the test
+                print("Test menu deleted")
+            except Exception as test_error:
+                print(f"ERROR creating test menu: {str(test_error)}")
+                print(f"Test error type: {type(test_error).__name__}")
+                import traceback
+                traceback.print_exc()
+                return JsonResponse({'status': 'fail', 'error': f'Test creation failed: {str(test_error)}'}, status=500)
 
             # Loop through each day to save menu data
-            for day_key, day_abbr in days_of_week.items():
+            print("Starting to process all days...")
+            for day_index, (day_key, day_abbr) in enumerate(days_of_week.items()):
+                print(f"\nProcessing {day_key} ({day_abbr}) - Index: {day_index}")
                 day_data = data.get(day_key, {})
-
-                # Create or update the WeeklyMenu for each day
-                WeeklyMenu.objects.update_or_create(
+                date_for_day = week_dates[day_index]
+                
+                print(f"Date for {day_key}: {date_for_day}")
+                print(f"Day data keys: {list(day_data.keys())}")
+                
+                # Check for existing menu first
+                existing_menu = WeeklyMenu.objects.filter(
                     user=menu_user,
-                    date=week_dates[list(days_of_week.keys()).index(day_key)],
-                    day_of_week=day_abbr,
-                    defaults={
-                        'facility': facility_name,  # Use facility name from request
-                        'sponsor': sponsor_name,    # Use sponsor name from request
-                        'am_fluid_milk': day_data.get('am_fluid_milk', ''),
-                        'am_fruit_veg': day_data.get('am_fruit_veg', ''),
-                        'am_bread': day_data.get('am_bread', ''),
-                        'am_additional': day_data.get('am_additional', ''),
-                        'ams_fluid_milk': day_data.get('ams_fluid_milk', ''),
-                        'ams_fruit_veg': day_data.get('ams_fruit_veg', ''),
-                        'ams_bread': day_data.get('ams_bread', ''),
-                        'ams_meat': day_data.get('ams_meat', ''),
-                        'lunch_main_dish': day_data.get('lunch_main_dish', ''),
-                        'lunch_fluid_milk': day_data.get('lunch_fluid_milk', ''),
-                        'lunch_vegetable': day_data.get('lunch_vegetable', ''),
-                        'lunch_fruit': day_data.get('lunch_fruit', ''),
-                        'lunch_grain': day_data.get('lunch_grain', ''),
-                        'lunch_meat': day_data.get('lunch_meat', ''),
-                        'lunch_additional': day_data.get('lunch_additional', ''),
-                        'pm_fluid_milk': day_data.get('pm_fluid_milk', ''),
-                        'pm_fruit_veg': day_data.get('pm_fruit_veg', ''),
-                        'pm_bread': day_data.get('pm_bread', ''),
-                        'pm_meat': day_data.get('pm_meat', '')
-                    }
-                )
+                    date=date_for_day,
+                    day_of_week=day_abbr
+                ).first()
+                
+                if existing_menu:
+                    print(f"Found existing menu for {day_key}: {existing_menu.id}")
+                else:
+                    print(f"No existing menu found for {day_key}")
+
+                try:
+                    # Create or update the WeeklyMenu for each day
+                    menu_obj, created = WeeklyMenu.objects.update_or_create(
+                        user=menu_user,
+                        date=date_for_day,
+                        day_of_week=day_abbr,
+                        defaults={
+                            'facility': facility_name,
+                            'sponsor': sponsor_name,
+                            'am_fluid_milk': day_data.get('am_fluid_milk', ''),
+                            'am_fruit_veg': day_data.get('am_fruit_veg', ''),
+                            'am_bread': day_data.get('am_bread', ''),
+                            'am_additional': day_data.get('am_additional', ''),
+                            'ams_fluid_milk': day_data.get('ams_fluid_milk', ''),
+                            'ams_fruit_veg': day_data.get('ams_fruit_veg', ''),
+                            'ams_bread': day_data.get('ams_bread', ''),
+                            'ams_meat': day_data.get('ams_meat', ''),
+                            'lunch_main_dish': day_data.get('lunch_main_dish', ''),
+                            'lunch_fluid_milk': day_data.get('lunch_fluid_milk', ''),
+                            'lunch_vegetable': day_data.get('lunch_vegetable', ''),
+                            'lunch_fruit': day_data.get('lunch_fruit', ''),
+                            'lunch_grain': day_data.get('lunch_grain', ''),
+                            'lunch_meat': day_data.get('lunch_meat', ''),
+                            'lunch_additional': day_data.get('lunch_additional', ''),
+                            'pm_fluid_milk': day_data.get('pm_fluid_milk', ''),
+                            'pm_fruit_veg': day_data.get('pm_fruit_veg', ''),
+                            'pm_bread': day_data.get('pm_bread', ''),
+                            'pm_meat': day_data.get('pm_meat', '')
+                        }
+                    )
+                    
+                    action = "Created" if created else "Updated"
+                    print(f"{action} menu for {day_key}: {menu_obj.id}")
+
+                except Exception as day_error:
+                    print(f"ERROR saving menu for {day_key}: {str(day_error)}")
+                    print(f"Error type: {type(day_error).__name__}")
+                    import traceback
+                    traceback.print_exc()
+                    return JsonResponse({
+                        'status': 'fail', 
+                        'error': f'Error saving {day_key}: {str(day_error)}'
+                    }, status=500)
 
             print("Successfully saved all menu data")
             return JsonResponse({'status': 'success'}, status=200)
@@ -1541,6 +1611,7 @@ def save_menu(request):
 
         except Exception as e:
             print(f"Unexpected error in save_menu: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
             import traceback
             traceback.print_exc()
             return JsonResponse({'status': 'fail', 'error': f'Unexpected error: {str(e)}'}, status=500)
