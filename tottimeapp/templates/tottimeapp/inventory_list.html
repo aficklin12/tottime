@@ -672,22 +672,21 @@ tbody {
         </table>
     </div>
 
-    <!-- Order Soon Tab -->
-    <div class="tab-pane fade" id="category-order-soon" role="tabpanel" aria-labelledby="tab-order-soon">
-        <table>
-            <thead>
-                <tr>
-                    <th class="item-header">Item</th>
-                    <th class="quantity-header">Current Qty</th>
-                    <th class="quantity-header">Resupply Threshold</th>
-                </tr>
-            </thead>
-            <tbody id="orderSoonTableBody">
-                <!-- Items will be populated via AJAX -->
-            </tbody>
-        </table>
-    </div>
-
+<!-- Order Soon Tab -->
+<div class="tab-pane fade" id="category-order-soon" role="tabpanel" aria-labelledby="tab-order-soon">
+    <table>
+        <thead>
+            <tr>
+                <th class="item-header">Item</th>
+                <th class="quantity-header">Current Qty</th>
+                <th class="quantity-header">Qty Needed</th>  <!-- Changed from "Resupply Threshold" -->
+            </tr>
+        </thead>
+        <tbody id="orderSoonTableBody">
+            <!-- Items will be populated via AJAX -->
+        </tbody>
+    </table>
+</div>
 
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
@@ -1749,9 +1748,10 @@ window.closeOrderForm = function() {
 // Function to fetch and display order soon items
 function fetchOrderSoonItemsForTable() {
     $.ajax({
-        url: '/api/order-soon-items',
+        url: '/api/order-soon-items/',
         method: 'GET',
         success: function(response) {
+            console.log('Order Soon API Response:', response);
             $('#orderSoonTableBody').empty();
             if (response.length === 0) {
                 $('#orderSoonTableBody').append(
@@ -1759,14 +1759,15 @@ function fetchOrderSoonItemsForTable() {
                 );
             } else {
                 response.forEach(function(item) {
+                    console.log('Individual item:', item);
                     $('#orderSoonTableBody').append(
                         '<tr>' +
                         '<td style="width: 150px;">' + 
                         item.name + 
                         (item.units ? '<span style="color: grey; font-size: smaller;"> (' + item.units + ')</span>' : '') +
                         '</td>' +
-                        '<td style="width: 100px; text-align: center;">' + item.current_quantity + '</td>' +
-                        '<td style="width: 100px; text-align: center;">' + item.resupply_threshold + '</td>' +
+                        '<td style="width: 100px; text-align: center;">' + (item.current_qty !== undefined && item.current_qty !== null ? item.current_qty : 'N/A') + '</td>' +  // Fixed: properly handle 0
+                        '<td style="width: 100px; text-align: center; color: #d9534f; font-weight: bold;">' + (item.shortage !== undefined && item.shortage !== null ? item.shortage : 'N/A') + '</td>' +  // Fixed: properly handle 0
                         '</tr>'
                     );
                 });
@@ -1774,6 +1775,7 @@ function fetchOrderSoonItemsForTable() {
         },
         error: function(xhr, status, error) {
             console.error('Error fetching order soon items:', error);
+            console.log('Full error response:', xhr.responseText);
             $('#orderSoonTableBody').append(
                 '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading order soon items</td></tr>'
             );

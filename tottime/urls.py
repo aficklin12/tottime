@@ -163,7 +163,6 @@ urlpatterns = [
     path('switch-account/', login_required(views.switch_account), name='switch_account'),
     path('api/update-shopping-item-status/', views.update_shopping_item_status, name='update_shopping_item_status'),
     path('api/delete-shopping-item/<int:item_id>/', views.delete_shopping_item, name='delete_shopping_item'),
-    path('api/order-soon-items/', views.order_soon_items_api, name='order_soon_items_api'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

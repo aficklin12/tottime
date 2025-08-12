@@ -1006,25 +1006,34 @@ def order_soon_items_view(request):
 def order_soon_items_api(request):
     try:
         user = get_user_for_view(request)
+        print(f"User: {user}")
         
         # Get items where current quantity is at or below resupply threshold
-        order_soon_items = Inventory.objects.filter(  # Changed from InventoryItem to Inventory
+        order_soon_items = Inventory.objects.filter(
             user=user,
-            quantity__lte=F('resupply')  # quantity <= resupply threshold
+            quantity__lte=F('resupply')
         ).values('item', 'quantity', 'resupply', 'units')
+        
+        print(f"Raw queryset: {list(order_soon_items)}")
         
         items_data = []
         for item in order_soon_items:
-            items_data.append({
+            item_dict = {
                 'name': item['item'],
-                'current_quantity': item['quantity'],
-                'resupply_threshold': item['resupply'],
+                'current_quantity': float(item['quantity']) if item['quantity'] is not None else 0,
+                'resupply_threshold': float(item['resupply']) if item['resupply'] is not None else 0,
                 'units': item['units'] or ''
-            })
+            }
+            items_data.append(item_dict)
+            print(f"Item dict: {item_dict}")
         
+        print(f"Final items_data: {items_data}")
         return JsonResponse(items_data, safe=False)
         
     except Exception as e:
+        print(f"Error in order_soon_items_api: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 def fetch_ingredients(request):
@@ -1485,24 +1494,19 @@ def save_menu(request):
         try:
             # Parse JSON data from the request body
             raw_body = request.body.decode('utf-8')
-            print(f"Raw request body received: {raw_body[:500]}...")  # First 500 chars
-            
+           
             data = json.loads(raw_body)
-            print(f"Parsed JSON keys: {list(data.keys())}")
-            print(f"Facility name from request: {data.get('facility_name')}")
-            print(f"Sponsor name from request: {data.get('sponsor_name')}")
-
+           
             # Get today's date
             today = datetime.now()
-            print(f"Today's date: {today}")
-
+            
             # Calculate the next Monday
             next_monday = today + timedelta(days=(7 - today.weekday()))
-            print(f"Next Monday: {next_monday}")
+     
             
             # Create a list of the next week dates (Monday to Friday)
             week_dates = [(next_monday + timedelta(days=i)).date() for i in range(5)]
-            print(f"Week dates: {week_dates}")
+           
 
             # Define the days of the week
             days_of_week = {
@@ -1513,32 +1517,20 @@ def save_menu(request):
                 'friday': 'Fri'
             }
 
-            # Get the user using get_user_for_view
-            print(f"Request user: {request.user} (ID: {request.user.id})")
             user = get_user_for_view(request)
-            print(f"get_user_for_view returned: {user} (ID: {user.id if user else 'None'})")
-            print(f"User type: {type(user)}")
-            
+           
             # Ensure we're using the main account owner for saving menu data
             if hasattr(user, 'main_account_owner') and user.main_account_owner:
                 # If this is a linked user, use their main account owner
                 menu_user = user.main_account_owner
-                print(f"Using main account owner: {menu_user} (ID: {menu_user.id})")
             else:
                 # If this is the main account owner or regular user, use them directly
                 menu_user = user
-                print(f"Using current user as menu_user: {menu_user} (ID: {menu_user.id})")
-
+              
             # Get facility and sponsor names from the request data
             facility_name = data.get('facility_name', 'Default Facility')
             sponsor_name = data.get('sponsor_name', 'Default Sponsor')
             
-            print(f"Final facility_name: '{facility_name}'")
-            print(f"Final sponsor_name: '{sponsor_name}'")
-            print(f"Final menu_user: {menu_user} (ID: {menu_user.id})")
-
-            # Test creating a single menu entry first
-            print("Testing creation of first menu entry...")
             try:
                 test_menu = WeeklyMenu.objects.create(
                     user=menu_user,
@@ -1551,27 +1543,18 @@ def save_menu(request):
                     am_bread='Test',
                     am_additional='Test'
                 )
-                print(f"Test menu created successfully: {test_menu.id}")
+        
                 test_menu.delete()  # Clean up the test
-                print("Test menu deleted")
             except Exception as test_error:
-                print(f"ERROR creating test menu: {str(test_error)}")
-                print(f"Test error type: {type(test_error).__name__}")
+                
                 import traceback
                 traceback.print_exc()
                 return JsonResponse({'status': 'fail', 'error': f'Test creation failed: {str(test_error)}'}, status=500)
 
-            # Loop through each day to save menu data
-            print("Starting to process all days...")
             for day_index, (day_key, day_abbr) in enumerate(days_of_week.items()):
-                print(f"\nProcessing {day_key} ({day_abbr}) - Index: {day_index}")
                 day_data = data.get(day_key, {})
                 date_for_day = week_dates[day_index]
-                
-                print(f"Date for {day_key}: {date_for_day}")
-                print(f"Day data keys: {list(day_data.keys())}")
-                
-                # Check for existing menu first
+               # Check for existing menu first
                 existing_menu = WeeklyMenu.objects.filter(
                     user=menu_user,
                     date=date_for_day,
@@ -1615,11 +1598,9 @@ def save_menu(request):
                     )
                     
                     action = "Created" if created else "Updated"
-                    print(f"{action} menu for {day_key}: {menu_obj.id}")
+  
 
                 except Exception as day_error:
-                    print(f"ERROR saving menu for {day_key}: {str(day_error)}")
-                    print(f"Error type: {type(day_error).__name__}")
                     import traceback
                     traceback.print_exc()
                     return JsonResponse({
