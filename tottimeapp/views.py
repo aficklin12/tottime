@@ -1458,10 +1458,8 @@ def check_menu(request):
 def save_menu(request):
     if request.method == 'POST':
         try:
-            # Log the raw body of the request
-            raw_body = request.body.decode('utf-8')
-            
             # Parse JSON data from the request body
+            raw_body = request.body.decode('utf-8')
             data = json.loads(raw_body)
 
             # Get today's date
@@ -1492,23 +1490,9 @@ def save_menu(request):
                 # If this is the main account owner or regular user, use them directly
                 menu_user = user
 
-            # Get facility and sponsor information
-            try:
-                # Get the CompanyAccountOwner record for this main account owner
-                company_account_owner = CompanyAccountOwner.objects.get(main_account_owner=menu_user)
-                
-                # Facility is the location_name from CompanyAccountOwner
-                facility_name = company_account_owner.location_name or company_account_owner.company.name
-                
-                # Sponsor is the company name
-                sponsor_name = company_account_owner.company.name
-                
-            except CompanyAccountOwner.DoesNotExist:
-                # Fallback if no CompanyAccountOwner record exists
-                facility_name = getattr(menu_user, 'company_name', '') or 'Default Facility'
-                sponsor_name = facility_name  # Use the same as facility if no company relationship
-                
-                print(f"Warning: No CompanyAccountOwner found for user {menu_user.id}")
+            # Get facility and sponsor names from the request data
+            facility_name = data.get('facility_name', 'Default Facility')
+            sponsor_name = data.get('sponsor_name', 'Default Sponsor')
 
             print(f"Menu User: {menu_user.id} - {menu_user.username}")
             print(f"Facility: {facility_name}")
@@ -1520,12 +1504,12 @@ def save_menu(request):
 
                 # Create or update the WeeklyMenu for each day
                 WeeklyMenu.objects.update_or_create(
-                    user=menu_user,  # Use the determined menu_user
-                    date=week_dates[list(days_of_week.keys()).index(day_key)],  # Use calculated date
+                    user=menu_user,
+                    date=week_dates[list(days_of_week.keys()).index(day_key)],
                     day_of_week=day_abbr,
                     defaults={
-                        'facility': facility_name,  # Use the location_name or company name
-                        'sponsor': sponsor_name,    # Use the company name
+                        'facility': facility_name,  # Use facility name from request
+                        'sponsor': sponsor_name,    # Use sponsor name from request
                         'am_fluid_milk': day_data.get('am_fluid_milk', ''),
                         'am_fruit_veg': day_data.get('am_fruit_veg', ''),
                         'am_bread': day_data.get('am_bread', ''),
@@ -1557,7 +1541,6 @@ def save_menu(request):
 
         except Exception as e:
             print(f"Unexpected error in save_menu: {str(e)}")
-            print(f"Error type: {type(e).__name__}")
             import traceback
             traceback.print_exc()
             return JsonResponse({'status': 'fail', 'error': f'Unexpected error: {str(e)}'}, status=500)

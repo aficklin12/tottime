@@ -1137,7 +1137,13 @@ async function checkMenuExistsAndSave() {
 }
 
 function saveMenu() {
+    // Get facility and sponsor names from the HTML
+    const facilityName = document.querySelector('th[colspan="2"]').textContent.replace('Facility: ', '').trim();
+    const sponsorName = document.querySelectorAll('th[colspan="2"]')[1].textContent.replace('Sponsor: ', '').trim();
+    
     let menuData = {
+        facility_name: facilityName,  // Add this
+        sponsor_name: sponsorName,    // Add this
         monday: {
             am_fluid_milk: document.getElementById('mondayMilk').innerText,
             am_fruit_veg: document.getElementById('mondayfruit').innerText,
@@ -1252,7 +1258,7 @@ function saveMenu() {
             'X-CSRFToken': getCookie('csrftoken'),
             'Content-Type': 'application/json'
         },
-        data: JSON.stringify(menuData),  // menuData being the object with the menu details
+        data: JSON.stringify(menuData),
         success: function (response) {
             toastr.success('Menu saved successfully!');
         },
