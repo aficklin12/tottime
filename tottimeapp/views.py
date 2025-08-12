@@ -1002,6 +1002,31 @@ def order_soon_items_view(request):
     
     return JsonResponse(order_soon_items, safe=False)
 
+@login_required
+def order_soon_items_api(request):
+    try:
+        user = get_user_for_view(request)
+        
+        # Get items where current quantity is at or below resupply threshold
+        order_soon_items = Inventory.objects.filter(  # Changed from InventoryItem to Inventory
+            user=user,
+            quantity__lte=F('resupply')  # quantity <= resupply threshold
+        ).values('item', 'quantity', 'resupply', 'units')
+        
+        items_data = []
+        for item in order_soon_items:
+            items_data.append({
+                'name': item['item'],
+                'current_quantity': item['quantity'],
+                'resupply_threshold': item['resupply'],
+                'units': item['units'] or ''
+            })
+        
+        return JsonResponse(items_data, safe=False)
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 def fetch_ingredients(request):
     user = get_user_for_view(request)
     ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item')

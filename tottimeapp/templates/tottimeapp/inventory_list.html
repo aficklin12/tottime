@@ -488,6 +488,37 @@ tbody {
     color: #999;
     font-style: italic;
 }
+
+/* Order Soon tab specific styling */
+#category-order-soon table {
+    overflow: visible !important;
+}
+
+#category-order-soon th:nth-child(2),
+#category-order-soon td:nth-child(2),
+#category-order-soon th:nth-child(3),
+#category-order-soon td:nth-child(3) {
+    text-align: center;
+}
+
+/* Mobile responsive adjustments for Order Soon */
+@media (max-width: 999px) {
+    #category-order-soon th:first-child,
+    #category-order-soon td:first-child {
+        width: 50%; /* Item name */
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    #category-order-soon th:nth-child(2),
+    #category-order-soon td:nth-child(2),
+    #category-order-soon th:nth-child(3),
+    #category-order-soon td:nth-child(3) {
+        width: 25%; /* Current Qty and Threshold */
+        text-align: center;
+        font-size: 0.9em;
+    }
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -547,6 +578,7 @@ tbody {
         <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
         {% endfor %}
         <option value="category-shopping-list">Shopping List</option>
+        <option value="category-order-soon">Order Soon</option>
     </select>
 </div>
 
@@ -564,6 +596,12 @@ tbody {
     <li class="nav-item" role="presentation">
         <button class="table-link" id="tab-shopping-list" data-bs-toggle="tab" data-bs-target="#category-shopping-list" type="button" role="tab" aria-controls="category-shopping-list" aria-selected="false">
             Shopping List
+        </button>
+    </li>
+    <!-- Add Order Soon tab -->
+    <li class="nav-item" role="presentation">
+        <button class="table-link" id="tab-order-soon" data-bs-toggle="tab" data-bs-target="#category-order-soon" type="button" role="tab" aria-controls="category-order-soon" aria-selected="false">
+            Order Soon
         </button>
     </li>
 </ul>
@@ -629,6 +667,22 @@ tbody {
                 </tr>
             </thead>
             <tbody id="shoppingListTableBody">
+                <!-- Items will be populated via AJAX -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Order Soon Tab -->
+    <div class="tab-pane fade" id="category-order-soon" role="tabpanel" aria-labelledby="tab-order-soon">
+        <table>
+            <thead>
+                <tr>
+                    <th class="item-header">Item</th>
+                    <th class="quantity-header">Current Qty</th>
+                    <th class="quantity-header">Resupply Threshold</th>
+                </tr>
+            </thead>
+            <tbody id="orderSoonTableBody">
                 <!-- Items will be populated via AJAX -->
             </tbody>
         </table>
@@ -708,7 +762,6 @@ tbody {
         </div>
     </div>
 </div>
-<!-- ...existing code... -->
 <div id="orderFormOverlay" class="popup-overlay" style="display: none;">
     <div class="popup-form">
         <h2>Add to Shopping List</h2>
@@ -1492,16 +1545,6 @@ $(document).ready(function() {
         toggleShoppingListButtons(false);
     });
     
-    // Handle dropdown changes for mobile
-    $('#categoryDropdown').on('change', function() {
-        var selectedValue = $(this).val();
-        if (selectedValue === 'category-shopping-list') {
-            toggleShoppingListButtons(true);
-        } else {
-            toggleShoppingListButtons(false);
-        }
-    });
-    
     // Handle table dropdown show/hide events to manage z-index
     $(document).on('show.bs.dropdown', '.table-status-dropdown', function() {
         $(this).css('z-index', '9998');
@@ -1702,4 +1745,65 @@ window.closeOrderForm = function() {
     $("#orderFormOverlay").hide();
 };
 </script>
-{% endblock %}
+<script>
+// Function to fetch and display order soon items
+function fetchOrderSoonItemsForTable() {
+    $.ajax({
+        url: '/api/order-soon-items',
+        method: 'GET',
+        success: function(response) {
+            $('#orderSoonTableBody').empty();
+            if (response.length === 0) {
+                $('#orderSoonTableBody').append(
+                    '<tr><td colspan="3" style="text-align: center; color: #666;">No items need ordering soon</td></tr>'
+                );
+            } else {
+                response.forEach(function(item) {
+                    $('#orderSoonTableBody').append(
+                        '<tr>' +
+                        '<td style="width: 150px;">' + 
+                        item.name + 
+                        (item.units ? '<span style="color: grey; font-size: smaller;"> (' + item.units + ')</span>' : '') +
+                        '</td>' +
+                        '<td style="width: 100px; text-align: center;">' + item.current_quantity + '</td>' +
+                        '<td style="width: 100px; text-align: center;">' + item.resupply_threshold + '</td>' +
+                        '</tr>'
+                    );
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching order soon items:', error);
+            $('#orderSoonTableBody').append(
+                '<tr><td colspan="3" style="text-align: center; color: #ff0000;">Error loading order soon items</td></tr>'
+            );
+        }
+    });
+}
+
+$(document).ready(function() {
+    // ...existing code...
+    
+    // Load order soon items when the tab is clicked
+    $('#tab-order-soon').on('click', function() {
+        setTimeout(function() {
+            fetchOrderSoonItemsForTable();
+        }, 100);
+    });
+    
+    // Also load when dropdown changes (for mobile)
+    $('#categoryDropdown').on('change', function() {
+        var selectedValue = $(this).val();
+        if (selectedValue === 'category-order-soon') {
+            setTimeout(function() {
+                fetchOrderSoonItemsForTable();
+            }, 100);
+        }
+    });
+    
+    // Hide shopping list buttons when other tabs are clicked (update existing code)
+    $('button[id^="tab-"]:not(#tab-shopping-list)').on('click', function() {
+        toggleShoppingListButtons(false);
+    });
+});
+</script>
