@@ -20,6 +20,17 @@ urlpatterns = [
     path('index_free_user.html', login_required(views.index_free_user), name='index_free_user'),  
     path('login/', views.user_login, name='login'),  # Unprotected view
     path('forgot-username/', views.forgot_username, name='forgot_username'),
+    path('enrollment/', login_required(views.enrollment), name='enrollment'),
+    path('enrollment/submission/<int:submission_id>/', login_required(views.enrollment_submission_detail), name='enrollment_submission_detail'),
+    path('enrollment/public/<int:template_id>/', views.public_enrollment, name='public_enrollment'),
+    path('enrollment/public/<int:template_id>/location/<int:location_id>/', views.public_enrollment, name='public_enrollment_with_location'),
+    path('enrollment/success/', views.public_enrollment_success, name='public_enrollment_success'),
+    path('enrollment/<int:template_id>/', views.public_enrollment, name='public_enrollment_with_template'),
+    path('enrollment/location/<int:location_id>/', views.public_enrollment, name='public_enrollment_with_location'),
+    path('enrollment/<int:template_id>/location/<int:location_id>/', views.public_enrollment, name='public_enrollment_full'),
+    path('policies/', login_required(views.policies), name='policies'),
+    path('send-public-enrollment-link/', login_required(views.send_public_enrollment_link), name='send_public_enrollment_link'),
+
     path('password-reset/', auth_views.PasswordResetView.as_view(
         template_name='tottimeapp/password_reset_form.html'
     ), name='password_reset'),
@@ -39,6 +50,7 @@ urlpatterns = [
     path('recipes/', login_required(views.recipes), name='recipes'),  
     path('rosters/', login_required(views.rosters), name='rosters'),  
     path('weekly-menu/', login_required(views.menu), name='menu'),  
+    path('infant-menu/', login_required(views.infant_menu), name='infant_menu'),  
     path('menu_rules/', login_required(views.menu_rules), name='menu_rules'),
     path('add_rule/', login_required(views.add_rule), name='add_rule'),
     path('milk_count/', login_required(views.milk_count), name='milk_count'),  

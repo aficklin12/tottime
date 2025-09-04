@@ -1,0 +1,1319 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+
+{% block title %}Enrollment Details - {{ submission.child_first_name }} {{ submission.child_last_name }}{% endblock %}
+
+{% block styles %}
+<style>
+    .submission-header {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        color: #495057;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #dee2e6;
+    }
+    
+    .submission-header h1 {
+        margin: 0 0 15px 0;
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #343a40;
+    }
+    
+    .submission-info-line {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+    
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: bold;
+        display: inline-block;
+        font-size: 0.85em;
+    }
+    
+    .status-new {
+        background-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39);
+    }
+    
+    .status-enrolled {
+        background-color: #007b8a;
+        color: white;
+    }
+    
+    .status-archive {
+        background-color: #6c757d;
+        color: white;
+    }
+    
+    .submission-date {
+        font-size: 0.9em;
+        color: #6c757d;
+        margin: 0;
+    }
+    
+    /* Add a separator between items */
+    .info-separator {
+        width: 1px;
+        height: 20px;
+        background-color: #dee2e6;
+        margin: 0 5px;
+    }
+    
+    .navigation-bar {
+        max-width: 800px;
+        margin: 0 auto 20px auto;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .nav-back {
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: 500;
+        transition: background-color 0.3s;
+    }
+    
+    .nav-back:hover {
+        background-color: #545b62;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .status-dropdown {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .status-select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: white;
+        min-width: 120px;
+    }
+    
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .form-header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid rgb(57, 189, 180);
+        padding-bottom: 20px;
+    }
+    .section-title {
+        background-color: #f8f9fa;
+        padding: 10px;
+        margin: 20px 0 10px 0;
+        border-left: 4px solid rgb(57, 189, 180);
+        font-weight: bold;
+    }
+    .form-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .form-group {
+        flex: 1;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        background-color: #f8f9fa;
+        color: #333;
+    }
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin: 10px 0;
+    }
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .checkbox-item input[type="checkbox"],
+    .checkbox-item input[type="radio"] {
+        pointer-events: none; /* Make non-interactive for display */
+    }
+    .checkbox-item label {
+        margin-bottom: 0;
+        font-weight: normal;
+    }
+    .emergency-contact {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+    }
+    .policy-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        background-color: #fafafa;
+    }
+    .policy-section h5 {
+        margin: 0 0 10px 0;
+        color: #333;
+    }
+    .policy-section p {
+        margin: 0;
+        line-height: 1.5;
+    }
+    .btn-primary {
+        background-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39);
+        padding: 12px 30px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    .btn-primary:hover {
+        background-color: #007b8a;
+        color: #fff;
+    }
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-success:hover {
+        background-color: #218838;
+    }
+    .btn-warning {
+        background-color: #ffc107;
+        color: #212529;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-warning:hover {
+        background-color: #e0a800;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+    .signature-display {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: white;
+        min-height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+    }
+    .signature-display img {
+        max-width: 100%;
+        max-height: 100px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Submission Header -->
+<div class="submission-header">
+    <h1>{{ submission.child_first_name }} {{ submission.child_last_name }}</h1>
+    
+    <div class="submission-info-line">
+        <!-- Status Badge -->
+        {% if submission.status == 'new' %}
+            <span class="status-badge status-new">New</span>
+        {% elif submission.status == 'enrolled' %}
+            <span class="status-badge status-enrolled">Enrolled</span>
+        {% elif submission.status == 'archive' %}
+            <span class="status-badge status-archive">Archived</span>
+        {% endif %}
+        
+        <!-- Separator -->
+        <div class="info-separator"></div>
+        
+        <!-- Submitted Date -->
+        <div class="submission-date">Submitted: {{ submission.submitted_at|date:"M d, Y g:i A" }}</div>
+        
+        <!-- Status Changed Date (if exists) -->
+        {% if submission.status_changed_date %}
+            <div class="info-separator"></div>
+            <div class="submission-date">
+                Status changed: {{ submission.status_changed_date|date:"M d, Y g:i A" }} 
+                {% if submission.status_changed_by %}by {{ submission.status_changed_by }}{% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Navigation Bar -->
+<div class="navigation-bar">
+    <div>
+        <a href="{% url 'enrollment' %}" class="nav-back">
+            <i class="fas fa-arrow-left"></i> Back to Submissions
+        </a>
+    </div>
+    <div class="action-buttons">
+        <!-- Add signature button if not signed -->
+        {% if not submission.staff_signature %}
+            <button onclick="openSignatureModal()" class="btn-warning" style="margin-right: 10px;">
+                <i class="fas fa-pen"></i> Sign Document
+            </button>
+        {% endif %}
+        
+        <form method="POST" class="status-dropdown" id="status-form">
+            {% csrf_token %}
+            <label for="status-select">Update Status:</label>
+            <select name="new_status" id="status-select" class="status-select" onchange="updateStatus()">
+                {% if submission.status == 'new' %}
+                    <option value="new" selected disabled>New</option>
+                {% endif %}
+                <option value="enrolled" {% if submission.status == 'enrolled' %}selected{% endif %}>Enrolled</option>
+                <option value="archive" {% if submission.status == 'archive' %}selected{% endif %}>Archive</option>
+            </select>
+            <input type="hidden" name="action" value="change_status">
+        </form>
+    </div>
+</div>
+
+<!-- Form Container -->
+<div class="form-container">
+    <div class="form-header">
+        <h2>South Carolina Department of Social Services</h2>
+        <h3>Child Care Regulatory Services</h3>
+        <h4>GENERAL RECORD AND STATEMENT OF CHILD'S HEALTH FOR ADMISSION TO CHILD CARE FACILITY</h4>
+        <p><em>This form is to be completed for each child at the time of enrollment in the child care facility, updated as needed when changes occur, and maintained on file at the facility.</em></p>
+    </div>
+
+    <div class="section-title">GENERAL INFORMATION: (to be completed by Parent or Guardian)</div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Name of Facility:</label>
+            <div class="form-control">{{ submission.facility_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>County:</label>
+            <div class="form-control">{{ submission.facility_county|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Address:</label>
+            <div class="form-control">{{ submission.facility_address|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Child's Last Name:</label>
+            <div class="form-control">{{ submission.child_last_name }}</div>
+        </div>
+        <div class="form-group">
+            <label>First Name:</label>
+            <div class="form-control">{{ submission.child_first_name }}</div>
+        </div>
+        <div class="form-group">
+            <label>Middle Initial:</label>
+            <div class="form-control">{{ submission.child_middle_initial|default:"" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Nick Name:</label>
+            <div class="form-control">{{ submission.child_nick_name|default:"" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Date of Birth:</label>
+            <div class="form-control">{{ submission.date_of_birth|date:"M d, Y" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Enrollment Date:</label>
+            <div class="form-control">{{ submission.enrollment_date|date:"M d, Y" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Child's Current Home Address:</label>
+            <div class="form-control">{{ submission.child_street_address|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>City, State, Zip:</label>
+            <div class="form-control">{{ submission.child_city_state_zip|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's Full Name:</label>
+            <div class="form-control">{{ submission.parent1_full_name }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Home Phone:</label>
+            <div class="form-control">{{ submission.parent1_home_phone|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Work Phone:</label>
+            <div class="form-control">{{ submission.parent1_work_phone|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Other Phone:</label>
+            <div class="form-control">{{ submission.parent1_other_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's Full Name:</label>
+            <div class="form-control">{{ submission.parent2_full_name|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Home Phone:</label>
+            <div class="form-control">{{ submission.parent2_home_phone|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Work Phone:</label>
+            <div class="form-control">{{ submission.parent2_work_phone|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Other Phone:</label>
+            <div class="form-control">{{ submission.parent2_other_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <p><strong>You must have two individuals who have the authority to obtain emergency medical treatment for the child.</strong></p>
+
+    <div class="emergency-contact">
+        <h5>1. Person responsible if parent/guardian unavailable for emergency medical services:</h5>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Full Name:</label>
+                <div class="form-control">{{ submission.emergency1_name|default:"Not provided" }}</div>
+            </div>
+            <div class="form-group">
+                <label>Relationship:</label>
+                <div class="form-control">{{ submission.emergency1_relationship|default:"Not provided" }}</div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Address:</label>
+                <div class="form-control">{{ submission.emergency1_address|default:"Not provided" }}</div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>City, State, Zip:</label>
+                <div class="form-control">{{ submission.emergency1_city_state_zip|default:"Not provided" }}</div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Telephone Number(s):</label>
+                <div class="form-control">{{ submission.emergency1_phone|default:"Not provided" }}</div>
+            </div>
+            <div class="form-group">
+                <label>Family Code Word(s):</label>
+                <div class="form-control">{{ submission.emergency1_family_code|default:"Not provided" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="emergency-contact">
+        <h5>2. Person responsible if parent/guardian unavailable for emergency medical services:</h5>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Full Name:</label>
+                <div class="form-control">{{ submission.emergency2_name|default:"Not provided" }}</div>
+            </div>
+            <div class="form-group">
+                <label>Relationship:</label>
+                <div class="form-control">{{ submission.emergency2_relationship|default:"Not provided" }}</div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Address:</label>
+                <div class="form-control">{{ submission.emergency2_address|default:"Not provided" }}</div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>City, State, Zip:</label>
+                <div class="form-control">{{ submission.emergency2_city_state_zip|default:"Not provided" }}</div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Telephone Number(s):</label>
+                <div class="form-control">{{ submission.emergency2_phone|default:"Not provided" }}</div>
+            </div>
+            <div class="form-group">
+                <label>Family Code Word(s):</label>
+                <div class="form-control">{{ submission.emergency2_family_code|default:"Not provided" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- School Enrollment Section with Radio Buttons -->
+    <div class="form-row">
+        <div class="form-group">
+            <label>Is Child currently enrolled in school? (5K up to 6 years old)</label>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="radio" id="school_yes" name="enrolled_in_school" value="yes" 
+                           {% if submission.enrolled_in_school == 'yes' %}checked{% endif %} disabled>
+                    <label for="school_yes">Yes</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" id="school_no" name="enrolled_in_school" value="no" 
+                           {% if submission.enrolled_in_school == 'no' %}checked{% endif %} disabled>
+                    <label for="school_no">No</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regular Hours -->
+    <div class="form-row">
+        <div class="form-group">
+            <label>My Child will regularly attend this facility FROM:</label>
+            <div class="form-control">{{ submission.regular_hours_from|time:"g:i A"|default:"Not specified" }}</div>
+        </div>
+        <div class="form-group">
+            <label>TO:</label>
+            <div class="form-control">{{ submission.regular_hours_to|time:"g:i A"|default:"Not specified" }}</div>
+        </div>
+    </div>
+
+    <!-- Drop-in Hours -->
+    <div class="form-row">
+        <div class="form-group">
+            <label>If Child is a drop-in, indicate hours of care FROM:</label>
+            <div class="form-control">{{ submission.dropin_hours_from|time:"g:i A"|default:"Not specified" }}</div>
+        </div>
+        <div class="form-group">
+            <label>TO:</label>
+            <div class="form-control">{{ submission.dropin_hours_to|time:"g:i A"|default:"Not specified" }}</div>
+        </div>
+    </div>
+
+    <!-- Attendance Days with Checkboxes -->
+    <div class="form-group">
+        <label>Check all days Child will regularly attend this facility:</label>
+        <div class="checkbox-group">
+            <div class="checkbox-item">
+                <input type="checkbox" id="day_mon" name="attendance_days" value="monday" 
+                       {% if 'monday' in submission.attendance_days %}checked{% endif %} disabled>
+                <label for="day_mon">Mon</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="day_tue" name="attendance_days" value="tuesday" 
+                       {% if 'tuesday' in submission.attendance_days %}checked{% endif %} disabled>
+                <label for="day_tue">Tue</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="day_wed" name="attendance_days" value="wednesday" 
+                       {% if 'wednesday' in submission.attendance_days %}checked{% endif %} disabled>
+                <label for="day_wed">Wed</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="day_thu" name="attendance_days" value="thursday" 
+                       {% if 'thursday' in submission.attendance_days %}checked{% endif %} disabled>
+                <label for="day_thu">Thurs</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="day_fri" name="attendance_days" value="friday" 
+                       {% if 'friday' in submission.attendance_days %}checked{% endif %} disabled>
+                <label for="day_fri">Fri</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="day_sat" name="attendance_days" value="saturday" 
+                       {% if 'saturday' in submission.attendance_days %}checked{% endif %} disabled>
+                <label for="day_sat">Sat</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="day_sun" name="attendance_days" value="sunday" 
+                       {% if 'sunday' in submission.attendance_days %}checked{% endif %} disabled>
+                <label for="day_sun">Sun</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meals with Checkboxes -->
+    <div class="form-group">
+        <label>Check all meals Child will receive daily:</label>
+        <div class="checkbox-group">
+            <div class="checkbox-item">
+                <input type="checkbox" id="meal_none" name="meals" value="meals_not_offered" 
+                       {% if 'meals_not_offered' in submission.meals %}checked{% endif %} disabled>
+                <label for="meal_none">Meals are not offered</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="meal_breakfast" name="meals" value="breakfast" 
+                       {% if 'breakfast' in submission.meals %}checked{% endif %} disabled>
+                <label for="meal_breakfast">Breakfast</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="meal_morning_snack" name="meals" value="morning_snack" 
+                       {% if 'morning_snack' in submission.meals %}checked{% endif %} disabled>
+                <label for="meal_morning_snack">Morning Snack</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="meal_lunch" name="meals" value="lunch" 
+                       {% if 'lunch' in submission.meals %}checked{% endif %} disabled>
+                <label for="meal_lunch">Lunch</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="meal_afternoon_snack" name="meals" value="afternoon_snack" 
+                       {% if 'afternoon_snack' in submission.meals %}checked{% endif %} disabled>
+                <label for="meal_afternoon_snack">Afternoon Snack</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="meal_dinner" name="meals" value="dinner" 
+                       {% if 'dinner' in submission.meals %}checked{% endif %} disabled>
+                <label for="meal_dinner">Dinner</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="meal_evening_snack" name="meals" value="evening_snack" 
+                       {% if 'evening_snack' in submission.meals %}checked{% endif %} disabled>
+                <label for="meal_evening_snack">Evening Snack</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">HEALTH INFORMATION: (to be completed by Parent or Guardian)</div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Family Physician or Health Resource Name:</label>
+            <div class="form-control">{{ submission.family_physician_name|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Street Address:</label>
+            <div class="form-control">{{ submission.physician_address|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>City, State, Zip:</label>
+            <div class="form-control">{{ submission.physician_city_state_zip|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Telephone:</label>
+            <div class="form-control">{{ submission.physician_telephone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Emergency Care Provider - Emergency Facility Name:</label>
+            <div class="form-control">{{ submission.emergency_care_provider|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Dental Care Provider Name:</label>
+            <div class="form-control">{{ submission.dental_care_provider_name|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Health Insurance Provider:</label>
+            <div class="form-control">{{ submission.health_insurance_provider|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <!-- Immunization with Radio Buttons -->
+    <div class="form-group">
+        <label>Certificate of Immunization:</label>
+        <div class="checkbox-group">
+            <div class="checkbox-item">
+                <input type="radio" id="immun_yes" name="immunization_certificate" value="yes" 
+                       {% if submission.immunization_certificate == 'yes' %}checked{% endif %} disabled>
+                <label for="immun_yes">Yes</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="radio" id="immun_no" name="immunization_certificate" value="no" 
+                       {% if submission.immunization_certificate == 'no' %}checked{% endif %} disabled>
+                <label for="immun_no">No</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="radio" id="immun_na" name="immunization_certificate" value="na" 
+                       {% if submission.immunization_certificate == 'na' %}checked{% endif %} disabled>
+                <label for="immun_na">N/A</label>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top: 10px;">
+            <label>Please explain:</label>
+            <div class="form-control">{{ submission.immunization_explanation|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>My child has the following health conditions such as allergies, asthma, diabetes, epilepsy, etc., and/or takes the following medications on a regular basis:</label>
+        <div class="form-control" style="min-height: 80px; white-space: pre-wrap;">{{ submission.health_conditions|default:"Not provided" }}</div>
+    </div>
+
+   <div class="form-group">
+        <label>Additional Comments:</label>
+        <div class="form-control" style="min-height: 60px; white-space: pre-wrap;">{{ submission.additional_comments|default:"Not provided" }}</div>
+    </div>
+
+    <div class="form-group">
+        <p>I certify that to the best of my knowledge <span style="border-bottom: 1px solid #333; display: inline-block; min-width: 300px; padding: 2px 5px;">{{ submission.child_first_name }} {{ submission.child_last_name }}</span> is in good mental and physical health and able to participate in the child care program at</p>
+        <div class="form-control" style="margin-top: 10px;">{{ submission.facility_name|default:"Not provided" }}</div>
+    </div>
+
+    <div class="section-title">SIGNATURES: (to be completed by Parent or Guardian)</div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian Signature:</label>
+            <div class="signature-display">
+                {% if submission.parent_signature %}
+                    <img src="{{ submission.parent_signature }}" alt="Parent/Guardian Signature">
+                {% else %}
+                    No signature provided
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Date:</label>
+            <div class="form-control">{{ submission.parent_signature_date|date:"M d, Y"|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+
+    <div class="form-row" style="margin-top: 20px;">
+        <div class="form-group">
+            <label>Director/Operator/Staff Designee Signature:</label>
+            <div class="signature-display">
+                {% if submission.staff_signature %}
+                    <img src="{{ submission.staff_signature }}" alt="Staff Signature">
+                {% else %}
+                    No signature provided
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Date:</label>
+            <div class="form-control">{{ submission.staff_signature_date|date:"M d, Y"|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="section-title">CHILD PICK UP INFORMATION</div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Child's Name:</label>
+            <div class="form-control">{{ submission.pickup_child_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>DOB:</label>
+            <div class="form-control">{{ submission.pickup_child_dob|date:"M d, Y"|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's Name:</label>
+            <div class="form-control">{{ submission.pickup_mother_name|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Cell:</label>
+            <div class="form-control">{{ submission.pickup_mother_cell|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Work#:</label>
+            <div class="form-control">{{ submission.pickup_mother_work|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's Email:</label>
+            <div class="form-control">{{ submission.pickup_mother_email|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Second Parent/Guardian's Name:</label>
+            <div class="form-control">{{ submission.pickup_father_name|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Cell:</label>
+            <div class="form-control">{{ submission.pickup_father_cell|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Work#:</label>
+            <div class="form-control">{{ submission.pickup_father_work|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Second Parent/Guardian's Email:</label>
+            <div class="form-control">{{ submission.pickup_father_email|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <p><strong>Emergency Person in case we cannot get in touch with parent:</strong></p>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Name:</label>
+            <div class="form-control">{{ submission.pickup_emergency1_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Phone#:</label>
+            <div class="form-control">{{ submission.pickup_emergency1_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Name:</label>
+            <div class="form-control">{{ submission.pickup_emergency2_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Phone#:</label>
+            <div class="form-control">{{ submission.pickup_emergency2_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="section-title">CUTIE PIES INC. POLICIES</div>
+    
+    <div class="policy-section">
+        <h5><strong>Emergency Medical:</strong></h5>
+        <p>If there is a hurricane or tornado children will be gathered in the interior of the building away from windows and glass. In case of fire teachers take their tracking system and take attendance after all the children have been removed from the building. Cutie Pies in surfside is in Zone A. During orders of mandatory evacuations, the center will be closed. All Cutie Pies staff and children will be redirected to our sister center in the Burgess area, located at 9267 Freewoods Rd, Myrtle Beach, SC 29588. The Cutie Pies Burgess center, Zone C, is the last center to close if the need arises. Check our website for updates on closings. Weekly payments will still be expected even during evacuation times. If your child will be attending our sister center in these events, make sure to pack any daily needs for your child such as diapers, wipes, clothes, bottles, formula, etc.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>After School Children:</strong></h5>
+        <p>All after school children are dropped off at the daycare from the school bus. Children come to the center and eat snacks, then do homework for 30 minutes and then go outside to play. Please check your child's homework to be sure they have finished it for we only do 30 minutes of work per day.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Summer Camp:</strong></h5>
+        <p>Summer Camp starts June 10th and ends in August the week before school starts, the date will be posted the first week school gets out. All summer camp children are required to pay a $250 non refundable registration fee. The daycare will collect money by May 1st to schedule all trips. If your child has a bus safety issue or out in public safety-issue, they will miss the next paid field trip. If they have two, they will be asked to stay home the next day. If they have three, they will be released from the summer program and have to attend preschool which costs $60 more per week.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>ABC Children:</strong></h5>
+        <p>If your child is on ABC please let your case worker know our site is site 02. Please do not change your daycare from full time to part time without speaking to your director first. If ABC does not pay the entire amount for daycare then the parent is responsible for paying the difference. Must give a two week notice if you decide to leave the daycare.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Transportation:</strong></h5>
+        <p>We transport children to and from the Surfside Cutie Pies location for the 4K program. Excludes qualifying ABC children.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Biting:</strong></h5>
+        <p>Parents receive an incident report to sign and keep on file each time a child gets bit or a child bites. If your child is going through a biting stage and bites three times, parents are asked to attend one of our other locations until their child has come out of their biting stage. Biting stages last roughly 2 months and children are less likely to bite in a new unfamiliar place. When your child is ready to come back to their original daycare the director will tell the parent their child is now ready to return to their daycare. Children are never punished with food or taking away outdoor play. We also do not reward with food for it can lead to an unhealthy emotional connection between eating certain foods and feeling good.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Meals:</strong></h5>
+        <p>Cutie Pies is a member of the CACFP food program that ensures all meals are healthy and provide a balanced diet. Breakfast is at 8:00, Lunch 11, Snack 2:30. Children over 2 years will be offered 1% milk and children will be offered whole milk for under 2 years. The CACFP does not allow packages to serve flavored milk to children age 5 and under. Children will have their last snack at 2:30 and are hungry by pick up time. I would suggest parents have a snack in the car ride home for it has been 3 hours since they last ate.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Curriculum:</strong></h5>
+        <p>Cutie Pies teaches all classrooms the 5 areas of learning which are cognitive, small motor skills, large motor, language and social emotional. Preschool starts the day after Labor Day and ends June 4th. Please send children in play clothes for them to paint and get messy.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Closings:</strong></h5>
+        <p>New Year's Day, Good Friday, Memorial Day, Labor Day, 4th of July, Presidents Day, Columbus Day, Juneteenth, Martin Luther King Day, Thanksgiving and Black Friday, Christmas Day and Christmas Eve. If a holiday falls on a Thursday/Tuesday the center will be closed the day before or after. In August the center will be closing early for Horry County Open-House for our staff to attend with their children (the date will be TBD 2 weeks prior to closing) as well as Summer camp will operate from June to August (will end a week before school starts back exact date will be set the beginning of summer). Children are charged for the entire week regardless of a holiday falling within that week or if children are out that week.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Insurance:</strong></h5>
+        <p>Cutie Pies does carry limited liability insurance.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Pictures:</strong></h5>
+        <p>I give permission for Cutie Pies Inc. to take my child's picture and put it on their website or hang pictures in the center.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Physical Activity:</strong></h5>
+        <p>Physical activity is an important part of children's development therefore Cutie Pies does not allow for children to watch TV, play video games or other computers. The children go outdoors every morning and every afternoon weather permitting. If weather doesn't allow for outdoor play children will play physical active games instead.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Facility Agreement:</strong></h5>
+        <p>Parents have read and understand all policies relating to the operation of the facility.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Safety:</strong></h5>
+        <p>When your child is enrolled parents will be given a code to enter the building. Please be aware of people who do not look familiar and if they try to enter ask them to please wait so you can have the director make sure they have creditable business at the daycare.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Transitioning Policy:</strong></h5>
+        <p>Once a child has turned the appropriate age for the next classroom, we inform the parents that there will be a transitioning period. The child will spend a few hours a day or up until it poses a stress on the child in the new classroom. Once they show they're comfortable with the new environment they will then be moved.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Naptime:</strong></h5>
+        <p>Its DSS policy that every child naps from 12-2 daily, at nap time there are DSS nap time ratios and your child must lay on a cot from 12-2, if they are disrupting nap time or refuse to stay on their cot they will be sent home as we have to stay in DSS ratio; the child cannot be sent to another room as we do not have a room for non napping children.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Using the Potty:</strong></h5>
+        <p>If your child needs help using the potty please let their teacher know otherwise, they go on their own. Please tell your child to call the teacher if they need help. If your child is working on potty training, you must work with them at home before we try it at daycare.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Discipline Policy:</strong></h5>
+        <p>Cutie Pies does not use corporal punishment; redirection is used for younger children and time to think is used for older children. If discipline poses a problem, dismissal may occur. Some after school children outgrow the daycare and it is up to the discretion of the director to let the parent know it is time for their child to attend an older, more age appropriate facility. If any after school child acts inappropriate towards another child dismissal will occur.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Disabilities:</strong></h5>
+        <p>Cutie Pies does not discriminate against any of the ten protected classes. Cutie Pies works closely with parents of children with disabilities. We will ask for an IEP from the parent and have an open verbal electronic communication to develop a specialized plan for each child. Cutie Pies will include all children in their peer age group unless there is a need for more careful supervision. Cutie Pies will consider modifications and/or accommodations based on the child's needs unless it poses a financial burden. Cutie Pies allows any specialized services, such as speech.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>IFSP/IEP:</strong></h5>
+        <p>When a child requiring an IEP is enrolled at Cutie Pies, we will request a copy, have an in-depth conversation with the parents about their child's needs and permission to speak with the child's school teacher and therapist. If a child has an individualized family service plan then Cutie Pies will implement the care plan within the child's classroom. With IFSP/IEP, teachers and therapists work together to support activities and strategies to implement towards the child's goals and outcomes in their classroom.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Hiring Policy:</strong></h5>
+        <p>Cutie Pies does hire anyone under provisional employment. Cutie Pies will safeguard confidentiality of all children and staff records.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>General Guidelines:</strong></h5>
+        <p>Please do not let children come in with food (the other children do not understand and wonder why they are not allowed to eat) candy, sippy cups, toys (not even in their backpacks), money, or blankets from home. DHEC highly discourages blankets for they carry more germs than any other item a child brings from home. Please bring extra underwear and pants for extra clothes with your child's name on the inside tag.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Pick Up:</strong></h5>
+        <p>Only people on the pick-up list are allowed to pick children up from the center and must have a photo ID so we can match the name to the pickup list. Parents have unlimited access to their children. A tracking system is used when children enter and exit the building.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Immunizations:</strong></h5>
+        <p>A shot record is due before your child starts and must be on a DHEC form. Children who get updated shots will need to bring the new ones for the daycare to put in their file. DHEC does not allow children to attend without a current immunization record. The daycare can be fined up to $200/day by not having a current immunization record.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Infants:</strong></h5>
+        <p>Need premade water bottles sent back and forth. We need diapers and wipes every week not brought in daily. Please bring wipes, cream, extra clothes and a pacifier which all need to have your child's name on them. Infants will receive a daily sheet showing when they ate, their sleep times and their diaper changes.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Sickness Policy:</strong></h5>
+        <p>Cutie Pies does not care for mildly ill children. Children will be excluded for pink eye, fever (must be fever free for 24 hours before returning, vomiting as well), excessive diarrhea, infectious mouth sores, excessive crying and irritability. Please do not send your children if they have thrown up that morning. Children that are not well enough to go outside will need to stay home. Cutie Pies will administer medicine such as breathing treatments, eye drops, Tylenol with doctors note and prescription medicine if the child's name and dosage and date is on the bottle. We will only give medicine for the afternoon and late afternoon treatments. Parents are responsible for giving morning treatments. Medications will be logged for dosage and time and amount at the daycare. Hand-Foot-Mouth sores must be puss-free before returning. Children may not attend with blisters unless they have a doctors note. Children with pink-eye must have medicine for 24 hours and be pus- free to return. If medication is to be administered, parents must fill out an "Authorization to Administer Medication" form. Cutie Pies is a lice free/nit free facility, if your child is sent home for head lice they cannot return until they are nit free and have been rechecked by the director. If a child is injured they cannot return to the daycare until they are healed due to liability; unless a doctors note is provided at drop off. examples staples/stitches.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Days & Hours:</strong></h5>
+        <p>Monday-Friday 7:00AM-5:30PM. Payments are due on Monday morning. If a payment is not made by Monday there is a $10 late fee. If there isn't a payment by Tuesday, your child will not be allowed to attend until a payment is made. If your child is not picked up by 5:30PM then there is a $20 fee plus an additional $1.00/minute per child until 5:45 PM and $5/minute per child after 5:45PM we have to pay staff overtime when parents are late and have two staff members at all times. If this happens more than twice you will be charged $5 a minute starting at 5:30PM. No post dated checks. If you get a returned check you must pay in cash and if another check is returned you will be required to pay in cash from then on; a $40 fee will be added for the returned check that is charged to the daycare by the bank. If your child needs more than a 10-hour day then add $50/week to your weekly tuition. Parents are responsible for payment even though their child may not attend because of sickness or vacation. The daycare needs a two-week notice before transferring or leaving the daycare. If you are self pay and become an ABC client then you will receive a balance on your account for the amount they back pay.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Registration Fee:</strong></h5>
+        <p>$100 for all children. Due annually. NON-REFUNDABLE</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Rates:</strong></h5>
+        <p>Infants- 2 years $235, Preschool (3-5) $225 if not potty trained addition $40, Afterschool $100 PM/Thurs Camp/Winter Break/Spring Break $165</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Payment Instructions:</strong></h5>
+        <p>PLEASE DO NOT HAND CASH TO EMPLOYEES. PUT ALL PAYMENTS DIRECTLY INTO DROPBOX. PIZZA MONEY, FIELD TRIP MONEY OR TUITION. PUT WHO IT IS FOR, DATE AND AMOUNT ON THE ENVELOPE</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Drop Box:</strong></h5>
+        <p>Grey Box in foyer. For cash, put the name of the child and how much money is in the envelope and what date it is for.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Drop Off:</strong></h5>
+        <p>Children are to be accompanied by a parent in and out of the daycare building. The daycare is not responsible for children after they have been taken out of their classroom. Parents please wait until quickly in the morning so they tend to not cry less after they have adjusted. Drop off time is no later than 10am. If you have an appointment please call ahead so the director knows not to send staff home if we are low with numbers.</p>
+    </div>
+
+    <div class="policy-section">
+        <h5><strong>Belongings:</strong></h5>
+        <p>It is a never-ending battle to keep track of clothing and jackets so we ask parents to please write your child's name on all clothes, jackets, diapers, wipes, special milk, creams & medicines. This way we will not be confused about whose belongings we have.</p>
+    </div>
+
+    <div class="section-title">CUTIE PIES INC. CHILD INFORMATION</div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Child's Name:</label>
+            <div class="form-control">{{ submission.pickup_child_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>DOB:</label>
+            <div class="form-control">{{ submission.pickup_child_dob|date:"M d, Y"|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's Name:</label>
+            <div class="form-control">{{ submission.pickup_mother_name|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's last four of social security XXX-XX-:</label>
+            <div class="form-control">{{ submission.mothers_ssn|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Cell Phone:</label>
+            <div class="form-control">{{ submission.pickup_mother_cell|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Work Phone:</label>
+            <div class="form-control">{{ submission.pickup_mother_work|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's Email:</label>
+            <div class="form-control">{{ submission.mothers_email|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Parent/Guardian's Employment:</label>
+            <div class="form-control">{{ submission.mothers_employment|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Second Parent/Guardian's Name:</label>
+            <div class="form-control">{{ submission.pickup_father_name|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Second Parent/Guardian's Email:</label>
+            <div class="form-control">{{ submission.fathers_email|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Cell Phone:</label>
+            <div class="form-control">{{ submission.pickup_father_cell|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Work Phone:</label>
+            <div class="form-control">{{ submission.pickup_father_work|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Second Parent/Guardian's Employment:</label>
+            <div class="form-control">{{ submission.fathers_employment|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <p>I, <strong>{{ submission.pickup_mother_name|default:"[Parent Name]" }}</strong> give Cutie Pies permission to obtain medical treatment and transportation for my child.</p>
+    </div>
+
+    <div class="form-group">
+        <p>I, <strong>{{ submission.pickup_mother_name|default:"[Parent Name]" }}</strong> agree with the discipline policies for the daycare, which states, no corporal punishment.</p>
+    </div>
+
+    <div class="form-group">
+        <h5><strong>Authorized individuals allowed to pick up your child/children from the facility with proper ID:</strong></h5>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Name:</label>
+            <div class="form-control">{{ submission.pickup_person1_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Phone Number:</label>
+            <div class="form-control">{{ submission.pickup_person1_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Name:</label>
+            <div class="form-control">{{ submission.pickup_person2_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Phone Number:</label>
+            <div class="form-control">{{ submission.pickup_person2_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Name:</label>
+            <div class="form-control">{{ submission.pickup_person3_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Phone Number:</label>
+            <div class="form-control">{{ submission.pickup_person3_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Name:</label>
+            <div class="form-control">{{ submission.pickup_person4_name|default:"Not provided" }}</div>
+        </div>
+        <div class="form-group">
+            <label>Phone Number:</label>
+            <div class="form-control">{{ submission.pickup_person4_phone|default:"Not provided" }}</div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <p>I, <strong>{{ submission.pickup_mother_name|default:"[Parent Name]" }}</strong> authorize Cutie Pies Inc. to administer medication for my child ONLY if the child's name is on the medication and there is a doctor note stating the child is not contagious.</p>
+    </div>
+
+    <div class="form-group">
+        <p>I, <strong>{{ submission.pickup_mother_name|default:"[Parent Name]" }}</strong> allow for swimming activities on field trips at Cutie Pies Inc.</p>
+    </div>
+
+    <div class="form-group">
+        <p>I, <strong>{{ submission.pickup_mother_name|default:"[Parent Name]" }}</strong> allow for my child to go on field trips and to be taken on the Cutie Pies Bus.</p>
+    </div>
+
+    
+
+    <div class="form-row" style="margin-top: 20px;">
+        <div class="form-group">
+            <label>Second Parent/Guardian Signature:</label>
+            <div class="signature-display">
+                {% if submission.parent2_signature %}
+                    <img src="{{ submission.parent2_signature }}" alt="Second Parent/Guardian Signature">
+                {% else %}
+                    No signature provided
+                {% endif %}
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Date:</label>
+            <div class="form-control">{{ submission.parent2_signature_date|date:"M d, Y"|default:"Not provided" }}</div>
+        </div>
+    </div>
+    <!-- Print Button for easy printing -->
+    <div style="text-align: center; margin: 30px 0;">
+        <button onclick="window.print()" class="btn-primary">Print Complete Form</button>
+    </div>
+
+</div>
+
+    
+</div>
+<!-- Signature Modal -->
+<div id="signatureModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 20px; border: none; border-radius: 8px; width: 500px; max-width: 90%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3>Director Signature Required</h3>
+            <span class="close" onclick="closeSignatureModal()" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+        </div>
+        
+        <form method="POST" id="signature-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="sign_and_enroll">
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label for="staff_signature_canvas">Signature:</label>
+                <div style="border: 1px solid #ddd; border-radius: 4px; background-color: white;">
+                    <canvas id="staff_signature_canvas" width="460" height="150" style="display: block; cursor: crosshair;"></canvas>
+                </div>
+                <button type="button" onclick="clearStaffSignature()" style="margin-top: 5px; padding: 5px 10px; background-color: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">Clear</button>
+                <input type="hidden" id="staff_signature_data" name="staff_signature_data" value="">
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="staff_signature_date">Date:</label>
+                <input type="date" id="staff_signature_date" name="staff_signature_date" class="form-control" value="{% now 'Y-m-d' %}" required style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">
+            </div>
+            
+            <div style="text-align: right;">
+                <button type="button" onclick="closeSignatureModal()" style="margin-right: 10px; padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Save & Enroll</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script>
+let staffSignaturePad;
+
+function openSignatureModal() {
+    document.getElementById('signatureModal').style.display = 'block';
+    
+    // Initialize signature pad
+    const canvas = document.getElementById('staff_signature_canvas');
+    staffSignaturePad = new SignaturePad(canvas, {
+        backgroundColor: 'rgb(255, 255, 255)',
+        penColor: 'rgb(0, 0, 0)'
+    });
+    
+    // Handle form submission
+    document.getElementById('signature-form').addEventListener('submit', function(e) {
+        if (staffSignaturePad.isEmpty()) {
+            e.preventDefault();
+            alert('Please provide a signature before submitting.');
+            return false;
+        }
+        
+        // Save signature data
+        document.getElementById('staff_signature_data').value = staffSignaturePad.toDataURL();
+    });
+}
+
+function closeSignatureModal() {
+    document.getElementById('signatureModal').style.display = 'none';
+}
+
+function clearStaffSignature() {
+    if (staffSignaturePad) {
+        staffSignaturePad.clear();
+    }
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('signatureModal');
+    if (event.target == modal) {
+        closeSignatureModal();
+    }
+}
+
+function updateStatus() {
+    // Get the form and submit it automatically
+    document.getElementById('status-form').submit();
+}
+
+// Optional: Add a loading indicator while the form submits
+document.getElementById('status-select').addEventListener('change', function() {
+    // Add visual feedback that the status is being updated
+    this.disabled = true;
+    this.style.opacity = '0.6';
+    
+    // You could also add a small loading spinner or text
+    const label = document.querySelector('label[for="status-select"]');
+    const originalText = label.textContent;
+    label.textContent = 'Updating...';
+    
+    // The form will submit and page will reload, so this is just for immediate feedback
+});
+</script>
+{% endblock %}

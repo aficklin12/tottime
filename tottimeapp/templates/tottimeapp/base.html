@@ -265,7 +265,19 @@
                             </nav>
                         </div>
                         {% endif %}
-
+                        {% if show_enrollment %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseEnrollment" aria-expanded="false" aria-controls="collapseEnrollment" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
+                            <div class="sb-nav-link-icon"><i class="fas fa-user-graduate"></i></div>
+                            Enrollment
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseEnrollment" aria-labelledby="headingEnrollment" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                <a class="nav-link" href="{% url 'enrollment' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Enrollment</a>
+                                <a class="nav-link" href="{% url 'policies' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Policies</a>
+                            </nav>
+                        </div>
+                        {% endif %}
                         {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsFood" aria-expanded="false" aria-controls="collapseLayoutsFood" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
                             <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div> Food Program
@@ -278,6 +290,9 @@
                                 {% endif %}
                                 {% if show_weekly_menu %}
                                 <a class="nav-link" href="{% url 'menu' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Weekly Menu</a>
+                                {% endif %}
+                                {% if show_infant_menu %}
+                                <a class="nav-link" href="{% url 'infant_menu' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Infant Menu</a>
                                 {% endif %}
                                 {% if show_milk_inventory %}
                                 <a class="nav-link" href="{% url 'milk_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Milk Inventory</a>
@@ -354,10 +369,11 @@
                     </div>
                 </div>
                 <div class="sb-sidenav-footer">
-                    <div class="small">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
-                               <!-- Account Owner Switcher Dropdown -->
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="small text-center">Logged in as: {% if user.is_authenticated %}{{ user.username }}{% else %}Not Logged In{% endif %}</div>
+                        <!-- Account Owner Switcher Dropdown -->
                         {% if user.is_authenticated and user.can_switch %}
-                        <div class="dropdown ms-3">
+                        <div class="dropdown mt-2">
                             <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="accountSwitcher" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-exchange-alt me-1"></i>
                                 Switch Location
@@ -377,6 +393,7 @@
                             </ul>
                         </div>
                         {% endif %}
+                    </div>
                 </div>
             </nav>
         </div>

@@ -7,13 +7,14 @@ from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonRespo
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
 from square.client import Client
 from django.conf import settings
+from django.core.paginator import Paginator
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
 from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -49,6 +50,7 @@ def check_permissions(request, required_permission_id=None):
     allow_access = True if required_permission_id is None else False
     permissions_context = {
         'show_weekly_menu': False,
+        'show_infant_menu': False,
         'show_inventory': False,
         'show_milk_inventory': False,
         'show_meal_count': False,
@@ -63,25 +65,27 @@ def check_permissions(request, required_permission_id=None):
         'show_payment_setup': False,
         'show_clock_in': False,
         'show_pay_summary': False,
-        'total_unread_count': 0,  # Add total_unread_count to the context
+        'show_enrollment': False,
+        'total_unread_count': 0,
     }
 
     try:
-        # Check if the user is a SubUser
         sub_user = SubUser.objects.get(user=request.user)
         group_id = sub_user.group_id.id
+        main_user_id = sub_user.main_user.id
 
         # Check for required permission
         if required_permission_id:
             allow_access = RolePermission.objects.filter(
                 role_id=group_id,
                 permission_id=required_permission_id,
-                yes_no_permission=True
+                yes_no_permission=True,
+                main_user_id=main_user_id
             ).exists()
 
-        # Check additional permissions
         permissions_ids = {
             'weekly_menu': 271,
+            'infant_menu': 414,
             'inventory': 272,
             'milk_inventory': 270,
             'meal_count': 269,
@@ -96,16 +100,17 @@ def check_permissions(request, required_permission_id=None):
             'payment_setup': 332,
             'clock_in': 337,
             'pay_summary': 346,
+            'enrollment': 416,
         }
 
         for perm_key, perm_id in permissions_ids.items():
             permissions_context[f'show_{perm_key}'] = RolePermission.objects.filter(
                 role_id=group_id,
                 permission_id=perm_id,
-                yes_no_permission=True
+                yes_no_permission=True,
+                main_user_id=main_user_id
             ).exists()
 
-        # Calculate total unread messages
         conversations = Conversation.objects.filter(
             Q(sender=request.user) | Q(recipient=request.user)
         ).annotate(
@@ -115,7 +120,7 @@ def check_permissions(request, required_permission_id=None):
         permissions_context['total_unread_count'] = total_unread_count
 
     except SubUser.DoesNotExist:
-        # If user is not a SubUser, assume it's a main user and allow access
+        # If user is not a SubUser, assume it's a main user and allow access to all links
         allow_access = True
         for key in permissions_context:
             permissions_context[key] = True
@@ -209,7 +214,7 @@ def index(request):
 @login_required(login_url='/login/')
 def index_director(request):
     user = get_user_for_view(request)
-    required_permission_id = 157
+    required_permission_id = None
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
@@ -569,6 +574,710 @@ def add_announcement(request):
     return JsonResponse({'success': True})
 
 @login_required
+def policies(request):
+    # Check permissions for the specific page
+    required_permission_id = 416
+    permissions_context = check_permissions(request, required_permission_id)
+    # If check_permissions returns a redirect, return it immediately
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+
+    try:
+        company_account = CompanyAccountOwner.objects.get(main_account_owner=main_user)
+        company = company_account.company
+
+        # Get the enrollment template for this company and main_user
+        enrollment_templates = EnrollmentTemplate.objects.filter(
+            company=company,
+            main_user=main_user,
+            is_active=True
+        ).order_by('template_name')
+    except CompanyAccountOwner.DoesNotExist:
+        enrollment_templates = EnrollmentTemplate.objects.none()
+        company = None
+
+    selected_template = None
+    policies = []
+
+    if enrollment_templates.count() == 1:
+        selected_template = enrollment_templates.first()
+        policies = EnrollmentPolicy.objects.filter(
+            template=selected_template,
+            main_user=main_user
+        ).order_by('order', 'id')
+    elif enrollment_templates.exists():
+        # fallback: if multiple, pick the first (should not happen)
+        selected_template = enrollment_templates.first()
+        policies = EnrollmentPolicy.objects.filter(
+            template=selected_template,
+            main_user=main_user
+        ).order_by('order', 'id')
+
+    # Handle POST requests - only update policies
+    if request.method == 'POST':
+        if not selected_template:
+            messages.error(request, 'No enrollment template found for your center.')
+            return redirect('policies')
+
+        action = request.POST.get('action')
+
+        if action == 'update_policies':
+            updated_count = 0
+
+            for policy in policies:
+                title_key = f'policy_{policy.id}_title'
+                content_key = f'policy_{policy.id}_content'
+                order_key = f'policy_{policy.id}_order'
+
+                new_title = request.POST.get(title_key)
+                new_content = request.POST.get(content_key)
+                new_order = request.POST.get(order_key)
+
+                if new_title is not None and new_content is not None:
+                    try:
+                        policy.title = new_title
+                        policy.content = new_content
+                        policy.order = int(new_order) if new_order else 0
+                        policy.save()
+                        updated_count += 1
+                    except ValueError:
+                        messages.error(request, f'Invalid order value for policy "{policy.title}". Please enter a valid number.')
+                        return redirect('policies')
+                    except Exception as e:
+                        messages.error(request, f'Error updating policy "{policy.title}": {str(e)}')
+                        return redirect('policies')
+
+            if updated_count > 0:
+                messages.success(request, f'Successfully updated {updated_count} policies!')
+            else:
+                messages.info(request, 'No changes were made.')
+
+            return redirect('policies')
+
+    context = permissions_context.copy()
+    context.update({
+        'enrollment_templates': enrollment_templates,
+        'selected_template': selected_template,
+        'policies': policies,
+        **permissions_context,
+    })
+
+    return render(request, 'tottimeapp/policies.html', context)
+
+@csrf_exempt
+def send_public_enrollment_link(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            email = data.get("email")
+            link = data.get("link")
+            if not email or not link:
+                return JsonResponse({"success": False, "error": "Missing email or link."})
+            send_mail(
+                "Enrollment Link",
+                f"Please fill out the enrollment form found here: {link}",
+                "noreply@tottime.com",
+                [email],
+                fail_silently=False,
+            )
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+    return JsonResponse({"success": False, "error": "Invalid request."})
+
+@login_required
+def enrollment(request):
+    """
+    Display enrollment submissions for the current user's facility,
+    and provide public enrollment links for all active templates for this user's company/location.
+    """
+    required_permission_id = 416
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+
+    # Get all company locations for this main user (not just primary)
+    company_locations = CompanyAccountOwner.objects.filter(main_account_owner=main_user)
+    print(f"DEBUG: main_user.id={main_user.id}, username={main_user.username}")
+    print(f"DEBUG: company_locations found: {[loc.id for loc in company_locations]}")
+
+    # Get all active templates for all company locations
+    if company_locations.exists():
+        templates = EnrollmentTemplate.objects.filter(
+            company__in=company_locations.values_list('company', flat=True),
+            location__in=company_locations,
+            is_active=True
+        ).select_related('company', 'location')
+        print(f"DEBUG: Found {templates.count()} templates for main_user.id={main_user.id}")
+        for t in templates:
+            print(f"DEBUG: Template id={t.id}, name={t.template_name}, location_id={t.location_id}, company_id={t.company_id}, is_active={t.is_active}")
+        # Use first location for facility info (or aggregate if needed)
+        first_location = company_locations.first()
+        facility_info = {
+            'name': first_location.location_name or first_location.company.name,
+            'company_name': first_location.company.name,
+            'full_address': f"{first_location.facility_address}, {first_location.full_facility_address}" if first_location.facility_address and first_location.full_facility_address else (first_location.facility_address or first_location.full_facility_address or ''),
+        }
+    else:
+        templates = EnrollmentTemplate.objects.none()
+        facility_info = {}
+        print("DEBUG: No company_location found, templates queryset is empty.")
+
+    # Submissions for this main_user
+    submissions = EnrollmentSubmission.objects.filter(
+        main_user=main_user
+    ).select_related('template')
+
+    # Handle status filtering
+    status_filter = request.GET.get('status')
+    show_all = request.GET.get('show_all')
+    if show_all:
+        pass
+    elif status_filter:
+        submissions = submissions.filter(status=status_filter)
+    else:
+        submissions = submissions.filter(status='enrolled')
+
+    # Apply search filter
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        submissions = submissions.filter(
+            Q(child_first_name__icontains=search_query) |
+            Q(child_last_name__icontains=search_query) |
+            Q(parent1_full_name__icontains=search_query)
+        )
+
+    # Order by child's name (last name, then first name)
+    submissions = submissions.order_by('child_last_name', 'child_first_name', '-submitted_at')
+
+    # Calculate statistics (for all submissions, not just the filtered ones)
+    all_submissions = EnrollmentSubmission.objects.filter(main_user=main_user)
+    total_submissions = all_submissions.count()
+    new_submissions = all_submissions.filter(status='new').count()
+    enrolled_submissions = all_submissions.filter(status='enrolled').count()
+    archived_submissions = all_submissions.filter(status='archive').count()
+
+    # Pagination
+    paginator = Paginator(submissions, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'submissions': page_obj,
+        **permissions_context,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'facility_info': facility_info,
+        'templates': templates,  # Pass all templates for looping in template
+        'total_submissions': total_submissions,
+        'new_submissions': new_submissions,
+        'enrolled_submissions': enrolled_submissions,
+        'archived_submissions': archived_submissions,
+    }
+
+    return render(request, 'tottimeapp/enrollment.html', context)
+
+@login_required
+def enrollment_submission_detail(request, submission_id):
+    """View detailed enrollment submission"""
+    required_permission_id = None
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    
+    main_user = request.user
+    
+    submission = get_object_or_404(EnrollmentSubmission, id=submission_id)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'sign_and_enroll':
+            staff_signature_data = request.POST.get('staff_signature_data')
+            staff_signature_date = request.POST.get('staff_signature_date')
+            
+            if staff_signature_data and staff_signature_date:
+                # Save signature
+                submission.staff_signature = staff_signature_data
+                submission.staff_signature_date = staff_signature_date
+                
+                # Update status to enrolled
+                submission.status = 'enrolled'
+                submission.status_changed_date = timezone.now()
+                # Convert user object to string representation
+                submission.status_changed_by = str(request.user)
+                
+                submission.save()
+                
+                messages.success(request, 'Document signed and status updated to enrolled successfully.')
+                return redirect('enrollment_submission_detail', submission_id=submission_id)
+            else:
+                messages.error(request, 'Please provide both signature and date.')
+        
+        elif action == 'change_status':
+            # Your existing status change logic
+            new_status = request.POST.get('new_status')
+            if new_status in ['new', 'enrolled', 'archive']:
+                submission.status = new_status
+                submission.status_changed_date = timezone.now()
+                # Convert user object to string representation
+                submission.status_changed_by = str(request.user)
+                submission.save()
+                messages.success(request, f'Status updated to {new_status}.')
+                return redirect('enrollment_submission_detail', submission_id=submission_id)
+    
+    context = {
+        'submission': submission,
+        **permissions_context,
+    }
+    return render(request, 'tottimeapp/enrollment_submission_detail.html', context)
+
+def public_enrollment(request, template_id=None, location_id=None):
+    """
+    Public enrollment form accessible without login
+    """
+    # Get the template if specified
+    template = None
+    if template_id:
+        try:
+            template = EnrollmentTemplate.objects.get(id=template_id, is_active=True)
+        except EnrollmentTemplate.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Enrollment form not found or is no longer available.")
+    
+    # Get facility info from CompanyAccountOwner
+    facility_info = {}
+    company_location = None
+    
+    if location_id:
+        # Specific location requested
+        try:
+            company_location = CompanyAccountOwner.objects.get(id=location_id)
+        except CompanyAccountOwner.DoesNotExist:
+            from django.http import Http404
+            raise Http404("Facility location not found.")
+    elif template and template.location:
+        # Get location from template
+        company_location = template.location
+    else:
+        # Get primary location for the template's company
+        if template:
+            company_location = CompanyAccountOwner.objects.filter(
+                company=template.company, 
+                is_primary=True
+            ).first()
+        else:
+            company_location = CompanyAccountOwner.objects.filter(is_primary=True).first()
+    
+    if company_location:
+        facility_info = {
+            'name': company_location.location_name or company_location.company.name,
+            'company_name': company_location.company.name,
+            'address': company_location.facility_address or '',
+            'city': company_location.facility_city or '',
+            'state': company_location.facility_state or '',
+            'zip': company_location.facility_zip or '',
+            'city_state_zip': company_location.full_facility_address,
+            'county': company_location.facility_county or '',
+            'full_address': f"{company_location.facility_address}, {company_location.full_facility_address}" if company_location.facility_address and company_location.full_facility_address else (company_location.facility_address or company_location.full_facility_address or ''),
+        }
+    else:
+        # Use template's company info as fallback
+        if template:
+            facility_info = {
+                'name': template.company.name,
+                'company_name': template.company.name,
+                'address': '',
+                'city': '',
+                'state': '',
+                'zip': '',
+                'city_state_zip': '',
+                'county': '',
+                'full_address': '',
+            }
+        else:
+            facility_info = {
+                'name': 'Child Care Facility',
+                'company_name': 'Child Care Facility',
+                'address': '',
+                'city': '',
+                'state': '',
+                'zip': '',
+                'city_state_zip': '',
+                'county': '',
+                'full_address': '',
+            }
+    
+    if request.method == 'POST':
+        try:
+            # Get client IP address
+            def get_client_ip(request):
+                x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+                if x_forwarded_for:
+                    ip = x_forwarded_for.split(',')[0]
+                else:
+                    ip = request.META.get('REMOTE_ADDR')
+                return ip
+            
+            # Create enrollment submission
+            submission = EnrollmentSubmission()
+            
+            # Set template and main_user - THIS IS THE KEY FIX
+            submission.template = template
+            
+            # Determine main_user from multiple sources
+            main_user_for_notification = None
+            if template and template.main_user:
+                # First priority: template's main_user
+                submission.main_user = template.main_user
+                main_user_for_notification = template.main_user
+            elif company_location and company_location.main_account_owner:
+                # Second priority: location's main_account_owner
+                submission.main_user = company_location.main_account_owner
+                main_user_for_notification = company_location.main_account_owner
+            elif template and template.location and template.location.main_account_owner:
+                # Third priority: template's location's main_account_owner
+                submission.main_user = template.location.main_account_owner
+                main_user_for_notification = template.location.main_account_owner
+            else:
+                # Fallback: None (public submission with no associated main_user)
+                submission.main_user = None
+                main_user_for_notification = None
+            
+            # [All the existing field assignments remain the same...]
+            # Facility Information - populate from CompanyAccountOwner
+            if company_location:
+                submission.facility_name = facility_info['name']
+                submission.facility_address = facility_info['full_address']
+                submission.facility_city_state_zip = facility_info['city_state_zip']
+                submission.facility_county = facility_info['county']
+            
+            # Child Information - Required fields
+            child_first_name = request.POST.get('child_first_name', '').strip()
+            child_last_name = request.POST.get('child_last_name', '').strip()
+            
+            if not child_first_name or not child_last_name:
+                messages.error(request, 'Child first name and last name are required.')
+                context = {
+                    'facility_info': facility_info, 
+                    'template': template,
+                    'company_location': company_location
+                }
+                return render(request, 'tottimeapp/public_enrollment.html', context)
+            
+            submission.child_first_name = child_first_name
+            submission.child_last_name = child_last_name
+            submission.child_middle_initial = request.POST.get('child_middle_initial', '')
+            submission.child_nick_name = request.POST.get('child_nick_name', '')
+            
+            # Convert date fields with error handling
+            try:
+                dob = request.POST.get('date_of_birth')
+                if dob:
+                    submission.date_of_birth = datetime.strptime(dob, '%Y-%m-%d').date()
+                else:
+                    messages.error(request, 'Date of birth is required.')
+                    context = {
+                        'facility_info': facility_info, 
+                        'template': template,
+                        'company_location': company_location
+                    }
+                    return render(request, 'tottimeapp/public_enrollment.html', context)
+                
+                enrollment_date = request.POST.get('enrollment_date')
+                if enrollment_date:
+                    submission.enrollment_date = datetime.strptime(enrollment_date, '%Y-%m-%d').date()
+                else:
+                    messages.error(request, 'Enrollment date is required.')
+                    context = {
+                        'facility_info': facility_info, 
+                        'template': template,
+                        'company_location': company_location
+                    }
+                    return render(request, 'tottimeapp/public_enrollment.html', context)
+            except ValueError as e:
+                messages.error(request, 'Invalid date format.')
+                context = {
+                    'facility_info': facility_info, 
+                    'template': template,
+                    'company_location': company_location
+                }
+                return render(request, 'tottimeapp/public_enrollment.html', context)
+            
+            submission.child_street_address = request.POST.get('child_street_address', '')
+            submission.child_city_state_zip = request.POST.get('child_city_state_zip', '')
+            
+            # Parent Information - At least parent1 name is required
+            parent1_name = request.POST.get('parent1_full_name', '').strip()
+            if not parent1_name:
+                messages.error(request, 'Parent/Guardian name is required.')
+                context = {
+                    'facility_info': facility_info, 
+                    'template': template,
+                    'company_location': company_location
+                }
+                return render(request, 'tottimeapp/public_enrollment.html', context)
+            
+            submission.parent1_full_name = parent1_name
+            submission.parent1_home_phone = request.POST.get('parent1_home_phone', '')
+            submission.parent1_work_phone = request.POST.get('parent1_work_phone', '')
+            submission.parent1_other_phone = request.POST.get('parent1_other_phone', '')
+            
+            submission.parent2_full_name = request.POST.get('parent2_full_name', '')
+            submission.parent2_home_phone = request.POST.get('parent2_home_phone', '')
+            submission.parent2_work_phone = request.POST.get('parent2_work_phone', '')
+            submission.parent2_other_phone = request.POST.get('parent2_other_phone', '')
+            
+            # Emergency Contacts
+            submission.emergency1_name = request.POST.get('emergency1_name', '')
+            submission.emergency1_relationship = request.POST.get('emergency1_relationship', '')
+            submission.emergency1_address = request.POST.get('emergency1_address', '')
+            submission.emergency1_city_state_zip = request.POST.get('emergency1_city_state_zip', '')
+            submission.emergency1_phone = request.POST.get('emergency1_phone', '')
+            submission.emergency1_family_code = request.POST.get('emergency1_family_code', '')
+            
+            submission.emergency2_name = request.POST.get('emergency2_name', '')
+            submission.emergency2_relationship = request.POST.get('emergency2_relationship', '')
+            submission.emergency2_address = request.POST.get('emergency2_address', '')
+            submission.emergency2_city_state_zip = request.POST.get('emergency2_city_state_zip', '')
+            submission.emergency2_phone = request.POST.get('emergency2_phone', '')
+            submission.emergency2_family_code = request.POST.get('emergency2_family_code', '')
+            
+            # Schedule Information
+            submission.enrolled_in_school = request.POST.get('enrolled_in_school', '')
+            
+            # Convert time fields with error handling
+            try:
+                regular_from = request.POST.get('regular_hours_from')
+                if regular_from:
+                    submission.regular_hours_from = datetime.strptime(regular_from, '%H:%M').time()
+                
+                regular_to = request.POST.get('regular_hours_to')
+                if regular_to:
+                    submission.regular_hours_to = datetime.strptime(regular_to, '%H:%M').time()
+                
+                dropin_from = request.POST.get('dropin_hours_from')
+                if dropin_from:
+                    submission.dropin_hours_from = datetime.strptime(dropin_from, '%H:%M').time()
+                
+                dropin_to = request.POST.get('dropin_hours_to')
+                if dropin_to:
+                    submission.dropin_hours_to = datetime.strptime(dropin_to, '%H:%M').time()
+            except ValueError:
+                # Time fields are optional, so we can continue
+                pass
+            
+            # Arrays for attendance days and meals
+            submission.attendance_days = request.POST.getlist('attendance_days')
+            submission.meals = request.POST.getlist('meals')
+            
+            # Health Information
+            submission.family_physician_name = request.POST.get('family_physician_name', '')
+            submission.physician_address = request.POST.get('physician_address', '')
+            submission.physician_city_state_zip = request.POST.get('physician_city_state_zip', '')
+            submission.physician_telephone = request.POST.get('physician_telephone', '')
+            
+            submission.emergency_care_provider = request.POST.get('emergency_care_provider', '')
+            submission.emergency_facility_address = request.POST.get('emergency_facility_address', '')
+            submission.emergency_facility_city_state_zip = request.POST.get('emergency_facility_city_state_zip', '')
+            submission.emergency_facility_telephone = request.POST.get('emergency_facility_telephone', '')
+            
+            submission.dental_care_provider_name = request.POST.get('dental_care_provider_name', '')
+            submission.dental_provider_address = request.POST.get('dental_provider_address', '')
+            submission.dental_provider_city_state_zip = request.POST.get('dental_provider_city_state_zip', '')
+            submission.dental_provider_telephone = request.POST.get('dental_provider_telephone', '')
+            
+            submission.health_insurance_provider = request.POST.get('health_insurance_provider', '')
+            submission.immunization_certificate = request.POST.get('immunization_certificate', '')
+            submission.immunization_explanation = request.POST.get('immunization_explanation', '')
+            submission.health_conditions = request.POST.get('health_conditions', '')
+            submission.additional_comments = request.POST.get('additional_comments', '')
+            
+            # Pickup Information
+            submission.pickup_child_name = request.POST.get('pickup_child_name', '')
+            
+            pickup_dob = request.POST.get('pickup_child_dob')
+            if pickup_dob:
+                try:
+                    submission.pickup_child_dob = datetime.strptime(pickup_dob, '%Y-%m-%d').date()
+                except ValueError:
+                    pass  # Optional field
+            
+            submission.pickup_mother_name = request.POST.get('pickup_mother_name', '')
+            submission.pickup_mother_cell = request.POST.get('pickup_mother_cell', '')
+            submission.pickup_mother_work = request.POST.get('pickup_mother_work', '')
+            submission.pickup_mother_email = request.POST.get('pickup_mother_email', '')
+            
+            submission.pickup_father_name = request.POST.get('pickup_father_name', '')
+            submission.pickup_father_cell = request.POST.get('pickup_father_cell', '')
+            submission.pickup_father_work = request.POST.get('pickup_father_work', '')
+            submission.pickup_father_email = request.POST.get('pickup_father_email', '')
+            
+            submission.pickup_emergency1_name = request.POST.get('pickup_emergency1_name', '')
+            submission.pickup_emergency1_phone = request.POST.get('pickup_emergency1_phone', '')
+            submission.pickup_emergency2_name = request.POST.get('pickup_emergency2_name', '')
+            submission.pickup_emergency2_phone = request.POST.get('pickup_emergency2_phone', '')
+            
+            # Child Info Section
+            submission.mothers_ssn = request.POST.get('mothers_ssn', '')
+            submission.mothers_email = request.POST.get('mothers_email', '')
+            submission.mothers_employment = request.POST.get('mothers_employment', '')
+            submission.fathers_email = request.POST.get('fathers_email', '')
+            submission.fathers_employment = request.POST.get('fathers_employment', '')
+            
+            # Authorized Pickup Persons
+            submission.pickup_person1_name = request.POST.get('pickup_person1_name', '')
+            submission.pickup_person1_phone = request.POST.get('pickup_person1_phone', '')
+            submission.pickup_person2_name = request.POST.get('pickup_person2_name', '')
+            submission.pickup_person2_phone = request.POST.get('pickup_person2_phone', '')
+            submission.pickup_person3_name = request.POST.get('pickup_person3_name', '')
+            submission.pickup_person3_phone = request.POST.get('pickup_person3_phone', '')
+            submission.pickup_person4_name = request.POST.get('pickup_person4_name', '')
+            submission.pickup_person4_phone = request.POST.get('pickup_person4_phone', '')
+            
+            # Signatures
+            submission.parent_signature = request.POST.get('parent_signature_data', '')
+
+            parent_sig_date = request.POST.get('parent_signature_date')  # Fixed: removed 'requests.'
+            if parent_sig_date:
+                try:
+                    submission.parent_signature_date = datetime.strptime(parent_sig_date, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+
+            # Add second parent signature handling
+            submission.parent2_signature = request.POST.get('parent2_signature_data', '')
+
+            parent2_sig_date = request.POST.get('parent2_signature_date')
+            if parent2_sig_date:
+                try:
+                    submission.parent2_signature_date = datetime.strptime(parent2_sig_date, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+
+            submission.staff_signature = request.POST.get('staff_signature_data', '')
+
+            staff_sig_date = request.POST.get('staff_signature_date')
+            if staff_sig_date:
+                try:
+                    submission.staff_signature_date = datetime.strptime(staff_sig_date, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+            
+            # Metadata
+            submission.ip_address = get_client_ip(request)
+            submission.status = 'new'  # Set default status to 'new'
+            
+            # Save to database
+            submission.save()
+            
+            # Send notification email to MainUser
+            try:
+                # Determine admin email from the main_user_for_notification
+                if main_user_for_notification and main_user_for_notification.email:
+                    admin_email = main_user_for_notification.email
+                    admin_name = f"{main_user_for_notification.first_name} {main_user_for_notification.last_name}".strip()
+                    if not admin_name:
+                        admin_name = main_user_for_notification.username
+                    
+                    # Create comprehensive email content
+                    email_subject = f'New Enrollment Submission - {facility_info["name"]}'
+                    
+                    # Format attendance days nicely
+                    attendance_days_formatted = ', '.join(submission.attendance_days) if submission.attendance_days else 'Not specified'
+                    
+                    # Format meals nicely
+                    meals_formatted = ', '.join(submission.meals) if submission.meals else 'Not specified'
+                    
+                    email_body = f"""
+Hello {admin_name},
+
+A new enrollment submission has been received for {facility_info['name']}.
+
+CHILD INFORMATION:
+Child Name: {submission.child_first_name} {submission.child_last_name}
+Date of Birth: {submission.date_of_birth}
+Enrollment Date: {submission.enrollment_date}
+Address: {submission.child_street_address}, {submission.child_city_state_zip}
+
+PARENT/GUARDIAN INFORMATION:
+Primary Parent: {submission.parent1_full_name}
+Home Phone: {submission.parent1_home_phone or 'Not provided'}
+Work Phone: {submission.parent1_work_phone or 'Not provided'}
+Email: {submission.pickup_mother_email or submission.mothers_email or 'Not provided'}
+
+{f"Second Parent: {submission.parent2_full_name}" if submission.parent2_full_name else ""}
+{f"Second Parent Phone: {submission.parent2_home_phone}" if submission.parent2_home_phone else ""}
+
+EMERGENCY CONTACTS:
+1. {submission.emergency1_name} ({submission.emergency1_relationship}) - {submission.emergency1_phone}
+2. {submission.emergency2_name} ({submission.emergency2_relationship}) - {submission.emergency2_phone}
+
+SCHEDULE INFORMATION:
+Attendance Days: {attendance_days_formatted}
+Regular Hours: {f"{submission.regular_hours_from} to {submission.regular_hours_to}" if submission.regular_hours_from and submission.regular_hours_to else "Not specified"}
+Meals: {meals_formatted}
+
+HEALTH INFORMATION:
+Family Physician: {submission.family_physician_name or 'Not provided'}
+Health Conditions: {submission.health_conditions or 'None specified'}
+Immunization Certificate: {submission.immunization_certificate or 'Not specified'}
+
+SUBMISSION DETAILS:
+Submission ID: #{submission.id}
+Submitted At: {submission.submitted_at.strftime('%B %d, %Y at %I:%M %p')}
+Status: New (Pending Review)
+
+Please log into your TotTime dashboard to review the complete submission and update the enrollment status.
+
+Best regards,
+TotTime Enrollment System
+                    """
+                    
+                    # Send the email
+                    send_mail(
+                        email_subject,
+                        email_body,
+                        'noreply@tottime.com',  # From email
+                        [admin_email],          # To email (MainUser's email)
+                        fail_silently=False,    # Raise exception if email fails
+                    )
+                    
+                    print(f"Email notification sent successfully to {admin_email}")
+                    
+                else:
+                    print(f"No email address found for notification. Main user: {main_user_for_notification}")
+                    
+            except Exception as email_error:
+                print(f"Email notification failed: {email_error}")
+                # Don't fail the submission if email fails
+            
+            messages.success(request, 'Enrollment form submitted successfully! We will contact you soon.')
+            return redirect('public_enrollment_success')
+            
+        except Exception as e:
+            print(f"Enrollment submission error: {e}")
+            messages.error(request, 'There was an error submitting your form. Please try again.')
+    
+    context = {
+        'facility_info': facility_info,
+        'template': template,
+        'company_location': company_location,
+    }
+    
+    return render(request, 'tottimeapp/public_enrollment.html', context)
+
+def public_enrollment_success(request):
+    """
+    Success page after enrollment submission
+    """
+    return render(request, 'tottimeapp/public_enrollment_success.html')
+
+@login_required
 def recipes(request):
     # Check permissions for the specific page
     required_permission_id = 267  # Permission ID for accessing recipes view
@@ -795,6 +1504,25 @@ def inventory_list(request):
         'order_items': order_items,  # ADD THIS LINE
         **permissions_context,  # Include permission flags dynamically
     })
+
+@login_required
+def infant_menu(request):
+    # Check permissions for the specific page
+    required_permission_id = 272  # Permission ID for accessing infant menu view
+    permissions_context = check_permissions(request, required_permission_id)
+    # If check_permissions returns a redirect, return it immediately
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    
+    # Get the user (MainUser) for filtering
+    user = get_user_for_view(request)
+    
+    # Get all inventory items with category 'Infants' for dropdowns, filtered by user
+    inventory_items = Inventory.objects.filter(category='Infants', user=user)
+    permissions_context['inventory_items'] = inventory_items
+    
+    # If access is allowed, render the infant menu page
+    return render(request, 'tottimeapp/infant_menu.html', permissions_context)
 
 @login_required
 def add_item(request):
@@ -1674,7 +2402,6 @@ def order_list(request):
         order_items = OrderList.objects.filter(user=user)
         return render(request, 'index.html', {'order_items': order_items})
 
-# Update your existing shopping_list_api view in views.py
 @login_required
 def shopping_list_api(request):
     if request.method == 'GET':
@@ -1729,7 +2456,6 @@ def delete_shopping_items(request):
         # Handle other HTTP methods if needed
         pass
 
-# Add these to your views.py
 @login_required
 def update_shopping_item_status(request):
     if request.method == 'POST':
@@ -3709,7 +4435,7 @@ def send_invitation(request):
                 send_mail(
                     'Invitation to Join',
                     f'You have been invited to join with role: {role.name}. Click the link to accept: {invitation_link}',
-                    'cutiepieschilddevelopment@gmail.com',
+                    'tottimeapp@gmail.com',
                     [email],
                     fail_silently=False,
                 )
@@ -3848,12 +4574,12 @@ def inbox_perms(request):
 
 @login_required
 def permissions(request):
-    # Check permissions for the specific page
-    required_permission_id = 157  # Permission ID for permissions view
+    required_permission_id = 157
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
+
+    main_user = get_user_for_view(request)
 
     if request.method == "POST":
         for key, value in request.POST.items():
@@ -3862,21 +4588,32 @@ def permissions(request):
                 if len(parts) == 3:
                     permission_id, group_id = int(parts[1]), int(parts[2])
                     try:
-                        role_permission = RolePermission.objects.get(role_id=group_id, permission_id=permission_id)
-                        role_permission.yes_no_permission = value == "on"
+                        role_permission = RolePermission.objects.get(
+                            role_id=group_id,
+                            permission_id=permission_id,
+                            main_user=main_user
+                        )
+                        role_permission.yes_no_permission = value == "True"
                         role_permission.save()
                     except RolePermission.DoesNotExist:
-                        pass  # Silent fail
+                        # Create if not exists
+                        RolePermission.objects.create(
+                            role_id=group_id,
+                            permission_id=permission_id,
+                            yes_no_permission=value == "True",
+                            main_user=main_user
+                        )
         return redirect('permissions')
 
-    # Fetch groups and exclude group 8, then order them alphabetically by name
     groups = Group.objects.exclude(id=8).exclude(name__in=["Owner", "Parent", "Free User"]).order_by('name')
 
     role_permissions = defaultdict(list)
-    # Fetch role permissions for each group
     for group in groups:
         group_role_id = group.id
-        role_permissions_for_group = RolePermission.objects.filter(role_id=group_role_id).order_by('permission__name')
+        role_permissions_for_group = RolePermission.objects.filter(
+            role_id=group_role_id,
+            main_user=main_user
+        ).order_by('permission__name')
         for role_permission in role_permissions_for_group:
             permission = role_permission.permission
             role_permissions[group_role_id].append({
@@ -3888,22 +4625,39 @@ def permissions(request):
     return render(request, 'permissions.html', {
         'groups': groups,
         'role_permissions': json.dumps(role_permissions),
-        **permissions_context,  # Include permission flags dynamically
+        **permissions_context,
     })
 
+@login_required
 def save_permissions(request):
     if request.method == "POST":
+        main_user = get_user_for_view(request)
         for key, value in request.POST.items():
             if key.startswith("permission_"):
                 parts = key.split("_")
                 if len(parts) == 3:
                     permission_id, group_id = int(parts[1]), int(parts[2])
                     try:
-                        role_permission = RolePermission.objects.get(role_id=group_id, permission_id=permission_id)
-                        role_permission.yes_no_permission = True if value == "True" else False
-                        role_permission.save()
-                    except RolePermission.DoesNotExist:
-                        pass
+                        # Filter by main_user!
+                        role_permissions = RolePermission.objects.filter(
+                            role_id=group_id,
+                            permission_id=permission_id,
+                            main_user=main_user
+                        )
+                        if role_permissions.exists():
+                            # Update all (should only be one if unique_together is set)
+                            for role_permission in role_permissions:
+                                role_permission.yes_no_permission = value == "True"
+                                role_permission.save()
+                        else:
+                            RolePermission.objects.create(
+                                role_id=group_id,
+                                permission_id=permission_id,
+                                yes_no_permission=value == "True",
+                                main_user=main_user
+                            )
+                    except Exception as e:
+                        pass  # Optionally log error
     return redirect('permissions')
 
 @login_required

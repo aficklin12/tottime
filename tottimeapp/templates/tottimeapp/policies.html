@@ -1,0 +1,330 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Policies{% endblock %}
+
+{% block styles %}
+<style>
+    .policies-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+
+
+    
+    .template-selector {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+        font-size: 1.1rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+    
+    .policies-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+        overflow: hidden;
+    }
+    
+    .section-header {
+        background: #f8f9fa;
+        padding: 20px 25px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .section-header h2 {
+        margin: 0;
+        color: #333;
+        font-size: 1.5rem;
+    }
+    
+    .policies-list {
+        padding: 25px;
+    }
+    
+    .policy-item {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        background: #fafafa;
+        overflow: hidden;
+    }
+    
+    .policy-header {
+        background: #f1f3f4;
+        padding: 15px 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .policy-title {
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+        font-size: 1.1rem;
+    }
+    
+    .policy-content {
+        padding: 20px;
+    }
+    
+    .form-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .form-row .form-group {
+        flex: 1;
+        margin-bottom: 0;
+    }
+    
+    .form-group textarea {
+        min-height: 120px;
+        resize: vertical;
+        font-family: inherit;
+        line-height: 1.5;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-success {
+        background: #28a745;
+        color: white;
+        padding: 12px 30px;
+        font-size: 16px;
+    }
+    
+    .btn-success:hover {
+        background: #218838;
+        transform: translateY(-1px);
+    }
+    
+    .save-section {
+        text-align: center;
+        padding: 30px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        margin-top: 30px;
+    }
+    
+    .alert {
+        padding: 15px 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+    
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+    
+    .empty-state h3 {
+        margin-bottom: 15px;
+        color: #333;
+        font-size: 1.5rem;
+    }
+    
+    .order-input {
+        width: 80px;
+        text-align: center;
+    }
+    
+
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Edit Policies</h1>
+        
+<div class="policies-container">
+        
+    
+    <!-- Template Selector -->
+    <div class="template-selector">
+    <div class="form-group">
+        <label>Enrollment Template:</label>
+        <div class="form-control" style="background: #f8f9fa;">
+            {{ selected_template }}
+        </div>
+    </div>
+</div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if selected_template %}
+        <!-- Edit Policies -->
+        <div class="policies-section">
+            <div class="section-header">
+                <h2>Edit Policies for {{ selected_template.template_name }}</h2>
+            </div>
+            
+            {% if policies %}
+                <div class="policies-list">
+                    <form method="post" action="">
+                        {% csrf_token %}
+                        <input type="hidden" name="template_id" value="{{ selected_template.id }}">
+                        <input type="hidden" name="action" value="update_policies">
+                        
+                        {% for policy in policies %}
+                            <div class="policy-item">
+                                <div class="policy-header">
+                                    <h3 class="policy-title">{{ policy.get_policy_type_display }}</h3>
+                                </div>
+                                
+                                <div class="policy-content">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="policy_{{ policy.id }}_title">Title:</label>
+                                            <input type="text" 
+                                                   id="policy_{{ policy.id }}_title"
+                                                   name="policy_{{ policy.id }}_title" 
+                                                   class="form-control" 
+                                                   value="{{ policy.title }}" 
+                                                   placeholder="Policy Title">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="policy_{{ policy.id }}_order">Order:</label>
+                                            <input type="number" 
+                                                   id="policy_{{ policy.id }}_order"
+                                                   name="policy_{{ policy.id }}_order" 
+                                                   class="form-control order-input" 
+                                                   value="{{ policy.order }}" 
+                                                   min="0">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="policy_{{ policy.id }}_content">Content:</label>
+                                        <textarea id="policy_{{ policy.id }}_content"
+                                                  name="policy_{{ policy.id }}_content" 
+                                                  class="form-control" 
+                                                  placeholder="Policy content...">{{ policy.content }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        
+                        <div class="save-section">
+                            <button type="submit" class="btn btn-success">
+                                Save All Policy Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            {% else %}
+                <div class="policies-list">
+                    <div class="empty-state">
+                        <h3>No policies found</h3>
+                        <p>This template doesn't have any policies configured yet.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <div class="empty-state">
+            <h3>Select a Template</h3>
+            <p>Please select an enrollment template from the dropdown above to edit its policies.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Prevent accidental page leaving with unsaved changes
+    var hasUnsavedChanges = false;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        var inputs = document.querySelectorAll('input, textarea, select');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].addEventListener('input', function() {
+                hasUnsavedChanges = true;
+            });
+        }
+        
+        var forms = document.querySelectorAll('form');
+        for (var i = 0; i < forms.length; i++) {
+            forms[i].addEventListener('submit', function() {
+                hasUnsavedChanges = false;
+            });
+        }
+    });
+    
+    window.addEventListener('beforeunload', function(e) {
+        if (hasUnsavedChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+</script>
+{% endblock %}

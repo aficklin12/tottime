@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrollment Form - Cutie Pies</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .form-header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 20px;
+    }
+    .section-title {
+        background-color: #f8f9fa;
+        padding: 10px;
+        margin: 20px 0 10px 0;
+        border-left: 4px solid #007bff;
+        font-weight: bold;
+    }
+    .form-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .form-group {
+        flex: 1;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+    .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin: 10px 0;
+    }
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .emergency-contact {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+    }
+    .policy-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        background-color: #fafafa;
+    }
+    .policy-section h5 {
+        margin: 0 0 10px 0;
+        color: #333;
+    }
+    .policy-section p {
+        margin: 0;
+        line-height: 1.5;
+    }
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+    .btn-clear {
+        background-color: #6c757d;
+        color: white;
+        padding: 5px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .btn-clear:hover {
+        background-color: #545b62;
+    }
+    .btn-print {
+        background-color: #28a745;
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 15px;
+    }
+    .btn-print:hover {
+        background-color: #218838;
+    }
+    .signature-pad {
+        cursor: crosshair;
+    }
+    .signature-pad:hover {
+        border-color: #007bff;
+    }
+    
+    /* Hide print-only elements on screen */
+    .print-only {
+        display: none;
+    }
+        /* Add all other styles from your original enrollment.html */
+    </style>
+</head>
+<body>
+   <div class="form-container">
+    <div class="form-header">
+        <h2>South Carolina Department of Social Services</h2>
+        <h3>Child Care Regulatory Services</h3>
+        <h4>GENERAL RECORD AND STATEMENT OF CHILD'S HEALTH FOR ADMISSION TO CHILD CARE FACILITY</h4>
+        <p><em>This form is to be completed for each child at the time of enrollment in the child care facility, updated as needed when changes occur, and maintained on file at the facility.</em></p>
+    </div>
+
+    <form method="post" action="{% url 'public_enrollment' template_id=template.id %}">
+    {% csrf_token %}
+        
+        <div class="section-title">GENERAL INFORMATION: (to be completed by Parent or Guardian)</div>
+        
+                <div class="form-row">
+            <div class="form-group">
+                <label for="facility_name">Name of Facility:</label>
+                <input type="text" id="facility_name" name="facility_name" class="form-control" 
+                       value="{{ facility_info.name }}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="county">County:</label>
+                <input type="text" id="county" name="county" class="form-control" 
+                       value="{{ facility_info.county }}" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="facility_address">Address:</label>
+                <input type="text" id="facility_address" name="facility_address" class="form-control" 
+                       placeholder="Street Address - no Post Office Boxes" 
+                       value="{{ facility_info.full_address }}" readonly>
+            </div>
+        </div> 
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="child_last_name">Child's Last Name:</label>
+                <input type="text" id="child_last_name" name="child_last_name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="child_first_name">First Name:</label>
+                <input type="text" id="child_first_name" name="child_first_name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="child_middle_initial">Middle Initial:</label>
+                <input type="text" id="child_middle_initial" name="child_middle_initial" class="form-control" maxlength="1">
+            </div>
+            <div class="form-group">
+                <label for="child_nick_name">Nick Name:</label>
+                <input type="text" id="child_nick_name" name="child_nick_name" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="date_of_birth">Date of Birth:</label>
+                <input type="date" id="date_of_birth" name="date_of_birth" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="enrollment_date">Enrollment Date:</label>
+                <input type="date" id="enrollment_date" name="enrollment_date" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="child_street_address">Child's Current Home Address:</label>
+                <input type="text" id="child_street_address" name="child_street_address" class="form-control" placeholder="Street Address" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="child_city_state_zip">City, State, Zip:</label>
+                <input type="text" id="child_city_state_zip" name="child_city_state_zip" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="parent1_full_name">Parent/Guardian's Full Name:</label>
+                <input type="text" id="parent1_full_name" name="parent1_full_name" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="parent1_home_phone">Home Phone:</label>
+                <input type="tel" id="parent1_home_phone" name="parent1_home_phone" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="parent1_work_phone">Work Phone:</label>
+                <input type="tel" id="parent1_work_phone" name="parent1_work_phone" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="parent1_other_phone">Other Phone:</label>
+                <input type="tel" id="parent1_other_phone" name="parent1_other_phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="parent2_full_name">Parent/Guardian's Full Name:</label>
+                <input type="text" id="parent2_full_name" name="parent2_full_name" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="parent2_home_phone">Home Phone:</label>
+                <input type="tel" id="parent2_home_phone" name="parent2_home_phone" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="parent2_work_phone">Work Phone:</label>
+                <input type="tel" id="parent2_work_phone" name="parent2_work_phone" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="parent2_other_phone">Other Phone:</label>
+                <input type="tel" id="parent2_other_phone" name="parent2_other_phone" class="form-control">
+            </div>
+        </div>
+
+        <p><strong>You must have two individuals who have the authority to obtain emergency medical treatment for the child.</strong></p>
+
+        <div class="emergency-contact">
+            <h5>1. Person responsible if parent/guardian unavailable for emergency medical services:</h5>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency1_name">Full Name:</label>
+                    <input type="text" id="emergency1_name" name="emergency1_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="emergency1_relationship">Relationship:</label>
+                    <input type="text" id="emergency1_relationship" name="emergency1_relationship" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency1_address">Address:</label>
+                    <input type="text" id="emergency1_address" name="emergency1_address" class="form-control" placeholder="Street Address">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency1_city_state_zip">City, State, Zip:</label>
+                    <input type="text" id="emergency1_city_state_zip" name="emergency1_city_state_zip" class="form-control">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency1_phone">Telephone Number(s):</label>
+                    <input type="tel" id="emergency1_phone" name="emergency1_phone" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="emergency1_family_code">Family Code Word(s):</label>
+                    <input type="text" id="emergency1_family_code" name="emergency1_family_code" class="form-control">
+                </div>
+            </div>
+        </div>
+
+        <div class="emergency-contact">
+            <h5>2. Person responsible if parent/guardian unavailable for emergency medical services:</h5>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency2_name">Full Name:</label>
+                    <input type="text" id="emergency2_name" name="emergency2_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="emergency2_relationship">Relationship:</label>
+                    <input type="text" id="emergency2_relationship" name="emergency2_relationship" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency2_address">Address:</label>
+                    <input type="text" id="emergency2_address" name="emergency2_address" class="form-control" placeholder="Street Address">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency2_city_state_zip">City, State, Zip:</label>
+                    <input type="text" id="emergency2_city_state_zip" name="emergency2_city_state_zip" class="form-control">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="emergency2_phone">Telephone Number(s):</label>
+                    <input type="tel" id="emergency2_phone" name="emergency2_phone" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="emergency2_family_code">Family Code Word(s):</label>
+                    <input type="text" id="emergency2_family_code" name="emergency2_family_code" class="form-control">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Is Child currently enrolled in school? (5K up to 6 years old)</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="radio" id="school_yes" name="enrolled_in_school" value="yes">
+                        <label for="school_yes">Yes</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="radio" id="school_no" name="enrolled_in_school" value="no">
+                        <label for="school_no">No</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="regular_hours_from">My Child will regularly attend this facility FROM:</label>
+                <input type="time" id="regular_hours_from" name="regular_hours_from" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="regular_hours_to">TO:</label>
+                <input type="time" id="regular_hours_to" name="regular_hours_to" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="dropin_hours_from">If Child is a drop-in, indicate hours of care FROM:</label>
+                <input type="time" id="dropin_hours_from" name="dropin_hours_from" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="dropin_hours_to">TO:</label>
+                <input type="time" id="dropin_hours_to" name="dropin_hours_to" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Check all days Child will regularly attend this facility:</label>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="day_mon" name="attendance_days" value="monday">
+                    <label for="day_mon">Mon</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="day_tue" name="attendance_days" value="tuesday">
+                    <label for="day_tue">Tue</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="day_wed" name="attendance_days" value="wednesday">
+                    <label for="day_wed">Wed</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="day_thu" name="attendance_days" value="thursday">
+                    <label for="day_thu">Thurs</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="day_fri" name="attendance_days" value="friday">
+                    <label for="day_fri">Fri</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="day_sat" name="attendance_days" value="saturday">
+                    <label for="day_sat">Sat</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="day_sun" name="attendance_days" value="sunday">
+                    <label for="day_sun">Sun</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Check all meals Child will receive daily:</label>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="meals_not_offered" name="meals" value="not_offered">
+                    <label for="meals_not_offered">Meals are not offered</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="breakfast" name="meals" value="breakfast">
+                    <label for="breakfast">Breakfast</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="morning_snack" name="meals" value="morning_snack">
+                    <label for="morning_snack">Morning Snack</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="lunch" name="meals" value="lunch">
+                    <label for="lunch">Lunch</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="afternoon_snack" name="meals" value="afternoon_snack">
+                    <label for="afternoon_snack">Afternoon Snack</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="dinner" name="meals" value="dinner">
+                    <label for="dinner">Dinner</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="evening_snack" name="meals" value="evening_snack">
+                    <label for="evening_snack">Evening Snack</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title health-section">HEALTH INFORMATION: (to be completed by Parent or Guardian)</div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="family_physician_name">
+    Family Physician or Health Resource Name:
+    <span style="color: #888; font-size: 90%;">Write Health Dept. if no regular physician.</span>
+                </label>
+                <input type="text" id="family_physician_name" name="family_physician_name" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="physician_address">Street Address:</label>
+                <input type="text" id="physician_address" name="physician_address" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="physician_city_state_zip">City, State, Zip:</label>
+                <input type="text" id="physician_city_state_zip" name="physician_city_state_zip" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="physician_telephone">Telephone:</label>
+                <input type="tel" id="physician_telephone" name="physician_telephone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="emergency_care_provider">Emergency Care Provider - Emergency Facility Name:</label>
+                <input type="text" id="emergency_care_provider" name="emergency_care_provider" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="emergency_facility_address">Street Address:</label>
+                <input type="text" id="emergency_facility_address" name="emergency_facility_address" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="emergency_facility_city_state_zip">City, State, Zip:</label>
+                <input type="text" id="emergency_facility_city_state_zip" name="emergency_facility_city_state_zip" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="emergency_facility_telephone">Telephone:</label>
+                <input type="tel" id="emergency_facility_telephone" name="emergency_facility_telephone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="dental_care_provider_name">Dental Care Provider Name:</label>
+                <input type="text" id="dental_care_provider_name" name="dental_care_provider_name" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="dental_provider_address">Street Address:</label>
+                <input type="text" id="dental_provider_address" name="dental_provider_address" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="dental_provider_city_state_zip">City, State, Zip:</label>
+                <input type="text" id="dental_provider_city_state_zip" name="dental_provider_city_state_zip" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="dental_provider_telephone">Telephone:</label>
+                <input type="tel" id="dental_provider_telephone" name="dental_provider_telephone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="health_insurance_provider">Health Insurance Provider:</label>
+                <input type="text" id="health_insurance_provider" name="health_insurance_provider" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Certificate of Immunization:</label>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="radio" id="immunization_yes" name="immunization_certificate" value="yes">
+                    <label for="immunization_yes">Yes</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" id="immunization_no" name="immunization_certificate" value="no">
+                    <label for="immunization_no">No</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="radio" id="immunization_na" name="immunization_certificate" value="na">
+                    <label for="immunization_na">N/A</label>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <label for="immunization_explanation">Please explain:</label>
+                <textarea id="immunization_explanation" name="immunization_explanation" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="health_conditions">My child has the following health conditions such as allergies, asthma, diabetes, epilepsy, etc., and/or takes the following medications on a regular basis:</label>
+            <textarea id="health_conditions" name="health_conditions" class="form-control" rows="4"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="additional_comments">Additional Comments:</label>
+            <textarea id="additional_comments" name="additional_comments" class="form-control" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+            <p>I certify that to the best of my knowledge <input type="text" name="certification_child_name" class="form-control" style="display: inline; width: 300px;" placeholder="Child's Name" readonly> is in good mental and physical health and able to participate in the child care program at</p>
+            <input type="text" name="certification_facility_name" class="form-control" placeholder="Name of Child Care Facility" 
+                   value="{{ facility_info.name }}" readonly style="margin-top: 10px;">
+        </div>
+
+        <div class="form-row" style="margin-top: 30px;">
+            <div class="form-group">
+                <label for="parent_signature">Parent or Guardian Signature:</label>
+                <canvas id="parent_signature" name="parent_signature" class="signature-pad" width="350" height="150" 
+                        style="border: 1px solid #ddd; border-radius: 4px; background-color: white;"></canvas>
+                <div style="margin-top: 5px;" class="no-print">
+                    <button type="button" onclick="clearSignature('parent_signature')" class="btn-clear">Clear</button>
+                </div>
+                <input type="hidden" id="parent_signature_data" name="parent_signature_data" required>
+            </div>
+            <div class="form-group">
+                <input type="hidden" id="parent_signature_date" name="parent_signature_date">
+                <div><strong>Date:</strong> <span id="parent_signature_date_display"></span></div>
+            </div>
+        </div>
+
+      
+
+        <div class="form-row" style="margin-top: 20px;">
+            <div class="form-group">
+                <label for="staff_signature">Director/Operator/Staff Designee Signature:</label>
+                <div style="border: 1px solid #ddd; border-radius: 4px; background-color: #f8f9fa; height: 150px; width: 350px; display: flex; align-items: center; justify-content: center; color: #6c757d;">
+                    <em>To be signed by authorized staff</em>
+                </div>
+                <input type="hidden" id="staff_signature_data" name="staff_signature_data" value="">
+            </div>
+            <div class="form-group">
+                <label for="staff_signature_date">Date:</label>
+                <div style="border: 1px solid #ddd; border-radius: 4px; background-color: #f8f9fa; padding: 8px 12px; color: #6c757d;">
+                    <em>To be filled by authorized staff</em>
+                </div>
+                <input type="hidden" id="staff_signature_date" name="staff_signature_date" value="">
+            </div>
+        </div>
+
+        <div class="section-title">CHILD PICK UP INFORMATION</div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_child_name">Child's Name:</label>
+                <input type="text" id="pickup_child_name" name="pickup_child_name" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="pickup_child_dob">DOB:</label>
+                <input type="date" id="pickup_child_dob" name="pickup_child_dob" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_mother_name">Parent/Guardian's Name:</label>
+                <input type="text" id="pickup_mother_name" name="pickup_mother_name" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_mother_cell">Cell:</label>
+                <input type="tel" id="pickup_mother_cell" name="pickup_mother_cell" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="pickup_mother_work">Work#:</label>
+                <input type="tel" id="pickup_mother_work" name="pickup_mother_work" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_mother_email">Parent/Guardian's Email:</label>
+                <input type="email" id="pickup_mother_email" name="pickup_mother_email" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_father_name">Second Parent/Guardian's Name:</label>
+                <input type="text" id="pickup_father_name" name="pickup_father_name" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_father_cell">Cell:</label>
+                <input type="tel" id="pickup_father_cell" name="pickup_father_cell" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="pickup_father_work">Work#:</label>
+                <input type="tel" id="pickup_father_work" name="pickup_father_work" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_father_email">Second Parent/Guardian's Email:</label>
+                <input type="email" id="pickup_father_email" name="pickup_father_email" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <p><strong>Emergency Person in case we cannot get in touch with parent:</strong></p>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_emergency1_name">Name:</label>
+                <input type="text" id="pickup_emergency1_name" name="pickup_emergency1_name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="pickup_emergency1_phone">Phone#:</label>
+                <input type="tel" id="pickup_emergency1_phone" name="pickup_emergency1_phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_emergency2_name">Name:</label>
+                <input type="text" id="pickup_emergency2_name" name="pickup_emergency2_name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="pickup_emergency2_phone">Phone#:</label>
+                <input type="tel" id="pickup_emergency2_phone" name="pickup_emergency2_phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="section-title">CUTIE PIES INC. POLICIES</div>
+        
+        <div class="form-group">
+            <h5><strong>Emergency Medical:</strong></h5>
+            <p>If there is a hurricane or tornado children will be gathered in the interior of the building away from windows and glass. In case of fire teachers take their tracking system and take attendance after all the children have been removed from the building. Cutie Pies in surfside is in Zone A. During orders of mandatory evacuations, the center will be closed. All Cutie Pies staff and children will be redirected to our sister center in the Burgess area, located at 9267 Freewoods Rd, Myrtle Beach, SC 29588. The Cutie Pies Burgess center, Zone C, is the last center to close if the need arises. Check our website for updates on closings. Weekly payments will still be expected even during evacuation times. If your child will be attending our sister center in these events, make sure to pack any daily needs for your child such as diapers, wipes, clothes, bottles, formula, etc.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>After School Children:</strong></h5>
+            <p>All after school children are dropped off at the daycare from the school bus. Children come to the center and eat snacks, then do homework for 30 minutes and then go outside to play. Please check your child's homework to be sure they have finished it for we only do 30 minutes of work per day.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Summer Camp:</strong></h5>
+            <p>Summer Camp starts June 10th and ends in August the week before school starts, the date will be posted the first week school gets out. All summer camp children are required to pay a $250 non refundable registration fee. The daycare will collect money by May 1st to schedule all trips. If your child has a bus safety issue or out in public safety-issue, they will miss the next paid field trip. If they have two, they will be asked to stay home the next day. If they have three, they will be released from the summer program and have to attend preschool which costs $60 more per week.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>ABC Children:</strong></h5>
+            <p>If your child is on ABC please let your case worker know our site is site 02. Please do not change your daycare from full time to part time without speaking to your director first. If ABC does not pay the entire amount for daycare then the parent is responsible for paying the difference. Must give a two week notice if you decide to leave the daycare.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Transportation:</strong></h5>
+            <p>We transport children to and from the Surfside Cutie Pies location for the 4K program. Excludes qualifying ABC children.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Biting:</strong></h5>
+            <p>Parents receive an incident report to sign and keep on file each time a child gets bit or a child bites. If your child is going through a biting stage and bites three times, parents are asked to attend one of our other locations until their child has come out of their biting stage. Biting stages last roughly 2 months and children are less likely to bite in a new unfamiliar place. When your child is ready to come back to their original daycare the director will tell the parent their child is now ready to return to their daycare. Children are never punished with food or taking away outdoor play. We also do not reward with food for it can lead to an unhealthy emotional connection between eating certain foods and feeling good.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Meals:</strong></h5>
+            <p>Cutie Pies is a member of the CACFP food program that ensures all meals are healthy and provide a balanced diet. Breakfast is at 8:00, Lunch 11, Snack 2:30. Children over 2 years will be offered 1% milk and children will be offered whole milk for under 2 years. The CACFP does not allow pacages to serve flavored milk to children age 5 and under. Children will have their last snack at 2:30 and are hungry by pick up time. I would suggest parents have a snack in the car ride home for it has been 3 hours since they last ate.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Curriculum:</strong></h5>
+            <p>Cutie Pies teaches all classrooms the 5 areas of learning which are cognitive, small motor skills, large motor, language and social emotional. Preschool starts the day after Labor Day and ends June 4th. Please send children in play clothes for them to paint and get messy.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Closings:</strong></h5>
+            <p>New Year's Day, Good Friday, Memorial Day, Labor Day, 4th of July, Presidents Day, Columbus Day, Juneteenth, Martin Luther King Day, Thanksgiving and Black Friday, Christmas Day and Christmas Eve. If a holiday falls on a Thursday/Tuesday the center will be closed the day before or after. In August the center will be closing early for Horry County Open-House for our staff to attend with their children (the date will be TBD 2 weeks prior to closing) as well as Summer camp will operate from June to August (will end a week before school starts back exact date will be set the beginning of summer). Children are charged for the entire week regardless of a holiday falling within that week or if children are out that week.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Insurance:</strong></h5>
+            <p>Cutie Pies does carry limited liability insurance.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Pictures:</strong></h5>
+            <p>I give permission for Cutie Pies Inc. to take my child's picture and put it on their website or hang pictures in the center.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Physical Activity:</strong></h5>
+            <p>Physical activity is an important part of children's development therefore Cutie Pies does not allow for children to watch TV, play video games or other computers. The children go outdoors every morning and every afternoon weather permitting. If weather doesn't allow for outdoor play children will play physical active games instead.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Facility Agreement:</strong></h5>
+            <p>Parents have read and understand all policies relating to the operation of the facility.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Safety:</strong></h5>
+            <p>When your child is enrolled parents will be given a code to enter the building. Please be aware of people who do not look familiar and if they try to enter ask them to please wait so you can have the director make sure they have creditable business at the daycare.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Transitioning Policy:</strong></h5>
+            <p>Once a child has turned the appropriate age for the next classroom, we inform the parents that there will be a transitioning period. The child will spend a few hours a day or up until it poses a stress on the child in the new classroom. Once they show they're comfortable with the new environment they will then be moved.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Naptime:</strong></h5>
+            <p>Its DSS policy that every child naps from 12-2 daily, at nap time there are DSS nap time ratios and your child must lay on a cot from 12-2, if they are disrupting nap time or refuse to stay on their cot they will be sent home as we have to stay in DSS ratio; the child cannot be sent to another room as we do not have a room for non napping children.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Using the Potty:</strong></h5>
+            <p>If your child needs help using the potty please let their teacher know otherwise, they go on their own. Please tell your child to call the teacher if they need help. If your child is working on potty training, you must work with them at home before we try it at daycare.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Discipline Policy:</strong></h5>
+            <p>Cutie Pies does not use corporal punishment; redirection is used for younger children and time to think is used for older children. If discipline poses a problem, dismissal may occur. Some after school children outgrow the daycare and it is up to the discretion of the director to let the parent know it is time for their child to attend an older, more age appropriate facility. If any after school child acts inappropriate towards another child dismissal will occur.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Disabilities:</strong></h5>
+            <p>Cutie Pies does not discriminate against any of the ten protected classes. Cutie Pies works closely with parents of children with disabilities. We will ask for an IEP from the parent and have an open verbal electronic communication to develop a specialized plan for each child. Cutie Pies will include all children in their peer age group unless there is a need for more careful supervision. Cutie Pies will consider modifications and/or accommodations based on the child's needs unless it poses a financial burden. Cutie Pies allows any specialized services, such as speech.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>IFSP/IEP:</strong></h5>
+            <p>When a child requiring an IEP is enrolled at Cutie Pies, we will request a copy, have an in-depth conversation with the parents about their child's needs and permission to speak with the child's school teacher and therapist. If a child has an individualized family service plan then Cutie Pies will implement the care plan within the child's classroom. With IFSP/IEP, teachers and therapists work together to support activities and strategies to implement towards the child's goals and outcomes in their classroom.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Hiring Policy:</strong></h5>
+            <p>Cutie Pies does hire anyone under provisional employment. Cutie Pies will safeguard confidentiality of all children and staff records.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>General Guidelines:</strong></h5>
+            <p>Please do not let children come in with food (the other children do not understand and wonder why they are not allowed to eat) candy, sippy cups, toys (not even in their backpacks), money, or blankets from home. DHEC highly discourages blankets for they carry more germs than any other item a child brings from home. Please bring extra underwear and pants for extra clothes with your child's name on the inside tag.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Pick Up:</strong></h5>
+            <p>Only people on the pick-up list are allowed to pick children up from the center and must have a photo ID so we can match the name to the pickup list. Parents have unlimited access to their children. A tracking system is used when children enter and exit the building.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Immunizations:</strong></h5>
+            <p>A shot record is due before your child starts and must be on a DHEC form. Children who get updated shots will need to bring the new ones for the daycare to put in their file. DHEC does not allow children to attend without a current immunization record. The daycare can be fined up to $200/day by not having a current immunization record.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Infants:</strong></h5>
+            <p>Need premade water bottles sent back and forth. We need diapers and wipes every week not brought in daily. Please bring wipes, cream, extra clothes and a pacifier which all need to have your child's name on them. Infants will receive a daily sheet showing when they ate, their sleep times and their diaper changes.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Sickness Policy:</strong></h5>
+            <p>Cutie Pies does not care for mildly ill children. Children will be excluded for pink eye, fever (must be fever free for 24 hours before returning, vomiting as well), excessive diarrhea, infectious mouth sores, excessive crying and irritability. Please do not send your children if they have thrown up that morning. Children that are not well enough to go outside will need to stay home. Cutie Pies will administer medicine such as breathing treatments, eye drops, Tylenol with doctors note and prescription medicine if the child's name and dosage and date is on the bottle. We will only give medicine for the afternoon and late afternoon treatments. Parents are responsible for giving morning treatments. Medications will be logged for dosage and time and amount at the daycare. Hand-Foot-Mouth sores must be puss-free before returning. Children may not attend with blisters unless they have a doctors note. Children with pink-eye must have medicine for 24 hours and be pus- free to return. If medication is to be administered, parents must fill out an "Authorization to Administer Medication" form. Cutie Pies is a lice free/nit free facility, if your child is sent home for head lice they cannot return until they are nit free and have been rechecked by the director. If a child is injured they cannot return to the daycare until they are healed due to liability; unless a doctors note is provided at drop off. examples staples/stitches.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Days & Hours:</strong></h5>
+            <p>Monday-Friday 7:00AM-5:30PM. Payments are due on Monday morning. If a payment is not made by Monday there is a $10 late fee. If there isn't a payment by Tuesday, your child will not be allowed to attend until a payment is made. If your child is not picked up by 5:30PM then there is a $20 fee plus an additional $1.00/minute per child until 5:45 PM and $5/minute per child after 5:45PM we have to pay staff overtime when parents are late and have two staff members at all times. If this happens more than twice you will be charged $5 a minute starting at 5:30PM. No post dated checks. If you get a returned check you must pay in cash and if another check is returned you will be required to pay in cash from then on; a $40 fee will be added for the returned check that is charged to the daycare by the bank. If your child needs more than a 10-hour day then add $50/week to your weekly tuition. Parents are responsible for payment even though their child may not attend because of sickness or vacation. The daycare needs a two-week notice before transferring or leaving the daycare. If you are self pay and become an ABC client then you will receive a balance on your account for the amount they back pay.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Registration Fee:</strong></h5>
+            <p>$100 for all children. Due annually. NON-REFUNDABLE</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Rates:</strong></h5>
+            <p>Infants- 2 years $235, Preschool (3-5) $225 if not potty trained addition $40, Afterschool $100 PM/Thurs Camp/Winter Break/Spring Break $165</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Payment Instructions:</strong></h5>
+            <p>PLEASE DO NOT HAND CASH TO EMPLOYEES. PUT ALL PAYMENTS DIRECTLY INTO DROPBOX. PIZZA MONEY, FIELD TRIP MONEY OR TUITION. PUT WHO IT IS FOR, DATE AND AMOUNT ON THE ENVELOPE</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Drop Box:</strong></h5>
+            <p>Grey Box in foyer. For cash, put the name of the child and how much money is in the envelope and what date it is for.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Drop Off:</strong></h5>
+            <p>Children are to be accompanied by a parent in and out of the daycare building. The daycare is not responsible for children after they have been taken out of their classroom. Parents please wait until quickly in the morning so they tend to not cry less after they have adjusted. Drop off time is no later than 10am. If you have an appointment please call ahead so the director knows not to send staff home if we are low with numbers.</p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Belongings:</strong></h5>
+            <p>It is a never-ending battle to keep track of clothing and jackets so we ask parents to please write your child's name on all clothes, jackets, diapers, wipes, special milk, creams & medicines. This way we will not be confused about whose belongings we have.</p>
+        </div>
+
+        <div class="section-title">CUTIE PIES INC. CHILD INFORMATION</div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="child_info_name">Child's Name:</label>
+                <input type="text" id="child_info_name" name="child_info_name" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="child_info_date">DOB:</label>
+                <input type="date" id="child_info_date" name="child_info_date" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mothers_name">Parent/Guardian's Name:</label>
+                <input type="text" id="mothers_name" name="mothers_name" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mothers_ssn">Parent/Guardian's last four of social security XXX-XX-:</label>
+                <input type="text" id="mothers_ssn" name="mothers_ssn" class="form-control" maxlength="4" placeholder="____">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mothers_cell_phone">Cell Phone:</label>
+                <input type="tel" id="mothers_cell_phone" name="mothers_cell_phone" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="mothers_work_phone">Work Phone:</label>
+                <input type="tel" id="mothers_work_phone" name="mothers_work_phone" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mothers_email">Parent/Guardian's Email:</label>
+                <input type="email" id="mothers_email" name="mothers_email" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mothers_employment">Parent/Guardian's Employment:</label>
+                <input type="text" id="mothers_employment" name="mothers_employment" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="fathers_name">Second Parent/Guardian's Name:</label>
+                <input type="text" id="fathers_name" name="fathers_name" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="fathers_email">Second Parent/Guardian's Email:</label>
+                <input type="email" id="fathers_email" name="fathers_email" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="fathers_cell_phone">Cell Phone:</label>
+                <input type="tel" id="fathers_cell_phone" name="fathers_cell_phone" class="form-control" readonly>
+            </div>
+            <div class="form-group">
+                <label for="fathers_work_phone">Work Phone:</label>
+                <input type="tel" id="fathers_work_phone" name="fathers_work_phone" class="form-control" readonly>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="fathers_employment">Second Parent/Guardian's Employment:</label>
+                <input type="text" id="fathers_employment" name="fathers_employment" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <p>
+                I, <input type="text" name="medical_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> give Cutie Pies permission to obtain medical treatment and transportation for my child.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <p>
+                I, <input type="text" name="discipline_agreement_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> agree with the discipline policies for the daycare, which states, no corporal punishment.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <h5><strong>Authorized individuals allowed to pick up your child/children from the facility with proper ID:</strong></h5>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_person1_name">Name:</label>
+                <input type="text" id="pickup_person1_name" name="pickup_person1_name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="pickup_person1_phone">Phone Number:</label>
+                <input type="tel" id="pickup_person1_phone" name="pickup_person1_phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_person2_name">Name:</label>
+                <input type="text" id="pickup_person2_name" name="pickup_person2_name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="pickup_person2_phone">Phone Number:</label>
+                <input type="tel" id="pickup_person2_phone" name="pickup_person2_phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_person3_name">Name:</label>
+                <input type="text" id="pickup_person3_name" name="pickup_person3_name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="pickup_person3_phone">Phone Number:</label>
+                <input type="tel" id="pickup_person3_phone" name="pickup_person3_phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pickup_person4_name">Name:</label>
+                <input type="text" id="pickup_person4_name" name="pickup_person4_name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="pickup_person4_phone">Phone Number:</label>
+                <input type="tel" id="pickup_person4_phone" name="pickup_person4_phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <p>
+                I, <input type="text" name="medication_authorization_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> authorize Cutie Pies Inc. to administer medication for my child ONLY if the child's name is on the medication and there is a doctor note stating the child is not contagious.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <p>
+                I, <input type="text" name="swimming_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> allow for swimming activities on field trips at Cutie Pies Inc.
+            </p>
+        </div>
+
+        <div class="form-group">
+            <p>
+                I, <input type="text" name="field_trip_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> allow for my child to go on field trips and to be taken on the Cutie Pies Bus.
+            </p>
+        </div>
+  <!-- Add second parent signature -->
+        <div class="form-row" style="margin-top: 20px;">
+            <div class="form-group">
+                <label for="parent2_signature">Second Parent/Guardian Signature (if applicable):</label>
+                <canvas id="parent2_signature" name="parent2_signature" class="signature-pad" width="350" height="150" 
+                        style="border: 1px solid #ddd; border-radius: 4px; background-color: white;"></canvas>
+                <div style="margin-top: 5px;" class="no-print">
+                    <button type="button" onclick="clearSignature('parent2_signature')" class="btn-clear">Clear</button>
+                </div>
+                <input type="hidden" id="parent2_signature_data" name="parent2_signature_data" required>
+            </div>
+         <div class="form-group">
+            <input type="hidden" id="parent2_signature_date" name="parent2_signature_date">
+            <div><strong>Date:</strong> <span id="parent2_signature_date_display"></span></div>
+        </div>
+        </div>
+        <div style="text-align: center; margin-top: 30px;" class="no-print">
+            <button type="submit" class="btn-primary">Submit Enrollment Form</button>
+            <button type="button" onclick="printForm()" class="btn-print">Print Form</button>
+        </div>
+    </form>
+    
+    <!-- Print footer -->
+    <div class="print-only print-footer">
+        DSS Form 2900 (MAR 10) Edition of OCT 07 is obsolete.
+    </div>
+</div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+// Signature pad functionality
+let parentSignaturePad, parent2SignaturePad, staffSignaturePad, childInfoSignaturePad;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default enrollment date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('enrollment_date').value = today;
+    document.getElementById('parent_signature_date').value = today;
+document.getElementById('parent2_signature_date').value = today;
+document.getElementById('parent_signature_date_display').textContent = today;
+document.getElementById('parent2_signature_date_display').textContent = today;
+    
+    // Copy child's name to all relevant fields when child's name changes
+    const firstName = document.getElementById('child_first_name');
+    const lastName = document.getElementById('child_last_name');
+    const certificationName = document.querySelector('input[name="certification_child_name"]');
+    const childInfoName = document.getElementById('child_info_name');
+    const pickupChildName = document.getElementById('pickup_child_name');
+    const medicalPermissionParent = document.querySelector('input[name="medical_permission_parent"]');
+    const disciplineAgreementParent = document.querySelector('input[name="discipline_agreement_parent"]');
+    const medicationAuthorizationParent = document.querySelector('input[name="medication_authorization_parent"]');
+    const swimmingPermissionParent = document.querySelector('input[name="swimming_permission_parent"]');
+    const fieldTripPermissionParent = document.querySelector('input[name="field_trip_permission_parent"]');
+    
+    function updateAllChildNameFields() {
+        const fullName = `${firstName.value} ${lastName.value}`.trim();
+        if (fullName && fullName !== ' ') {
+            // Update certification field
+            if (certificationName) certificationName.value = fullName;
+            
+            // Update child info section name
+            if (childInfoName) childInfoName.value = fullName;
+            
+            // Update pickup child name
+            if (pickupChildName) pickupChildName.value = fullName;
+            
+            // Update all parent/guardian name fields that reference the child's parent
+            // These fields typically get filled with parent names, but we'll leave them for manual entry
+        }
+    }
+    
+    // Also copy the date of birth to pickup section
+    const childDOB = document.getElementById('date_of_birth');
+    const pickupChildDOB = document.getElementById('pickup_child_dob');
+    
+    function updateChildDOB() {
+        if (childDOB.value && pickupChildDOB) {
+            pickupChildDOB.value = childDOB.value;
+        }
+    }
+    
+    // Update the updateAllDOBFields function to include the child_info_date field:
+    function updateAllDOBFields() {
+        const mainDOB = document.getElementById('date_of_birth');
+        const pickupChildDOB = document.getElementById('pickup_child_dob');
+        const childInfoDate = document.getElementById('child_info_date');
+        
+        if (mainDOB.value) {
+            // Update pickup section DOB
+            if (pickupChildDOB) {
+                pickupChildDOB.value = mainDOB.value;
+            }
+            
+            // Update child info section DOB
+            if (childInfoDate) {
+                childInfoDate.value = mainDOB.value;
+            }
+            
+            // Add any other DOB fields here if they exist
+        }
+    }
+    
+    firstName.addEventListener('input', updateAllChildNameFields);
+    lastName.addEventListener('input', updateAllChildNameFields);
+    firstName.addEventListener('blur', updateAllChildNameFields);
+    lastName.addEventListener('blur', updateAllChildNameFields);
+    
+    if (childDOB) {
+        childDOB.addEventListener('change', updateAllDOBFields);
+        childDOB.addEventListener('blur', updateAllDOBFields);
+    }
+    
+    // Copy parent information to child info section and pickup section
+    const parent1Name = document.getElementById('parent1_full_name');
+    const parent2Name = document.getElementById('parent2_full_name');
+    const parent1HomePhone = document.getElementById('parent1_home_phone');
+    const parent1WorkPhone = document.getElementById('parent1_work_phone');
+    const parent2HomePhone = document.getElementById('parent2_home_phone');
+    const parent2WorkPhone = document.getElementById('parent2_work_phone');
+    
+    function updateChildInfoSection() {
+        // Auto-populate mother's information from parent1
+        if (parent1Name.value) {
+            document.getElementById('mothers_name').value = parent1Name.value;
+            document.getElementById('pickup_mother_name').value = parent1Name.value;
+            
+            // Auto-populate the inline parent name fields and make them read-only
+            const medicalPermissionParent = document.querySelector('input[name="medical_permission_parent"]');
+            const disciplineAgreementParent = document.querySelector('input[name="discipline_agreement_parent"]');
+            const medicationAuthorizationParent = document.querySelector('input[name="medication_authorization_parent"]');
+            const swimmingPermissionParent = document.querySelector('input[name="swimming_permission_parent"]');
+            const fieldTripPermissionParent = document.querySelector('input[name="field_trip_permission_parent"]');
+            
+            if (medicalPermissionParent) {
+                medicalPermissionParent.value = parent1Name.value;
+                medicalPermissionParent.readOnly = true;
+            }
+            if (disciplineAgreementParent) {
+                disciplineAgreementParent.value = parent1Name.value;
+                disciplineAgreementParent.readOnly = true;
+            }
+            if (medicationAuthorizationParent) {
+                medicationAuthorizationParent.value = parent1Name.value;
+                medicationAuthorizationParent.readOnly = true;
+            }
+            if (swimmingPermissionParent) {
+                swimmingPermissionParent.value = parent1Name.value;
+                swimmingPermissionParent.readOnly = true;
+            }
+            if (fieldTripPermissionParent) {
+                fieldTripPermissionParent.value = parent1Name.value;
+                fieldTripPermissionParent.readOnly = true;
+            }
+        }
+        
+        if (parent1HomePhone.value) {
+            document.getElementById('mothers_cell_phone').value = parent1HomePhone.value;
+            document.getElementById('pickup_mother_cell').value = parent1HomePhone.value;
+        }
+        if (parent1WorkPhone.value) {
+            document.getElementById('mothers_work_phone').value = parent1WorkPhone.value;
+            document.getElementById('pickup_mother_work').value = parent1WorkPhone.value;
+        }
+        
+        // Auto-populate father's information from parent2
+        if (parent2Name.value) {
+            document.getElementById('fathers_name').value = parent2Name.value;
+            document.getElementById('pickup_father_name').value = parent2Name.value;
+        }
+        if (parent2HomePhone.value) {
+            document.getElementById('fathers_cell_phone').value = parent2Name.value;
+            document.getElementById('pickup_father_cell').value = parent2HomePhone.value;
+        }
+        if (parent2WorkPhone.value) {
+            document.getElementById('fathers_work_phone').value = parent2WorkPhone.value;
+            document.getElementById('pickup_father_work').value = parent2WorkPhone.value;
+        }
+        
+        // Make the child info section parent fields read-only after auto-population
+        document.getElementById('mothers_name').readOnly = true;
+        document.getElementById('fathers_name').readOnly = true;
+        document.getElementById('pickup_mother_name').readOnly = true;
+        document.getElementById('pickup_father_name').readOnly = true;
+    }
+    
+    parent1Name.addEventListener('blur', updateChildInfoSection);
+   
+    parent2Name.addEventListener('blur', updateChildInfoSection);
+    parent1HomePhone.addEventListener('blur', updateChildInfoSection);
+    parent1WorkPhone.addEventListener('blur', updateChildInfoSection);
+    parent2HomePhone.addEventListener('blur', updateChildInfoSection);
+    parent2WorkPhone.addEventListener('blur', updateChildInfoSection);
+    
+    // Initialize signature pads
+    initializeSignaturePads();
+});
+
+function printForm() {
+    // Ensure signatures are captured before printing
+    if (parentSignaturePad) {
+        document.getElementById('parent_signature_data').value = document.getElementById('parent_signature').toDataURL();
+    }
+    if (parent2SignaturePad) {
+        document.getElementById('parent2_signature_data').value = document.getElementById('parent2_signature').toDataURL();
+    }
+    if (staffSignaturePad) {
+        document.getElementById('staff_signature_data').value = document.getElementById('staff_signature').toDataURL();
+    }
+    if (childInfoSignaturePad) {
+        document.getElementById('child_info_signature_data').value = document.getElementById('child_info_signature').toDataURL();
+    }
+    
+    // Print the page
+    window.print();
+}
+
+function initializeSignaturePads() {
+    const parentCanvas = document.getElementById('parent_signature');
+    const parent2Canvas = document.getElementById('parent2_signature');
+    
+    // Set up parent signature pad
+    parentSignaturePad = setupSignaturePad(parentCanvas, 'parent_signature_data');
+    
+    // Set up second parent signature pad
+    parent2SignaturePad = setupSignaturePad(parent2Canvas, 'parent2_signature_data');
+}
+
+function setupSignaturePad(canvas, hiddenInputId) {
+    const ctx = canvas.getContext('2d');
+
+    let isDrawing = false;
+    let lastX =  0;
+    let lastY = 0;
+    
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Touch events for mobile
+    canvas.addEventListener('touchstart', handleTouch);
+    canvas.addEventListener('touchmove', handleTouch);
+    canvas.addEventListener('touchend', stopDrawing);
+    
+    function startDrawing(e) {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        lastX = e.clientX - rect.left;
+        lastY = e.clientY - rect.top;
+    }
+    
+
+    
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const currentX = e.clientX - rect.left;
+        const currentY = e.clientY - rect.top;
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(currentX, currentY);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        
+        lastX = currentX;
+        lastY = currentY;
+        
+        // Save signature data
+        document.getElementById(hiddenInputId).value = canvas.toDataURL();
+    }
+    
+    function stopDrawing() {
+        isDrawing = false;
+    }
+    
+    function handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        
+        if (e.type === 'touchstart') {
+            isDrawing = true;
+            lastX = touch.clientX - rect.left;
+            lastY = touch.clientY - rect.top;
+        } else if (e.type === 'touchmove' && isDrawing) {
+            const currentX = touch.clientX - rect.left;
+            const currentY = touch.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+            
+            // Save signature data
+            document.getElementById(hiddenInputId).value = canvas.toDataURL();
+        }
+    }
+    
+    return {
+        clear: function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById(hiddenInputId).value = '';
+        }
+    };
+}
+
+function clearSignature(canvasId) {
+    if (canvasId === 'parent_signature') {
+        parentSignaturePad.clear();
+    } else if (canvasId === 'parent2_signature') {
+        parent2SignaturePad.clear();
+    }
+}
+
+function updateChildInfoEmails() {
+    const pickupMotherEmail = document.getElementById('pickup_mother_email');
+    const pickupFatherEmail = document.getElementById('pickup_father_email');
+    const mothersEmail = document.getElementById('mothers_email');
+    const fathersEmail = document.getElementById('fathers_email');
+    
+    // Auto-populate mothers_email from pickup_mother_email
+    if (pickupMotherEmail && pickupMotherEmail.value && mothersEmail) {
+        mothersEmail.value = pickupMotherEmail.value;
+    }
+    
+    // Auto-populate fathers_email from pickup_father_email
+    if (pickupFatherEmail && pickupFatherEmail.value && fathersEmail) {
+        fathersEmail.value = pickupFatherEmail.value;
+    }
+}
+
+// Add these event listeners in the DOMContentLoaded section after the existing ones:
+const pickupMotherEmail = document.getElementById('pickup_mother_email');
+const pickupFatherEmail = document.getElementById('pickup_father_email');
+
+if (pickupMotherEmail) pickupMotherEmail.addEventListener('blur', updateChildInfoEmails);
+if (pickupFatherEmail) pickupFatherEmail.addEventListener('blur', updateChildInfoEmails);
+</script>
+</body>
+</html>

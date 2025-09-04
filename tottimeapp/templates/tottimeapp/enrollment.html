@@ -1,0 +1,590 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Enrollment Submissions{% endblock %}
+
+{% block styles %}
+<style>
+    .enrollment-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: white;
+        transition: box-shadow 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .enrollment-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-color: rgb(57, 189, 180); /* Changed from blue */
+    }
+    
+    .child-name {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .submission-details {
+        color: #666;
+        font-size: 0.9em;
+    }
+    
+    .submission-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+    }
+    
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+    
+    .status-new {
+        background-color: rgba(57, 189, 180, 0.2);
+        color: rgb(33, 31, 39);
+    }
+    
+    .status-enrolled {
+        background-color: rgba(0, 123, 138, 0.2);
+        color: #007b8a;
+    }
+    
+    .status-archive {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .search-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .search-box {
+        max-width: 400px;
+    }
+    
+    .stats-card {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        margin-bottom: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+        border-color: rgb(57, 189, 180); /* Changed from blue */
+    }
+    
+    .stats-card.active {
+        background-color: rgb(57, 189, 180); /* Changed from blue */
+        border-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39); /* Dark text on teal background */
+    }
+    
+    .stats-card.active .stats-number {
+        color: rgb(33, 31, 39); /* Dark text */
+    }
+    
+    .stats-card.active .stats-label {
+        color: rgb(33, 31, 39); /* Dark text */
+    }
+    
+    .stats-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: rgb(57, 189, 180); /* Changed from blue */
+    }
+    
+    .stats-label {
+        color: #666;
+        font-size: 0.9em;
+    }
+    
+    .no-submissions {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    
+    .facility-info {
+        background: #e9ecef;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    
+    .view-all-link {
+        text-decoration: none;
+        color: #6c757d;
+        font-size: 0.9em;
+    }
+    
+    .view-all-link:hover {
+        color: rgb(57, 189, 180); /* Changed from blue */
+        text-decoration: underline;
+    }
+    
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .current-filter {
+        font-size: 1.1em;
+        color: #495057;
+    }
+    
+    .btn-primary {
+        background-color: rgb(57, 189, 180);
+        border-color: rgb(57, 189, 180);
+        color: rgb(33, 31, 39);
+        font-weight: bold;
+    }
+    
+    .btn-primary:hover {
+        background-color: #007b8a;
+        border-color: #007b8a;
+        color: #fff;
+    }
+    /* Add to your <style> block or base.css */
+.btn-public {
+    background-color: rgb(57, 189, 180);
+    border-color: rgb(57, 189, 180);
+    color: #212529;
+    font-weight: bold;
+}
+.btn-public:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color: #fff;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Enrollment</h1>
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2" style="margin-bottom: 1rem;">
+                        {% if templates %}
+                            {% for template in templates %}
+    <div class="d-flex align-items-center gap-2 mb-1">
+        <a href="{% url 'public_enrollment_with_location' template_id=template.id location_id=template.location.id %}" 
+           class="btn btn-public" target="_blank" id="publicFormLink{{ template.id }}">
+            <i class="fas fa-external-link-alt"></i> View Public Form
+        </a>
+        <button type="button" class="btn btn-outline-secondary" onclick="copyPublicFormLink({{ template.id }})">
+            <i class="fas fa-link"></i> Copy Link
+        </button>
+        <div class="input-group flex-nowrap" style="width: auto;">
+            <input type="email" id="sendLinkEmail{{ template.id }}" class="form-control" placeholder="Recipient email" style="max-width: 180px;">
+            <button type="button" class="btn btn-outline-secondary" onclick="sendPublicFormLink({{ template.id }})">
+                <i class="fas fa-paper-plane"></i> Send Link
+            </button>
+        </div>
+    </div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="btn btn-public disabled" id="publicFormLink" aria-disabled="true">
+                                <i class="fas fa-external-link-alt"></i> No Public Form Available
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Facility Info -->
+            {% if facility_info %}
+            <div class="facility-info">
+                <h5>{{ facility_info.name }}</h5>
+                <p class="mb-0">{{ facility_info.full_address }}</p>
+            </div>
+            {% endif %}
+            
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card {% if request.GET.status == 'enrolled' or not request.GET.status and not request.GET.show_all %}active{% endif %}" 
+                         onclick="filterByStatus('enrolled')">
+                        <div class="stats-number">{{ enrolled_submissions }}</div>
+                        <div class="stats-label">Currently Enrolled</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card {% if request.GET.status == 'new' %}active{% endif %}" 
+                         onclick="filterByStatus('new')">
+                        <div class="stats-number">{{ new_submissions }}</div>
+                        <div class="stats-label">Pending Review</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card {% if request.GET.status == 'archive' %}active{% endif %}" 
+                         onclick="filterByStatus('archive')">
+                        <div class="stats-number">{{ archived_submissions }}</div>
+                        <div class="stats-label">Archived</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card {% if request.GET.show_all %}active{% endif %}" 
+                         onclick="filterByStatus('all')">
+                        <div class="stats-number">{{ total_submissions }}</div>
+                        <div class="stats-label">All Submissions</div>
+                    </div>
+                </div>
+            </div>
+            
+            
+            <!-- Search Section -->
+            <div class="search-section">
+                <form method="GET" class="row align-items-end" id="search-form">
+                    <!-- Hidden fields to preserve current filter -->
+                    {% if request.GET.status %}
+                    <input type="hidden" name="status" value="{{ request.GET.status }}">
+                    {% endif %}
+                    {% if request.GET.show_all %}
+                    <input type="hidden" name="show_all" value="{{ request.GET.show_all }}">
+                    {% endif %}
+                    
+                    <div class="col-md-12">
+                        <input type="text" 
+                               id="search" 
+                               name="search" 
+                               class="form-control search-box" 
+                               placeholder="Search child's or parent's name..." 
+                               value="{{ request.GET.search }}"
+                               autocomplete="off">
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Submissions List -->
+            {% if submissions %}
+                <div class="row">
+                    {% for submission in submissions %}
+                    <div class="col-12">
+                        <div class="enrollment-card" onclick="viewSubmission({{ submission.id }})">
+                            <div class="child-name">
+                                {{ submission.child_first_name }} {{ submission.child_last_name }}
+                            </div>
+                            <div class="submission-details">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Parent:</strong> {{ submission.parent1_full_name }}<br>
+                                        <strong>Date of Birth:</strong> {{ submission.date_of_birth|date:"M d, Y" }}<br>
+                                        <strong>Phone:</strong> {{ submission.parent1_home_phone|default:"Not provided" }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Email:</strong> {{ submission.pickup_mother_email|default:submission.mothers_email|default:"Not provided" }}<br>
+                                        <strong>Enrollment Date:</strong> {{ submission.enrollment_date|date:"M d, Y" }}<br>
+                                        <strong>Address:</strong> {{ submission.child_street_address|default:"Not provided" }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="submission-meta">
+                                <div>
+                                    <small class="text-muted">
+                                        Submitted: {{ submission.submitted_at|date:"M d, Y g:i A" }}
+                                    </small>
+                                </div>
+                                <div>
+                                    {% if submission.status == 'new' %}
+                                        <span class="status-badge status-new">New</span>
+                                    {% elif submission.status == 'enrolled' %}
+                                        <span class="status-badge status-enrolled">Enrolled</span>
+                                    {% elif submission.status == 'archive' %}
+                                        <span class="status-badge status-archive">Archived</span>
+                                    {% endif %}
+                                    
+                                    <!-- Add signature status indicator -->
+                                    {% if not submission.staff_signature %}
+                                        <span class="status-badge" style="background-color: #ffc107; color: #212529; margin-left: 5px;">
+                                            <i class="fas fa-pen"></i> Needs Signature
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge" style="background-color: #28a745; color: white; margin-left: 5px;">
+                                            <i class="fas fa-check"></i> Signed
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <nav aria-label="Submissions pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.show_all %}&show_all={{ request.GET.show_all }}{% endif %}">&laquo; First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.show_all %}&show_all={{ request.GET.show_all }}{% endif %}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.show_all %}&show_all={{ request.GET.show_all }}{% endif %}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.show_all %}&show_all={{ request.GET.show_all }}{% endif %}">Last &raquo;</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+            {% else %}
+                <div class="no-submissions">
+                    <div class="mb-3">
+                        <i class="fas fa-users fa-3x text-muted"></i>
+                    </div>
+                    <h4>No Submissions Found</h4>
+                    <p class="text-muted">
+                        {% if request.GET.search %}
+                            No submissions match your search criteria for the current filter.
+                        {% elif request.GET.status == 'new' %}
+                            No submissions are pending review.
+                        {% elif request.GET.status == 'archive' %}
+                            No submissions are archived.
+                        {% elif request.GET.show_all %}
+                            No submissions found.
+                        {% else %}
+                            No students are currently enrolled.
+                        {% endif %}
+                    </p>
+                    {% if default_template %}
+                    <a href="{% url 'public_enrollment' template_id=default_template.id %}" class="btn btn-primary" target="_blank">
+                        <i class="fas fa-external-link-alt"></i> View Public Enrollment Form
+                    </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function viewSubmission(submissionId) {
+    // Navigate to submission detail view
+    window.location.href = "{% url 'enrollment_submission_detail' submission_id=0 %}".replace('0', submissionId);
+}
+
+function filterByStatus(status) {
+    // Get current search query
+    const searchQuery = document.getElementById('search').value;
+    
+    // Build URL based on status
+    let url = window.location.pathname;
+    let params = new URLSearchParams();
+    
+    if (searchQuery) {
+        params.append('search', searchQuery);
+    }
+    
+    if (status === 'enrolled') {
+        params.append('status', 'enrolled');
+    } else if (status === 'new') {
+        params.append('status', 'new');
+    } else if (status === 'archive') {
+        params.append('status', 'archive');
+    } else if (status === 'all') {
+        params.append('show_all', 'true');
+    }
+    
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+    
+    window.location.href = url;
+}
+
+// Dynamic search functionality
+let searchTimeout;
+
+document.getElementById('search').addEventListener('input', function() {
+    // Clear any existing timeout
+    clearTimeout(searchTimeout);
+    
+    // Set a new timeout to search after user stops typing (300ms delay)
+    searchTimeout = setTimeout(function() {
+        const searchValue = document.getElementById('search').value;
+        
+        // Get current URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Update or remove search parameter
+        if (searchValue.trim()) {
+            urlParams.set('search', searchValue.trim());
+        } else {
+            urlParams.delete('search');
+        }
+        
+        // Remove page parameter when searching to start from page 1
+        urlParams.delete('page');
+        
+        // Build new URL
+        let newUrl = window.location.pathname;
+        if (urlParams.toString()) {
+            newUrl += '?' + urlParams.toString();
+        }
+        
+        // Update the page
+        window.location.href = newUrl;
+    }, 300); // 300ms delay after user stops typing
+});
+
+// Optional: Search on Enter key press (immediate search)
+document.getElementById('search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(searchTimeout); // Cancel the delayed search
+        
+        const searchValue = this.value;
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (searchValue.trim()) {
+            urlParams.set('search', searchValue.trim());
+        } else {
+            urlParams.delete('search');
+        }
+        
+        urlParams.delete('page');
+        
+        let newUrl = window.location.pathname;
+        if (urlParams.toString()) {
+            newUrl += '?' + urlParams.toString();
+        }
+        
+        window.location.href = newUrl;
+    }
+});
+
+// Copy public form link to clipboard
+document.getElementById('copyPublicFormLink').addEventListener('click', function() {
+    var link = document.getElementById('publicFormLink').href;
+    navigator.clipboard.writeText(link).then(function() {
+        toastr.success('Public enrollment link copied to clipboard!');
+    }, function() {
+        toastr.error('Failed to copy link. Please copy manually.');
+    });
+});
+
+// Send public form link via email
+document.getElementById('sendPublicFormLink').addEventListener('click', function() {
+    var email = document.getElementById('sendLinkEmail').value.trim();
+    var link = document.getElementById('publicFormLink').href;
+    if (!email) {
+        toastr.error('Please enter a recipient email address.');
+        return;
+    }
+    // Basic email validation
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        toastr.error('Please enter a valid email address.');
+        return;
+    }
+    fetch("{% url 'send_public_enrollment_link' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+            email: email,
+            link: link
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            toastr.success('Link sent successfully!');
+            document.getElementById('sendLinkEmail').value = '';
+        } else {
+            toastr.error(data.error || 'Failed to send link.');
+        }
+    })
+    .catch(() => {
+        toastr.error('Failed to send link. Please try again.');
+    });
+});
+
+function copyPublicFormLink(templateId) {
+    var link = document.getElementById('publicFormLink' + templateId).href;
+    navigator.clipboard.writeText(link).then(function() {
+        toastr.success('Public enrollment link copied to clipboard!');
+    }, function() {
+        toastr.error('Failed to copy link. Please copy manually.');
+    });
+}
+
+function sendPublicFormLink(templateId) {
+    var email = document.getElementById('sendLinkEmail' + templateId).value.trim();
+    var link = document.getElementById('publicFormLink' + templateId).href;
+    if (!email) {
+        toastr.error('Please enter a recipient email address.');
+        return;
+    }
+    // Basic email validation
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        toastr.error('Please enter a valid email address.');
+        return;
+    }
+    fetch("{% url 'send_public_enrollment_link' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+            email: email,
+            link: link
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            toastr.success('Link sent successfully!');
+            document.getElementById('sendLinkEmail' + templateId).value = '';
+        } else {
+            toastr.error(data.error || 'Failed to send link.');
+        }
+    })
+    .catch(() => {
+        toastr.error('Failed to send link. Please try again.');
+    });
+}
+</script>
+{% endblock %}

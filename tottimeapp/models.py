@@ -415,6 +415,7 @@ class RolePermission(models.Model):
     role = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="role_permissions")  # Linking to Group
     permission = models.ForeignKey(Permission, on_delete=models.CASCADE, related_name="role_permissions")  # Linking to Permission
     yes_no_permission = models.BooleanField(default=False)  # Added yes/no field for permission control
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='role_permissions', null=True, blank=True)  # <-- Add this line
 
     class Meta:
         unique_together = ('role', 'permission')  # Ensure unique combination of role and permission
@@ -441,11 +442,17 @@ class Company(models.Model):
     class Meta:
         verbose_name_plural = "Companies"
 
+
 class CompanyAccountOwner(models.Model):
     company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='account_owners')
     main_account_owner = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='company_ownerships')
-    location_name = models.CharField(max_length=255, blank=True, null=True)  # Add this field
-    is_primary = models.BooleanField(default=False)  # To designate primary account owner
+    location_name = models.CharField(max_length=255, blank=True, null=True)
+    facility_address = models.CharField(max_length=500, blank=True, null=True)
+    facility_city = models.CharField(max_length=100, blank=True, null=True)
+    facility_state = models.CharField(max_length=50, blank=True, null=True)
+    facility_zip = models.CharField(max_length=20, blank=True, null=True)
+    facility_county = models.CharField(max_length=100, blank=True, null=True)
+    is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -455,6 +462,12 @@ class CompanyAccountOwner(models.Model):
         primary_text = " (Primary)" if self.is_primary else ""
         location_text = f" - {self.location_name}" if self.location_name else ""
         return f"{self.company.name}{location_text} - {self.main_account_owner.username}{primary_text}"
+    
+    @property
+    def full_facility_address(self):
+        """Return formatted full address"""
+        parts = [self.facility_city, self.facility_state, self.facility_zip]
+        return ", ".join([part for part in parts if part])
     
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 class MainUser(AbstractUser):
@@ -819,3 +832,227 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+    
+class EnrollmentTemplate(models.Model):
+    """Template for enrollment forms - only facility info and policies are customizable"""
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='enrollment_templates')
+    location = models.ForeignKey('CompanyAccountOwner', on_delete=models.CASCADE, related_name='enrollment_templates', null=True, blank=True)
+    template_name = models.CharField(max_length=255, default="Default Enrollment Form")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='enrollment_templates', null=True, blank=True)
+    
+    # Header Information (static for all users)
+    header_title = models.CharField(max_length=500, default="South Carolina Department of Social Services")
+    header_subtitle = models.CharField(max_length=500, default="Child Care Regulatory Services")
+    form_title = models.CharField(max_length=500, default="GENERAL RECORD AND STATEMENT OF CHILD'S HEALTH FOR ADMISSION TO CHILD CARE FACILITY")
+    form_description = models.TextField(default="This form is to be completed for each child at the time of enrollment in the child care facility, updated as needed when changes occur, and maintained on file at the facility.")
+    
+    # Footer Information (static for all users)
+    footer_text = models.CharField(max_length=255, default="DSS Form 2900 (MAR 10) Edition of OCT 07 is obsolete.", blank=True)
+    
+    class Meta:
+        unique_together = ('company', 'location', 'template_name')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        location_text = f" - {self.location.location_name}" if self.location else ""
+        return f"{self.company.name}{location_text} - {self.template_name}"
+
+class EnrollmentPolicy(models.Model):
+    """Policies that can be customized per enrollment template"""
+    POLICY_TYPES = [
+        ('emergency_medical', 'Emergency Medical'),
+        ('after_school', 'After School Children'),
+        ('summer_camp', 'Summer Camp'),
+        ('abc_children', 'ABC Children'),
+        ('transportation', 'Transportation'),
+        ('biting', 'Biting Policy'),
+        ('meals', 'Meals'),
+        ('curriculum', 'Curriculum'),
+        ('closings', 'Closings'),
+        ('insurance', 'Insurance'),
+        ('pictures', 'Pictures'),
+        ('physical_activity', 'Physical Activity'),
+        ('facility_agreement', 'Facility Agreement'),
+        ('safety', 'Safety'),
+        ('transitioning', 'Transitioning Policy'),
+        ('naptime', 'Naptime'),
+        ('potty', 'Using the Potty'),
+        ('discipline', 'Discipline Policy'),
+        ('disabilities', 'Disabilities'),
+        ('ifsp_iep', 'IFSP/IEP'),
+        ('hiring', 'Hiring Policy'),
+        ('guidelines', 'General Guidelines'),
+        ('pickup', 'Pick Up'),
+        ('immunizations', 'Immunizations'),
+        ('infants', 'Infants'),
+        ('sickness', 'Sickness Policy'),
+        ('hours', 'Days & Hours'),
+        ('registration', 'Registration Fee'),
+        ('rates', 'Rates'),
+        ('payment', 'Payment Instructions'),
+        ('dropbox', 'Drop Box'),
+        ('dropoff', 'Drop Off'),
+        ('belongings', 'Belongings'),
+        ('custom', 'Custom Policy'),
+    ]
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='enrollment_policies', null=True, blank=True)
+    template = models.ForeignKey('EnrollmentTemplate', on_delete=models.CASCADE, related_name='policies')
+    policy_type = models.CharField(max_length=30, choices=POLICY_TYPES)
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['order']
+        unique_together = ('template', 'policy_type', 'title')
+    
+    def __str__(self):
+        return f"{self.template.template_name} - {self.title}"
+
+class EnrollmentSubmission(models.Model):
+    """Stores enrollment form submissions with standard structure"""
+    # Reference to the template used (mainly for policies and facility info)
+    template = models.ForeignKey('EnrollmentTemplate', on_delete=models.SET_NULL, null=True, blank=True, related_name='submissions')
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='enrollment_submissions', null=True, blank=True)
+    
+    # FACILITY INFORMATION (populated from CompanyAccountOwner via template)
+    facility_name = models.CharField(max_length=255, blank=True)
+    facility_address = models.CharField(max_length=500, blank=True)
+    facility_city_state_zip = models.CharField(max_length=255, blank=True)
+    facility_county = models.CharField(max_length=100, blank=True)
+    
+    # CHILD INFORMATION (standard fields for all users)
+    child_first_name = models.CharField(max_length=100)
+    child_last_name = models.CharField(max_length=100)
+    child_middle_initial = models.CharField(max_length=1, blank=True)
+    child_nick_name = models.CharField(max_length=100, blank=True)
+    date_of_birth = models.DateField()
+    enrollment_date = models.DateField()
+    child_street_address = models.CharField(max_length=500, blank=True)
+    child_city_state_zip = models.CharField(max_length=255, blank=True)
+    
+    # PARENT/GUARDIAN INFORMATION (standard fields for all users)
+    parent1_full_name = models.CharField(max_length=200)
+    parent1_home_phone = models.CharField(max_length=20, blank=True)
+    parent1_work_phone = models.CharField(max_length=20, blank=True)
+    parent1_other_phone = models.CharField(max_length=20, blank=True)
+    
+    parent2_full_name = models.CharField(max_length=200, blank=True)
+    parent2_home_phone = models.CharField(max_length=20, blank=True)
+    parent2_work_phone = models.CharField(max_length=20, blank=True)
+    parent2_other_phone = models.CharField(max_length=20, blank=True)
+    
+    # EMERGENCY CONTACTS (standard fields for all users)
+    emergency1_name = models.CharField(max_length=200, blank=True)
+    emergency1_relationship = models.CharField(max_length=100, blank=True)
+    emergency1_address = models.CharField(max_length=500, blank=True)
+    emergency1_city_state_zip = models.CharField(max_length=255, blank=True)
+    emergency1_phone = models.CharField(max_length=20, blank=True)
+    emergency1_family_code = models.CharField(max_length=100, blank=True)
+    
+    emergency2_name = models.CharField(max_length=200, blank=True)
+    emergency2_relationship = models.CharField(max_length=100, blank=True)
+    emergency2_address = models.CharField(max_length=500, blank=True)
+    emergency2_city_state_zip = models.CharField(max_length=255, blank=True)
+    emergency2_phone = models.CharField(max_length=20, blank=True)
+    emergency2_family_code = models.CharField(max_length=100, blank=True)
+    
+    # SCHEDULE INFORMATION (standard fields for all users)
+    enrolled_in_school = models.CharField(max_length=10, blank=True)  # yes/no
+    regular_hours_from = models.TimeField(null=True, blank=True)
+    regular_hours_to = models.TimeField(null=True, blank=True)
+    dropin_hours_from = models.TimeField(null=True, blank=True)
+    dropin_hours_to = models.TimeField(null=True, blank=True)
+    attendance_days = models.JSONField(default=list, blank=True)  # Store selected days as array
+    meals = models.JSONField(default=list, blank=True)  # Store selected meals as array
+    
+    # HEALTH INFORMATION (standard fields for all users)
+    family_physician_name = models.CharField(max_length=255, blank=True)
+    physician_address = models.CharField(max_length=500, blank=True)
+    physician_city_state_zip = models.CharField(max_length=255, blank=True)
+    physician_telephone = models.CharField(max_length=20, blank=True)
+    
+    emergency_care_provider = models.CharField(max_length=255, blank=True)
+    emergency_facility_address = models.CharField(max_length=500, blank=True)
+    emergency_facility_city_state_zip = models.CharField(max_length=255, blank=True)
+    emergency_facility_telephone = models.CharField(max_length=20, blank=True)
+    
+    dental_care_provider_name = models.CharField(max_length=255, blank=True)
+    dental_provider_address = models.CharField(max_length=500, blank=True)
+    dental_provider_city_state_zip = models.CharField(max_length=255, blank=True)
+    dental_provider_telephone = models.CharField(max_length=20, blank=True)
+    
+    health_insurance_provider = models.CharField(max_length=255, blank=True)
+    immunization_certificate = models.CharField(max_length=10, blank=True)  # yes/no/na
+    immunization_explanation = models.TextField(blank=True)
+    health_conditions = models.TextField(blank=True)
+    additional_comments = models.TextField(blank=True)
+    
+    # PICKUP INFORMATION (standard fields for all users)
+    pickup_child_name = models.CharField(max_length=255, blank=True)
+    pickup_child_dob = models.DateField(null=True, blank=True)
+    pickup_mother_name = models.CharField(max_length=255, blank=True)
+    pickup_mother_cell = models.CharField(max_length=20, blank=True)
+    pickup_mother_work = models.CharField(max_length=20, blank=True)
+    pickup_mother_email = models.EmailField(blank=True)
+    pickup_father_name = models.CharField(max_length=255, blank=True)
+    pickup_father_cell = models.CharField(max_length=20, blank=True)
+    pickup_father_work = models.CharField(max_length=20, blank=True)
+    pickup_father_email = models.EmailField(blank=True)
+    pickup_emergency1_name = models.CharField(max_length=255, blank=True)
+    pickup_emergency1_phone = models.CharField(max_length=20, blank=True)
+    pickup_emergency2_name = models.CharField(max_length=255, blank=True)
+    pickup_emergency2_phone = models.CharField(max_length=20, blank=True)
+    
+    # CHILD INFO SECTION (standard fields for all users)
+    mothers_ssn = models.CharField(max_length=4, blank=True)  # Last 4 digits only
+    mothers_email = models.EmailField(blank=True)
+    mothers_employment = models.CharField(max_length=255, blank=True)
+    fathers_email = models.EmailField(blank=True)
+    fathers_employment = models.CharField(max_length=255, blank=True)
+    
+    # Authorized pickup persons
+    pickup_person1_name = models.CharField(max_length=255, blank=True)
+    pickup_person1_phone = models.CharField(max_length=20, blank=True)
+    pickup_person2_name = models.CharField(max_length=255, blank=True)
+    pickup_person2_phone = models.CharField(max_length=20, blank=True)
+    pickup_person3_name = models.CharField(max_length=255, blank=True)
+    pickup_person3_phone = models.CharField(max_length=20, blank=True)
+    pickup_person4_name = models.CharField(max_length=255, blank=True)
+    pickup_person4_phone = models.CharField(max_length=20, blank=True)
+    
+    # SIGNATURES (standard fields for all users)
+    parent_signature = models.TextField(blank=True)  # Base64 signature data
+    parent_signature_date = models.DateField(null=True, blank=True)
+    # Add second parent signature
+    parent2_signature = models.TextField(blank=True)  # Base64 signature data
+    parent2_signature_date = models.DateField(null=True, blank=True)
+    
+    staff_signature = models.TextField(blank=True)  # Base64 signature data
+    staff_signature_date = models.DateField(null=True, blank=True)
+    
+    # Store any additional custom data as JSON (for future flexibility)
+    additional_data = models.JSONField(default=dict, blank=True)
+    
+    # Submission metadata
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('enrolled', 'Enrolled'),
+        ('archive', 'Archive'),
+    ]
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='new')
+    status_changed_by = models.CharField(max_length=150, null=True, blank=True)  # Username who changed status
+    status_changed_date = models.DateTimeField(null=True, blank=True)  # When status was changed
+    
+    class Meta:
+        db_table = 'enrollment_submissions'
+        ordering = ['-submitted_at']
+    
+    def __str__(self):
+        return f"Enrollment: {self.child_first_name} {self.child_last_name} - {self.submitted_at.strftime('%Y-%m-%d')}"
