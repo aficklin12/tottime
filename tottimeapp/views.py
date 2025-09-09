@@ -1263,10 +1263,16 @@ TotTime Enrollment System
             print(f"Enrollment submission error: {e}")
             messages.error(request, 'There was an error submitting your form. Please try again.')
     
+    # Get the policies for this template
+    policies = []
+    if template:
+        policies = EnrollmentPolicy.objects.filter(template=template, is_active=True).order_by('order')
+    
     context = {
         'facility_info': facility_info,
         'template': template,
         'company_location': company_location,
+        'policies': policies,  # Add policies to the context
     }
     
     return render(request, 'tottimeapp/public_enrollment.html', context)
@@ -5743,6 +5749,7 @@ def all_pay_history(request):
 @login_required
 @csrf_exempt
 def switch_account(request):
+
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -5787,3 +5794,14 @@ def switch_account(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required(login_url='/abc_quality/')
+def abc_quality(request):
+   
+    required_permission_id = None 
+    permissions_context = check_permissions(request, required_permission_id)
+   
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+   
+    return render(request, 'abc_quality.html', permissions_context)

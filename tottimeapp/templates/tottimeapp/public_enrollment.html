@@ -595,7 +595,7 @@
             </div>
         </div>
 
-        <div class="section-title">CHILD PICK UP INFORMATION</div>
+        <div class="section-title">{% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} Child Pick Up Information</div>
         
         <div class="form-row">
             <div class="form-group">
@@ -684,174 +684,16 @@
             </div>
         </div>
 
-        <div class="section-title">CUTIE PIES INC. POLICIES</div>
-        
-        <div class="form-group">
-            <h5><strong>Emergency Medical:</strong></h5>
-            <p>If there is a hurricane or tornado children will be gathered in the interior of the building away from windows and glass. In case of fire teachers take their tracking system and take attendance after all the children have been removed from the building. Cutie Pies in surfside is in Zone A. During orders of mandatory evacuations, the center will be closed. All Cutie Pies staff and children will be redirected to our sister center in the Burgess area, located at 9267 Freewoods Rd, Myrtle Beach, SC 29588. The Cutie Pies Burgess center, Zone C, is the last center to close if the need arises. Check our website for updates on closings. Weekly payments will still be expected even during evacuation times. If your child will be attending our sister center in these events, make sure to pack any daily needs for your child such as diapers, wipes, clothes, bottles, formula, etc.</p>
-        </div>
+        <div class="section-title">{% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} Policies</div>
 
-        <div class="form-group">
-            <h5><strong>After School Children:</strong></h5>
-            <p>All after school children are dropped off at the daycare from the school bus. Children come to the center and eat snacks, then do homework for 30 minutes and then go outside to play. Please check your child's homework to be sure they have finished it for we only do 30 minutes of work per day.</p>
-        </div>
+        {% for policy in policies %}
+            <div class="form-group">
+                <h5><strong>{{ policy.title }}</strong></h5>
+                <p>{{ policy.content }}</p>
+            </div>
+        {% endfor %}
 
-        <div class="form-group">
-            <h5><strong>Summer Camp:</strong></h5>
-            <p>Summer Camp starts June 10th and ends in August the week before school starts, the date will be posted the first week school gets out. All summer camp children are required to pay a $250 non refundable registration fee. The daycare will collect money by May 1st to schedule all trips. If your child has a bus safety issue or out in public safety-issue, they will miss the next paid field trip. If they have two, they will be asked to stay home the next day. If they have three, they will be released from the summer program and have to attend preschool which costs $60 more per week.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>ABC Children:</strong></h5>
-            <p>If your child is on ABC please let your case worker know our site is site 02. Please do not change your daycare from full time to part time without speaking to your director first. If ABC does not pay the entire amount for daycare then the parent is responsible for paying the difference. Must give a two week notice if you decide to leave the daycare.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Transportation:</strong></h5>
-            <p>We transport children to and from the Surfside Cutie Pies location for the 4K program. Excludes qualifying ABC children.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Biting:</strong></h5>
-            <p>Parents receive an incident report to sign and keep on file each time a child gets bit or a child bites. If your child is going through a biting stage and bites three times, parents are asked to attend one of our other locations until their child has come out of their biting stage. Biting stages last roughly 2 months and children are less likely to bite in a new unfamiliar place. When your child is ready to come back to their original daycare the director will tell the parent their child is now ready to return to their daycare. Children are never punished with food or taking away outdoor play. We also do not reward with food for it can lead to an unhealthy emotional connection between eating certain foods and feeling good.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Meals:</strong></h5>
-            <p>Cutie Pies is a member of the CACFP food program that ensures all meals are healthy and provide a balanced diet. Breakfast is at 8:00, Lunch 11, Snack 2:30. Children over 2 years will be offered 1% milk and children will be offered whole milk for under 2 years. The CACFP does not allow pacages to serve flavored milk to children age 5 and under. Children will have their last snack at 2:30 and are hungry by pick up time. I would suggest parents have a snack in the car ride home for it has been 3 hours since they last ate.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Curriculum:</strong></h5>
-            <p>Cutie Pies teaches all classrooms the 5 areas of learning which are cognitive, small motor skills, large motor, language and social emotional. Preschool starts the day after Labor Day and ends June 4th. Please send children in play clothes for them to paint and get messy.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Closings:</strong></h5>
-            <p>New Year's Day, Good Friday, Memorial Day, Labor Day, 4th of July, Presidents Day, Columbus Day, Juneteenth, Martin Luther King Day, Thanksgiving and Black Friday, Christmas Day and Christmas Eve. If a holiday falls on a Thursday/Tuesday the center will be closed the day before or after. In August the center will be closing early for Horry County Open-House for our staff to attend with their children (the date will be TBD 2 weeks prior to closing) as well as Summer camp will operate from June to August (will end a week before school starts back exact date will be set the beginning of summer). Children are charged for the entire week regardless of a holiday falling within that week or if children are out that week.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Insurance:</strong></h5>
-            <p>Cutie Pies does carry limited liability insurance.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Pictures:</strong></h5>
-            <p>I give permission for Cutie Pies Inc. to take my child's picture and put it on their website or hang pictures in the center.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Physical Activity:</strong></h5>
-            <p>Physical activity is an important part of children's development therefore Cutie Pies does not allow for children to watch TV, play video games or other computers. The children go outdoors every morning and every afternoon weather permitting. If weather doesn't allow for outdoor play children will play physical active games instead.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Facility Agreement:</strong></h5>
-            <p>Parents have read and understand all policies relating to the operation of the facility.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Safety:</strong></h5>
-            <p>When your child is enrolled parents will be given a code to enter the building. Please be aware of people who do not look familiar and if they try to enter ask them to please wait so you can have the director make sure they have creditable business at the daycare.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Transitioning Policy:</strong></h5>
-            <p>Once a child has turned the appropriate age for the next classroom, we inform the parents that there will be a transitioning period. The child will spend a few hours a day or up until it poses a stress on the child in the new classroom. Once they show they're comfortable with the new environment they will then be moved.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Naptime:</strong></h5>
-            <p>Its DSS policy that every child naps from 12-2 daily, at nap time there are DSS nap time ratios and your child must lay on a cot from 12-2, if they are disrupting nap time or refuse to stay on their cot they will be sent home as we have to stay in DSS ratio; the child cannot be sent to another room as we do not have a room for non napping children.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Using the Potty:</strong></h5>
-            <p>If your child needs help using the potty please let their teacher know otherwise, they go on their own. Please tell your child to call the teacher if they need help. If your child is working on potty training, you must work with them at home before we try it at daycare.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Discipline Policy:</strong></h5>
-            <p>Cutie Pies does not use corporal punishment; redirection is used for younger children and time to think is used for older children. If discipline poses a problem, dismissal may occur. Some after school children outgrow the daycare and it is up to the discretion of the director to let the parent know it is time for their child to attend an older, more age appropriate facility. If any after school child acts inappropriate towards another child dismissal will occur.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Disabilities:</strong></h5>
-            <p>Cutie Pies does not discriminate against any of the ten protected classes. Cutie Pies works closely with parents of children with disabilities. We will ask for an IEP from the parent and have an open verbal electronic communication to develop a specialized plan for each child. Cutie Pies will include all children in their peer age group unless there is a need for more careful supervision. Cutie Pies will consider modifications and/or accommodations based on the child's needs unless it poses a financial burden. Cutie Pies allows any specialized services, such as speech.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>IFSP/IEP:</strong></h5>
-            <p>When a child requiring an IEP is enrolled at Cutie Pies, we will request a copy, have an in-depth conversation with the parents about their child's needs and permission to speak with the child's school teacher and therapist. If a child has an individualized family service plan then Cutie Pies will implement the care plan within the child's classroom. With IFSP/IEP, teachers and therapists work together to support activities and strategies to implement towards the child's goals and outcomes in their classroom.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Hiring Policy:</strong></h5>
-            <p>Cutie Pies does hire anyone under provisional employment. Cutie Pies will safeguard confidentiality of all children and staff records.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>General Guidelines:</strong></h5>
-            <p>Please do not let children come in with food (the other children do not understand and wonder why they are not allowed to eat) candy, sippy cups, toys (not even in their backpacks), money, or blankets from home. DHEC highly discourages blankets for they carry more germs than any other item a child brings from home. Please bring extra underwear and pants for extra clothes with your child's name on the inside tag.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Pick Up:</strong></h5>
-            <p>Only people on the pick-up list are allowed to pick children up from the center and must have a photo ID so we can match the name to the pickup list. Parents have unlimited access to their children. A tracking system is used when children enter and exit the building.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Immunizations:</strong></h5>
-            <p>A shot record is due before your child starts and must be on a DHEC form. Children who get updated shots will need to bring the new ones for the daycare to put in their file. DHEC does not allow children to attend without a current immunization record. The daycare can be fined up to $200/day by not having a current immunization record.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Infants:</strong></h5>
-            <p>Need premade water bottles sent back and forth. We need diapers and wipes every week not brought in daily. Please bring wipes, cream, extra clothes and a pacifier which all need to have your child's name on them. Infants will receive a daily sheet showing when they ate, their sleep times and their diaper changes.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Sickness Policy:</strong></h5>
-            <p>Cutie Pies does not care for mildly ill children. Children will be excluded for pink eye, fever (must be fever free for 24 hours before returning, vomiting as well), excessive diarrhea, infectious mouth sores, excessive crying and irritability. Please do not send your children if they have thrown up that morning. Children that are not well enough to go outside will need to stay home. Cutie Pies will administer medicine such as breathing treatments, eye drops, Tylenol with doctors note and prescription medicine if the child's name and dosage and date is on the bottle. We will only give medicine for the afternoon and late afternoon treatments. Parents are responsible for giving morning treatments. Medications will be logged for dosage and time and amount at the daycare. Hand-Foot-Mouth sores must be puss-free before returning. Children may not attend with blisters unless they have a doctors note. Children with pink-eye must have medicine for 24 hours and be pus- free to return. If medication is to be administered, parents must fill out an "Authorization to Administer Medication" form. Cutie Pies is a lice free/nit free facility, if your child is sent home for head lice they cannot return until they are nit free and have been rechecked by the director. If a child is injured they cannot return to the daycare until they are healed due to liability; unless a doctors note is provided at drop off. examples staples/stitches.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Days & Hours:</strong></h5>
-            <p>Monday-Friday 7:00AM-5:30PM. Payments are due on Monday morning. If a payment is not made by Monday there is a $10 late fee. If there isn't a payment by Tuesday, your child will not be allowed to attend until a payment is made. If your child is not picked up by 5:30PM then there is a $20 fee plus an additional $1.00/minute per child until 5:45 PM and $5/minute per child after 5:45PM we have to pay staff overtime when parents are late and have two staff members at all times. If this happens more than twice you will be charged $5 a minute starting at 5:30PM. No post dated checks. If you get a returned check you must pay in cash and if another check is returned you will be required to pay in cash from then on; a $40 fee will be added for the returned check that is charged to the daycare by the bank. If your child needs more than a 10-hour day then add $50/week to your weekly tuition. Parents are responsible for payment even though their child may not attend because of sickness or vacation. The daycare needs a two-week notice before transferring or leaving the daycare. If you are self pay and become an ABC client then you will receive a balance on your account for the amount they back pay.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Registration Fee:</strong></h5>
-            <p>$100 for all children. Due annually. NON-REFUNDABLE</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Rates:</strong></h5>
-            <p>Infants- 2 years $235, Preschool (3-5) $225 if not potty trained addition $40, Afterschool $100 PM/Thurs Camp/Winter Break/Spring Break $165</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Payment Instructions:</strong></h5>
-            <p>PLEASE DO NOT HAND CASH TO EMPLOYEES. PUT ALL PAYMENTS DIRECTLY INTO DROPBOX. PIZZA MONEY, FIELD TRIP MONEY OR TUITION. PUT WHO IT IS FOR, DATE AND AMOUNT ON THE ENVELOPE</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Drop Box:</strong></h5>
-            <p>Grey Box in foyer. For cash, put the name of the child and how much money is in the envelope and what date it is for.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Drop Off:</strong></h5>
-            <p>Children are to be accompanied by a parent in and out of the daycare building. The daycare is not responsible for children after they have been taken out of their classroom. Parents please wait until quickly in the morning so they tend to not cry less after they have adjusted. Drop off time is no later than 10am. If you have an appointment please call ahead so the director knows not to send staff home if we are low with numbers.</p>
-        </div>
-
-        <div class="form-group">
-            <h5><strong>Belongings:</strong></h5>
-            <p>It is a never-ending battle to keep track of clothing and jackets so we ask parents to please write your child's name on all clothes, jackets, diapers, wipes, special milk, creams & medicines. This way we will not be confused about whose belongings we have.</p>
-        </div>
-
-        <div class="section-title">CUTIE PIES INC. CHILD INFORMATION</div>
+        <div class="section-title">{% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} Child Information</div>
         
         <div class="form-row">
             <div class="form-group">
