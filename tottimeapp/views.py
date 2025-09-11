@@ -572,7 +572,6 @@ def add_announcement(request):
         recipient_type=recipient_type
     )
     return JsonResponse({'success': True})
-
 @login_required
 def policies(request):
     # Check permissions for the specific page
@@ -615,7 +614,7 @@ def policies(request):
             main_user=main_user
         ).order_by('order', 'id')
 
-    # Handle POST requests - only update policies
+    # Handle POST requests
     if request.method == 'POST':
         if not selected_template:
             messages.error(request, 'No enrollment template found for your center.')
@@ -649,22 +648,104 @@ def policies(request):
                         messages.error(request, f'Error updating policy "{policy.title}": {str(e)}')
                         return redirect('policies')
 
+            # Resequence policies to ensure consistent ordering
+            resequence_policy_orders(selected_template, main_user)
+            
             if updated_count > 0:
                 messages.success(request, f'Successfully updated {updated_count} policies!')
             else:
                 messages.info(request, 'No changes were made.')
 
-            return redirect('policies')
+        elif action == 'add_policy':
+            # Get form data for new policy
+            new_title = request.POST.get('new_policy_title')
+            new_content = request.POST.get('new_policy_content')
+            
+            if not new_title or not new_content:
+                messages.error(request, 'Please provide both title and content for the new policy.')
+                return redirect('policies')
+                
+            try:
+                # Check if a policy with this title already exists
+                if EnrollmentPolicy.objects.filter(template=selected_template, title=new_title).exists():
+                    messages.error(request, f'A policy with the title "{new_title}" already exists.')
+                    return redirect('policies')
+                    
+                # Get the highest order number and add 1
+                highest_order = EnrollmentPolicy.objects.filter(
+                    template=selected_template,
+                    main_user=main_user
+                ).aggregate(Max('order'))['order__max']
+                
+                next_order = 0 if highest_order is None else highest_order + 1
+                
+                # Create new policy
+                EnrollmentPolicy.objects.create(
+                    main_user=main_user,
+                    template=selected_template,
+                    title=new_title,
+                    content=new_content,
+                    order=next_order,
+                    is_active=True
+                )
+                messages.success(request, f'Successfully added new policy: "{new_title}"')
+                
+                # Resequence to ensure we don't have gaps
+                resequence_policy_orders(selected_template, main_user)
+                
+            except Exception as e:
+                messages.error(request, f'Error adding new policy: {str(e)}')
+                
+        elif action == 'delete_policy':
+            policy_id = request.POST.get('policy_id')
+            if policy_id:
+                try:
+                    policy = EnrollmentPolicy.objects.get(id=policy_id, template=selected_template)
+                    policy_title = policy.title
+                    policy.delete()
+                    
+                    # Resequence policies after deletion to ensure no gaps in order
+                    resequence_policy_orders(selected_template, main_user)
+                    
+                    messages.success(request, f'Successfully deleted policy: "{policy_title}"')
+                except EnrollmentPolicy.DoesNotExist:
+                    messages.error(request, 'Policy not found.')
+                except Exception as e:
+                    messages.error(request, f'Error deleting policy: {str(e)}')
+            else:
+                messages.error(request, 'No policy ID provided for deletion.')
+
+        return redirect('policies')
 
     context = permissions_context.copy()
     context.update({
         'enrollment_templates': enrollment_templates,
         'selected_template': selected_template,
         'policies': policies,
+        'company': company,
+        'company_account': company_account,
         **permissions_context,
     })
 
     return render(request, 'tottimeapp/policies.html', context)
+
+
+def resequence_policy_orders(template, main_user):
+    """Resequence all policies to ensure they have sequential order numbers (zero-based)."""
+    policies = EnrollmentPolicy.objects.filter(
+        template=template,
+        main_user=main_user,
+        is_active=True
+    ).order_by('order', 'id')
+    
+    # Resequence the orders (0, 1, 2, 3...)
+    # We keep 0-based internally for database storage
+    for index, policy in enumerate(policies):
+        if policy.order != index:
+            policy.order = index
+            policy.save(update_fields=['order'])
+            
+    return policies
 
 @csrf_exempt
 def send_public_enrollment_link(request):
@@ -1139,6 +1220,9 @@ def public_enrollment(request, template_id=None, location_id=None):
             submission.pickup_person4_name = request.POST.get('pickup_person4_name', '')
             submission.pickup_person4_phone = request.POST.get('pickup_person4_phone', '')
             
+            # After handling field_trip_permission_parent, add:
+            submission.photo_permission_parent = request.POST.get('photo_permission_parent', '')
+               
             # Signatures
             submission.parent_signature = request.POST.get('parent_signature_data', '')
 
@@ -1775,6 +1859,7 @@ def fetch_ingredients(request):
     user = get_user_for_view(request)
     ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item')
     return JsonResponse({'ingredients': list(ingredients)})
+
 @login_required
 def create_recipe(request):
     if request.method == 'POST':

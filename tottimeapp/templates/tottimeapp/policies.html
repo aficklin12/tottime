@@ -11,16 +11,31 @@
         margin: 0 auto;
         padding: 20px;
     }
-    
 
-
-    
     .template-selector {
         background: white;
         padding: 25px;
         border-radius: 10px;
         box-shadow: 0 2px 15px rgba(0,0,0,0.1);
         margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .template-header {
+        flex: 1;
+    }
+    
+    .template-actions {
+        padding-left: 20px;
+        display: flex;
+        gap: 15px; /* Add this line to create space between flex items */
+    }
+    
+    /* Make sure the form group in the template section doesn't have margin bottom */
+    .template-header .form-group {
+        margin-bottom: 0;
     }
     
     .form-group {
@@ -80,6 +95,8 @@
         margin-bottom: 20px;
         background: #fafafa;
         overflow: hidden;
+        position: relative;
+        transition: all 0.3s ease-in-out;
     }
     
     .policy-header {
@@ -117,30 +134,24 @@
         line-height: 1.5;
     }
     
-    .btn {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        text-decoration: none;
-        display: inline-block;
-    }
-    
-    .btn-success {
-        background: #28a745;
-        color: white;
-        padding: 12px 30px;
-        font-size: 16px;
-    }
+
+
     
     .btn-success:hover {
         background: #218838;
         transform: translateY(-1px);
     }
     
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background-color: #c82333;
+    }
+    
+
     .save-section {
         text-align: center;
         padding: 30px;
@@ -192,7 +203,151 @@
         text-align: center;
     }
     
+    .order-controls {
+        display: flex;
+        align-items: center;
+        max-width: 120px;
+    }
+    
+    .order-display {
+        display: inline-block;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin: 0 8px;
+        font-weight: bold;
+        min-width: 40px;
+        text-align: center;
+    }
+    
+    .order-btn {
+        padding: 6px 10px;
+    }
+    
+    .order-display-add {
+        background: #f8f9fa;
+        border-radius: 4px;
+        padding: 10px;
+        font-style: italic;
+        color: #666;
+    }
+    
+    /* Visual feedback for policy movement */
+    @keyframes highlightMove {
+        0% { background-color: #fff3cd; }
+        70% { background-color: #fff3cd; }
+        100% { background-color: #fafafa; }
+    }
+    
+    .policy-just-moved {
+        animation: highlightMove 1s ease-in-out;
+    }
+    
+    /* Modal styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        overflow: auto;
+    }
 
+    .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 0;
+        border: 1px solid #888;
+        border-radius: 8px;
+        width: 600px;
+        max-width: 90%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        animation: modalFadeIn 0.3s;
+    }
+
+    @keyframes modalFadeIn {
+        from {opacity: 0; transform: translateY(-50px);}
+        to {opacity: 1; transform: translateY(0);}
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #333;
+    }
+
+    .close-modal {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close-modal:hover {
+        color: #333;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+/* Add this to your style section */
+.btn-add-policy {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+}
+
+.btn-add-policy:hover {
+    background-color: #5a6268;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.btn-add-policy:focus {
+    box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.25);
+    outline: none;
+}
+
+.btn-add-policy i {
+    margin-right: 5px;
+    margin-left: 10px;
+}
+.btn-save-policy {
+    background-color: rgb(57, 189, 180);
+    border-color: rgb(57, 189, 180);
+    color: rgb(33, 31, 39);
+    font-weight: bold;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-save-policy:hover {
+    background-color: #007b8a;
+    border-color: #007b8a;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.btn-save-policy:focus {
+    box-shadow: 0 0 0 3px rgba(57, 189, 180, 0.25);
+    outline: none;
+}
 </style>
 {% endblock %}
 
@@ -201,45 +356,62 @@
         
 <div class="policies-container">
         
-    
-    <!-- Template Selector -->
-    <div class="template-selector">
-    <div class="form-group">
-        <label>Enrollment Template:</label>
-        <div class="form-control" style="background: #f8f9fa;">
-            {{ selected_template }}
-        </div>
-    </div>
-</div>
-
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-
+    <!-- Template Selector with Save Button -->
     {% if selected_template %}
-        <!-- Edit Policies -->
-        <div class="policies-section">
-            <div class="section-header">
-                <h2>Edit Policies for {{ selected_template.template_name }}</h2>
+        <!-- Start the form here to include both the template selector and policies -->
+        <form method="post" action="">
+            {% csrf_token %}
+            <input type="hidden" name="template_id" value="{{ selected_template.id }}">
+            <input type="hidden" name="action" value="update_policies">
+            
+            <div class="template-selector">
+                <div class="template-header">
+                    <div class="form-group">
+                        <label>Enrollment Policy for: 
+                            <strong>
+                                {% if company_account.location_name %}
+                                    {{ company_account.location_name }}
+                                {% else %}
+                                    {{ company.name }}
+                                {% endif %}
+                            </strong>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Template actions with both buttons -->
+                <div class="template-actions">
+                   <button type="submit" class="btn btn-save-policy">
+                        Save Changes
+                    </button>
+                    <button type="button" class="btn btn-add-policy" onclick="openAddPolicyModal()">
+                        <i class="fas fa-plus"></i> Add New Policy
+                    </button>
+                    
+                </div>
             </div>
             
-            {% if policies %}
-                <div class="policies-list">
-                    <form method="post" action="">
-                        {% csrf_token %}
-                        <input type="hidden" name="template_id" value="{{ selected_template.id }}">
-                        <input type="hidden" name="action" value="update_policies">
-                        
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Edit Policies -->
+            <div class="policies-section">
+                <div class="section-header">
+                    <h2>Edit Policies for {{ selected_template.template_name }}</h2>
+                </div>
+                
+                {% if policies %}
+                    <div class="policies-list">
                         {% for policy in policies %}
                             <div class="policy-item">
                                 <div class="policy-header">
-                                    <h3 class="policy-title">{{ policy.get_policy_type_display }}</h3>
+                                    <h3 class="policy-title">{{ policy.title }}</h3>
                                 </div>
-                                
                                 <div class="policy-content">
                                     <div class="form-row">
                                         <div class="form-group">
@@ -253,12 +425,21 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="policy_{{ policy.id }}_order">Order:</label>
-                                            <input type="number" 
-                                                   id="policy_{{ policy.id }}_order"
-                                                   name="policy_{{ policy.id }}_order" 
-                                                   class="form-control order-input" 
-                                                   value="{{ policy.order }}" 
-                                                   min="0">
+                                            <div class="order-controls">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary order-btn" 
+                                                        onclick="movePolicy({{ policy.id }}, 'up')" title="Move Up">
+                                                    <i class="fas fa-arrow-up"></i>
+                                                </button>
+                                                <span class="order-display" id="order_display_{{ policy.id }}">{{ policy.order|add:"1" }}</span>
+                                                <input type="hidden" 
+                                                       id="policy_{{ policy.id }}_order"
+                                                       name="policy_{{ policy.id }}_order" 
+                                                       value="{{ policy.order }}">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary order-btn" 
+                                                        onclick="movePolicy({{ policy.id }}, 'down')" title="Move Down">
+                                                    <i class="fas fa-arrow-down"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -269,27 +450,78 @@
                                                   class="form-control" 
                                                   placeholder="Policy content...">{{ policy.content }}</textarea>
                                     </div>
+                                    <!-- Add delete button -->
+                                    <div class="form-group" style="text-align: right;">
+                                        <button type="button" class="btn btn-danger" 
+                                                onclick="confirmDelete('{{ policy.id }}', '{{ policy.title|escapejs }}')">
+                                            Delete Policy
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         {% endfor %}
                         
-                        <div class="save-section">
-                            <button type="submit" class="btn btn-success">
-                                Save All Policy Changes
-                            </button>
+                        <!-- Remove the save-section div from here -->
+                    </div>
+                {% else %}
+                    <div class="policies-list">
+                        <div class="empty-state">
+                            <h3>No policies found</h3>
+                            <p>This template doesn't have any policies configured yet.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </form>
+        
+        <!-- Add New Policy Form remains separate -->
+        <!-- Add Policy Modal -->
+        <div id="addPolicyModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add New Policy</h3>
+                    <span class="close-modal" onclick="closeAddPolicyModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form method="post" action="" id="add-policy-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="template_id" value="{{ selected_template.id }}">
+                        <input type="hidden" name="action" value="add_policy">
+                        
+                        <div class="form-group">
+                            <label for="new_policy_title">Title:</label>
+                            <input type="text" id="new_policy_title" name="new_policy_title" 
+                                   class="form-control" placeholder="Policy Title" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="new_policy_content">Content:</label>
+                            <textarea id="new_policy_content" name="new_policy_content" 
+                                      class="form-control" placeholder="Policy content..." required></textarea>
+                        </div>
+                        
+                        <div class="order-display-add">
+                            <span>This policy will be added at the end (position {{ policies|length|add:"1" }})</span>
+                            <input type="hidden" id="new_policy_order" name="new_policy_order" 
+                                   value="{{ policies|length }}">
+                        </div>
+                        
+                        <div style="text-align: right; margin-top: 20px;">
+                            <button type="button" class="btn btn-secondary" onclick="closeAddPolicyModal()">Cancel</button>
+                            <button type="submit" class="btn btn-save-policy">Add Policy</button>
                         </div>
                     </form>
                 </div>
-            {% else %}
-                <div class="policies-list">
-                    <div class="empty-state">
-                        <h3>No policies found</h3>
-                        <p>This template doesn't have any policies configured yet.</p>
-                    </div>
-                </div>
-            {% endif %}
+            </div>
         </div>
 
+        <!-- Hidden Delete Form -->
+        <form id="delete-form" method="post" action="" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_policy">
+            <input type="hidden" name="template_id" value="{{ selected_template.id }}">
+            <input type="hidden" id="policy_id_to_delete" name="policy_id">
+        </form>
     {% else %}
         <div class="empty-state">
             <h3>Select a Template</h3>
@@ -324,6 +556,236 @@
         if (hasUnsavedChanges) {
             e.preventDefault();
             e.returnValue = '';
+        }
+    });
+    
+    // Confirmation function for policy deletion
+    function confirmDelete(policyId, policyTitle) {
+        // Store the policy ID for later use if confirmed
+        window.policyToDelete = {
+            id: policyId,
+            title: policyTitle
+        };
+        
+        // Create Toastr notification with custom buttons
+        toastr.warning(
+            '<div>Are you sure you want to delete the policy "<strong>' + policyTitle + '</strong>"?<br>This action cannot be undone.</div>' +
+            '<div class="toastr-buttons" style="margin-top: 10px; text-align: right;">' +
+            '<button type="button" class="btn btn-sm btn-secondary" id="toastr-cancel-btn" style="margin-right: 10px;">Cancel</button>' +
+            '<button type="button" class="btn btn-sm btn-danger" id="toastr-confirm-btn">Delete</button>' +
+            '</div>',
+            'Confirm Deletion', 
+            {
+                closeButton: false,
+                timeOut: 0,
+                extendedTimeOut: 0,
+                tapToDismiss: false,
+                positionClass: "toast-top-center",
+                preventDuplicates: true,
+                escapeHtml: false,
+                onShown: function() {
+                    // Add click handlers to the custom buttons
+                    document.getElementById('toastr-cancel-btn').addEventListener('click', function() {
+                        toastr.clear();
+                    });
+                    
+                    document.getElementById('toastr-confirm-btn').addEventListener('click', function() {
+                        // Proceed with deletion
+                        document.getElementById('policy_id_to_delete').value = window.policyToDelete.id;
+                        document.getElementById('delete-form').submit();
+                        hasUnsavedChanges = false;
+                        toastr.clear();
+                    });
+                }
+            }
+        );
+    }
+    
+    // Policy order management
+    var policies = [
+        {% for policy in policies %}
+            {
+                "id": {{ policy.id }},
+                "order": {{ policy.order }},
+                "displayOrder": {{ policy.order|add:"1" }},
+                "title": "{{ policy.title|escapejs }}"
+            }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Add this helper function before movePolicy
+    function findPolicyElement(policyId) {
+        // Fallback for browsers without :has() support
+        var allPolicyItems = document.querySelectorAll('.policy-item');
+        for (var i = 0; i < allPolicyItems.length; i++) {
+            if (allPolicyItems[i].querySelector('#policy_' + policyId + '_order')) {
+                return allPolicyItems[i];
+            }
+        }
+        return null;
+    }
+    
+    // Replace the movePolicy function with this enhanced version
+    function movePolicy(policyId, direction) {
+        // Find the policy we're moving
+        var policyIndex = -1;
+        for (var i = 0; i < policies.length; i++) {
+            if (policies[i].id === policyId) {
+                policyIndex = i;
+                break;
+            }
+        }
+        
+        if (policyIndex === -1) return;
+        var policy = policies[policyIndex];
+        
+        // Find any policy with the target order
+        var targetOrder = direction === 'up' ? policy.order - 1 : policy.order + 1;
+        
+        // Don't allow moving beyond boundaries (prevent going below 0 in the database)
+        if (targetOrder < 0 || policies.length === 0) return;
+        
+        // Find policy at the target position
+        var targetPolicyIndex = -1;
+        for (var j = 0; j < policies.length; j++) {
+            if (policies[j].order === targetOrder) {
+                targetPolicyIndex = j;
+                break;
+            }
+        }
+        
+        // Get the DOM elements for both policies
+        var policyElement = findPolicyElement(policy.id);
+        
+        if (targetPolicyIndex >= 0) {
+            // Swap orders in our JS array
+            var targetPolicy = policies[targetPolicyIndex];
+            targetPolicy.order = policy.order;
+            policy.order = targetOrder;
+            
+            // Update display orders (1-based)
+            targetPolicy.displayOrder = targetPolicy.order + 1;
+            policy.displayOrder = policy.order + 1;
+            
+            // Update UI values
+            document.getElementById('policy_' + policy.id + '_order').value = policy.order;
+            document.getElementById('order_display_' + policy.id).textContent = policy.displayOrder;
+            document.getElementById('policy_' + targetPolicy.id + '_order').value = targetPolicy.order;
+            document.getElementById('order_display_' + targetPolicy.id).textContent = targetPolicy.displayOrder;
+            
+            // Get target DOM element
+            var targetPolicyElement = findPolicyElement(targetPolicy.id);
+            
+            // Visually swap the elements in the DOM
+            if (direction === 'up') {
+                // Move policy up before the target
+                targetPolicyElement.parentNode.insertBefore(policyElement, targetPolicyElement);
+            } else {
+                // Move policy down after the target (insert after = insertBefore nextSibling)
+                targetPolicyElement.parentNode.insertBefore(policyElement, targetPolicyElement.nextSibling);
+            }
+            
+            // Add visual feedback for the move
+            policyElement.classList.add('policy-just-moved');
+            setTimeout(function() {
+                policyElement.classList.remove('policy-just-moved');
+            }, 1000);
+            
+            // Set unsaved changes flag
+            hasUnsavedChanges = true;
+            
+            // Show toastr notification
+            toastr.info(
+                'Policy "' + policy.title + '" ' + (direction === 'up' ? 'moved up' : 'moved down') + 
+                ' to position ' + policy.displayOrder + '. Remember to save your changes!',
+                'Order Changed',
+                {
+                    timeOut: 3000,
+                    positionClass: "toast-top-right"
+                }
+            );
+        } else if (direction === 'down') {
+            // Check if we're moving down past the last policy
+            var maxOrder = 0;
+            for (var k = 0; k < policies.length; k++) {
+                if (policies[k].order > maxOrder) {
+                    maxOrder = policies[k].order;
+                }
+            }
+            
+            if (targetOrder > maxOrder) {
+                // Moving down past the last policy
+                policy.order = targetOrder;
+                policy.displayOrder = policy.order + 1;
+                
+                document.getElementById('policy_' + policy.id + '_order').value = policy.order;
+                document.getElementById('order_display_' + policy.id).textContent = policy.displayOrder;
+                
+                // Move to the end of the list
+                var policiesList = document.querySelector('.policies-list form');
+                var lastPolicy = policiesList.querySelector('.policy-item:last-of-type');
+                if (lastPolicy && policyElement !== lastPolicy) {
+                    // Move the policy to the end
+                    lastPolicy.parentNode.appendChild(policyElement);
+                    
+                    // Add visual feedback
+                    policyElement.classList.add('policy-just-moved');
+                    setTimeout(function() {
+                        policyElement.classList.remove('policy-just-moved');
+                    }, 1000);
+                }
+                
+                hasUnsavedChanges = true;
+                
+                toastr.info(
+                    'Policy "' + policy.title + '" moved to position ' + policy.displayOrder + '. Remember to save your changes!',
+                    'Order Changed',
+                    {
+                        timeOut: 3000,
+                        positionClass: "toast-top-right"
+                    }
+                );
+            }
+        }
+    }
+    
+    // Modal control functions
+    function openAddPolicyModal() {
+        document.getElementById('addPolicyModal').style.display = 'block';
+        document.getElementById('new_policy_title').focus();
+        
+        // Set the form field to indicate the next order position
+        var maxDisplayOrder = 0;
+        for (var i = 0; i < policies.length; i++) {
+            if (policies[i].displayOrder > maxDisplayOrder) {
+                maxDisplayOrder = policies[i].displayOrder;
+            }
+        }
+        
+        document.querySelector('.order-display-add span').textContent = 
+            'This policy will be added at the end (position ' + (maxDisplayOrder + 1) + ')';
+        document.getElementById('new_policy_order').value = policies.length;
+    }
+
+    function closeAddPolicyModal() {
+        document.getElementById('addPolicyModal').style.display = 'none';
+        // Clear form fields
+        document.getElementById('new_policy_title').value = '';
+        document.getElementById('new_policy_content').value = '';
+    }
+
+    // Close modal when clicking outside the modal content
+    window.addEventListener('click', function(event) {
+        var modal = document.getElementById('addPolicyModal');
+        if (event.target === modal) {
+            closeAddPolicyModal();
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && document.getElementById('addPolicyModal').style.display === 'block') {
+            closeAddPolicyModal();
         }
     });
 </script>

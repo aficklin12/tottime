@@ -861,46 +861,9 @@ class EnrollmentTemplate(models.Model):
         return f"{self.company.name}{location_text} - {self.template_name}"
 
 class EnrollmentPolicy(models.Model):
-    """Policies that can be customized per enrollment template"""
-    POLICY_TYPES = [
-        ('emergency_medical', 'Emergency Medical'),
-        ('after_school', 'After School Children'),
-        ('summer_camp', 'Summer Camp'),
-        ('abc_children', 'ABC Children'),
-        ('transportation', 'Transportation'),
-        ('biting', 'Biting Policy'),
-        ('meals', 'Meals'),
-        ('curriculum', 'Curriculum'),
-        ('closings', 'Closings'),
-        ('insurance', 'Insurance'),
-        ('pictures', 'Pictures'),
-        ('physical_activity', 'Physical Activity'),
-        ('facility_agreement', 'Facility Agreement'),
-        ('safety', 'Safety'),
-        ('transitioning', 'Transitioning Policy'),
-        ('naptime', 'Naptime'),
-        ('potty', 'Using the Potty'),
-        ('discipline', 'Discipline Policy'),
-        ('disabilities', 'Disabilities'),
-        ('ifsp_iep', 'IFSP/IEP'),
-        ('hiring', 'Hiring Policy'),
-        ('guidelines', 'General Guidelines'),
-        ('pickup', 'Pick Up'),
-        ('immunizations', 'Immunizations'),
-        ('infants', 'Infants'),
-        ('sickness', 'Sickness Policy'),
-        ('hours', 'Days & Hours'),
-        ('registration', 'Registration Fee'),
-        ('rates', 'Rates'),
-        ('payment', 'Payment Instructions'),
-        ('dropbox', 'Drop Box'),
-        ('dropoff', 'Drop Off'),
-        ('belongings', 'Belongings'),
-        ('custom', 'Custom Policy'),
-    ]
+   
     main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='enrollment_policies', null=True, blank=True)
     template = models.ForeignKey('EnrollmentTemplate', on_delete=models.CASCADE, related_name='policies')
-    policy_type = models.CharField(max_length=30, choices=POLICY_TYPES)
     title = models.CharField(max_length=255)
     content = models.TextField()
     order = models.PositiveIntegerField(default=0)
@@ -908,7 +871,7 @@ class EnrollmentPolicy(models.Model):
     
     class Meta:
         ordering = ['order']
-        unique_together = ('template', 'policy_type', 'title')
+        unique_together = ('template', 'title')
     
     def __str__(self):
         return f"{self.template.template_name} - {self.title}"
@@ -1031,6 +994,7 @@ class EnrollmentSubmission(models.Model):
     # Add second parent signature
     parent2_signature = models.TextField(blank=True)  # Base64 signature data
     parent2_signature_date = models.DateField(null=True, blank=True)
+    photo_permission_parent = models.CharField(max_length=255, blank=True)
     
     staff_signature = models.TextField(blank=True)  # Base64 signature data
     staff_signature_date = models.DateField(null=True, blank=True)

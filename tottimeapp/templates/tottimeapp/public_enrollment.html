@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enrollment Form - Cutie Pies</title>
+    <title>Enrollment Form</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
       .form-container {
@@ -779,13 +779,13 @@
 
         <div class="form-group">
             <p>
-                I, <input type="text" name="medical_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> give Cutie Pies permission to obtain medical treatment and transportation for my child.
+                I, <input type="text" name="medical_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> give {% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} permission to obtain medical treatment and transportation for my child.
             </p>
         </div>
 
         <div class="form-group">
             <p>
-                I, <input type="text" name="discipline_agreement_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> agree with the discipline policies for the daycare, which states, no corporal punishment.
+                I, <input type="text" name="discipline_agreement_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> agree with the discipline policies of {% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %}, which states, no corporal punishment.
             </p>
         </div>
 
@@ -839,25 +839,34 @@
 
         <div class="form-group">
             <p>
-                I, <input type="text" name="medication_authorization_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> authorize Cutie Pies Inc. to administer medication for my child ONLY if the child's name is on the medication and there is a doctor note stating the child is not contagious.
+                I, <input type="text" name="medication_authorization_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> authorize {% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} to administer medication for my child ONLY if the child's name is on the medication and there is a doctor note stating the child is not contagious.
             </p>
         </div>
 
         <div class="form-group">
             <p>
-                I, <input type="text" name="swimming_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> allow for swimming activities on field trips at Cutie Pies Inc.
+                I, <input type="text" name="swimming_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> allow for swimming activities on field trips at {% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %}
             </p>
         </div>
 
         <div class="form-group">
             <p>
-                I, <input type="text" name="field_trip_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> allow for my child to go on field trips and to be taken on the Cutie Pies Bus.
+                I, <input type="text" name="field_trip_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> allow for my child to go on field trips and to be taken on the {% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} Bus.
             </p>
         </div>
-  <!-- Add second parent signature -->
+        <div class="form-group">
+            <p>
+                I, <input type="text" name="photo_permission_parent" class="form-control" style="display: inline; width: 300px;" placeholder="Type parent/guardian name"> give permission for {% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} to take my child's picture and put it on their website or hang pictures in the center.
+            </p>
+        </div>
+        <div class="form-group" style="margin-top: 30px; margin-bottom: 20px;">
+            <p style="font-weight: bold;">
+                By signing below, I confirm that I have read and understand all policies relating to the operation of the {% if template.company %}{{ template.company.name }}{% else %}{{ facility_info.name }}{% endif %} facility and agree to abide by them.
+            </p>
+        </div>
         <div class="form-row" style="margin-top: 20px;">
             <div class="form-group">
-                <label for="parent2_signature">Second Parent/Guardian Signature (if applicable):</label>
+                <label for="parent2_signature">Parent/Guardian Signature (if applicable):</label>
                 <canvas id="parent2_signature" name="parent2_signature" class="signature-pad" width="350" height="150" 
                         style="border: 1px solid #ddd; border-radius: 4px; background-color: white;"></canvas>
                 <div style="margin-top: 5px;" class="no-print">
