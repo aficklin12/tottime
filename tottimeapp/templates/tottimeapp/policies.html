@@ -499,7 +499,7 @@
                             <textarea id="new_policy_content" name="new_policy_content" 
                                       class="form-control" placeholder="Policy content..." required></textarea>
                         </div>
-                        
+                         
                         <div class="order-display-add">
                             <span>This policy will be added at the end (position {{ policies|length|add:"1" }})</span>
                             <input type="hidden" id="new_policy_order" name="new_policy_order" 
@@ -532,7 +532,114 @@
 {% endblock %}
 
 {% block scripts %}
+{{ block.super }}
 <script>
+    // Global array to store Quill editor instances
+    let quillEditors = {};
+    
+    // Initialize Quill editors
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize for existing policies
+        {% for policy in policies %}
+            initQuillEditor('policy_{{ policy.id }}_content');
+        {% endfor %}
+        
+        // Initialize editor when add policy modal opens
+        document.getElementById('addPolicyModal').addEventListener('show.bs.modal', function() {
+            initQuillEditor('new_policy_content');
+        });
+    });
+    
+    function initQuillEditor(elementId) {
+        // Get the textarea element
+        const textarea = document.getElementById(elementId);
+        if (!textarea) return;
+        
+        // Create container for Quill
+        const container = document.createElement('div');
+        container.id = elementId + '_editor';
+        container.className = 'quill-editor';
+        textarea.parentNode.insertBefore(container, textarea);
+        
+        // Hide the original textarea
+        textarea.style.display = 'none';
+        
+        // Initialize Quill
+        const quill = new Quill('#' + elementId + '_editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link']
+                ]
+            },
+            placeholder: 'Policy content...'
+        });
+        
+        // Set initial content
+        quill.root.innerHTML = textarea.value;
+        
+        // Save Quill content to textarea on change
+        quill.on('text-change', function() {
+            textarea.value = quill.root.innerHTML;
+            hasUnsavedChanges = true;
+        });
+        
+        // Store the editor instance
+        quillEditors[elementId] = quill;
+    }
+    
+    // Update openAddPolicyModal to initialize Quill
+    function openAddPolicyModal() {
+        document.getElementById('addPolicyModal').style.display = 'block';
+        document.getElementById('new_policy_title').focus();
+        
+        // Initialize Quill for new policy content
+        setTimeout(() => {
+            initQuillEditor('new_policy_content');
+        }, 100);
+        
+        // Set the form field to indicate the next order position
+        var maxDisplayOrder = 0;
+        for (var i = 0; i < policies.length; i++) {
+            if (policies[i].displayOrder > maxDisplayOrder) {
+                maxDisplayOrder = policies[i].displayOrder;
+            }
+        }
+        
+        document.querySelector('.order-display-add span').textContent = 
+            'This policy will be added at the end (position ' + (maxDisplayOrder + 1) + ')';
+        document.getElementById('new_policy_order').value = policies.length;
+    }
+
+    function closeAddPolicyModal() {
+        // Destroy Quill instance before closing
+        if (quillEditors['new_policy_content']) {
+            quillEditors['new_policy_content'].container.remove();
+            delete quillEditors['new_policy_content'];
+        }
+        
+        document.getElementById('addPolicyModal').style.display = 'none';
+        // Clear form fields
+        document.getElementById('new_policy_title').value = '';
+        document.getElementById('new_policy_content').value = '';
+    }
+    
+    // Make sure forms submit Quill content
+    document.addEventListener('DOMContentLoaded', function() {
+        var forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function() {
+                // Update all textareas with Quill content
+                for (const [id, editor] of Object.entries(quillEditors)) {
+                    document.getElementById(id).value = editor.root.innerHTML;
+                }
+                hasUnsavedChanges = false;
+            });
+        });
+    });
+    
     // Prevent accidental page leaving with unsaved changes
     var hasUnsavedChanges = false;
     
@@ -754,6 +861,11 @@
         document.getElementById('addPolicyModal').style.display = 'block';
         document.getElementById('new_policy_title').focus();
         
+        // Initialize Quill for new policy content
+        setTimeout(() => {
+            initQuillEditor('new_policy_content');
+        }, 100);
+        
         // Set the form field to indicate the next order position
         var maxDisplayOrder = 0;
         for (var i = 0; i < policies.length; i++) {
@@ -768,12 +880,18 @@
     }
 
     function closeAddPolicyModal() {
+        // Destroy Quill instance before closing
+        if (quillEditors['new_policy_content']) {
+            quillEditors['new_policy_content'].container.remove();
+            delete quillEditors['new_policy_content'];
+        }
+        
         document.getElementById('addPolicyModal').style.display = 'none';
         // Clear form fields
         document.getElementById('new_policy_title').value = '';
         document.getElementById('new_policy_content').value = '';
     }
-
+    
     // Close modal when clicking outside the modal content
     window.addEventListener('click', function(event) {
         var modal = document.getElementById('addPolicyModal');

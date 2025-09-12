@@ -18,22 +18,26 @@ from .models import Classroom, EnrollmentTemplate, EnrollmentPolicy, EnrollmentS
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-import cv2
-import pytesseract
 from PIL import Image
 from io import BytesIO
 from pytz import utc
 from datetime import datetime, timedelta, date, time
 from collections import defaultdict
 from django.utils import timezone
-from django.apps import apps
 from calendar import monthrange
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
+import bleach
+ALLOWED_TAGS = [
+    'p', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br', 'span'
+]
+ALLOWED_ATTRIBUTES = {
+    'a': ['href', 'rel', 'target'], 
+    'span': ['style']
+}
+ALLOWED_STYLES = ['font-weight', 'font-style', 'text-decoration']
+
 logger = logging.getLogger(__name__)
 
 def get_user_for_view(request):
@@ -129,6 +133,14 @@ def check_permissions(request, required_permission_id=None):
         return redirect('no_access')
 
     return permissions_context
+
+def sanitize_html(html_content):
+    return bleach.clean(
+        html_content,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRIBUTES,
+        strip=True
+    )
 
 def app_redirect(request):
     permissions_context = check_permissions(request)
@@ -572,6 +584,7 @@ def add_announcement(request):
         recipient_type=recipient_type
     )
     return JsonResponse({'success': True})
+
 @login_required
 def policies(request):
     # Check permissions for the specific page
@@ -637,7 +650,8 @@ def policies(request):
                 if new_title is not None and new_content is not None:
                     try:
                         policy.title = new_title
-                        policy.content = new_content
+                        # Sanitize HTML content before saving
+                        policy.content = sanitize_html(new_content)
                         policy.order = int(new_order) if new_order else 0
                         policy.save()
                         updated_count += 1
@@ -656,6 +670,7 @@ def policies(request):
             else:
                 messages.info(request, 'No changes were made.')
 
+        # In the 'add_policy' action:
         elif action == 'add_policy':
             # Get form data for new policy
             new_title = request.POST.get('new_policy_title')
@@ -679,12 +694,15 @@ def policies(request):
                 
                 next_order = 0 if highest_order is None else highest_order + 1
                 
-                # Create new policy
+                # Sanitize the HTML content before saving
+                sanitized_content = sanitize_html(new_content)
+                
+                # Create new policy with sanitized content
                 EnrollmentPolicy.objects.create(
                     main_user=main_user,
                     template=selected_template,
                     title=new_title,
-                    content=new_content,
+                    content=sanitized_content,
                     order=next_order,
                     is_active=True
                 )

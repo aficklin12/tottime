@@ -689,7 +689,7 @@
         {% for policy in policies %}
             <div class="form-group">
                 <h5><strong>{{ policy.title }}</strong></h5>
-                <p>{{ policy.content }}</p>
+                <p>{{ policy.content|safe }}</p>
             </div>
         {% endfor %}
 
