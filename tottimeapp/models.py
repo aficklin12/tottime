@@ -1020,3 +1020,53 @@ class EnrollmentSubmission(models.Model):
     
     def __str__(self):
         return f"Enrollment: {self.child_first_name} {self.child_last_name} - {self.submitted_at.strftime('%Y-%m-%d')}"
+    
+class OrientationItem(models.Model):
+    """Pre-defined orientation checklist items"""
+    CATEGORY_CHOICES = [
+        ('pre_hire', 'Pre-Hire'),
+        ('week_one', 'Week One'),
+        ('week_two', 'Week Two'),
+        ('week_three', 'Week Three'),
+        ('week_four', 'Week Four'),
+    ]
+    
+    title = models.CharField(max_length=255)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    order = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['category', 'order']
+    
+    def __str__(self):
+        return f"{self.get_category_display()}: {self.title}"
+
+class StaffOrientation(models.Model):
+    """Tracks a staff member's orientation progress"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='staff_orientations')
+    main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='main_user_orientations', null=True)
+    staff_name = models.CharField(max_length=255, default="Unknown Staff")
+    start_date = models.DateField(default=timezone.now)
+    is_completed = models.BooleanField(default=False)
+    completed_date = models.DateField(null=True, blank=True)
+    
+    def __str__(self):
+        status = "Completed" if self.is_completed else "In Progress"
+        return f"Orientation for {self.staff_name} - {status}"
+    
+class OrientationProgress(models.Model):
+    """Individual item progress for a staff orientation"""
+    orientation = models.ForeignKey(StaffOrientation, on_delete=models.CASCADE, related_name='progress_items')
+    item = models.ForeignKey(OrientationItem, on_delete=models.CASCADE)
+    date_covered = models.DateField(null=True, blank=True)
+    date_completed = models.DateField(null=True, blank=True)
+    initialed_text = models.CharField(max_length=10, blank=True, default='')  # New field for storing initials
+    initialed = models.BooleanField(default=False)  # Keep this for backward compatibility
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        unique_together = ('orientation', 'item')
+    
+    def __str__(self):
+        status = "Completed" if self.date_completed else "In Progress"
+        return f"{self.item.title} - {status}"

@@ -175,7 +175,10 @@ urlpatterns = [
     path('switch-account/', login_required(views.switch_account), name='switch_account'),
     path('api/update-shopping-item-status/', views.update_shopping_item_status, name='update_shopping_item_status'),
     path('api/delete-shopping-item/<int:item_id>/', views.delete_shopping_item, name='delete_shopping_item'),
-    path('abc_quality/', login_required(views.abc_quality), name='abc_quality'),
+    path('staff-orientation/', login_required(views.staff_orientation), name='staff_orientation'),
+    path('staff-orientation/start/', login_required(views.start_orientation), name='start_orientation'),
+    path('staff-orientation/update/<int:orientation_id>/<int:progress_id>/', login_required(views.update_progress), name='update_orientation_progress'),
+    path('staff-orientation/delete/<int:orientation_id>/', login_required(views.delete_orientation), name='delete_orientation'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

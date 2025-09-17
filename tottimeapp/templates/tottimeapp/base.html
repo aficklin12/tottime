@@ -93,7 +93,18 @@
             border-color: #007b8a;
             color: #fff;
         }
+.btn-primarytwo {
+            background-color: rgb(57, 189, 180); 
+            border-color: rgb(57, 189, 180);
+            color: rgb(33, 31, 39);
+            font-weight: bold;
+        }
     
+.btn-primarytwo:hover {
+            background-color: #007b8a;
+            border-color: #007b8a;
+            color: #fff;
+        }    
 .navbar-brand img {
     width: 100%; /* Ensure the logo takes up the full width of its container */
     max-width: 200px; /* Set a max-width to control the size of the logo */
@@ -325,7 +336,7 @@
                             </nav>
                         </div>
                         {% endif %}
-                        {% if show_clock_in %}
+                        {% if show_clock_in or show_orientation %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
                             <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> Employees
                             <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
@@ -337,6 +348,9 @@
                                 {% endif %}
                                 {% if show_clock_in %}
                                 <a class="nav-link" href="{% url 'time_sheet' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Sheet</a>
+                                {% endif %}
+                                {% if show_orientation %}
+                                <a class="nav-link" href="{% url 'staff_orientation' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Orientation</a>
                                 {% endif %}
                             </nav>
                         </div>  

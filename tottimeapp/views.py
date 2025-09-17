@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -70,6 +70,7 @@ def check_permissions(request, required_permission_id=None):
         'show_clock_in': False,
         'show_pay_summary': False,
         'show_enrollment': False,
+        'show_orientation': False,
         'total_unread_count': 0,
     }
 
@@ -105,6 +106,7 @@ def check_permissions(request, required_permission_id=None):
             'clock_in': 337,
             'pay_summary': 346,
             'enrollment': 416,
+            'orientation': 450,
         }
 
         for perm_key, perm_id in permissions_ids.items():
@@ -5898,13 +5900,159 @@ def switch_account(request):
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
-@login_required(login_url='/abc_quality/')
-def abc_quality(request):
-   
-    required_permission_id = None 
+@login_required
+def staff_orientation(request):
+    # Check permissions for the specific page
+    required_permission_id = 450  # Permission ID for "billing"
     permissions_context = check_permissions(request, required_permission_id)
-   
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-   
-    return render(request, 'abc_quality.html', permissions_context)
+    
+    # Get the main user
+    main_user = get_user_for_view(request)
+    
+    orientation_items = {}
+    for category, _ in OrientationItem.CATEGORY_CHOICES:
+        orientation_items[category] = OrientationItem.objects.filter(category=category).order_by('order')
+    
+    # Get orientations in progress using main_user instead of request.user
+    orientations = StaffOrientation.objects.filter(
+        main_user=main_user,
+        is_completed=False
+    )
+    
+    context = {
+        'orientation_items': orientation_items,
+        'orientations': orientations,
+        'title': 'Staff Orientation',
+        **permissions_context
+    }
+    
+    return render(request, 'tottimeapp/staff_orientation.html', context)
+
+
+@login_required
+def start_orientation(request):
+    """Start a new orientation using a staff name input"""
+    if request.method == 'POST':
+        try:
+            # Get the main user
+            main_user = get_user_for_view(request)
+            
+            # Properly decode the JSON data
+            data = json.loads(request.body)
+            staff_name = data.get('staff_name', '').strip()
+            
+            if not staff_name:
+                return JsonResponse({'status': 'error', 'message': 'Staff name is required'})
+                
+            # Create a new orientation with staff_name and main_user
+            orientation = StaffOrientation.objects.create(
+                user=request.user,
+                main_user=main_user,
+                staff_name=staff_name,
+                start_date=timezone.now().date()
+            )
+            
+            # Create progress entries for all orientation items
+            items = OrientationItem.objects.all()
+            progress_items = []
+            
+            for item in items:
+                progress_items.append(OrientationProgress(
+                    orientation=orientation,
+                    item=item
+                ))
+            
+            if progress_items:  # Make sure there are items before bulk create
+                OrientationProgress.objects.bulk_create(progress_items)
+            
+            return JsonResponse({'status': 'success', 'orientation_id': orientation.id})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'})
+        except Exception as e:
+            # Log the actual error
+            print(f"Error creating orientation: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': f'Server error: {str(e)}'})
+            
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required
+def update_progress(request, orientation_id, progress_id):
+    """Update an individual progress item"""
+    if request.method == 'POST':
+        # Get the main user
+        main_user = get_user_for_view(request)
+        
+        progress = get_object_or_404(
+            OrientationProgress, 
+            id=progress_id,
+            orientation__id=orientation_id,
+            orientation__main_user=main_user  # Use main_user instead of request.user
+        )
+        
+        date_covered = request.POST.get('date_covered')
+        date_completed = request.POST.get('date_completed')
+        initialed_text = request.POST.get('initialed', '')  # Get the initials text
+        notes = request.POST.get('notes', '')
+        
+        if date_covered:
+            progress.date_covered = date_covered
+        
+        if date_completed:
+            progress.date_completed = date_completed
+            
+        progress.initialed = bool(initialed_text)  # Set to True if initials exist
+        progress.initialed_text = initialed_text   # Store the actual initials
+        progress.notes = notes
+        progress.save()
+        
+        # Check if all items are completed
+        all_completed = not OrientationProgress.objects.filter(
+            orientation__id=orientation_id,
+            date_completed__isnull=True
+        ).exists()
+        
+        if all_completed:
+            orientation = progress.orientation
+            orientation.is_completed = True
+            orientation.completed_date = timezone.now().date()
+            orientation.save()
+        
+        return JsonResponse({'status': 'success'})
+        
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required
+def delete_orientation(request, orientation_id):
+    """Delete an orientation and its related progress items"""
+    if request.method == 'POST':
+        try:
+            # Get the main user
+            main_user = get_user_for_view(request)
+            
+            # Get the orientation and verify ownership using main_user
+            orientation = get_object_or_404(StaffOrientation, id=orientation_id, main_user=main_user)
+            
+            # Store the name for the success message
+            staff_name = orientation.staff_name
+            
+            # Delete the orientation (will cascade delete progress items)
+            orientation.delete()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Orientation for {staff_name} has been deleted'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error deleting orientation: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Invalid request method'
+    })

@@ -1,0 +1,667 @@
+{% extends 'tottimeapp/base.html' %}
+
+{% block title %}Staff Orientation{% endblock %}
+{% block styles %}
+<style>
+    /* Make accordions fill the full width */
+    .accordion {
+        width: 100%;
+    }
+    
+    .accordion-item {
+        width: 100%;
+    }
+    
+    .accordion-button {
+        width: 100%;
+        text-align: left;
+    }
+    
+    .accordion-collapse {
+        width: 100%;
+    }
+    
+    /* Ensure consistent appearance between collapsed/expanded states */
+    .accordion-button.collapsed {
+        width: 100%;
+    }
+    
+    /* Add some padding to ensure text doesn't crowd the edges */
+    .accordion-header {
+        width: 100%;
+    }
+    
+    /* Make tables fill the entire width inside accordion */
+    .table-responsive {
+        width: 100%;
+    }
+    
+    .table {
+        width: 100%;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<h1>30 Day Staff Orientation Plan</h1>
+<div class="container-fluid">
+    
+<!-- Staff Selection and New Orientation -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-user-plus me-1"></i>
+        Start New Orientation
+    </div>
+    <div class="card-body" style="padding-top: 1rem !important; padding-bottom: 1rem !important;">
+        <div class="row" style="margin-top: 0 !important; width: 100% !important; display: flex !important; align-items: flex-end !important;">
+            <div class="col-md-9" style="padding-right: 15px !important; margin-bottom: 0 !important;">
+                <label for="staff-name" class="form-label" style="margin-bottom: 0.5rem !important;">Staff Member Name</label>
+                <input type="text" class="form-control" id="staff-name" placeholder="Enter staff member's full name" style="width: 100% !important;">
+            </div>
+            <div class="col-md-3" style="margin-bottom: 0 !important;">
+                <button type="button" id="start-orientation" class="btn btn-primarytwo" style="width: 100% !important;">Start Orientation</button>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- Orientations in Progress -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-clipboard-list me-1"></i>
+            Orientations in Progress
+        </div>
+        <div class="card-body">
+            {% csrf_token %}
+            {% if orientations %}
+            <div class="accordion" id="orientationAccordion">
+                {% for orientation in orientations %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header position-relative" id="heading{{ orientation.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapse{{ orientation.id }}" aria-expanded="false" 
+                                aria-controls="collapse{{ orientation.id }}">
+                            {{ orientation.staff_name }} - Started {{ orientation.start_date }}
+                        </button>
+                    </h2>
+                    <div id="collapse{{ orientation.id }}" class="accordion-collapse collapse" 
+                         aria-labelledby="heading{{ orientation.id }}" data-bs-parent="#orientationAccordion">
+                        <div class="accordion-body">
+                            <!-- Delete button at the top of the accordion content -->
+                            <div class="mb-3 text-end">
+                                <button class="btn btn-secondary print-orientation me-2" data-orientation-id="{{ orientation.id }}">
+                                    <i class="fas fa-print"></i> Print
+                                </button>
+                                <button class="btn btn-danger delete-orientation" data-orientation-id="{{ orientation.id }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Rest of accordion content -->
+                            <!-- Pre-Hire Section -->
+                            <h3>Pre-Hire</h3>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Task</th>
+                                            <th>Date Covered</th>
+                                            <th>Employee Initials</th>
+                                            <th>Date Completed</th>
+                                            <th>Notes/Comments</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for progress in orientation.progress_items.all %}
+                                        {% if progress.item.category == 'pre_hire' %}
+                                        <tr data-progress-id="{{ progress.id }}" data-orientation-id="{{ orientation.id }}">
+                                            <td>{{ progress.item.title }}</td>
+                                            <td>
+                                                <input type="date" class="form-control date-covered" 
+                                                       value="{{ progress.date_covered|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control initialed" 
+                                                           value="{{ progress.initialed_text|default:'' }}" 
+                                                           placeholder="Click →" readonly>
+                                                    <button class="btn btn-outline-secondary add-initials" type="button">
+                                                        <i class="fas fa-signature"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="date" class="form-control date-completed" 
+                                                       value="{{ progress.date_completed|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control notes" 
+                                                       value="{{ progress.notes }}" />
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Week One Section -->
+                            <h3>Week One</h3>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Task</th>
+                                            <th>Date Covered</th>
+                                            <th>Employee Initials</th>
+                                            <th>Date Completed</th>
+                                            <th>Notes/Comments</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for progress in orientation.progress_items.all %}
+                                        {% if progress.item.category == 'week_one' %}
+                                        <tr data-progress-id="{{ progress.id }}" data-orientation-id="{{ orientation.id }}">
+                                            <td>{{ progress.item.title }}</td>
+                                            <td>
+                                                <input type="date" class="form-control date-covered" 
+                                                       value="{{ progress.date_covered|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control initialed" 
+                                                           value="{{ progress.initialed_text|default:'' }}" 
+                                                           placeholder="Click →" readonly>
+                                                    <button class="btn btn-outline-secondary add-initials" type="button">
+                                                        <i class="fas fa-signature"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="date" class="form-control date-completed" 
+                                                       value="{{ progress.date_completed|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control notes" 
+                                                       value="{{ progress.notes }}" />
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Week Two Section -->
+                            <h3>Week Two</h3>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Task</th>
+                                            <th>Date Covered</th>
+                                            <th>Employee Initials</th>
+                                            <th>Date Completed</th>
+                                            <th>Notes/Comments</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for progress in orientation.progress_items.all %}
+                                        {% if progress.item.category == 'week_two' %}
+                                        <tr data-progress-id="{{ progress.id }}" data-orientation-id="{{ orientation.id }}">
+                                            <td>{{ progress.item.title }}</td>
+                                            <td>
+                                                <input type="date" class="form-control date-covered" 
+                                                       value="{{ progress.date_covered|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control initialed" 
+                                                           value="{{ progress.initialed_text|default:'' }}" 
+                                                           placeholder="Click →" readonly>
+                                                    <button class="btn btn-outline-secondary add-initials" type="button">
+                                                        <i class="fas fa-signature"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="date" class="form-control date-completed" 
+                                                       value="{{ progress.date_completed|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control notes" 
+                                                       value="{{ progress.notes }}" />
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Week Three Section -->
+                            <h3>Week Three</h3>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Task</th>
+                                            <th>Date Covered</th>
+                                            <th>Employee Initials</th>
+                                            <th>Date Completed</th>
+                                            <th>Notes/Comments</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for progress in orientation.progress_items.all %}
+                                        {% if progress.item.category == 'week_three' %}
+                                        <tr data-progress-id="{{ progress.id }}" data-orientation-id="{{ orientation.id }}">
+                                            <td>{{ progress.item.title }}</td>
+                                            <td>
+                                                <input type="date" class="form-control date-covered" 
+                                                       value="{{ progress.date_covered|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control initialed" 
+                                                           value="{{ progress.initialed_text|default:'' }}" 
+                                                           placeholder="Click →" readonly>
+                                                    <button class="btn btn-outline-secondary add-initials" type="button">
+                                                        <i class="fas fa-signature"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="date" class="form-control date-completed" 
+                                                       value="{{ progress.date_completed|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control notes" 
+                                                       value="{{ progress.notes }}" />
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Week Four Section -->
+                            <h3>Week Four</h3>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Task</th>
+                                            <th>Date Covered</th>
+                                            <th>Employee Initials</th>
+                                            <th>Date Completed</th>
+                                            <th>Notes/Comments</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for progress in orientation.progress_items.all %}
+                                        {% if progress.item.category == 'week_four' %}
+                                        <tr data-progress-id="{{ progress.id }}" data-orientation-id="{{ orientation.id }}">
+                                            <td>{{ progress.item.title }}</td>
+                                            <td>
+                                                <input type="date" class="form-control date-covered" 
+                                                       value="{{ progress.date_covered|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control initialed" 
+                                                           value="{{ progress.initialed_text|default:'' }}" 
+                                                           placeholder="Click →" readonly>
+                                                    <button class="btn btn-outline-secondary add-initials" type="button">
+                                                        <i class="fas fa-signature"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="date" class="form-control date-completed" 
+                                                       value="{{ progress.date_completed|date:'Y-m-d' }}" />
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control notes" 
+                                                       value="{{ progress.notes }}" />
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Footer -->
+                            <hr class="my-4">
+                            <div class="text-center fw-bold mt-4 mb-2">
+                                <p class="fst-italic text-muted">
+                                    Orientation plan and procedures for staff development and training. (II.C.9)
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-center">No orientations in progress. Start a new orientation using the form above.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Start new orientation
+    document.getElementById('start-orientation').addEventListener('click', function() {
+        const staffName = document.getElementById('staff-name').value.trim();
+        
+        if (!staffName) {
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Please enter a staff member name');
+            } else {
+                alert('Please enter a staff member name');
+            }
+            return;
+        }
+        
+        // More reliable way to get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('/staff-orientation/start/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                staff_name: staffName
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (typeof toastr !== 'undefined') {
+                    toastr.success('Orientation started successfully');
+                } else {
+                    alert('Orientation started successfully');
+                }
+                window.location.reload();
+            } else {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(data.message || 'An error occurred');
+                } else {
+                    alert(data.message || 'An error occurred');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof toastr !== 'undefined') {
+                toastr.error('An error occurred. Please try again.');
+            } else {
+                alert('An error occurred. Please try again.');
+            }
+        });
+    });
+    
+    // Update progress items
+    document.querySelectorAll('input.date-covered, input.date-completed, input.initialed, input.notes').forEach(input => {
+        input.addEventListener('change', function() {
+            const row = this.closest('tr');
+            const progressId = row.dataset.progressId;
+            const orientationId = row.dataset.orientationId;
+            
+            const dateCovered = row.querySelector('.date-covered').value;
+            const dateCompleted = row.querySelector('.date-completed').value;
+            const initialed = row.querySelector('.initialed').value; // Changed from .checked to .value
+            const notes = row.querySelector('.notes').value;
+            
+            const formData = new FormData();
+            formData.append('date_covered', dateCovered);
+            formData.append('date_completed', dateCompleted);
+            formData.append('initialed', initialed); // This now sends the text value instead of boolean
+            formData.append('notes', notes);
+            
+            const csrfToken = document.querySelector('[name=csrf-token]').getAttribute('content') || 
+                              document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(`/staff-orientation/update/${orientationId}/${progressId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success('Progress updated');
+                    } else {
+                        // Create a temporary feedback message
+                        const feedback = document.createElement('span');
+                        feedback.className = 'text-success ms-2';
+                        feedback.innerHTML = '<i class="fas fa-check"></i> Saved';
+                        this.parentElement.appendChild(feedback);
+                        
+                        setTimeout(() => {
+                            feedback.remove();
+                        }, 2000);
+                    }
+                } else {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error(data.message || 'An error occurred');
+                    } else {
+                        alert(data.message || 'An error occurred');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('An error occurred while saving.');
+                } else {
+                    alert('An error occurred while saving.');
+                }
+            });
+        });
+    });
+    
+    // Delete orientation
+    document.querySelectorAll('.delete-orientation').forEach(button => {
+        button.addEventListener('click', function(event) {
+            // Prevent the click from triggering accordion toggle
+            event.stopPropagation();
+            
+            const orientationId = this.dataset.orientationId;
+            const staffName = this.closest('.accordion-item')
+                                  .querySelector('.accordion-button').textContent.trim().split(' - ')[0];
+            
+            // Confirm deletion
+            if (!confirm(`Are you sure you want to delete the orientation for ${staffName}? This action cannot be undone.`)) {
+                return;
+            }
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(`/staff-orientation/delete/${orientationId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(data.message || 'Orientation deleted successfully');
+                    } else {
+                        alert(data.message || 'Orientation deleted successfully');
+                    }
+                    // Remove the accordion item from the UI
+                    this.closest('.accordion-item').remove();
+                    
+                    // If no orientations left, show the "no orientations" message
+                    if (document.querySelectorAll('.accordion-item').length === 0) {
+                        const noOrientationsMsg = document.createElement('p');
+                        noOrientationsMsg.className = 'text-center';
+                        noOrientationsMsg.textContent = 'No orientations in progress. Start a new orientation using the form above.';
+                        document.getElementById('orientationAccordion').replaceWith(noOrientationsMsg);
+                    }
+                } else {
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error(data.message || 'An error occurred');
+                    } else {
+                        alert(data.message || 'An error occurred');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('An error occurred while deleting the orientation.');
+                } else {
+                    alert('An error occurred while deleting the orientation.');
+                }
+            });
+        });
+    });
+    
+    // Print orientation functionality
+    document.querySelectorAll('.print-orientation').forEach(button => {
+        button.addEventListener('click', function(event) {
+            // Prevent the click from triggering other events
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const orientationId = this.dataset.orientationId;
+            const accordionItem = this.closest('.accordion-item');
+            const staffName = accordionItem.querySelector('.accordion-button').textContent.trim();
+            const accordionBody = accordionItem.querySelector('.accordion-body');
+            
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
+            
+            // Set up the print document
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Orientation for ${staffName}</title>
+                    <meta charset="utf-8">
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            padding: 20px;
+                            max-width: 1200px;
+                            margin: 0 auto;
+                        }
+                        h1 {
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }
+                        h3 {
+                            margin-top: 30px;
+                            border-bottom: 1px solid #ddd;
+                            padding-bottom: 5px;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 20px;
+                        }
+                        th, td {
+                            border: 1px solid #ddd;
+                            padding: 8px;
+                            text-align: left;
+                        }
+                        th {
+                            background-color: #f2f2f2;
+                        }
+                        .print-footer {
+                            text-align: center;
+                            font-style: italic;
+                            margin-top: 30px;
+                            color: #666;
+                        }
+                        .btn, .input-group-text, button {
+                            display: none !important;
+                        }
+                        input, .form-control {
+                            border: none;
+                            padding: 0;
+                            background: transparent;
+                            display: block;
+                            width: 100%;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>30 Day Staff Orientation Plan</h1>
+                    <h2>${staffName}</h2>
+            `);
+            
+            // Clone the content and remove the delete and print buttons
+            const contentToPrint = accordionBody.cloneNode(true);
+            const buttonContainer = contentToPrint.querySelector('.mb-3.text-end');
+            if (buttonContainer) {
+                buttonContainer.remove();
+            }
+            
+            // Append the content
+            printWindow.document.write(contentToPrint.innerHTML);
+            
+            // Close the HTML document
+            printWindow.document.write(`
+                </body>
+                </html>
+            `);
+            
+            // Finish writing to the document and prepare for printing
+            printWindow.document.close();
+            
+            // Wait for content to load before printing
+            printWindow.onload = function() {
+                setTimeout(function() {
+                    printWindow.print();
+                    // Optional: Close the window after printing
+                    // printWindow.close();
+                }, 500);
+            };
+        });
+    });
+    
+    // Function to get initials from a name
+    function getInitials(name) {
+        return name.split(' ')
+            .map(part => part.charAt(0).toUpperCase())
+            .join('');
+    }
+
+    // Add click handlers to all initials buttons
+    document.querySelectorAll('.add-initials').forEach(button => {
+        button.addEventListener('click', function() {
+            // Find the closest accordion item to get the staff name
+            const accordionItem = this.closest('.accordion-item');
+            const staffNameFull = accordionItem.querySelector('.accordion-button').textContent.trim().split(' - ')[0];
+            
+            // Get the initials
+            const initials = getInitials(staffNameFull);
+            
+            // Set the value in the input field
+            const inputField = this.parentElement.querySelector('.initialed');
+            inputField.value = initials;
+            
+            // Trigger the change event to save the data
+            const changeEvent = new Event('change', { bubbles: true });
+            inputField.dispatchEvent(changeEvent);
+        });
+    });
+});
+</script>
+{% endblock %}
