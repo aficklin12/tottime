@@ -1,0 +1,255 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Classroom Score{% endblock %}
+
+{% block content %}
+<h1 class="text-center mb-4">Classroom Score Sheet</h1>
+    
+<div class="container mt-4">
+    
+    <form method="post" action="">
+        {% csrf_token %}
+        
+        <h2>Classroom Information</h2>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="room_name">Room Name:</label>
+                <input type="text" class="form-control" id="room_name" name="room_name" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="age_range">Age Range of Children:</label>
+                <input type="text" class="form-control" id="age_range" name="age_range" required>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="date_of_observation">Date of Observation:</label>
+                <input type="date" class="form-control" id="date_of_observation" name="date_of_observation" required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="time_start">Time Begin:</label>
+                <input type="time" class="form-control" id="time_start" name="time_start" required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="time_end">Time End:</label>
+                <input type="time" class="form-control" id="time_end" name="time_end" required>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="teachers_initials">Teachers' Initials:</label>
+                <input type="text" class="form-control" id="teachers_initials" name="teachers_initials" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="assessor_name">Assessor Name:</label>
+                <input type="text" class="form-control" id="assessor_name" name="assessor_name" required>
+            </div>
+        </div>
+        
+        {% for category in categories %}
+        <h3>STANDARD {{ category.letter }}: {{ category.name|upper }}</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="60%">Criteria</th>
+                    <th width="10%" class="text-center">Points Available</th>
+                    <th width="10%" class="text-center">Points Earned</th>
+                    <th width="20%" class="text-center">Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for criteria in category.criteria.all %}
+                <tr class="criteria-row">
+                    <td>
+                        {{ criteria.order }}. {{ criteria.description }}
+                    </td>
+                    <td class="text-center">
+                        {{ criteria.points_available }}
+                    </td>
+                    <td class="text-center">
+                        <input type="number" class="form-control score-input" 
+                               name="score_{{ criteria.id }}" 
+                               min="0" max="{{ criteria.points_available }}">
+                    </td>
+                    <td>
+                        <input type="text" class="form-control comment-input" 
+                               name="comment_{{ criteria.id }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
+        
+        <h3>CLASSROOM SCORE SUMMARY</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Standard</th>
+                    <th>Points Available</th>
+                    <th>Points Earned</th>
+                    <th>Percentage</th>
+                </tr>
+            </thead>
+            <tbody id="summary-body">
+                {% for category in categories %}
+                <tr data-category="{{ category.id }}">
+                    <td>STANDARD {{ category.letter }}: {{ category.name|upper }}</td>
+                    <td class="available-points">0</td>
+                    <td class="earned-points">0</td>
+                    <td class="category-percentage">0%</td>
+                </tr>
+                {% endfor %}
+                <tr class="table-secondary">
+                    <td><strong>Total:</strong></td>
+                    <td id="total-available">0</td>
+                    <td id="total-earned">0</td>
+                    <td id="total-percentage">0%</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="mt-3">
+            <h4>OVERALL CLASSROOM SCORE: <span id="overall-percentage">0</span>%</h4>
+        </div>
+        
+        <div class="text-center mb-5">
+            <button type="submit" class="btn btn-primary btn-lg">Save Score Sheet</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Store all the criteria by category for easy lookup
+    const categories = {};
+    
+    // Initialize categories structure
+    {% for category in categories %}
+    categories[{{ category.id }}] = {
+        id: {{ category.id }},
+        letter: '{{ category.letter }}',
+        name: '{{ category.name }}',
+        criteria: [],
+        totalAvailable: 0,
+        totalEarned: 0
+    };
+    
+    {% for criteria in category.criteria.all %}
+    categories[{{ category.id }}].criteria.push({
+        id: {{ criteria.id }},
+        points_available: {{ criteria.points_available }},
+        points_earned: 0
+    });
+    categories[{{ category.id }}].totalAvailable += {{ criteria.points_available }};
+    {% endfor %}
+    {% endfor %}
+    
+    // Add event listeners to all score inputs
+    document.querySelectorAll('input[name^="score_"]').forEach(input => {
+        input.addEventListener('input', updateSummary);
+    });
+    
+    // Calculate initial values
+    calculateInitialValues();
+    
+    // Function to update the summary when scores change
+    function updateSummary() {
+        // Reset earned points
+        Object.values(categories).forEach(cat => {
+            cat.totalEarned = 0;
+        });
+        
+        // Collect all current scores
+        document.querySelectorAll('input[name^="score_"]').forEach(input => {
+            const criteriaId = input.name.split('_')[1];
+            const points = parseInt(input.value) || 0;
+            
+            // Find which category this criteria belongs to
+            for (const catId in categories) {
+                const category = categories[catId];
+                const criteria = category.criteria.find(c => c.id == criteriaId);
+                if (criteria) {
+                    criteria.points_earned = points;
+                    category.totalEarned += points;
+                    break;
+                }
+            }
+        });
+        
+        // Update the summary table rows
+        let totalAvailable = 0;
+        let totalEarned = 0;
+        
+        Object.values(categories).forEach(category => {
+            totalAvailable += category.totalAvailable;
+            totalEarned += category.totalEarned;
+            
+            // Update category row in summary table
+            const row = document.querySelector(`tr[data-category="${category.id}"]`);
+            if (row) {
+                const availableCell = row.querySelector('.available-points');
+                const earnedCell = row.querySelector('.earned-points');
+                const percentageCell = row.querySelector('.category-percentage');
+                
+                if (availableCell) availableCell.textContent = category.totalAvailable;
+                if (earnedCell) earnedCell.textContent = category.totalEarned;
+                
+                const percentage = category.totalAvailable > 0 ? 
+                    Math.round((category.totalEarned / category.totalAvailable) * 100) : 0;
+                
+                if (percentageCell) percentageCell.textContent = `${percentage}%`;
+            }
+        });
+        
+        // Update total row
+        const totalAvailableCell = document.getElementById('total-available');
+        const totalEarnedCell = document.getElementById('total-earned');
+        const totalPercentageCell = document.getElementById('total-percentage');
+        const overallPercentageSpan = document.getElementById('overall-percentage');
+        
+        if (totalAvailableCell) totalAvailableCell.textContent = totalAvailable;
+        if (totalEarnedCell) totalEarnedCell.textContent = totalEarned;
+        
+        const overallPercentage = totalAvailable > 0 ? 
+            Math.round((totalEarned / totalAvailable) * 100) : 0;
+        
+        if (totalPercentageCell) totalPercentageCell.textContent = `${overallPercentage}%`;
+        if (overallPercentageSpan) overallPercentageSpan.textContent = overallPercentage;
+    }
+    
+    // Calculate initial available points for each category
+    function calculateInitialValues() {
+        // Update the available points in the summary table
+        Object.values(categories).forEach(category => {
+            const row = document.querySelector(`tr[data-category="${category.id}"]`);
+            if (row) {
+                const availableCell = row.querySelector('.available-points');
+                if (availableCell) {
+                    availableCell.textContent = category.totalAvailable;
+                }
+            }
+        });
+        
+        // Update total available points
+        const totalAvailableCell = document.getElementById('total-available');
+        const totalAvailable = Object.values(categories).reduce(
+            (sum, category) => sum + category.totalAvailable, 0
+        );
+        
+        if (totalAvailableCell) {
+            totalAvailableCell.textContent = totalAvailable;
+        }
+    }
+    
+    // Initialize the summary
+    updateSummary();
+});
+</script>
+{% endblock %}

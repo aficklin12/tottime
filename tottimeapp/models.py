@@ -1070,3 +1070,75 @@ class OrientationProgress(models.Model):
     def __str__(self):
         status = "Completed" if self.date_completed else "In Progress"
         return f"{self.item.title} - {status}"
+    
+class StandardCategory(models.Model):
+    """Model to represent score categories like 'Program Structure', 'Environment', etc."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, 
+                                 related_name='main_user_standard_categories', null=True)
+    name = models.CharField(max_length=255)
+    letter = models.CharField(max_length=1)  # A, B, C, D, etc.
+    description = models.CharField(max_length=255)
+    order = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['order']
+        unique_together = ['user', 'letter']
+        
+    def __str__(self):
+        return f"Standard {self.letter}: {self.name}"
+
+class StandardCriteria(models.Model):
+    """Model for individual criteria items within a standard category"""
+    category = models.ForeignKey(StandardCategory, on_delete=models.CASCADE, related_name='criteria')
+    order = models.PositiveIntegerField(default=0)
+    description = models.TextField()
+    points_available = models.PositiveIntegerField(default=1)
+    
+    class Meta:
+        ordering = ['category', 'order']
+        
+    def __str__(self):
+        return f"{self.category.letter}.{self.order}: {self.description[:50]}..."
+
+class ClassroomScoreSheet(models.Model):
+    """Model for completed classroom evaluations"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, 
+                                 related_name='main_user_score_sheets', null=True)
+    room_name = models.CharField(max_length=255)
+    age_range = models.CharField(max_length=100)
+    date_of_observation = models.DateField()
+    time_start = models.TimeField()
+    time_end = models.TimeField()
+    teachers_initials = models.CharField(max_length=255)
+    assessor_name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Score for {self.room_name} on {self.date_of_observation}"
+    
+    def get_total_score(self):
+        return sum(item.points_earned for item in self.score_items.all())
+    
+    def get_total_available(self):
+        return sum(item.criteria.points_available for item in self.score_items.all())
+    
+    def get_percentage(self):
+        total_available = self.get_total_available()
+        if total_available == 0:
+            return 0
+        return round((self.get_total_score() / total_available) * 100)
+
+class ScoreItem(models.Model):
+    """Individual scores for each criteria"""
+    score_sheet = models.ForeignKey(ClassroomScoreSheet, on_delete=models.CASCADE, related_name='score_items')
+    criteria = models.ForeignKey(StandardCriteria, on_delete=models.CASCADE)
+    points_earned = models.PositiveIntegerField(default=0)
+    comments = models.TextField(blank=True)
+    
+    class Meta:
+        unique_together = ['score_sheet', 'criteria']
+        
+    def __str__(self):
+        return f"Score for {self.criteria} on {self.score_sheet}"

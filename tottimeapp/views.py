@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -6056,3 +6056,134 @@ def delete_orientation(request, orientation_id):
         'status': 'error',
         'message': 'Invalid request method'
     })
+
+@login_required
+def class_score_form(request):
+    """Display and process the classroom score form"""
+    # Check permissions for the specific page
+    required_permission_id = 450  # Permission ID for "billing"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    
+    user = request.user
+    main_user = get_user_for_view(request)
+    
+    # Get all standard categories with their criteria for the appropriate user
+    categories = StandardCategory.objects.filter(main_user=main_user).prefetch_related('criteria')
+    
+    if request.method == 'POST':
+        # Create a new score sheet
+        score_sheet = ClassroomScoreSheet(
+            user=user,
+            main_user=main_user,
+            room_name=request.POST.get('room_name'),
+            age_range=request.POST.get('age_range'),
+            date_of_observation=request.POST.get('date_of_observation'),
+            time_start=request.POST.get('time_start'),
+            time_end=request.POST.get('time_end'),
+            teachers_initials=request.POST.get('teachers_initials'),
+            assessor_name=request.POST.get('assessor_name')
+        )
+        score_sheet.save()
+        
+        # Process each score item
+        for key, value in request.POST.items():
+            if key.startswith('score_'):
+                criteria_id = key.split('_')[1]
+                try:
+                    criteria = StandardCriteria.objects.get(id=criteria_id)
+                    points = int(value) if value else 0
+                    comment = request.POST.get(f'comment_{criteria_id}', '')
+                    
+                    ScoreItem.objects.create(
+                        score_sheet=score_sheet,
+                        criteria=criteria,
+                        points_earned=points,
+                        comments=comment
+                    )
+                except (StandardCriteria.DoesNotExist, ValueError):
+                    continue
+        
+        messages.success(request, "Classroom score sheet saved successfully!")
+        return HttpResponseRedirect(reverse('view_score_sheet', args=[score_sheet.id]))
+    
+    context = {
+        'categories': categories,
+        'title': 'Create Classroom Score Sheet',
+        **permissions_context
+    }
+    
+    return render(request, 'tottimeapp/class_score.html', context)
+
+@login_required
+def view_score_sheet(request, sheet_id):
+    """View a completed score sheet"""
+    # Check permissions for the specific page
+    required_permission_id = 450  # Permission ID for "billing"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    
+    main_user = get_user_for_view(request)
+    score_sheet = get_object_or_404(ClassroomScoreSheet, id=sheet_id, main_user=main_user)
+    score_items = score_sheet.score_items.all().select_related('criteria__category')
+    
+    # Group score items by category
+    categories = defaultdict(list)
+    for item in score_items:
+        categories[item.criteria.category].append(item)
+    
+    # Calculate summary by category
+    summary = []
+    for category, items in categories.items():
+        earned = sum(item.points_earned for item in items)
+        available = sum(item.criteria.points_available for item in items)
+        
+        # Calculate percentage here instead of in the template
+        percentage = 0
+        if available > 0:
+            percentage = round((earned / available) * 100)
+            
+        summary.append({
+            'category': category,
+            'earned': earned,
+            'available': available,
+            'percentage': percentage
+        })
+    
+    context = {
+        'score_sheet': score_sheet,
+        'categories': dict(categories),
+        'summary': summary,
+        'total_earned': score_sheet.get_total_score(),
+        'total_available': score_sheet.get_total_available(),
+        'percentage': score_sheet.get_percentage(),
+        'title': 'Classroom Score Details',
+        **permissions_context
+    }
+    
+    return render(request, 'tottimeapp/view_score_sheet.html', context)
+
+@login_required
+def score_sheet_list(request):
+    """List all score sheets for the user"""
+    # Check permissions for the specific page
+    required_permission_id = 450  # Permission ID for "billing"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    
+    # Get the main user
+    main_user = get_user_for_view(request)
+    
+    # Get sheets for this user
+    sheets = ClassroomScoreSheet.objects.filter(main_user=main_user).order_by('-date_of_observation')
+    
+    context = {
+        'sheets': sheets,
+        'title': 'Classroom Score Sheets',
+        **permissions_context  # Unpack permissions context
+    }
+    
+    return render(request, 'tottimeapp/score_sheet_list.html', context)

@@ -179,6 +179,9 @@ urlpatterns = [
     path('staff-orientation/start/', login_required(views.start_orientation), name='start_orientation'),
     path('staff-orientation/update/<int:orientation_id>/<int:progress_id>/', login_required(views.update_progress), name='update_orientation_progress'),
     path('staff-orientation/delete/<int:orientation_id>/', login_required(views.delete_orientation), name='delete_orientation'),
+    path('class-score/', login_required(views.class_score_form), name='class_score_form'),
+    path('class-score/<int:sheet_id>/', login_required(views.view_score_sheet), name='view_score_sheet'),
+    path('class-score/list/', login_required(views.score_sheet_list), name='score_sheet_list'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

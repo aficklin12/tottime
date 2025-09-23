@@ -1,0 +1,310 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Classroom Score Details{% endblock %}
+
+{% block styles %}
+<style>
+    .section-header {
+        background-color: rgb(57, 189, 180); 
+        border-color: rgb(57, 189, 180);
+        padding: 10px;
+        margin-top: 20px;
+        border-radius: 5px;
+    }
+    .criteria-row {
+        border-bottom: 1px solid #ddd;
+    }
+    .comment-text {
+        font-style: italic;
+        color: #555;
+    }
+    .points-earned {
+        font-weight: bold;
+        text-align: center;
+    }
+    .points-available {
+        text-align: center;
+    }
+    .category-total {
+        background-color: #f8f9fa;
+    }
+    /* Enhanced info table styles */
+    .info-table {
+        width: 100%;
+        border-collapse: collapse;
+        box-shadow: none !important;
+        filter: none !important;
+    }
+    .info-table td {
+        padding: 8px;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    /* Fix for the gap between label and data */
+    .info-table strong {
+        margin-right: 0 !important;
+        padding-right: 0 !important;
+    }
+    /* Updated grid layout with label and value together */
+    .info-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 20px;
+        row-gap: 10px;
+        width: 100%;
+        margin-left: 30px;
+        text-align: left; /* Explicitly set left alignment at all screen sizes */
+    }
+    .info-item {
+        text-align: left; /* Ensure each item is left-aligned */
+    }
+    .info-item strong {
+        font-weight: bold;
+        margin-right: 3px;
+    }
+  .active-tab {
+        background-color: #272630;
+        color: #ffffff;
+        font-weight: bold;
+        cursor: default;
+        border-radius: 10px 10px 0 0; /* Match the curved corners */
+        display: inline-block; /* Make it only as wide as content */
+        padding: 8px 15px; /* Comfortable padding around text */
+        margin-bottom: 0; /* Remove bottom margin as we'll add it to the wrapper */
+        margin-left: 45px;
+    }
+
+
+/* Fix header alignment on small screens */
+@media (max-width: 999px) {
+    .header-wrapper {
+        margin-left: 0!important; /* Reset to align with left edge on small screens */
+    }
+     .active-tab {
+        background-color: #272630;
+        color: #ffffff;
+        font-weight: bold;
+        cursor: default;
+        border-radius: 10px 10px 0 0; /* Match the curved corners */
+        display: inline-block; /* Make it only as wide as content */
+        padding: 8px 15px; /* Comfortable padding around text */
+        margin-bottom: 0; /* Remove bottom margin as we'll add it to the wrapper */
+        margin-left: 0!important; /* Reset to align with left edge on small screens */
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Classroom Score Details</h1>
+   
+<div class="container mt-4">
+    <div>
+        <a href="{% url 'score_sheet_list' %}" class="btn btn-primarytwo" style="margin-bottom: 1rem;">View All Score Sheets</a>
+        <a href="#" class="btn btn-secondary" style="margin-bottom: 1rem;" onclick="printScoreDetails(); return false;">Print</a>
+    </div>
+
+    <div class="mb-4">
+        <!-- Grid with label and value in the same cell -->
+        <div class="info-container">
+            <div class="info-item"><strong>Room Name:</strong> {{ score_sheet.room_name }}</div>
+            <div class="info-item"><strong>Age Range:</strong> {{ score_sheet.age_range }}</div>
+            
+            <div class="info-item"><strong>Date of Observation:</strong> {{ score_sheet.date_of_observation }}</div>
+            <div class="info-item"><strong>Time:</strong> {{ score_sheet.time_start }} to {{ score_sheet.time_end }}</div>
+            
+            <div class="info-item"><strong>Assessor:</strong> {{ score_sheet.assessor_name }}</div>
+            <div class="info-item"><strong>Teachers' Initials:</strong> {{ score_sheet.teachers_initials }}</div>
+        </div>
+    </div>
+
+    <!-- Score details by category -->
+    {% for category, items in categories.items %}
+    <div class="mb-4">
+        <!-- Wrap in a div for margin control -->
+        <div class="header-wrapper">
+            <div class="active-tab">STANDARD {{ category.letter }}: {{ category.name|upper }}</div>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th width="60%">Criteria</th>
+                    <th width="10%" class="text-center">Points Available</th>
+                    <th width="10%" class="text-center">Points Earned</th>
+                    <th width="20%">Comments</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr class="criteria-row">
+                    <td>
+                        {{ item.criteria.order }}. {{ item.criteria.description }}
+                    </td>
+                    <td class="points-available">
+                        {{ item.criteria.points_available }}
+                    </td>
+                    <td class="points-earned">
+                        {{ item.points_earned }}
+                    </td>
+                    <td class="comment-text">
+                        {{ item.comments }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+    
+    <!-- Summary Table -->
+    <div class="mb-4">
+        <div class="active-tab">CLASSROOM SCORE SUMMARY</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Standard</th>
+                    <th>Points Available</th>
+                    <th>Points Earned</th>
+                    <th>Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in summary %}
+                <tr>
+                    <td>STANDARD {{ item.category.letter }}: {{ item.category.name|upper }}</td>
+                    <td>{{ item.available }}</td>
+                    <td>{{ item.earned }}</td>
+                    <td>{{ item.percentage }}%</td>
+                </tr>
+                {% endfor %}
+                <tr class="table-secondary">
+                    <td><strong>Total:</strong></td>
+                    <td><strong>{{ total_available }}</strong></td>
+                    <td><strong>{{ total_earned }}</strong></td>
+                    <td><strong>{{ percentage }}%</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="mt-3 text-center">
+            <h2>OVERALL CLASSROOM SCORE: {{ percentage }}%</h2>
+        </div>
+    </div>
+</div>
+
+<script>
+function printScoreDetails() {
+    // Open a new window
+    const printWindow = window.open('', '_blank');
+    
+    // Write the print-friendly content
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Classroom Score Details - {{ score_sheet.room_name }}</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .section-header { background-color: rgb(57, 189, 180); color: white; padding: 8px; margin-top: 20px; }
+                .comment-text { font-style: italic; color: #555; }
+                .points-earned { font-weight: bold; text-align: center; }
+                .points-available { text-align: center; }
+                h1, h2, h3 { margin-top: 20px; }
+                .text-center { text-align: center; }
+                @media print {
+                    @page { margin: 0.5cm; }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Classroom Score Details</h1>
+            
+            <div>
+                <p><strong>Room Name:</strong> {{ score_sheet.room_name }}</p>
+                <p><strong>Age Range:</strong> {{ score_sheet.age_range }}</p>
+                <p><strong>Date of Observation:</strong> {{ score_sheet.date_of_observation }}</p>
+                <p><strong>Time:</strong> {{ score_sheet.time_start }} to {{ score_sheet.time_end }}</p>
+                <p><strong>Assessor:</strong> {{ score_sheet.assessor_name }}</p>
+                <p><strong>Teachers' Initials:</strong> {{ score_sheet.teachers_initials }}</p>
+            </div>
+            
+            {% for category, items in categories.items %}
+            <div>
+                <div class="active-tab">STANDARD {{ category.letter }}: {{ category.name|upper }}</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="60%">Criteria</th>
+                            <th width="10%">Points Available</th>
+                            <th width="10%">Points Earned</th>
+                            <th width="20%">Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.criteria.order }}. {{ item.criteria.description }}</td>
+                            <td class="points-available">{{ item.criteria.points_available }}</td>
+                            <td class="points-earned">{{ item.points_earned }}</td>
+                            <td class="comment-text">{{ item.comments }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+            
+            <div>
+                <div class="active-tab">CLASSROOM SCORE SUMMARY</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Standard</th>
+                            <th>Points Available</th>
+                            <th>Points Earned</th>
+                            <th>Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary %}
+                        <tr>
+                            <td>STANDARD {{ item.category.letter }}: {{ item.category.name|upper }}</td>
+                            <td>{{ item.available }}</td>
+                            <td>{{ item.earned }}</td>
+                            <td>{{ item.percentage }}%</td>
+                        </tr>
+                        {% endfor %}
+                        <tr style="background-color: #f2f2f2;">
+                            <td><strong>Total:</strong></td>
+                            <td><strong>{{ total_available }}</strong></td>
+                            <td><strong>{{ total_earned }}</strong></td>
+                            <td><strong>{{ percentage }}%</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h2 class="text-center">OVERALL CLASSROOM SCORE: {{ percentage }}%</h2>
+            </div>
+        </body>
+        </html>
+    `);
+    
+    // Close the document
+    printWindow.document.close();
+    
+    // Wait for content to load then print
+    printWindow.onload = function() {
+        printWindow.focus();
+        printWindow.print();
+    };
+}
+</script>
+</div>
+{% endblock %}

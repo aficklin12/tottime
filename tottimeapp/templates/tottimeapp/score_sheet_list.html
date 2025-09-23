@@ -1,0 +1,66 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+{% block title %}Classroom Score Sheets{% endblock %}
+
+{% block styles %}
+<style>
+    .sheet-table {
+        width: 100%;
+    }
+    .sheet-table th {
+        background-color: #f2f2f2;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+ <h1>Classroom Score Sheets</h1>
+    
+<div class="container mt-4">
+   <a href="{% url 'class_score_form' %}" class="btn btn-primarytwo" style="margin-bottom: 1rem; margin-left:27px;">Create New</a>
+
+    {% if sheets %}
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Age Range</th>
+                    <th>Date</th>
+                    <th>Assessor</th>
+                    <th>Score</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sheet in sheets %}
+                <tr>
+                    <td>{{ sheet.room_name }}</td>
+                    <td>{{ sheet.age_range }}</td>
+                    <td>{{ sheet.date_of_observation|date:"m/d/y" }}</td>
+                    <td>{{ sheet.assessor_name }}</td>
+                    <td>{{ item.percentage }}%</td>
+                    <td>
+                        <a href="{% url 'view_score_sheet' sheet.id %}" class="btn btn-primarytwo">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No score sheets have been created yet. Click the "Create New" button to get started.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
