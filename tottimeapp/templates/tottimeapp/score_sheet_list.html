@@ -34,9 +34,8 @@
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Age Range</th>
                     <th>Date</th>
-                    <th>Assessor</th>
+                    <th>Teacher</th>
                     <th>Score</th>
                     <th>Actions</th>
                 </tr>
@@ -45,10 +44,9 @@
                 {% for sheet in sheets %}
                 <tr>
                     <td>{{ sheet.room_name }}</td>
-                    <td>{{ sheet.age_range }}</td>
                     <td>{{ sheet.date_of_observation|date:"m/d/y" }}</td>
-                    <td>{{ sheet.assessor_name }}</td>
-                    <td>{{ item.percentage }}%</td>
+                    <td>{{ sheet.teachers_initials }}</td>
+                    <td>{{ sheet.get_percentage }}%</td>
                     <td>
                         <a href="{% url 'view_score_sheet' sheet.id %}" class="btn btn-primarytwo">View</a>
                     </td>

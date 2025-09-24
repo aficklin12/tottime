@@ -3,7 +3,39 @@
 {% load custom_filters %}
 {% load dict_extras %}
 {% block title %}Classroom Score{% endblock %}
-
+{% block styles %}
+<style>
+.active-tab {
+        background-color: #272630;
+        color: #ffffff;
+        font-weight: bold;
+        cursor: default;
+        border-radius: 10px 10px 0 0; /* Match the curved corners */
+        display: inline-block; /* Make it only as wide as content */
+        padding: 8px 15px; /* Comfortable padding around text */
+        margin-bottom: 0; /* Remove bottom margin as we'll add it to the wrapper */
+        margin-left: 45px;
+        margin-top: 20px;
+    }
+    /* Fix header alignment on small screens */
+@media (max-width: 999px) {
+    .header-wrapper {
+        margin-left: 0!important; /* Reset to align with left edge on small screens */
+    }
+     .active-tab {
+        background-color: #272630;
+        color: #ffffff;
+        font-weight: bold;
+        cursor: default;
+        border-radius: 10px 10px 0 0; /* Match the curved corners */
+        display: inline-block; /* Make it only as wide as content */
+        padding: 8px 15px; /* Comfortable padding around text */
+        margin-bottom: 0; /* Remove bottom margin as we'll add it to the wrapper */
+        margin-left: 0!important; /* Reset to align with left edge on small screens */
+    }
+}
+</style>
+{% endblock %}
 {% block content %}
 <h1 class="text-center mb-4">Classroom Score Sheet</h1>
     
@@ -11,8 +43,6 @@
     
     <form method="post" action="">
         {% csrf_token %}
-        
-        <h2>Classroom Information</h2>
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="room_name">Room Name:</label>
@@ -41,7 +71,7 @@
         
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label for="teachers_initials">Teachers' Initials:</label>
+                <label for="teachers_initials">Teacher's Name:</label>
                 <input type="text" class="form-control" id="teachers_initials" name="teachers_initials" required>
             </div>
             <div class="col-md-6 mb-3">
@@ -51,7 +81,7 @@
         </div>
         
         {% for category in categories %}
-        <h3>STANDARD {{ category.letter }}: {{ category.name|upper }}</h3>
+        <div class="active-tab">STANDARD {{ category.letter }}: {{ category.name|upper }}</div>
         <table>
             <thead>
                 <tr>
@@ -84,8 +114,8 @@
             </tbody>
         </table>
         {% endfor %}
+         <div class="active-tab">CLASSROOM SCORE SUMMARY</div>
         
-        <h3>CLASSROOM SCORE SUMMARY</h3>
         <table>
             <thead>
                 <tr>
