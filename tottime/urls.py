@@ -188,7 +188,7 @@ urlpatterns = [
     path('resources/delete/<int:resource_id>/', login_required(views.delete_resource), name='delete_resource'),
     path('resource/sign/<uuid:uuid>/', views.public_resource_signature, name='public_resource_signature'),
     path('resource/confirmation/<uuid:uuid>/', views.signature_confirmation, name='signature_confirmation'),
-
+    path('resources/send-signature-request/', views.send_signature_request, name='send_signature_request'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

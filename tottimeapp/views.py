@@ -13,6 +13,7 @@ from django.utils.timezone import now
 from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
+from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
 from .models import Classroom, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
@@ -6370,3 +6371,66 @@ def signature_confirmation(request, uuid):
     return render(request, 'tottimeapp/signature_confirmation.html', {
         'resource': resource
     })
+
+@login_required
+def send_signature_request(request):
+    """Handle sending signature request emails"""
+    if request.method == 'POST':
+        resource_id = request.POST.get('resource_id')
+        recipient_email = request.POST.get('recipient_email')
+        email_message = request.POST.get('email_message', '')
+        
+        try:
+            # Get the resource
+            resource = get_object_or_404(Resource, pk=resource_id)
+            
+            # Build the signature URL
+            current_site = get_current_site(request)
+            signature_url = f"https://{current_site.domain}{reverse('public_resource_signature', kwargs={'uuid': resource.share_uuid})}"
+            
+            # Create email content
+            subject = f"Signature Request: {resource.title}"
+            
+            message = f"""
+Hello,
+
+You have received a signature request for the document: {resource.title}
+
+Please review and sign the document by clicking the link below:
+{signature_url}
+
+"""
+            if email_message:
+                message += f"\nMessage from sender:\n{email_message}\n"
+                
+            message += f"\nRegards,\n{request.user.get_full_name() or request.user.username}"
+            
+            # Use the most basic form of send_mail to avoid SSL/TLS issues
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            from django.conf import settings
+            
+            msg = MIMEMultipart()
+            msg['From'] = settings.EMAIL_HOST_USER
+            msg['To'] = recipient_email
+            msg['Subject'] = subject
+            msg.attach(MIMEText(message, 'plain'))
+            
+            # Connect to SMTP server directly
+            server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
+            server.ehlo()
+            server.starttls()  # No parameters that could cause issues
+            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
+            server.send_message(msg)
+            server.quit()
+            
+            return JsonResponse({'success': True})
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(error_details)  # Log the full error for debugging
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})

@@ -55,7 +55,7 @@
                 <label for="resourceFile">PDF File (Max 10MB)</label>
                 <input type="file" class="form-control" id="resourceFile" name="file" accept="application/pdf" required>
             </div>
-            <button type="submit" class="btn btn-primary">Upload</button>
+            <button type="submit" class="btn btn-primarytwo">Upload</button>
         </form>
     </div>
 
@@ -79,6 +79,9 @@
                         <p class="card-text"><small class="text-muted">Date: {{ resource.uploaded_at|date:"F j, Y" }}</small></p>
                         <div class="resource-actions mt-auto">
                             <a href="{% url 'view_resource' resource.id %}" class="btn btn-primarytwo btn-sm" target="_blank">View</a>
+                            <button class="btn btn-info btn-sm request-signature" data-bs-toggle="modal" 
+                                    data-bs-target="#signatureRequestModal" data-resource-id="{{ resource.id }}" 
+                                    data-resource-title="{{ resource.title }}">Request Signature</button>
                             {% if resource.user == request.user or request.user.is_account_owner %}
                             <a href="{% url 'delete_resource' resource.id %}" class="btn btn-danger btn-sm delete-resource">Delete</a>
                             {% endif %}
@@ -110,6 +113,37 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <a href="#" class="btn btn-danger" id="confirmDelete">Delete</a>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Signature Request Modal -->
+<div class="modal fade" id="signatureRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Request Signature</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="signatureRequestForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="resource_id" name="resource_id">
+                    <p>Send a signature request for document: <strong id="resourceTitle"></strong></p>
+                    <div class="mb-3">
+                        <label for="recipient_email" class="form-label">Recipient Email</label>
+                        <input type="email" class="form-control" id="recipient_email" name="recipient_email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email_message" class="form-label">Message (Optional)</label>
+                        <textarea class="form-control" id="email_message" name="email_message" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send Request</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -166,6 +200,60 @@
                 e.preventDefault();
                 confirmDeleteBtn.href = this.getAttribute('href');
                 modal.show();
+            });
+        });
+        
+        // Signature request
+        const signatureRequestButtons = document.querySelectorAll('.request-signature');
+        const signatureModal = document.getElementById('signatureRequestModal');
+        const resourceIdInput = document.getElementById('resource_id');
+        const resourceTitleSpan = document.getElementById('resourceTitle');
+        
+        signatureRequestButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                resourceIdInput.value = this.dataset.resourceId;
+                resourceTitleSpan.textContent = this.dataset.resourceTitle;
+            });
+        });
+        
+        // Handle signature request form submission
+        document.getElementById('signatureRequestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Sending...';
+            
+            fetch('{% url "send_signature_request" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset form and close modal
+                if (data.success) {
+                    alert('Signature request sent successfully!');
+                    this.reset();
+                    bootstrap.Modal.getInstance(signatureModal).hide();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('An error occurred while sending the request.');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             });
         });
     });
