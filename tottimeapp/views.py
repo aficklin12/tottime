@@ -6191,13 +6191,19 @@ def score_sheet_list(request):
 @login_required
 def resources(request):
     """View to display all resources available to the user"""
+    # Check permissions for the specific page
+    required_permission_id = 450  # Permission ID for "orientation"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    
     user = get_user_for_view(request)
     
     # Get resources that belong to the user directly
     own_resources = Resource.objects.filter(user=request.user)
     
-    # Get resources shared with the user (public resources from other users)
-    public_resources = Resource.objects.filter(is_public=True).exclude(user=request.user)
+    # Get resources from other users (all are public now)
+    other_resources = Resource.objects.exclude(user=request.user)
     
     # If the user is an account owner, include resources from linked users
     if hasattr(request.user, 'is_account_owner') and request.user.is_account_owner:
@@ -6206,11 +6212,14 @@ def resources(request):
         own_resources = own_resources | linked_resources
     
     # Combine and order resources
-    resources = (own_resources | public_resources).distinct().order_by('-uploaded_at')
+    resources = (own_resources | other_resources).distinct().order_by('-uploaded_at')
     
-    return render(request, 'tottimeapp/resources.html', {
+    context = {
         'resources': resources,
-    })
+        **permissions_context  # Unpack permissions context
+    }
+    
+    return render(request, 'tottimeapp/resources.html', context)
 
 @login_required
 def upload_resource(request):
@@ -6219,7 +6228,6 @@ def upload_resource(request):
         title = request.POST.get('title')
         description = request.POST.get('description', '')
         file = request.FILES.get('file')
-        is_public = request.POST.get('is_public') == 'on'
         
         if not file:
             messages.error(request, 'No file was uploaded!')
@@ -6246,8 +6254,8 @@ def upload_resource(request):
             main_user=main_user,
             title=title,
             description=description,
-            file=file,
-            is_public=is_public
+            file=file
+            # Removed is_public field
         )
         resource.save()
         

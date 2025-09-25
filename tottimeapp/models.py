@@ -1152,7 +1152,6 @@ class Resource(models.Model):
     description = models.TextField(blank=True, null=True)
     file = models.FileField(upload_to='resources/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    is_public = models.BooleanField(default=False, help_text="Make resource visible to all users")
     
     def __str__(self):
         return self.title

@@ -55,40 +55,20 @@
                 <label for="resourceFile">PDF File (Max 10MB)</label>
                 <input type="file" class="form-control" id="resourceFile" name="file" accept="application/pdf" required>
             </div>
-            {% if request.user.is_account_owner %}
-            <div class="form-check mb-3">
-                <input type="checkbox" class="form-check-input" id="isPublic" name="is_public">
-                <label class="form-check-label" for="isPublic">Make resource available to all users</label>
-            </div>
-            {% endif %}
             <button type="submit" class="btn btn-primary">Upload</button>
         </form>
     </div>
-    
-    <!-- Filter Options -->
-    <div class="mb-4">
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-primary active filter-btn" data-filter="all">All</button>
-            <button type="button" class="btn btn-outline-primary filter-btn" data-filter="my">My Resources</button>
-            {% if request.user.is_account_owner %}
-            <button type="button" class="btn btn-outline-primary filter-btn" data-filter="public">Public Resources</button>
-            {% endif %}
-        </div>
-    </div>
-    
+
     <!-- Resources List -->
     <div class="row" id="resourcesContainer">
         {% if resources %}
             {% for resource in resources %}
             <div class="col-md-4 mb-4 resource-item" 
-                 data-owner="{% if resource.user == request.user %}my{% else %}other{% endif %}" 
-                 data-public="{{ resource.is_public|yesno:'public,private' }}">
+                 data-owner="{% if resource.user == request.user %}my{% else %}other{% endif %}">
                 <div class="card resource-card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">{{ resource.title }}</h5>
-                        <span class="badge {% if resource.is_public %}bg-success{% else %}bg-secondary{% endif %}">
-                            {% if resource.is_public %}Public{% else %}Private{% endif %}
-                        </span>
+                        <!-- Removed public/private badge -->
                     </div>
                     <div class="card-body d-flex flex-column">
                         <div class="pdf-preview mb-3 text-center">
@@ -98,7 +78,7 @@
                         <p class="card-text"><small class="text-muted">Uploaded by: {{ resource.user.first_name }} {{ resource.user.last_name }}</small></p>
                         <p class="card-text"><small class="text-muted">Date: {{ resource.uploaded_at|date:"F j, Y" }}</small></p>
                         <div class="resource-actions mt-auto">
-                            <a href="{% url 'view_resource' resource.id %}" class="btn btn-primary btn-sm" target="_blank">View</a>
+                            <a href="{% url 'view_resource' resource.id %}" class="btn btn-primarytwo btn-sm" target="_blank">View</a>
                             {% if resource.user == request.user or request.user.is_account_owner %}
                             <a href="{% url 'delete_resource' resource.id %}" class="btn btn-danger btn-sm delete-resource">Delete</a>
                             {% endif %}
@@ -170,9 +150,8 @@
                         resource.style.display = 'block';
                     } else if (filter === 'my') {
                         resource.style.display = resource.dataset.owner === 'my' ? 'block' : 'none';
-                    } else if (filter === 'public') {
-                        resource.style.display = resource.dataset.public === 'public' ? 'block' : 'none';
-                    }
+                    } 
+                    // Removed 'public' filter option since all resources are public now
                 });
             });
         });
