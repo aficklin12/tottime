@@ -1152,9 +1152,23 @@ class Resource(models.Model):
     description = models.TextField(blank=True, null=True)
     file = models.FileField(upload_to='resources/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    share_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)  # Add this field
     
     def __str__(self):
         return self.title
     
     def filename(self):
         return os.path.basename(self.file.name)
+
+# New model for signatures
+class ResourceSignature(models.Model):
+    """Model for storing signatures for resources"""
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='signatures')
+    signer_name = models.CharField(max_length=255)
+    signer_email = models.EmailField()
+    signature_data = models.TextField()  # Base64 encoded signature image
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    signed_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Signature by {self.signer_name} for {self.resource.title}"

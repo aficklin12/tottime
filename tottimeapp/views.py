@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -6249,13 +6249,14 @@ def upload_resource(request):
             main_user = request.user.main_account_owner
             
         # Create resource
+        import uuid  # Add this import if it's not already at the top of your file
         resource = Resource(
             user=request.user,
             main_user=main_user,
             title=title,
             description=description,
-            file=file
-            # Removed is_public field
+            file=file,
+            share_uuid=uuid.uuid4()  # Explicitly set the UUID
         )
         resource.save()
         
@@ -6319,3 +6320,53 @@ def delete_resource(request, resource_id):
     except Resource.DoesNotExist:
         messages.error(request, "Resource not found.")
         return redirect('resources')
+    
+def public_resource_signature(request, uuid):
+    """View for public users to view and sign a resource"""
+    # Get the resource using the UUID
+    resource = get_object_or_404(Resource, share_uuid=uuid)
+    
+    if request.method == 'POST':
+        # Handle form submission
+        signature_data = request.POST.get('signature_data')
+        signer_name = request.POST.get('signer_name')
+        signer_email = request.POST.get('signer_email')
+        
+        # Get client IP
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip_address = x_forwarded_for.split(',')[0]
+        else:
+            ip_address = request.META.get('REMOTE_ADDR')
+        
+        # Create signature record
+        signature = ResourceSignature(
+            resource=resource,
+            signature_data=signature_data,
+            signer_name=signer_name,
+            signer_email=signer_email,
+            ip_address=ip_address
+        )
+        signature.save()
+        
+        # Redirect to the confirmation page
+        return redirect(reverse('signature_confirmation', kwargs={'uuid': uuid}))
+    
+    # Display the signature page with the resource
+    return render(request, 'tottimeapp/public_pdf.html', {
+        'resource': resource
+    })
+
+def signature_confirmation(request, uuid):
+    """
+    View for displaying a confirmation page after a user has signed a resource.
+    """
+    # Get the resource using the UUID
+    resource = get_object_or_404(Resource, share_uuid=uuid)
+    
+    # You can also fetch the latest signature for this resource if needed
+    # latest_signature = ResourceSignature.objects.filter(resource=resource).order_by('-signed_at').first()
+    
+    return render(request, 'tottimeapp/signature_confirmation.html', {
+        'resource': resource
+    })
