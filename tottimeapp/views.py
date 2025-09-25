@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -6187,3 +6187,127 @@ def score_sheet_list(request):
     }
     
     return render(request, 'tottimeapp/score_sheet_list.html', context)
+
+@login_required
+def resources(request):
+    """View to display all resources available to the user"""
+    user = get_user_for_view(request)
+    
+    # Get resources that belong to the user directly
+    own_resources = Resource.objects.filter(user=request.user)
+    
+    # Get resources shared with the user (public resources from other users)
+    public_resources = Resource.objects.filter(is_public=True).exclude(user=request.user)
+    
+    # If the user is an account owner, include resources from linked users
+    if hasattr(request.user, 'is_account_owner') and request.user.is_account_owner:
+        linked_users = MainUser.objects.filter(main_account_owner=request.user)
+        linked_resources = Resource.objects.filter(user__in=linked_users)
+        own_resources = own_resources | linked_resources
+    
+    # Combine and order resources
+    resources = (own_resources | public_resources).distinct().order_by('-uploaded_at')
+    
+    return render(request, 'tottimeapp/resources.html', {
+        'resources': resources,
+    })
+
+@login_required
+def upload_resource(request):
+    """Handle resource upload"""
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description', '')
+        file = request.FILES.get('file')
+        is_public = request.POST.get('is_public') == 'on'
+        
+        if not file:
+            messages.error(request, 'No file was uploaded!')
+            return redirect('resources')
+        
+        # Check if file is PDF
+        if not file.name.endswith('.pdf'):
+            messages.error(request, 'Only PDF files are allowed!')
+            return redirect('resources')
+            
+        # Check file size (limit to 10MB)
+        if file.size > 10 * 1024 * 1024:
+            messages.error(request, 'File size too large! Maximum size is 10MB.')
+            return redirect('resources')
+        
+        # Determine the main user for account owners
+        main_user = request.user
+        if not request.user.is_account_owner and request.user.main_account_owner:
+            main_user = request.user.main_account_owner
+            
+        # Create resource
+        resource = Resource(
+            user=request.user,
+            main_user=main_user,
+            title=title,
+            description=description,
+            file=file,
+            is_public=is_public
+        )
+        resource.save()
+        
+        messages.success(request, f'Resource "{title}" uploaded successfully!')
+        return redirect('resources')
+        
+    return redirect('resources')
+
+@login_required
+def view_resource(request, resource_id):
+    """View for displaying a resource"""
+    try:
+        resource = Resource.objects.get(pk=resource_id)
+        
+        # Security check - only allow access if:
+        # 1. User owns the resource
+        # 2. Resource is public
+        # 3. User is account owner and resource belongs to linked user
+        can_access = (
+            resource.user == request.user or 
+            resource.is_public or
+            (request.user.is_account_owner and resource.user.main_account_owner == request.user)
+        )
+        
+        if not can_access:
+            messages.error(request, "You don't have permission to access this resource.")
+            return redirect('resources')
+            
+        # Redirect to the file on S3
+        return redirect(resource.file.url)
+        
+    except Resource.DoesNotExist:
+        messages.error(request, "Resource not found.")
+        return redirect('resources')
+
+@login_required
+def delete_resource(request, resource_id):
+    """Delete a resource"""
+    try:
+        resource = Resource.objects.get(pk=resource_id)
+        
+        # Security check - only allow deletion if:
+        # 1. User owns the resource
+        # 2. User is the account owner and resource belongs to linked user
+        can_delete = (
+            resource.user == request.user or 
+            (request.user.is_account_owner and resource.user.main_account_owner == request.user)
+        )
+        
+        if not can_delete:
+            messages.error(request, "You don't have permission to delete this resource.")
+            return redirect('resources')
+            
+        title = resource.title
+        resource.file.delete(save=False)  # Delete the file from S3
+        resource.delete()  # Delete the database record
+        
+        messages.success(request, f'Resource "{title}" deleted successfully.')
+        return redirect('resources')
+        
+    except Resource.DoesNotExist:
+        messages.error(request, "Resource not found.")
+        return redirect('resources')

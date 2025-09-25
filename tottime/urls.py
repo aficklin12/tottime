@@ -182,6 +182,10 @@ urlpatterns = [
     path('class-score/', login_required(views.class_score_form), name='class_score_form'),
     path('class-score/<int:sheet_id>/', login_required(views.view_score_sheet), name='view_score_sheet'),
     path('class-score/list/', login_required(views.score_sheet_list), name='score_sheet_list'),
+    path('resources/', login_required(views.resources), name='resources'),
+    path('resources/upload/', login_required(views.upload_resource), name='upload_resource'),
+    path('resources/view/<int:resource_id>/', login_required(views.view_resource), name='view_resource'),
+    path('resources/delete/<int:resource_id>/', login_required(views.delete_resource), name='delete_resource'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

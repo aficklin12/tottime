@@ -1142,3 +1142,20 @@ class ScoreItem(models.Model):
         
     def __str__(self):
         return f"Score for {self.criteria} on {self.score_sheet}"
+    
+class Resource(models.Model):
+    """Model for storing uploaded PDF resources"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, 
+                                 related_name='main_user_resources', null=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    file = models.FileField(upload_to='resources/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    is_public = models.BooleanField(default=False, help_text="Make resource visible to all users")
+    
+    def __str__(self):
+        return self.title
+    
+    def filename(self):
+        return os.path.basename(self.file.name)
