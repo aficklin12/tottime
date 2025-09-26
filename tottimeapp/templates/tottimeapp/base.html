@@ -355,6 +355,9 @@
                                 {% if show_orientation %}
                                 <a class="nav-link" href="{% url 'score_sheet_list' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Classroom Score</a>
                                 {% endif %}
+                                {% if show_orientation %}
+                                <a class="nav-link" href="{% url 'resources' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Resources</a>
+                                {% endif %}
                             </nav>
                         </div>  
                         {% endif %}
