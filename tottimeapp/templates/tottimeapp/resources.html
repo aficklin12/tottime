@@ -7,7 +7,7 @@
 <style>
     .resource-card {
         margin-bottom: 20px;
-        transition: transform 0.2s;
+        transition: transform 0.2s, height 0.3s ease;
         height: 100%;
     }
     .resource-card:hover {
@@ -28,8 +28,22 @@
         overflow: hidden;
     }
     .resource-description {
-        height: 60px;
+        position: relative;
         overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    .description-collapsed {
+        max-height: 60px;  /* Initial collapsed height */
+    }
+    .description-expanded {
+        max-height: 500px;  /* Large enough to fit most descriptions */
+    }
+    .show-more-btn {
+        cursor: pointer;
+        color: #0275d8;
+        margin-top: 5px;
+        font-size: 0.85rem;
+        display: none;  /* Initially hidden, will show via JS if needed */
     }
 </style>
 {% endblock %}
@@ -58,7 +72,12 @@
                         <!-- Removed public/private badge -->
                     </div>
                     <div class="card-body d-flex flex-column">
-                        <p class="card-text resource-description">{{ resource.description|default:"No description provided." }}</p>
+                        <div class="description-container">
+                            <p class="card-text resource-description description-collapsed" id="desc-{{ resource.id }}">
+                                {{ resource.description|default:"No description provided." }}
+                            </p>
+                            <span class="show-more-btn" id="toggle-{{ resource.id }}" data-target="desc-{{ resource.id }}">Show more</span>
+                        </div>
                         <div class="resource-actions mt-auto">
                             <a href="{% url 'view_resource' resource.id %}" class="btn btn-primarytwo btn-sm" target="_blank">View</a>
                             <button class="btn btn-info btn-sm request-signature" data-bs-toggle="modal" 
@@ -290,6 +309,35 @@
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             });
+        });
+        
+        // Handle dynamic description heights
+        document.querySelectorAll('.resource-description').forEach(desc => {
+            const scrollHeight = desc.scrollHeight;
+            const clientHeight = desc.clientHeight;
+            
+            // If content is taller than the container
+            if (scrollHeight > clientHeight) {
+                const toggleBtn = document.getElementById('toggle-' + desc.id.split('-')[1]);
+                toggleBtn.style.display = 'block';
+                
+                toggleBtn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const target = document.getElementById(targetId);
+                    
+                    if (target.classList.contains('description-collapsed')) {
+                        // Expand
+                        target.classList.remove('description-collapsed');
+                        target.classList.add('description-expanded');
+                        this.textContent = 'Show less';
+                    } else {
+                        // Collapse
+                        target.classList.remove('description-expanded');
+                        target.classList.add('description-collapsed');
+                        this.textContent = 'Show more';
+                    }
+                });
+            }
         });
     });
 </script>
