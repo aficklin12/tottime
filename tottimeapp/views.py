@@ -6468,3 +6468,56 @@ Please review and sign these documents using the link below:
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def pdf_records(request):
+    """View for displaying PDF signature records with filtering"""
+    # Get base queryset - only include resources the user has access to
+    resources = Resource.objects.filter(
+        Q(user=request.user) | 
+        Q(main_user=request.user)
+    ).distinct()
+    
+    # Start with all signatures for these resources
+    signatures = ResourceSignature.objects.filter(
+        resource__in=resources
+    ).select_related('resource')
+    
+    # Apply filters
+    resource_id = request.GET.get('resource')
+    signer_email = request.GET.get('signer_email')
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    
+    if resource_id:
+        signatures = signatures.filter(resource_id=resource_id)
+    
+    if signer_email:
+        signatures = signatures.filter(signer_email__icontains=signer_email)
+    
+    if date_from:
+        signatures = signatures.filter(signed_at__date__gte=date_from)
+    
+    if date_to:
+        signatures = signatures.filter(signed_at__date__lte=date_to)
+    
+    # Order by most recent first
+    signatures = signatures.order_by('-signed_at')
+    
+    # Get statistics
+    unique_signers = signatures.values('signer_email').distinct().count()
+    documents_signed = signatures.values('resource').distinct().count()
+    last_signature = signatures.first()
+    last_signature_date = last_signature.signed_at if last_signature else None
+    
+    context = {
+        'signatures': signatures,
+        'resources': resources,
+        'unique_signers': unique_signers,
+        'documents_signed': documents_signed,
+        'last_signature_date': last_signature_date,
+    }
+    
+    return render(request, 'tottimeapp/pdf_records.html', context)
+
+    

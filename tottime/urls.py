@@ -90,7 +90,7 @@ urlpatterns = [
     path('401/', login_required(views.error401), name='error401'),  
     path('404/', login_required(views.error404), name='error404'),  
     path('500/', login_required(views.error500), name='error500'),  
-    path('privacy_policy/', login_required(views.privacy_policy), name='privacy_policy'),  
+    path('privacy_policy/', views.privacy_policy, name='privacy_policy'),
     path('delete_request/', login_required(views.delete_request), name='delete_request'),  
     path('create-breakfast-recipe/', login_required(views.create_breakfast_recipe), name='create_breakfast_recipe'), 
     path('fetch-breakfast-recipes/', login_required(views.fetch_breakfast_recipes), name='fetch_breakfast_recipes'),  
@@ -189,6 +189,7 @@ urlpatterns = [
     path('resource/sign/<uuid:uuid>/', views.public_resource_signature, name='public_resource_signature'),
     path('resource/confirmation/<uuid:uuid>/', views.signature_confirmation, name='signature_confirmation'),
     path('resources/send-signature-request/', views.send_signature_request, name='send_signature_request'),
+    path('pdf-records/', login_required(views.pdf_records), name='pdf_records'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
