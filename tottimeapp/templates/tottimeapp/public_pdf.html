@@ -21,6 +21,14 @@
             height: 600px;
             border: 1px solid #ddd;
         }
+        .document-container {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        .document-container:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -28,22 +36,32 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <h1 class="mb-4">Signature Required</h1>
-                <p class="lead">Please review the following document and provide your signature to acknowledge that you have read and understood it.</p>
+                <p class="lead">
+                    {% if resources|length > 1 %}
+                    Please review the following documents and provide your signature to acknowledge that you have read and understood them.
+                    {% else %}
+                    Please review the following document and provide your signature to acknowledge that you have read and understood it.
+                    {% endif %}
+                </p>
                 
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h3>{{ resource.title }}</h3>
-                        {% if resource.description %}
-                        <p>{{ resource.description }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="card-body">
-                        <!-- PDF Embed -->
-                        <div class="pdf-container">
-                            <embed src="{{ resource.file.url }}" type="application/pdf" width="100%" height="100%">
+                {% for resource in resources %}
+                <div class="document-container">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3>{{ resource.title }}</h3>
+                            {% if resource.description %}
+                            <p>{{ resource.description }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            <!-- PDF Embed -->
+                            <div class="pdf-container">
+                                <embed src="{{ resource.file.url }}" type="application/pdf" width="100%" height="100%">
+                            </div>
                         </div>
                     </div>
                 </div>
+                {% endfor %}
                 
                 <form method="POST" id="signature-form">
                     {% csrf_token %}
@@ -68,7 +86,12 @@
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="acknowledgement" required>
                         <label class="form-check-label" for="acknowledgement">
-                            I acknowledge that I have read and understood this document
+                            I acknowledge that I have read and understood 
+                            {% if resources|length > 1 %}
+                            these documents
+                            {% else %}
+                            this document
+                            {% endif %}
                         </label>
                     </div>
                     

@@ -13,7 +13,18 @@
                 <div class="card">
                     <div class="card-body text-center">
                         <h1 class="display-4 text-success mb-4">Thank You!</h1>
-                        <p class="lead">Your signature for "{{ resource.title }}" has been recorded.</p>
+                        
+                        {% if resources|length > 1 %}
+                        <p class="lead">Your signature for the following documents has been recorded:</p>
+                        <ul class="list-group mb-4">
+                            {% for resource in resources %}
+                            <li class="list-group-item">{{ resource.title }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="lead">Your signature for "{{ resources.0.title }}" has been recorded.</p>
+                        {% endif %}
+                        
                         <p>A confirmation may be sent to your email address.</p>
                     </div>
                 </div>

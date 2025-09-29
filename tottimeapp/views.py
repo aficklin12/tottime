@@ -6324,8 +6324,18 @@ def delete_resource(request, resource_id):
     
 def public_resource_signature(request, uuid):
     """View for public users to view and sign a resource"""
-    # Get the resource using the UUID
-    resource = get_object_or_404(Resource, share_uuid=uuid)
+    # Get the main resource using the UUID
+    main_resource = get_object_or_404(Resource, share_uuid=uuid)
+    
+    # Check for additional resource IDs in query parameters
+    additional_ids = request.GET.get('additional_ids', '')
+    resources = [main_resource]
+    
+    if additional_ids:
+        # Get all resources
+        resource_ids = [int(id) for id in additional_ids.split(',') if id.isdigit()]
+        additional_resources = Resource.objects.filter(id__in=resource_ids).exclude(id=main_resource.id)
+        resources = [main_resource] + list(additional_resources)
     
     if request.method == 'POST':
         # Handle form submission
@@ -6340,36 +6350,50 @@ def public_resource_signature(request, uuid):
         else:
             ip_address = request.META.get('REMOTE_ADDR')
         
-        # Create signature record
-        signature = ResourceSignature(
-            resource=resource,
-            signature_data=signature_data,
-            signer_name=signer_name,
-            signer_email=signer_email,
-            ip_address=ip_address
-        )
-        signature.save()
+        # Create signature records for each resource
+        for resource in resources:
+            signature = ResourceSignature(
+                resource=resource,
+                signature_data=signature_data,
+                signer_name=signer_name,
+                signer_email=signer_email,
+                ip_address=ip_address
+            )
+            signature.save()
         
-        # Redirect to the confirmation page
-        return redirect(reverse('signature_confirmation', kwargs={'uuid': uuid}))
+        # Redirect to the confirmation page with all resource IDs
+        additional_ids_param = ''
+        if len(resources) > 1:
+            additional_ids_param = f"?additional_ids={additional_ids}"
+            
+        return redirect(f"{reverse('signature_confirmation', kwargs={'uuid': uuid})}{additional_ids_param}")
     
-    # Display the signature page with the resource
+    # Display the signature page with all resources
     return render(request, 'tottimeapp/public_pdf.html', {
-        'resource': resource
+        'resources': resources,
+        'main_resource': main_resource
     })
 
 def signature_confirmation(request, uuid):
     """
     View for displaying a confirmation page after a user has signed a resource.
     """
-    # Get the resource using the UUID
-    resource = get_object_or_404(Resource, share_uuid=uuid)
+    # Get the main resource using the UUID
+    main_resource = get_object_or_404(Resource, share_uuid=uuid)
     
-    # You can also fetch the latest signature for this resource if needed
-    # latest_signature = ResourceSignature.objects.filter(resource=resource).order_by('-signed_at').first()
+    # Check for additional resource IDs in query parameters
+    additional_ids = request.GET.get('additional_ids', '')
+    resources = [main_resource]
+    
+    if additional_ids:
+        # Get all resources
+        resource_ids = [int(id) for id in additional_ids.split(',') if id.isdigit()]
+        additional_resources = Resource.objects.filter(id__in=resource_ids).exclude(id=main_resource.id)
+        resources = [main_resource] + list(additional_resources)
     
     return render(request, 'tottimeapp/signature_confirmation.html', {
-        'resource': resource
+        'resources': resources,
+        'main_resource': main_resource
     })
 
 @login_required
@@ -6392,23 +6416,31 @@ def send_signature_request(request):
                 return JsonResponse({'success': False, 'error': 'Some resources could not be found'})
             
             # Build the email message
-            subject = f"Signature Request: Multiple Documents ({len(resources)})"
+            subject = f"Signature Request: {len(resources)} Document(s)"
+            
+            # Get the first resource for the main URL
+            first_resource = resources.first()
+            
+            # Build the signature URL with all resource IDs as query parameters
+            current_site = get_current_site(request)
+            
+            # Create URL with resource IDs as query parameters
+            resource_ids_param = ",".join([str(r.id) for r in resources])
+            signature_url = f"https://{current_site.domain}{reverse('public_resource_signature', kwargs={'uuid': first_resource.share_uuid})}?additional_ids={resource_ids_param}"
             
             message = f"""
 Hello,
 
-You have received signature requests for the following documents:
+You have received a signature request for the following documents:
 
 """
-            # Add each resource with its signature link
-            current_site = get_current_site(request)
-            
-            for resource in resources:
-                signature_url = f"https://{current_site.domain}{reverse('public_resource_signature', kwargs={'uuid': resource.share_uuid})}"
-                message += f"• {resource.title}: {signature_url}\n"
+            # List all documents in the email
+            for i, resource in enumerate(resources, 1):
+                message += f"{i}. {resource.title}\n"
             
             message += f"""
-Please review and sign each document by clicking on its respective link.
+Please review and sign these documents using the link below:
+{signature_url}
 
 """
             if email_message:
