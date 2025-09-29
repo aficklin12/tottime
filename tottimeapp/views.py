@@ -6374,30 +6374,41 @@ def signature_confirmation(request, uuid):
 
 @login_required
 def send_signature_request(request):
-    """Handle sending signature request emails"""
+    """Handle sending signature request emails for multiple resources"""
     if request.method == 'POST':
-        resource_id = request.POST.get('resource_id')
+        resource_ids = request.POST.get('resource_ids', '').split(',')
         recipient_email = request.POST.get('recipient_email')
         email_message = request.POST.get('email_message', '')
         
+        if not resource_ids or not recipient_email:
+            return JsonResponse({'success': False, 'error': 'Missing required parameters'})
+        
         try:
-            # Get the resource
-            resource = get_object_or_404(Resource, pk=resource_id)
+            # Get the resources
+            resources = Resource.objects.filter(pk__in=resource_ids)
             
-            # Build the signature URL
-            current_site = get_current_site(request)
-            signature_url = f"https://{current_site.domain}{reverse('public_resource_signature', kwargs={'uuid': resource.share_uuid})}"
+            # Check if we found all requested resources
+            if len(resources) != len(resource_ids):
+                return JsonResponse({'success': False, 'error': 'Some resources could not be found'})
             
-            # Create email content
-            subject = f"Signature Request: {resource.title}"
+            # Build the email message
+            subject = f"Signature Request: Multiple Documents ({len(resources)})"
             
             message = f"""
 Hello,
 
-You have received a signature request for the document: {resource.title}
+You have received signature requests for the following documents:
 
-Please review and sign the document by clicking the link below:
-{signature_url}
+"""
+            # Add each resource with its signature link
+            current_site = get_current_site(request)
+            
+            for resource in resources:
+                signature_url = f"https://{current_site.domain}{reverse('public_resource_signature', kwargs={'uuid': resource.share_uuid})}"
+                message += f"• {resource.title}: {signature_url}\n"
+            
+            message += f"""
+Please review and sign each document by clicking on its respective link.
 
 """
             if email_message:
@@ -6405,25 +6416,16 @@ Please review and sign the document by clicking the link below:
                 
             message += f"\nRegards,\n{request.user.get_full_name() or request.user.username}"
             
-            # Use the most basic form of send_mail to avoid SSL/TLS issues
-            import smtplib
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
-            from django.conf import settings
+            # Send the email with simplified parameters
+            from django.core.mail import send_mail
             
-            msg = MIMEMultipart()
-            msg['From'] = settings.EMAIL_HOST_USER
-            msg['To'] = recipient_email
-            msg['Subject'] = subject
-            msg.attach(MIMEText(message, 'plain'))
-            
-            # Connect to SMTP server directly
-            server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
-            server.ehlo()
-            server.starttls()  # No parameters that could cause issues
-            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
-            server.send_message(msg)
-            server.quit()
+            send_mail(
+                subject,
+                message,
+                None,  # Use DEFAULT_FROM_EMAIL from settings
+                [recipient_email],
+                fail_silently=False,
+            )
             
             return JsonResponse({'success': True})
             

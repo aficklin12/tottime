@@ -9,6 +9,7 @@
         margin-bottom: 20px;
         transition: transform 0.2s, height 0.3s ease;
         height: 100%;
+        position: relative;
     }
     .resource-card:hover {
         transform: translateY(-5px);
@@ -46,6 +47,40 @@
         font-size: 0.85rem;
         display: none;  /* Initially hidden, will show via JS if needed */
     }
+    .resource-checkbox {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+        transform: scale(1.3);
+    }
+    .selection-toolbar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background-color: #343a40;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        display: none;
+        align-items: center;
+        gap: 15px;
+    }
+    .resource-list-item {
+        padding: 8px;
+        margin-bottom: 5px;
+        border-bottom: 1px solid #eee;
+    }
+    .resource-list-item:last-child {
+        border-bottom: none;
+    }
+    #selectedResourcesList {
+        max-height: 200px;
+        overflow-y: auto;
+    }
 </style>
 {% endblock %}
 
@@ -68,9 +103,14 @@
             <div class="col-md-4 mb-4 resource-item" 
                  data-owner="{% if resource.user == request.user %}my{% else %}other{% endif %}">
                 <div class="card resource-card h-100">
+                    <!-- Add checkbox for selection -->
+                    <input type="checkbox" class="resource-checkbox form-check-input" 
+                           data-resource-id="{{ resource.id }}" 
+                           data-resource-title="{{ resource.title }}"
+                           aria-label="Select resource">
+                           
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">{{ resource.title }}</h5>
-                        <!-- Removed public/private badge -->
                     </div>
                     <div class="card-body d-flex flex-column">
                         <div class="description-container">
@@ -81,9 +121,6 @@
                         </div>
                         <div class="resource-actions mt-auto">
                             <a href="{% url 'view_resource' resource.id %}" class="btn btn-primarytwo btn-sm" target="_blank">View</a>
-                            <button class="btn btn-info btn-sm request-signature" data-bs-toggle="modal" 
-                                    data-bs-target="#signatureRequestModal" data-resource-id="{{ resource.id }}" 
-                                    data-resource-title="{{ resource.title }}">Sign</button>
                             {% if resource.user == request.user or request.user.is_account_owner %}
                             <a href="{% url 'delete_resource' resource.id %}" class="btn btn-danger btn-sm delete-resource">Delete</a>
                             {% endif %}
@@ -100,19 +137,33 @@
     </div>
 </div>
 
-<!-- Signature Request Modal -->
+<!-- Selection Toolbar -->
+<div class="selection-toolbar" id="selectionToolbar">
+    <span id="selectedCount">0 selected</span>
+    <button class="btn btn-info btn-sm" id="requestSignaturesBtn">
+        Request Signatures
+    </button>
+    <button class="btn btn-light btn-sm" id="clearSelectionBtn">
+        Clear Selection
+    </button>
+</div>
+
+<!-- Multi-Signature Request Modal -->
 <div class="modal fade" id="signatureRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Request Signature</h5>
+                <h5 class="modal-title">Request Signatures</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="signatureRequestForm">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <input type="hidden" id="resource_id" name="resource_id">
-                    <p>Send a signature request for document: <strong id="resourceTitle"></strong></p>
+                    <input type="hidden" id="resource_ids" name="resource_ids">
+                    <p>Send signature requests for the following documents:</p>
+                    <div class="mb-3" id="selectedResourcesList">
+                        <!-- Selected resources will be listed here dynamically -->
+                    </div>
                     <div class="mb-3">
                         <label for="recipient_email" class="form-label">Recipient Email</label>
                         <input type="email" class="form-control" id="recipient_email" name="recipient_email" required>
@@ -124,7 +175,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primarytwo">Send Request</button>
+                    <button type="submit" class="btn btn-primarytwo">Send Requests</button>
                 </div>
             </form>
         </div>
@@ -168,7 +219,7 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // File validation - No changes needed here as we're using the same ID
+        // File validation
         const fileInput = document.getElementById('resourceFile');
         const maxSize = 10 * 1024 * 1024; // 10MB
         
@@ -183,37 +234,135 @@
                 this.value = '';
             }
         });
+
+        // Multiple resource selection functionality
+        const checkboxes = document.querySelectorAll('.resource-checkbox');
+        const selectionToolbar = document.getElementById('selectionToolbar');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const requestSignaturesBtn = document.getElementById('requestSignaturesBtn');
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+        const selectedResourcesList = document.getElementById('selectedResourcesList');
+        const resourceIdsInput = document.getElementById('resource_ids');
+        const signatureModal = document.getElementById('signatureRequestModal');
+        let selectedResources = [];
         
-        // Filter functionality
-        const filterButtons = document.querySelectorAll('.filter-btn');
-        filterButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                // Update active button
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                
-                const filter = this.dataset.filter;
-                const resources = document.querySelectorAll('.resource-item');
-                
-                resources.forEach(resource => {
-                    if (filter === 'all') {
-                        resource.style.display = 'block';
-                    } else if (filter === 'my') {
-                        resource.style.display = resource.dataset.owner === 'my' ? 'block' : 'none';
-                    } 
-                    // Removed 'public' filter option since all resources are public now
-                });
+        // Handle checkbox changes
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateSelectedResources();
             });
         });
         
-        // Replace the entire delete button handling with this approach
-
-        // Initial setup of delete buttons
+        // Handle "Clear Selection" button
+        clearSelectionBtn.addEventListener('click', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            updateSelectedResources();
+        });
+        
+        // Handle "Request Signatures" button
+        requestSignaturesBtn.addEventListener('click', function() {
+            if (selectedResources.length === 0) {
+                alert('Please select at least one resource.');
+                return;
+            }
+            
+            // Update the modal with selected resources
+            selectedResourcesList.innerHTML = '';
+            const resourceIds = [];
+            
+            selectedResources.forEach(resource => {
+                const listItem = document.createElement('div');
+                listItem.className = 'resource-list-item';
+                listItem.textContent = resource.title;
+                selectedResourcesList.appendChild(listItem);
+                resourceIds.push(resource.id);
+            });
+            
+            // Set the resource IDs in the hidden input
+            resourceIdsInput.value = resourceIds.join(',');
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(signatureModal);
+            modal.show();
+        });
+        
+        // Function to update selected resources
+        function updateSelectedResources() {
+            selectedResources = [];
+            
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedResources.push({
+                        id: checkbox.dataset.resourceId,
+                        title: checkbox.dataset.resourceTitle
+                    });
+                }
+            });
+            
+            // Update UI
+            selectedCountSpan.textContent = `${selectedResources.length} selected`;
+            
+            if (selectedResources.length > 0) {
+                selectionToolbar.style.display = 'flex';
+            } else {
+                selectionToolbar.style.display = 'none';
+            }
+        }
+        
+        // Handle signature request form submission
+        document.getElementById('signatureRequestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Sending...';
+            
+            fetch('{% url "send_signature_request" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset form and close modal
+                if (data.success) {
+                    toastr.success('Signature request sent successfully!');
+                    this.reset();
+                    bootstrap.Modal.getInstance(signatureModal).hide();
+                    
+                    // Clear selection
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    updateSelectedResources();
+                } else {
+                    toastr.error('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                toastr.error('An error occurred while sending the request.');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        });
+        
+        // Delete confirmation with toastr
         document.querySelectorAll('.delete-resource').forEach(button => {
             button.addEventListener('click', handleDeleteClick);
         });
 
-        // Function to handle delete button clicks
         function handleDeleteClick(e) {
             e.preventDefault();
             const deleteUrl = this.getAttribute('href');
@@ -257,60 +406,6 @@
                 }
             );
         }
-        
-        // Signature request
-        const signatureRequestButtons = document.querySelectorAll('.request-signature');
-        const signatureModal = document.getElementById('signatureRequestModal');
-        const resourceIdInput = document.getElementById('resource_id');
-        const resourceTitleSpan = document.getElementById('resourceTitle');
-        
-        signatureRequestButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                resourceIdInput.value = this.dataset.resourceId;
-                resourceTitleSpan.textContent = this.dataset.resourceTitle;
-            });
-        });
-        
-        // Handle signature request form submission
-        document.getElementById('signatureRequestForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            
-            // Show loading state
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = 'Sending...';
-            
-            fetch('{% url "send_signature_request" %}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Reset form and close modal
-                if (data.success) {
-                    alert('Signature request sent successfully!');
-                    this.reset();
-                    bootstrap.Modal.getInstance(signatureModal).hide();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            })
-            .catch(error => {
-                alert('An error occurred while sending the request.');
-                console.error('Error:', error);
-            })
-            .finally(() => {
-                // Reset button state
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-            });
-        });
         
         // Handle dynamic description heights
         document.querySelectorAll('.resource-description').forEach(desc => {
