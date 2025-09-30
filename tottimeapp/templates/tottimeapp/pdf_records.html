@@ -95,20 +95,59 @@
             display: inline-block;
         }
     }
+    @media (min-width: 1000px) {
+    #search-and-buttons .btn {
+        display: inline-block !important;
+    }
+    .filters .text-end.d-md-none {
+        display: none !important;
+    }
+}
+.btn-outline-primary.view-signature {
+        color: rgb(57, 189, 180) !important;
+        border-color: rgb(57, 189, 180) !important;
+    }
+.btn-outline-primary.view-signature:hover {
+    background-color: rgb(57, 189, 180) !important;
+    color: #fff !important;
+    border-color: rgb(57, 189, 180) !important;
+}
+.btn-outline-primary#modalDocumentLink {
+    background-color: transparent !important;
+    color: rgb(57, 189, 180) !important;
+    border-color: rgb(57, 189, 180) !important;
+}
+.btn-outline-primary#modalDocumentLink:hover {
+    background-color: rgb(57, 189, 180) !important;
+    color: #fff !important;
+    border-color: rgb(57, 189, 180) !important;
+}
+.btn-outline-primary.link-switch {
+    background-color: transparent !important;
+    color: rgb(57, 189, 180) !important;
+    border-color: rgb(57, 189, 180) !important;
+}
+.btn-outline-primary.link-switch:hover {
+    background-color: rgb(57, 189, 180) !important;
+    color: #fff !important;
+    border-color: rgb(57, 189, 180) !important;
+}
+
 </style>
 {% endblock %}
 
 {% block content %}
 <h1 class="mb-4">Document Records</h1>
-    
+ 
 <div class="container mt-4">
-    
+       <a href="{% url 'resources' %}" class="btn btn-outline-primary link-switch mb-3" style="margin-left:10px;">
+    <i class="fas fa-arrow-left"></i>Resources
+</a>
     <!-- Filters -->
     <div class="filters mb-4">
         <form method="get" id="filterForm">
-            <div class="row g-3">
+            <div class="row g-3 align-items-end">
                 <div class="col-md-3">
-                    <label for="resource" class="form-label">Filter by Document</label>
                     <select class="form-select" name="resource" id="resource">
                         <option value="">All Documents</option>
                         {% for resource in resources %}
@@ -119,28 +158,19 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="date_from" class="form-label">Date From</label>
                     <input type="date" class="form-control" name="date_from" id="date_from" value="{{ request.GET.date_from|default:'' }}">
                 </div>
                 <div class="col-md-3">
-                    <label for="date_to" class="form-label">Date To</label>
                     <input type="date" class="form-control" name="date_to" id="date_to" value="{{ request.GET.date_to|default:'' }}">
                 </div>
-                <div class="col-12 text-end">
-                    <button type="submit" class="btn btn-primarytwo">Filter</button>
-                    <a href="{% url 'pdf_records' %}" class="btn btn-outline-secondary">Clear Filters</a>
-                    
-                    <!-- Sort Dropdown Button -->
-                    <div class="btn-group ms-2">
-                        <button type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-sort"></i> Sort By
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><button type="button" class="dropdown-item sort-option active" data-sort="date">By Date</button></li>
-                            <li><button type="button" class="dropdown-item sort-option" data-sort="document">By Document</button></li>
-                            <li><button type="button" class="dropdown-item sort-option" data-sort="signer">By Signer</button></li>
-                        </ul>
-                    </div>
+                <div class="col-md-6 d-flex gap-2" id="search-and-buttons">
+                    <input type="text" id="searchNameInput" class="form-control" placeholder="Search signer name...">
+                    <button type="submit" class="btn btn-primarytwo d-none d-md-block" id="filterBtn">Filter</button>
+                    <a href="{% url 'pdf_records' %}" class="btn btn-outline-secondary d-none d-md-block" id="clearBtn">Clear</a>
+                </div>
+                <div class="col-12 text-end d-md-none">
+                    <button type="submit" class="btn btn-primarytwo" id="filterBtnMobile">Filter</button>
+                    <a href="{% url 'pdf_records' %}" class="btn btn-outline-secondary" id="clearBtnMobile">Clear Filters</a>
                 </div>
             </div>
         </form>
@@ -156,11 +186,11 @@
         </div>
     </div>
     
-   
+    
 
     <!-- Replace the content sections with this streamlined table view -->
     <div class="table-responsive">
-        <table>
+        <table id="signaturesTable">
             <thead class="table-light">
                 <tr>
                     <th scope="col">Signer Name</th>
@@ -252,44 +282,7 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Sort option handling
-        const sortOptions = document.querySelectorAll('.sort-option');
-        const viewSections = {
-            'date': document.getElementById('byDateSection'),
-            'document': document.getElementById('byDocumentSection'),
-            'signer': document.getElementById('bySignerSection')
-        };
-        
-        // Function to switch views
-        function switchView(sortBy) {
-            // Hide all sections
-            Object.values(viewSections).forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // Show selected section
-            if (viewSections[sortBy]) {
-                viewSections[sortBy].classList.add('active');
-            }
-            
-            // Update active state on buttons
-            sortOptions.forEach(option => {
-                if (option.dataset.sort === sortBy) {
-                    option.classList.add('active');
-                } else {
-                    option.classList.remove('active');
-                }
-            });
-        }
-        
-        // Set up click handlers for sort options
-        sortOptions.forEach(option => {
-            option.addEventListener('click', function() {
-                const sortBy = this.dataset.sort;
-                switchView(sortBy);
-            });
-        });
-        
+       
         // Handle signature card clicks to show details modal
         document.querySelectorAll('.view-signature').forEach(button => {
             button.addEventListener('click', function() {
@@ -397,6 +390,25 @@
                 contentWindow.print();
                 document.body.removeChild(iframe);
             }, 500);
+        });
+        
+        // Search functionality
+        document.getElementById('searchNameInput').addEventListener('input', function() {
+            const searchValue = this.value.toLowerCase();
+            const table = document.getElementById('signaturesTable');
+            const rows = table.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+                const nameCell = row.querySelector('td');
+                if (nameCell) {
+                    const nameText = nameCell.textContent.toLowerCase();
+                    if (nameText.includes(searchValue)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
         });
     });
 </script>

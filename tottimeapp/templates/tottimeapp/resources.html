@@ -81,6 +81,16 @@
         max-height: 200px;
         overflow-y: auto;
     }
+    .btn-outline-primary.link-switch {
+    background-color: transparent !important;
+    color: rgb(57, 189, 180) !important;
+    border-color: rgb(57, 189, 180) !important;
+}
+.btn-outline-primary.link-switch:hover {
+    background-color: rgb(57, 189, 180) !important;
+    color: #fff !important;
+    border-color: rgb(57, 189, 180) !important;
+}
 </style>
 {% endblock %}
 
@@ -94,6 +104,9 @@
         <button type="button" class="btn btn-primarytwo" data-bs-toggle="modal" data-bs-target="#uploadResourceModal">
             <i class="fas fa-plus-circle"></i> Upload Resource
         </button>
+        <a href="{% url 'pdf_records' %}" class="btn btn-outline-primary link-switch mb-3" style="margin-top: 17px;">
+    <i class="fas fa-file-alt"></i> View Document Records
+</a>
     </div>
 
     <!-- Resources List -->

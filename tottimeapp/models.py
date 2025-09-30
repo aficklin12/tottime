@@ -1083,7 +1083,7 @@ class StandardCategory(models.Model):
     
     class Meta:
         ordering = ['order']
-        unique_together = ['user', 'letter']
+        unique_together = ['main_user', 'letter']  # <-- Changed here
         
     def __str__(self):
         return f"Standard {self.letter}: {self.name}"

@@ -1508,7 +1508,7 @@ def error500(request):
     return render(request, '500.html')
 
 def privacy_policy(request):
-    return render(request, 'privacy_policy.html')
+    return render(request, 'privacy-policy.html')
 
 def delete_request(request):
     return render(request, 'delete_request.html')
@@ -6192,34 +6192,25 @@ def score_sheet_list(request):
 @login_required
 def resources(request):
     """View to display all resources available to the user"""
-    # Check permissions for the specific page
     required_permission_id = 450  # Permission ID for "orientation"
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    
+
     user = get_user_for_view(request)
-    
-    # Get resources that belong to the user directly
-    own_resources = Resource.objects.filter(user=request.user)
-    
-    # Get resources from other users (all are public now)
-    other_resources = Resource.objects.exclude(user=request.user)
-    
-    # If the user is an account owner, include resources from linked users
-    if hasattr(request.user, 'is_account_owner') and request.user.is_account_owner:
-        linked_users = MainUser.objects.filter(main_account_owner=request.user)
-        linked_resources = Resource.objects.filter(user__in=linked_users)
-        own_resources = own_resources | linked_resources
-    
-    # Combine and order resources
-    resources = (own_resources | other_resources).distinct().order_by('-uploaded_at')
-    
+
+    # If the user is an account owner, show resources where main_user is the owner
+    if hasattr(user, 'is_account_owner') and user.is_account_owner:
+        resources = Resource.objects.filter(main_user=user).order_by('-uploaded_at')
+    else:
+        # Otherwise, show resources where user is the owner
+        resources = Resource.objects.filter(user=user).order_by('-uploaded_at')
+
     context = {
         'resources': resources,
         **permissions_context  # Unpack permissions context
     }
-    
+
     return render(request, 'tottimeapp/resources.html', context)
 
 @login_required
@@ -6471,14 +6462,20 @@ Please review and sign these documents using the link below:
 
 @login_required
 def pdf_records(request):
-    resources = Resource.objects.filter(
-        Q(user=request.user) | 
-        Q(main_user=request.user)
-    ).distinct()
+    required_permission_id = 450  # Permission ID for "orientation"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
 
-    signatures = ResourceSignature.objects.filter(
-        resource__in=resources
-    ).select_related('resource')
+    user = get_user_for_view(request)
+
+    # If account owner, show only resources/signatures for their main_user
+    if hasattr(user, 'is_account_owner') and user.is_account_owner:
+        resources = Resource.objects.filter(main_user=user).order_by('-uploaded_at')
+    else:
+        resources = Resource.objects.filter(user=user).order_by('-uploaded_at')
+
+    signatures = ResourceSignature.objects.filter(resource__in=resources).select_related('resource')
 
     resource_id = request.GET.get('resource')
     signer_email = request.GET.get('signer_email')
@@ -6489,7 +6486,6 @@ def pdf_records(request):
         signatures = signatures.filter(resource_id=resource_id)
 
     if signer_email:
-        # Make filtering case-insensitive
         signatures = signatures.annotate(
             signer_email_lower=Lower('signer_email')
         ).filter(signer_email_lower__icontains=signer_email.lower())
@@ -6502,7 +6498,6 @@ def pdf_records(request):
 
     signatures = signatures.order_by('-signed_at')
 
-    # Unique signers, case-insensitive
     unique_signers = signatures.annotate(
         signer_email_lower=Lower('signer_email')
     ).values('signer_email_lower').distinct().count()
@@ -6517,6 +6512,7 @@ def pdf_records(request):
         'unique_signers': unique_signers,
         'documents_signed': documents_signed,
         'last_signature_date': last_signature_date,
+        **permissions_context
     }
 
     return render(request, 'tottimeapp/pdf_records.html', context)
