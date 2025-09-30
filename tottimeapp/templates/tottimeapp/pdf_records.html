@@ -119,10 +119,6 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="signer_email" class="form-label">Filter by Signer Email</label>
-                    <input type="text" class="form-control" name="signer_email" id="signer_email" value="{{ request.GET.signer_email|default:'' }}">
-                </div>
-                <div class="col-md-3">
                     <label for="date_from" class="form-label">Date From</label>
                     <input type="date" class="form-control" name="date_from" id="date_from" value="{{ request.GET.date_from|default:'' }}">
                 </div>
@@ -181,7 +177,7 @@
                         <td>{{ signature.signer_name }}</td>
                         <td>{{ signature.signer_email }}</td>
                         <td>{{ signature.resource.title }}</td>
-                        <td>{{ signature.signed_at }}</td>
+                        <td>{{ signature.signed_at|date:"m/d/Y" }}</td>
                         <td>
                             <button type="button"
                                     class="btn btn-sm btn-outline-primary view-signature"

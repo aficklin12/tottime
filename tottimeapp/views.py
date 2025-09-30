@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.db.models import Q, Subquery, IntegerField, Count, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
-from django.db.models.functions import Concat
+from django.db.models.functions import Concat, Lower
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
 from square.client import Client
@@ -1508,7 +1508,7 @@ def error500(request):
     return render(request, '500.html')
 
 def privacy_policy(request):
-    return render(request, 'privacy-policy.html')
+    return render(request, 'privacy_policy.html')
 
 def delete_request(request):
     return render(request, 'delete_request.html')
@@ -6471,45 +6471,46 @@ Please review and sign these documents using the link below:
 
 @login_required
 def pdf_records(request):
-    """View for displaying PDF signature records with filtering"""
-    # Get base queryset - only include resources the user has access to
     resources = Resource.objects.filter(
         Q(user=request.user) | 
         Q(main_user=request.user)
     ).distinct()
-    
-    # Start with all signatures for these resources
+
     signatures = ResourceSignature.objects.filter(
         resource__in=resources
     ).select_related('resource')
-    
-    # Apply filters
+
     resource_id = request.GET.get('resource')
     signer_email = request.GET.get('signer_email')
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
-    
+
     if resource_id:
         signatures = signatures.filter(resource_id=resource_id)
-    
+
     if signer_email:
-        signatures = signatures.filter(signer_email__icontains=signer_email)
-    
+        # Make filtering case-insensitive
+        signatures = signatures.annotate(
+            signer_email_lower=Lower('signer_email')
+        ).filter(signer_email_lower__icontains=signer_email.lower())
+
     if date_from:
         signatures = signatures.filter(signed_at__date__gte=date_from)
-    
+
     if date_to:
         signatures = signatures.filter(signed_at__date__lte=date_to)
-    
-    # Order by most recent first
+
     signatures = signatures.order_by('-signed_at')
-    
-    # Get statistics
-    unique_signers = signatures.values('signer_email').distinct().count()
+
+    # Unique signers, case-insensitive
+    unique_signers = signatures.annotate(
+        signer_email_lower=Lower('signer_email')
+    ).values('signer_email_lower').distinct().count()
+
     documents_signed = signatures.values('resource').distinct().count()
     last_signature = signatures.first()
     last_signature_date = last_signature.signed_at if last_signature else None
-    
+
     context = {
         'signatures': signatures,
         'resources': resources,
@@ -6517,6 +6518,5 @@ def pdf_records(request):
         'documents_signed': documents_signed,
         'last_signature_date': last_signature_date,
     }
-    
-    return render(request, 'tottimeapp/pdf_records.html', context)
 
+    return render(request, 'tottimeapp/pdf_records.html', context)
