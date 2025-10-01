@@ -1508,7 +1508,7 @@ def error500(request):
     return render(request, '500.html')
 
 def privacy_policy(request):
-    return render(request, 'privacy_policy.html')
+    return render(request, 'privacy-policy.html')
 
 def delete_request(request):
     return render(request, 'delete_request.html')
