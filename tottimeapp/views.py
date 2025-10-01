@@ -6191,26 +6191,24 @@ def score_sheet_list(request):
 
 @login_required
 def resources(request):
-    """View to display all resources available to the user"""
+    """
+    View to display all resources available to the user.
+    Always shows resources for the main_user returned by get_user_for_view.
+    """
     required_permission_id = 450  # Permission ID for "orientation"
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    user = get_user_for_view(request)
+    main_user = get_user_for_view(request)
 
-    # If the user is an account owner, show resources where main_user is the owner
-    if hasattr(user, 'is_account_owner') and user.is_account_owner:
-        resources = Resource.objects.filter(main_user=user).order_by('-uploaded_at')
-    else:
-        # Otherwise, show resources where user is the owner
-        resources = Resource.objects.filter(user=user).order_by('-uploaded_at')
+    # Always show resources for main_user, regardless of account owner status
+    resources = Resource.objects.filter(main_user=main_user).order_by('-uploaded_at')
 
     context = {
         'resources': resources,
-        **permissions_context  # Unpack permissions context
+        **permissions_context
     }
-
     return render(request, 'tottimeapp/resources.html', context)
 
 @login_required
