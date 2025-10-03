@@ -199,6 +199,9 @@
         <button type="button" class="btn btn-outline-secondary" onclick="copyPublicFormLink({{ template.id }})">
             <i class="fas fa-link"></i> Copy Link
         </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="showQRCode({{ template.id }})">
+            <i class="fas fa-qrcode"></i> QR Code
+        </button>
         <div class="input-group flex-nowrap" style="width: auto;">
             <input type="email" id="sendLinkEmail{{ template.id }}" class="form-control" placeholder="Recipient email" style="max-width: 180px;">
             <button type="button" class="btn btn-outline-secondary" onclick="sendPublicFormLink({{ template.id }})">
@@ -395,6 +398,30 @@
         </div>
     </div>
 </div>
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrCodeModalLabel">Enrollment Form QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qrCodeContainer" class="mb-3"></div>
+                <p>Scan this QR code to access the enrollment form.</p>
+                <div id="qrUrl" class="small text-muted mb-3" style="word-break: break-all;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primarytwo" id="printQrCode">
+                    <i class="fas fa-print"></i> Print QR Code
+                </button>
+                <button type="button" class="btn btn-secondary" id="downloadQrCode">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -586,6 +613,166 @@ function sendPublicFormLink(templateId) {
     .catch(() => {
         toastr.error('Failed to send link. Please try again.');
     });
+}
+
+// Show QR code for public form link
+function showQRCode(templateId) {
+    // Get the public form link
+    var link = document.getElementById('publicFormLink' + templateId).href;
+    var templateName = document.getElementById('publicFormLink' + templateId).textContent.trim();
+    
+    // Show URL in modal
+    document.getElementById('qrUrl').textContent = link;
+    document.getElementById('qrCodeModalLabel').textContent = "Enrollment Form QR Code";
+    
+    // Generate QR code
+    var container = document.getElementById('qrCodeContainer');
+    container.innerHTML = ''; // Clear previous QR code
+    
+    // Create QR code
+    var qr = qrcode(0, 'M');
+    qr.addData(link);
+    qr.make();
+    
+    // Create SVG element for better quality
+    var svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgElement.setAttribute('width', '300');
+    svgElement.setAttribute('height', '300');
+    svgElement.setAttribute('viewBox', '0 0 ' + qr.getModuleCount() + ' ' + qr.getModuleCount());
+    svgElement.setAttribute('id', 'qrcodeSvg');
+    
+    // Add modules as rectangles
+    for (var row = 0; row < qr.getModuleCount(); row++) {
+        for (var col = 0; col < qr.getModuleCount(); col++) {
+            if (qr.isDark(row, col)) {
+                var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', col);
+                rect.setAttribute('y', row);
+                rect.setAttribute('width', '1');
+                rect.setAttribute('height', '1');
+                rect.setAttribute('fill', '#000');
+                svgElement.appendChild(rect);
+            }
+        }
+    }
+    
+    container.appendChild(svgElement);
+    
+    // Show the modal
+    var qrModal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
+    qrModal.show();
+    
+    // Set up print button
+    document.getElementById('printQrCode').onclick = function() {
+        printQRCode(link);
+    };
+    
+    // Set up download button
+    document.getElementById('downloadQrCode').onclick = function() {
+        downloadQRCode();
+    };
+}
+
+// Print QR code function
+function printQRCode(url) {
+    var printWindow = window.open('', '_blank');
+    
+    // Create print content with only the QR code
+    var printContent = `
+        <html>
+        <head>
+            <title>Enrollment QR Code</title>
+            <style>
+                @page {
+                    margin: 0;
+                    size: auto;
+                }
+                body {
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    padding: 20px;
+                    margin: 0;
+                    min-height: 100vh;
+                }
+                .qr-container {
+                    max-width: 400px;
+                    padding: 20px;
+                    margin: 0 auto;
+                }
+                .qr-image {
+                    width: 300px;
+                    height: 300px;
+                    margin: 0 auto;
+                }
+                .title {
+                    color: rgb(57, 189, 180);
+                    font-size: 70px;
+                    font-weight: bold;
+                    margin-top: 20px;
+                    margin-bottom: 80px;
+                }
+                .instructions {
+                    margin-top: 65px;
+                    font-size: 24px;
+                    color: #444;
+                }
+                @media print {
+                    @page {
+                        margin: 0;
+                        size: auto;
+                    }
+                    body {
+                        padding: 0;
+                    }
+                    /* Hide browser headers/footers */
+                    html {
+                        height: 100%;
+                    }
+                }
+            </style>
+        </head>
+        <body onload="window.print(); window.setTimeout(function() { window.close(); }, 500)">
+            <div class="title">Enroll your student today!</div>
+            <div class="qr-container">
+                <div class="qr-image">
+                    ${document.getElementById('qrCodeContainer').innerHTML}
+                </div>
+                <p class="instructions">Scan this QR code to access the online enrollment form</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.open();
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+}
+
+// Download QR code function
+function downloadQRCode() {
+    // Get SVG content
+    var svgElement = document.getElementById('qrcodeSvg');
+    var svgData = new XMLSerializer().serializeToString(svgElement);
+    
+    // Create a canvas
+    var canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 300;
+    var ctx = canvas.getContext('2d');
+    
+    // Draw SVG on canvas
+    var img = new Image();
+    img.onload = function() {
+        ctx.drawImage(img, 0, 0, 300, 300);
+        
+        // Create download link
+        var a = document.createElement('a');
+        a.download = 'enrollment-form-qrcode.png';
+        a.href = canvas.toDataURL('image/png');
+        a.click();
+    };
+    
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
 }
 </script>
 {% endblock %}

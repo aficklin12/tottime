@@ -128,6 +128,22 @@
     .print-only {
         display: none;
     }
+    @media (max-width: 999px) {
+    .form-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .form-group {
+        width: 100%;
+    }
+    
+    /* Specific adjustments for time inputs to look better on mobile */
+    .form-group label[for="regular_hours_to"],
+    .form-group label[for="dropin_hours_to"] {
+        margin-top: 5px;
+    }
+}
         /* Add all other styles from your original enrollment.html */
     </style>
 </head>

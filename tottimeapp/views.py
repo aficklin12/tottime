@@ -5931,7 +5931,6 @@ def staff_orientation(request):
     
     return render(request, 'tottimeapp/staff_orientation.html', context)
 
-
 @login_required
 def start_orientation(request):
     """Start a new orientation using a staff name input"""
