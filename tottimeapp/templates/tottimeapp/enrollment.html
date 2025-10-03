@@ -165,18 +165,55 @@
         border-color: #007b8a;
         color: #fff;
     }
+    
+    @media (max-width: 999px) {
+        #enrollment-buttons-container {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+        
+        #enrollment-buttons-container .btn,
+        #enrollment-buttons-container .input-group {
+            margin-bottom: 8px;
+            width: 100%;
+        }
+        
+        #enrollment-buttons-container .input-group {
+            max-width: 100%;
+        }
+        
+        #enrollment-buttons-container .input-group input {
+            max-width: none;
+            flex: 3;
+            height: 38px; /* Match button height */
+        }
+        
+        #enrollment-buttons-container .send-link-btn {
+            flex: 1;
+            white-space: nowrap;
+            height: 38px; /* Ensure consistent height */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #enrollment-buttons-container .input-group {
+            display: flex;
+            align-items: stretch;
+        }
+    }
     /* Add to your <style> block or base.css */
-.btn-public {
-    background-color: rgb(57, 189, 180);
-    border-color: rgb(57, 189, 180);
-    color: #212529;
-    font-weight: bold;
-}
-.btn-public:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-    color: #fff;
-}
+    .btn-public {
+        background-color: rgb(57, 189, 180);
+        border-color: rgb(57, 189, 180);
+        color: #212529;
+        font-weight: bold;
+    }
+    .btn-public:hover {
+        background-color: #007b8a;
+        border-color: #007b8a;
+        color: #fff;
+    }
 </style>
 {% endblock %}
 
@@ -190,27 +227,25 @@
                 <div>
                     <div class="d-flex flex-wrap align-items-center gap-2" style="margin-bottom: 1rem;">
                         {% if templates %}
-                            {% for template in templates %}
-    <div class="d-flex align-items-center gap-2 mb-1">
-        <a href="{% url 'public_enrollment_with_location' template_id=template.id location_id=template.location.id %}" 
-           class="btn btn-public" target="_blank" id="publicFormLink{{ template.id }}">
-            <i class="fas fa-external-link-alt"></i> View Public Form
-        </a>
-        <button type="button" class="btn btn-outline-secondary" onclick="copyPublicFormLink({{ template.id }})">
-            <i class="fas fa-link"></i> Copy Link
-        </button>
-        <button type="button" class="btn btn-outline-secondary" onclick="showQRCode({{ template.id }})">
-            <i class="fas fa-qrcode"></i> QR Code
-        </button>
-        <div class="input-group flex-nowrap" style="width: auto;">
-            <input type="email" id="sendLinkEmail{{ template.id }}" class="form-control" placeholder="Recipient email" style="max-width: 180px;">
-            <button type="button" class="btn btn-outline-secondary" onclick="sendPublicFormLink({{ template.id }})">
-                <i class="fas fa-paper-plane"></i> Send Link
-            </button>
-        </div>
-    </div>
-                            {% endfor %}
-                        {% else %}
+                        {% for template in templates %}
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap" id="enrollment-buttons-container">
+                            <a href="{% url 'public_enrollment_with_location' template_id=template.id location_id=template.location.id %}" 
+                            class="btn btn-public" target="_blank" id="publicFormLink{{ template.id }}">
+                                <i class="fas fa-external-link-alt"></i> View Public Form
+                            </a>
+                        
+                            <button type="button" class="btn btn-outline-secondary" onclick="showQRCode({{ template.id }})">
+                                <i class="fas fa-qrcode"></i> QR Code
+                            </button>
+                            <div class="input-group flex-nowrap" style="width: auto;">
+                                <input type="email" id="sendLinkEmail{{ template.id }}" class="form-control" placeholder="Recipient email" style="min-width: 200px;">
+                                <button type="button" class="btn btn-outline-secondary send-link-btn d-flex align-items-center justify-content-center" onclick="sendPublicFormLink({{ template.id }})">
+                                    <i class="fas fa-paper-plane"></i> Send Link
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
                             <span class="btn btn-public disabled" id="publicFormLink" aria-disabled="true">
                                 <i class="fas fa-external-link-alt"></i> No Public Form Available
                             </span>
@@ -412,6 +447,9 @@
                 <div id="qrUrl" class="small text-muted mb-3" style="word-break: break-all;"></div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="copyQrLink">
+                    <i class="fas fa-link"></i> Copy Link
+                </button>
                 <button type="button" class="btn btn-primarytwo" id="printQrCode">
                     <i class="fas fa-print"></i> Print QR Code
                 </button>
@@ -661,6 +699,15 @@ function showQRCode(templateId) {
     // Show the modal
     var qrModal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
     qrModal.show();
+    
+    // Set up copy link button
+    document.getElementById('copyQrLink').onclick = function() {
+        navigator.clipboard.writeText(link).then(function() {
+            toastr.success('Public enrollment link copied to clipboard!');
+        }, function() {
+            toastr.error('Failed to copy link. Please copy manually.');
+        });
+    };
     
     // Set up print button
     document.getElementById('printQrCode').onclick = function() {
