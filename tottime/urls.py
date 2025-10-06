@@ -190,6 +190,7 @@ urlpatterns = [
     path('resource/confirmation/<uuid:uuid>/', views.signature_confirmation, name='signature_confirmation'),
     path('resources/send-signature-request/', views.send_signature_request, name='send_signature_request'),
     path('pdf-records/', login_required(views.pdf_records), name='pdf_records'),
+    path('abc_quality/', login_required(views.abc_quality), name='abc_quality'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

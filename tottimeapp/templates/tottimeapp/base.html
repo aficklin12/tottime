@@ -368,7 +368,19 @@
                             </nav>
                         </div>  
                         {% endif %}
-
+                        {% if show_orientation %}
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsQuality" aria-expanded="false" aria-controls="collapseLayoutsQuality" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
+                            <div class="sb-nav-link-icon"><i class="fas fa-clipboard-check"></i></div> Abc Quality
+                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                        </a>
+                        <div class="collapse" id="collapseLayoutsQuality" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav">
+                                {% if show_orientation %}
+                                <a class="nav-link" href="{% url 'abc_quality' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">ABC Quality</a>
+                                {% endif %}
+                            </nav>
+                        </div>  
+                        {% endif %}
                         {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions %}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsSettings" aria-expanded="false" aria-controls="collapseLayoutsSettings" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
                             <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div> Settings

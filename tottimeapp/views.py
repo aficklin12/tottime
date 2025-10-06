@@ -750,7 +750,6 @@ def policies(request):
 
     return render(request, 'tottimeapp/policies.html', context)
 
-
 def resequence_policy_orders(template, main_user):
     """Resequence all policies to ensure they have sequential order numbers (zero-based)."""
     policies = EnrollmentPolicy.objects.filter(
@@ -6513,3 +6512,10 @@ def pdf_records(request):
     }
 
     return render(request, 'tottimeapp/pdf_records.html', context)
+
+def abc_quality(request):
+    required_permission_id = 450  # Permission ID for "orientation"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+    return render(request, 'abc_quality.html', permissions_context)
