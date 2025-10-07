@@ -6192,6 +6192,7 @@ def resources(request):
     """
     View to display all resources available to the user.
     Always shows resources for the main_user returned by get_user_for_view.
+    Only shows general resources (filters out ABC Quality resources).
     """
     required_permission_id = 450  # Permission ID for "orientation"
     permissions_context = check_permissions(request, required_permission_id)
@@ -6200,8 +6201,12 @@ def resources(request):
 
     main_user = get_user_for_view(request)
 
-    # Always show resources for main_user, regardless of account owner status
-    resources = Resource.objects.filter(main_user=main_user).order_by('-uploaded_at')
+    # Filter to show only general resources (not ABC Quality resources)
+    resources = Resource.objects.filter(
+        main_user=main_user
+    ).exclude(
+        resource_type='abc_quality'
+    ).order_by('-uploaded_at')
 
     context = {
         'resources': resources,
@@ -6237,14 +6242,13 @@ def upload_resource(request):
             main_user = request.user.main_account_owner
             
         # Create resource
-        import uuid  # Add this import if it's not already at the top of your file
         resource = Resource(
             user=request.user,
             main_user=main_user,
             title=title,
             description=description,
             file=file,
-            share_uuid=uuid.uuid4()  # Explicitly set the UUID
+            resource_type='general'  # Explicitly set to 'general'
         )
         resource.save()
         
@@ -6513,9 +6517,76 @@ def pdf_records(request):
 
     return render(request, 'tottimeapp/pdf_records.html', context)
 
+@login_required
 def abc_quality(request):
     required_permission_id = 450  # Permission ID for "orientation"
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    return render(request, 'abc_quality.html', permissions_context)
+        
+    # Get the main user for the current user
+    main_user = get_user_for_view(request)
+    
+    # Get only ABC Quality resources for this user
+    abc_resources = Resource.objects.filter(
+        main_user=main_user,
+        resource_type='abc_quality'
+    ).order_by('-uploaded_at')
+    
+    # Group resources by indicator_id for better organization
+    grouped_resources = {}
+    for resource in abc_resources:
+        indicator = resource.indicator_id or "Uncategorized"
+        if indicator not in grouped_resources:
+            grouped_resources[indicator] = []
+        grouped_resources[indicator].append(resource)
+    
+    # Add the resources to the context
+    context = {
+        'abc_resources': abc_resources,
+        'grouped_resources': grouped_resources,
+        **permissions_context
+    }
+    
+    return render(request, 'abc_quality.html', permissions_context | context)
+
+@login_required
+def upload_documentation(request):
+    if request.method == 'POST':
+        indicator_id = request.POST.get('indicator_id')
+        description = request.POST.get('description', '')
+        files = request.FILES.getlist('document_file')
+        
+        uploaded_count = 0
+        for file in files:
+            # Create a title that includes the indicator ID
+            title = f"ABC Quality - {indicator_id}"
+            
+            # Determine the main user for account owners
+            main_user = request.user
+            if not request.user.is_account_owner and request.user.main_account_owner:
+                main_user = request.user.main_account_owner
+            
+            # Create new resource entry using the existing Resource model
+            resource = Resource(
+                user=request.user,
+                main_user=main_user,
+                title=title,
+                description=description,
+                file=file,
+                resource_type='abc_quality',  # Set the resource type
+                indicator_id=indicator_id    # Store the indicator ID
+            )
+            resource.save()
+            uploaded_count += 1
+        
+        if uploaded_count > 0:
+            messages.success(request, f"Successfully uploaded {uploaded_count} file(s) for indicator {indicator_id}")
+        else:
+            messages.warning(request, "No files were uploaded")
+            
+        return redirect('abc_quality')
+    
+    # If GET request, redirect to ABC Quality page
+    return redirect('abc_quality')
+

@@ -62,6 +62,61 @@
         text-decoration: none;
         color: inherit;
     }
+    
+    .upload-btn {
+        padding: 6px 12px;
+        background-color: rgb(57, 189, 180);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
+        transition: background-color 0.3s;
+    }
+    
+    .upload-btn:hover {
+        background-color: rgb(45, 160, 152);
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    
+    .modal-content {
+        background-color: white;
+        margin: 10% auto;
+        padding: 20px;
+        width: 50%;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .close-modal {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close-modal:hover {
+        color: black;
+    }
+    
+    .upload-form {
+        margin-top: 15px;
+    }
+    
+    .file-input-container {
+        margin-bottom: 15px;
+    }
 </style>
 {% endblock %}
 
@@ -79,6 +134,7 @@
                 <th>Indicator</th>
                 <th>Description</th>
                 <th>Points</th>
+                <th>Documentation</th>
             </tr>
         </thead>
         <tbody>
@@ -86,16 +142,19 @@
                 <td><a href="#I.A"><span class="indicator-id">I.A</span></a></td>
                 <td><a href="#I.A"><span class="indicator-desc">The program utilizes staff and parent program evaluations to inform written plans for continuous quality improvement.</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="I.A">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#I.B.1"><span class="indicator-id">I.B.1</span></a></td>
                 <td><a href="#I.B.1"><span class="indicator-desc">The program has a transition policy that includes practices to support successful internal transitions and external transitions.</span></a></td>
                 <td class="points">2 pts</td>
+                <td><button class="upload-btn" data-indicator="I.B.1">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#I.B.2"><span class="indicator-id">I.B.2</span></a></td>
                 <td><a href="#I.B.2"><span class="indicator-desc">The program has a written Inclusion Policy.</span></a></td>
                 <td class="points">Up to 4 pts</td>
+                <td><button class="upload-btn" data-indicator="I.B.2">Upload</button></td>
             </tr>
         </tbody>
     </table>
@@ -109,6 +168,7 @@
                 <th>Indicator</th>
                 <th>Description</th>
                 <th>Points</th>
+                <th>Documentation</th>
             </tr>
         </thead>
         <tbody>
@@ -116,16 +176,19 @@
                 <td><a href="#II.A"><span class="indicator-id">II.A</span></a></td>
                 <td><a href="#II.A"><span class="indicator-desc">Program Leadership/Administrators meet education qualifications.</span></a></td>
                 <td class="points">Up to 12 pts</td>
+                <td><button class="upload-btn" data-indicator="II.A">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#II.B"><span class="indicator-id">II.B</span></a></td>
                 <td><a href="#II.B"><span class="indicator-desc">Teachers meet education qualifications.</span></a></td>
                 <td class="points">Up to 12 pts</td>
+                <td><button class="upload-btn" data-indicator="II.B">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#II.C.1"><span class="indicator-id">II.C.1</span></a></td>
                 <td><a href="#II.C.1"><span class="indicator-desc">Program leadership provides early care and education professionals with an annual written evaluation based on supervision and observation of performance, which includes feedback on strengths and areas that need improvement.</span></a></td>
                 <td class="points">Up to 3 pts</td>
+                <td><button class="upload-btn" data-indicator="II.C.1">Upload</button></td>
             </tr>
         </tbody>
     </table>
@@ -139,6 +202,7 @@
                 <th>Indicator</th>
                 <th>Description</th>
                 <th>Points</th>
+                <th>Documentation</th>
             </tr>
         </thead>
         <tbody>
@@ -146,6 +210,7 @@
                 <td><a href="#III.B.1"><span class="indicator-id">III.B.1</span></a></td>
                 <td><a href="#III.B.1"><span class="indicator-desc">The program's physical activity policy and practices encourage the well-being of children.</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="III.B.1">Upload</button></td>
             </tr>
         </tbody>
     </table>
@@ -159,6 +224,7 @@
                 <th>Indicator</th>
                 <th>Description</th>
                 <th>Points</th>
+                <th>Documentation</th>
             </tr>
         </thead>
         <tbody>
@@ -166,6 +232,7 @@
                 <td><a href="#III.C.1"><span class="indicator-id">III.C.1</span></a></td>
                 <td><a href="#III.C.1"><span class="indicator-desc">The program's discipline policy is founded in an understanding of social-emotional development/behavioral health and the program staff collaborate with parents to plan developmentally appropriate and evidence-based strategies to support children with challenging behaviors.</span></a></td>
                 <td class="points">4 pts</td>
+                <td><button class="upload-btn" data-indicator="III.C.1">Upload</button></td>
             </tr>
         </tbody>
     </table>
@@ -179,6 +246,7 @@
                 <th>Indicator</th>
                 <th>Description</th>
                 <th>Points</th>
+                <th>Documentation</th>
             </tr>
         </thead>
         <tbody>
@@ -186,6 +254,7 @@
                 <td><a href="#III.A.2"><span class="indicator-id">III.A.2</span></a></td>
                 <td><a href="#III.A.2"><span class="indicator-desc">The program develops and maintains menus that reflect nutritionally, well-balanced healthy meals and/or snacks for all children.</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="III.A.2">Upload</button></td>
             </tr>
         </tbody>
     </table>
@@ -199,6 +268,7 @@
                 <th>Indicator</th>
                 <th>Description</th>
                 <th>Points</th>
+                <th>Documentation</th>
             </tr>
         </thead>
         <tbody>
@@ -206,16 +276,19 @@
                 <td><a href="#III.D.1"><span class="indicator-id">III.D.1</span></a></td>
                 <td><a href="#III.D.1"><span class="indicator-desc">The program conducts developmental, vision and hearing screenings and shares information about a child's growth and progress, based on results of the screenings, with families confidentially according to the instruments' implementation timeframe.</span></a></td>
                 <td class="points">6 pts</td>
+                <td><button class="upload-btn" data-indicator="III.D.1">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#III.D.2"><span class="indicator-id">III.D.2</span></a></td>
                 <td><a href="#III.D.2"><span class="indicator-desc">The program partners with families to make appropriate referrals based on parental concerns/requests, child screening, and/or on-going documentation.</span></a></td>
                 <td class="points">4 pts</td>
+                <td><button class="upload-btn" data-indicator="III.D.2">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#III.D.3"><span class="indicator-id">III.D.3</span></a></td>
                 <td><a href="#III.D.3"><span class="indicator-desc">The program collaborates with experts, professionals, and community resources/agencies/organizations to support children and families regarding medical, developmental, mental health, and/or other needs.</span></a></td>
                 <td class="points">2 pts</td>
+                <td><button class="upload-btn" data-indicator="III.D.3">Upload</button></td>
             </tr>
         </tbody>
     </table>
@@ -229,6 +302,7 @@
                 <th>Indicator</th>
                 <th>Description</th>
                 <th>Points</th>
+                <th>Documentation</th>
             </tr>
         </thead>
         <tbody>
@@ -236,38 +310,102 @@
                 <td><a href="#IV.A.1"><span class="indicator-id">IV.A.1</span></a></td>
                 <td><a href="#IV.A.1"><span class="indicator-desc">The program utilizes a method to collect information about the child and his/her family.</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="IV.A.1">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#IV.A.2"><span class="indicator-id">IV.A.2</span></a></td>
                 <td><a href="#IV.A.2"><span class="indicator-desc">The program communicates with families in multiple ways, including a plan or policy for daily communication between families and teachers.</span></a></td>
                 <td class="points">2 pts</td>
+                <td><button class="upload-btn" data-indicator="IV.A.2">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#IV.A.3"><span class="indicator-id">IV.A.3</span></a></td>
                 <td><a href="#IV.A.3"><span class="indicator-desc">The program maintains a resource list and/or literature from appropriate services/agencies to support children and families. The resource list and/or literature includes appropriate mental health services/agencies.</span></a></td>
                 <td class="points">Up to 3 pts</td>
+                <td><button class="upload-btn" data-indicator="IV.A.3">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#IV.A.4"><span class="indicator-id">IV.A.4</span></a></td>
                 <td><a href="#IV.A.4"><span class="indicator-desc">Teachers offer a minimum of 2 family/teacher conferences annually.</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="IV.A.4">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#IV.A.5"><span class="indicator-id">IV.A.5</span></a></td>
                 <td><a href="#IV.A.5"><span class="indicator-desc">The program demonstrates multiple methods to support family engagement including opportunities to engage families based on cultural needs and interests.</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="IV.A.5">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#IV.A.6"><span class="indicator-id">IV.A.6</span></a></td>
                 <td><a href="#IV.A.6"><span class="indicator-desc">The program has policies and/or practices in place to support the needs of dual language learners (DLL).</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="IV.A.6">Upload</button></td>
             </tr>
             <tr>
                 <td><a href="#IV.A.7"><span class="indicator-id">IV.A.7</span></a></td>
                 <td><a href="#IV.A.7"><span class="indicator-desc">The program supports families by having a plan to communicate in their home language and providing policies and documents in their home language.</span></a></td>
                 <td class="points">3 pts</td>
+                <td><button class="upload-btn" data-indicator="IV.A.7">Upload</button></td>
             </tr>
         </tbody>
     </table>
 </div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Upload Documentation</h2>
+        <p>Uploading for indicator: <span id="indicatorLabel"></span></p>
+        <form class="upload-form" enctype="multipart/form-data" method="post" action="{% url 'upload_documentation' %}">
+            {% csrf_token %}
+            <input type="hidden" id="indicatorId" name="indicator_id">
+            <div class="file-input-container">
+                <label for="documentFile">Select file(s):</label>
+                <input type="file" id="documentFile" name="document_file" multiple>
+            </div>
+            <div>
+                <label for="documentDescription">Description (optional):</label>
+                <textarea id="documentDescription" name="description" rows="3" style="width: 100%"></textarea>
+            </div>
+            <button type="submit" class="upload-btn" style="margin-top: 15px">Submit</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Get the modal
+    var modal = document.getElementById("uploadModal");
+    var indicatorLabel = document.getElementById("indicatorLabel");
+    var indicatorIdField = document.getElementById("indicatorId");
+    
+    // Get the <span> element that closes the modal
+    var span = document.getElementsByClassName("close-modal")[0];
+    
+    // Get all upload buttons
+    var uploadButtons = document.querySelectorAll(".upload-btn");
+    
+    // When the user clicks on an upload button, open the modal
+    uploadButtons.forEach(function(button) {
+        button.onclick = function() {
+            var indicatorId = this.getAttribute("data-indicator");
+            indicatorLabel.textContent = indicatorId;
+            indicatorIdField.value = indicatorId;
+            modal.style.display = "block";
+        }
+    });
+    
+    // When the user clicks on <span> (x), close the modal
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+    
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
 {% endblock %}

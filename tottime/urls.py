@@ -191,7 +191,8 @@ urlpatterns = [
     path('resources/send-signature-request/', views.send_signature_request, name='send_signature_request'),
     path('pdf-records/', login_required(views.pdf_records), name='pdf_records'),
     path('abc_quality/', login_required(views.abc_quality), name='abc_quality'),
-
+    path('upload_documentation/', views.upload_documentation, name='upload_documentation'),
+    
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

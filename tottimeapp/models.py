@@ -1145,6 +1145,11 @@ class ScoreItem(models.Model):
     
 class Resource(models.Model):
     """Model for storing uploaded PDF resources"""
+    RESOURCE_TYPES = (
+        ('general', 'General'),
+        ('abc_quality', 'ABC Quality'),
+    )
+    
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, 
                                  related_name='main_user_resources', null=True)
@@ -1152,7 +1157,9 @@ class Resource(models.Model):
     description = models.TextField(blank=True, null=True)
     file = models.FileField(upload_to='resources/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    share_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)  # Add this field
+    share_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    resource_type = models.CharField(max_length=20, choices=RESOURCE_TYPES, default='general')
+    indicator_id = models.CharField(max_length=20, blank=True, null=True)  # For ABC Quality indicators
     
     def __str__(self):
         return self.title
