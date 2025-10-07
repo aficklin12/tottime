@@ -611,6 +611,7 @@
     uploadButtons.forEach(function(button) {
         button.onclick = function() {
             var indicatorId = this.getAttribute("data-indicator");
+            console.log("Setting indicator ID to: " + indicatorId); // Add this logging
             indicatorLabel.textContent = indicatorId;
             indicatorIdField.value = indicatorId;
             modal.style.display = "block";
