@@ -6567,6 +6567,9 @@ def upload_documentation(request):
             if not request.user.is_account_owner and request.user.main_account_owner:
                 main_user = request.user.main_account_owner
             
+            # Debug logging
+            print(f"Saving resource with indicator_id: {indicator_id}")
+            
             # Create new resource entry using the existing Resource model
             resource = Resource(
                 user=request.user,
@@ -6574,10 +6577,14 @@ def upload_documentation(request):
                 title=title,
                 description=description,
                 file=file,
-                resource_type='abc_quality',  # Set the resource type
-                indicator_id=indicator_id    # Store the indicator ID
+                resource_type='abc_quality',
+                indicator_id=indicator_id  # Make sure this field exists in your model
             )
             resource.save()
+            
+            # Verify the indicator_id was saved correctly
+            print(f"Resource saved with indicator_id: {resource.indicator_id}")
+            
             uploaded_count += 1
         
         if uploaded_count > 0:
@@ -6590,3 +6597,4 @@ def upload_documentation(request):
     # If GET request, redirect to ABC Quality page
     return redirect('abc_quality')
 
+    

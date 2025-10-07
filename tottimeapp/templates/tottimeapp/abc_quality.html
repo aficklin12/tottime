@@ -117,6 +117,75 @@
     .file-input-container {
         margin-bottom: 15px;
     }
+    
+    .doc-count-badge {
+        display: inline-block;
+        background-color: rgb(57, 189, 180);
+        color: white;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        text-align: center;
+        font-size: 0.8em;
+        line-height: 22px;
+        margin-left: 8px;
+        font-weight: bold;
+    }
+    
+    .view-docs-btn {
+        padding: 4px 8px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        color: #495057;
+        font-size: 0.8em;
+        margin-left: 5px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .view-docs-btn:hover {
+        background-color: #e9ecef;
+    }
+    
+    .documents-container {
+        margin-top: 40px;
+        margin-bottom: 60px;
+    }
+    
+    .indicator-documents {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border-left: 4px solid rgb(57, 189, 180);
+    }
+    
+    .indicator-documents h4 {
+        margin-top: 0;
+        color: rgb(57, 189, 180);
+        font-weight: bold;
+    }
+    
+    .document-list {
+        margin-top: 10px;
+    }
+    
+    .document-item {
+        padding: 8px 10px;
+        margin-bottom: 5px;
+        background-color: white;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .document-actions {
+        display: flex;
+        gap: 5px;
+    }
 </style>
 {% endblock %}
 
@@ -142,19 +211,37 @@
                 <td><a href="#I.A"><span class="indicator-id">I.A</span></a></td>
                 <td><a href="#I.A"><span class="indicator-desc">The program utilizes staff and parent program evaluations to inform written plans for continuous quality improvement.</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="I.A">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="I.A">Upload</button>
+                    {% if grouped_resources.I.A %}
+                        <span class="doc-count-badge">{{ grouped_resources.I.A|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-I.A'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#I.B.1"><span class="indicator-id">I.B.1</span></a></td>
                 <td><a href="#I.B.1"><span class="indicator-desc">The program has a transition policy that includes practices to support successful internal transitions and external transitions.</span></a></td>
                 <td class="points">2 pts</td>
-                <td><button class="upload-btn" data-indicator="I.B.1">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="I.B.1">Upload</button>
+                    {% if grouped_resources.I.B.1 %}
+                        <span class="doc-count-badge">{{ grouped_resources.I.B.1|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-I.B.1'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#I.B.2"><span class="indicator-id">I.B.2</span></a></td>
                 <td><a href="#I.B.2"><span class="indicator-desc">The program has a written Inclusion Policy.</span></a></td>
                 <td class="points">Up to 4 pts</td>
-                <td><button class="upload-btn" data-indicator="I.B.2">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="I.B.2">Upload</button>
+                    {% if grouped_resources.I.B.2 %}
+                        <span class="doc-count-badge">{{ grouped_resources.I.B.2|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-I.B.2'">View</button>
+                    {% endif %}
+                </td>
             </tr>
         </tbody>
     </table>
@@ -176,19 +263,37 @@
                 <td><a href="#II.A"><span class="indicator-id">II.A</span></a></td>
                 <td><a href="#II.A"><span class="indicator-desc">Program Leadership/Administrators meet education qualifications.</span></a></td>
                 <td class="points">Up to 12 pts</td>
-                <td><button class="upload-btn" data-indicator="II.A">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="II.A">Upload</button>
+                    {% if grouped_resources.II.A %}
+                        <span class="doc-count-badge">{{ grouped_resources.II.A|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-II.A'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#II.B"><span class="indicator-id">II.B</span></a></td>
                 <td><a href="#II.B"><span class="indicator-desc">Teachers meet education qualifications.</span></a></td>
                 <td class="points">Up to 12 pts</td>
-                <td><button class="upload-btn" data-indicator="II.B">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="II.B">Upload</button>
+                    {% if grouped_resources.II.B %}
+                        <span class="doc-count-badge">{{ grouped_resources.II.B|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-II.B'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#II.C.1"><span class="indicator-id">II.C.1</span></a></td>
                 <td><a href="#II.C.1"><span class="indicator-desc">Program leadership provides early care and education professionals with an annual written evaluation based on supervision and observation of performance, which includes feedback on strengths and areas that need improvement.</span></a></td>
                 <td class="points">Up to 3 pts</td>
-                <td><button class="upload-btn" data-indicator="II.C.1">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="II.C.1">Upload</button>
+                    {% if grouped_resources.II.C.1 %}
+                        <span class="doc-count-badge">{{ grouped_resources.II.C.1|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-II.C.1'">View</button>
+                    {% endif %}
+                </td>
             </tr>
         </tbody>
     </table>
@@ -210,7 +315,13 @@
                 <td><a href="#III.B.1"><span class="indicator-id">III.B.1</span></a></td>
                 <td><a href="#III.B.1"><span class="indicator-desc">The program's physical activity policy and practices encourage the well-being of children.</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="III.B.1">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="III.B.1">Upload</button>
+                    {% if grouped_resources.III.B.1 %}
+                        <span class="doc-count-badge">{{ grouped_resources.III.B.1|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-III.B.1'">View</button>
+                    {% endif %}
+                </td>
             </tr>
         </tbody>
     </table>
@@ -232,7 +343,13 @@
                 <td><a href="#III.C.1"><span class="indicator-id">III.C.1</span></a></td>
                 <td><a href="#III.C.1"><span class="indicator-desc">The program's discipline policy is founded in an understanding of social-emotional development/behavioral health and the program staff collaborate with parents to plan developmentally appropriate and evidence-based strategies to support children with challenging behaviors.</span></a></td>
                 <td class="points">4 pts</td>
-                <td><button class="upload-btn" data-indicator="III.C.1">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="III.C.1">Upload</button>
+                    {% if grouped_resources.III.C.1 %}
+                        <span class="doc-count-badge">{{ grouped_resources.III.C.1|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-III.C.1'">View</button>
+                    {% endif %}
+                </td>
             </tr>
         </tbody>
     </table>
@@ -254,7 +371,13 @@
                 <td><a href="#III.A.2"><span class="indicator-id">III.A.2</span></a></td>
                 <td><a href="#III.A.2"><span class="indicator-desc">The program develops and maintains menus that reflect nutritionally, well-balanced healthy meals and/or snacks for all children.</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="III.A.2">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="III.A.2">Upload</button>
+                    {% if grouped_resources.III.A.2 %}
+                        <span class="doc-count-badge">{{ grouped_resources.III.A.2|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-III.A.2'">View</button>
+                    {% endif %}
+                </td>
             </tr>
         </tbody>
     </table>
@@ -276,19 +399,37 @@
                 <td><a href="#III.D.1"><span class="indicator-id">III.D.1</span></a></td>
                 <td><a href="#III.D.1"><span class="indicator-desc">The program conducts developmental, vision and hearing screenings and shares information about a child's growth and progress, based on results of the screenings, with families confidentially according to the instruments' implementation timeframe.</span></a></td>
                 <td class="points">6 pts</td>
-                <td><button class="upload-btn" data-indicator="III.D.1">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="III.D.1">Upload</button>
+                    {% if grouped_resources.III.D.1 %}
+                        <span class="doc-count-badge">{{ grouped_resources.III.D.1|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-III.D.1'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#III.D.2"><span class="indicator-id">III.D.2</span></a></td>
                 <td><a href="#III.D.2"><span class="indicator-desc">The program partners with families to make appropriate referrals based on parental concerns/requests, child screening, and/or on-going documentation.</span></a></td>
                 <td class="points">4 pts</td>
-                <td><button class="upload-btn" data-indicator="III.D.2">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="III.D.2">Upload</button>
+                    {% if grouped_resources.III.D.2 %}
+                        <span class="doc-count-badge">{{ grouped_resources.III.D.2|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-III.D.2'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#III.D.3"><span class="indicator-id">III.D.3</span></a></td>
                 <td><a href="#III.D.3"><span class="indicator-desc">The program collaborates with experts, professionals, and community resources/agencies/organizations to support children and families regarding medical, developmental, mental health, and/or other needs.</span></a></td>
                 <td class="points">2 pts</td>
-                <td><button class="upload-btn" data-indicator="III.D.3">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="III.D.3">Upload</button>
+                    {% if grouped_resources.III.D.3 %}
+                        <span class="doc-count-badge">{{ grouped_resources.III.D.3|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-III.D.3'">View</button>
+                    {% endif %}
+                </td>
             </tr>
         </tbody>
     </table>
@@ -310,46 +451,126 @@
                 <td><a href="#IV.A.1"><span class="indicator-id">IV.A.1</span></a></td>
                 <td><a href="#IV.A.1"><span class="indicator-desc">The program utilizes a method to collect information about the child and his/her family.</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="IV.A.1">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="IV.A.1">Upload</button>
+                    {% if grouped_resources.IV.A.1 %}
+                        <span class="doc-count-badge">{{ grouped_resources.IV.A.1|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-IV.A.1'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#IV.A.2"><span class="indicator-id">IV.A.2</span></a></td>
                 <td><a href="#IV.A.2"><span class="indicator-desc">The program communicates with families in multiple ways, including a plan or policy for daily communication between families and teachers.</span></a></td>
                 <td class="points">2 pts</td>
-                <td><button class="upload-btn" data-indicator="IV.A.2">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="IV.A.2">Upload</button>
+                    {% if grouped_resources.IV.A.2 %}
+                        <span class="doc-count-badge">{{ grouped_resources.IV.A.2|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-IV.A.2'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#IV.A.3"><span class="indicator-id">IV.A.3</span></a></td>
                 <td><a href="#IV.A.3"><span class="indicator-desc">The program maintains a resource list and/or literature from appropriate services/agencies to support children and families. The resource list and/or literature includes appropriate mental health services/agencies.</span></a></td>
                 <td class="points">Up to 3 pts</td>
-                <td><button class="upload-btn" data-indicator="IV.A.3">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="IV.A.3">Upload</button>
+                    {% if grouped_resources.IV.A.3 %}
+                        <span class="doc-count-badge">{{ grouped_resources.IV.A.3|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-IV.A.3'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#IV.A.4"><span class="indicator-id">IV.A.4</span></a></td>
                 <td><a href="#IV.A.4"><span class="indicator-desc">Teachers offer a minimum of 2 family/teacher conferences annually.</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="IV.A.4">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="IV.A.4">Upload</button>
+                    {% if grouped_resources.IV.A.4 %}
+                        <span class="doc-count-badge">{{ grouped_resources.IV.A.4|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-IV.A.4'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#IV.A.5"><span class="indicator-id">IV.A.5</span></a></td>
                 <td><a href="#IV.A.5"><span class="indicator-desc">The program demonstrates multiple methods to support family engagement including opportunities to engage families based on cultural needs and interests.</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="IV.A.5">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="IV.A.5">Upload</button>
+                    {% if grouped_resources.IV.A.5 %}
+                        <span class="doc-count-badge">{{ grouped_resources.IV.A.5|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-IV.A.5'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#IV.A.6"><span class="indicator-id">IV.A.6</span></a></td>
                 <td><a href="#IV.A.6"><span class="indicator-desc">The program has policies and/or practices in place to support the needs of dual language learners (DLL).</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="IV.A.6">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="IV.A.6">Upload</button>
+                    {% if grouped_resources.IV.A.6 %}
+                        <span class="doc-count-badge">{{ grouped_resources.IV.A.6|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-IV.A.6'">View</button>
+                    {% endif %}
+                </td>
             </tr>
             <tr>
                 <td><a href="#IV.A.7"><span class="indicator-id">IV.A.7</span></a></td>
                 <td><a href="#IV.A.7"><span class="indicator-desc">The program supports families by having a plan to communicate in their home language and providing policies and documents in their home language.</span></a></td>
                 <td class="points">3 pts</td>
-                <td><button class="upload-btn" data-indicator="IV.A.7">Upload</button></td>
+                <td>
+                    <button class="upload-btn" data-indicator="IV.A.7">Upload</button>
+                    {% if grouped_resources.IV.A.7 %}
+                        <span class="doc-count-badge">{{ grouped_resources.IV.A.7|length }}</span>
+                        <button class="view-docs-btn" onclick="location.href='#docs-IV.A.7'">View</button>
+                    {% endif %}
+                </td>
             </tr>
         </tbody>
     </table>
+
+    <!-- Documents Display Section -->
+    <div class="documents-container">
+        <h2>Uploaded Documentation</h2>
+        
+        {% if grouped_resources %}
+            {% for indicator, resources in grouped_resources.items %}
+                <div class="indicator-documents" id="docs-{{ indicator }}">
+                    <h4>Indicator {{ indicator }} - {{ resources|length }} Document(s)</h4>
+                    <div class="document-list">
+                        {% for resource in resources %}
+                            <div class="document-item">
+                                <div>
+                                    <strong>{{ resource.title }}</strong>
+                                    {% if resource.description %}
+                                        <p class="text-muted mb-0">{{ resource.description }}</p>
+                                    {% endif %}
+                                    <small class="text-muted">Uploaded on {{ resource.uploaded_at|date:"M d, Y" }}</small>
+                                </div>
+                                <div class="document-actions">
+                                    <a href="{% url 'view_resource' resource.id %}" class="btn btn-sm btn-primarytwo" target="_blank">View</a>
+                                    {% if resource.user == request.user or request.user.is_account_owner %}
+                                        <a href="{% url 'delete_resource' resource.id %}" class="btn btn-sm btn-danger" 
+                                           onclick="return confirm('Are you sure you want to delete this document?');">Delete</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No documentation has been uploaded yet. 
+                Click the "Upload" button next to any indicator to add documentation.
+            </div>
+        {% endif %}
+    </div>
 </div>
 
 <!-- Upload Modal -->
