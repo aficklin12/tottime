@@ -6287,6 +6287,9 @@ def view_resource(request, resource_id):
 @login_required
 def delete_resource(request, resource_id):
     """Delete a resource"""
+    # Store the referring page to redirect back after deletion
+    referer = request.META.get('HTTP_REFERER')
+    
     try:
         resource = Resource.objects.get(pk=resource_id)
         
@@ -6300,17 +6303,34 @@ def delete_resource(request, resource_id):
         
         if not can_delete:
             messages.error(request, "You don't have permission to delete this resource.")
+            if referer and 'abc_quality' in referer:
+                return redirect('abc_quality')
             return redirect('resources')
             
+        # Store resource details before deletion
         title = resource.title
+        resource_type = resource.resource_type
+        
+        # Delete the file and record
         resource.file.delete(save=False)  # Delete the file from S3
         resource.delete()  # Delete the database record
         
         messages.success(request, f'Resource "{title}" deleted successfully.')
-        return redirect('resources')
+        
+        # Redirect based on resource type or referring URL
+        if referer and 'abc_quality' in referer:
+            return redirect('abc_quality')
+        elif resource_type == 'abc_quality':
+            return redirect('abc_quality')
+        else:
+            return redirect('resources')
         
     except Resource.DoesNotExist:
         messages.error(request, "Resource not found.")
+        
+        # Redirect based on referring URL
+        if referer and 'abc_quality' in referer:
+            return redirect('abc_quality')
         return redirect('resources')
     
 def public_resource_signature(request, uuid):
@@ -6516,6 +6536,7 @@ def pdf_records(request):
     }
 
     return render(request, 'tottimeapp/pdf_records.html', context)
+
 @login_required
 def abc_quality(request):
     """
