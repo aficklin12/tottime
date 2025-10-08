@@ -1143,6 +1143,35 @@ class ScoreItem(models.Model):
     def __str__(self):
         return f"Score for {self.criteria} on {self.score_sheet}"
     
+class ABCQualityElement(models.Model):
+    """Model for ABC Quality standard elements"""
+    name = models.CharField(max_length=255)
+    element_number = models.CharField(max_length=20)  # e.g., "I", "II", "III", "IV"
+    display_order = models.IntegerField(default=0)
+    is_section = models.BooleanField(default=False)  # To differentiate main elements vs sections
+    parent_element = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sections')
+    
+    def __str__(self):
+        return f"{self.element_number}: {self.name}"
+    
+    class Meta:
+        ordering = ['display_order', 'element_number']
+
+class ABCQualityIndicator(models.Model):
+    """Model for ABC Quality standard indicators"""
+    indicator_id = models.CharField(max_length=20, unique=True)  # e.g., "I.A", "I.B.1"
+    description = models.TextField()
+    points = models.CharField(max_length=50)  # e.g., "3 pts", "Up to 4 pts"
+    element = models.ForeignKey(ABCQualityElement, on_delete=models.CASCADE, related_name='indicators')
+    display_order = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return f"{self.indicator_id}: {self.description[:50]}..."
+    
+    class Meta:
+        ordering = ['display_order', 'indicator_id']
+
+# Update the Resource model to link to ABCQualityIndicator
 class Resource(models.Model):
     """Model for storing uploaded PDF resources"""
     RESOURCE_TYPES = (
@@ -1159,7 +1188,11 @@ class Resource(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     share_uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     resource_type = models.CharField(max_length=20, choices=RESOURCE_TYPES, default='general')
-    indicator_id = models.CharField(max_length=20, blank=True, null=True)  # For ABC Quality indicators
+    indicator_id = models.CharField(max_length=20, blank=True, null=True)  # Kept for backward compatibility
+    
+    # New foreign key to ABCQualityIndicator
+    abc_indicator = models.ForeignKey(ABCQualityIndicator, on_delete=models.SET_NULL, 
+                                     null=True, blank=True, related_name='resources')
     
     def __str__(self):
         return self.title

@@ -15,7 +15,7 @@ from django.db import transaction, models
 from django.contrib import messages
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -6516,9 +6516,13 @@ def pdf_records(request):
     }
 
     return render(request, 'tottimeapp/pdf_records.html', context)
-
 @login_required
 def abc_quality(request):
+    """
+    View function for displaying ABC Quality standards and documentation.
+    Fetches quality elements and indicators from the database and displays them
+    along with any uploaded documentation.
+    """
     required_permission_id = 450  # Permission ID for "orientation"
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
@@ -6527,28 +6531,42 @@ def abc_quality(request):
     # Get the main user for the current user
     main_user = get_user_for_view(request)
     
+    # Get all main elements (those without a parent) with prefetched related data
+    main_elements = ABCQualityElement.objects.filter(
+        parent_element__isnull=True
+    ).prefetch_related(
+        'indicators', 
+        'sections', 
+        'sections__indicators'
+    ).order_by('display_order')
+    
     # Get only ABC Quality resources for this user
     abc_resources = Resource.objects.filter(
         main_user=main_user,
         resource_type='abc_quality'
     ).order_by('-uploaded_at')
     
-    # Group resources by indicator_id for better organization
+    # Group resources by indicator for display
     grouped_resources = {}
     for resource in abc_resources:
-        indicator = resource.indicator_id or "Uncategorized"
-        if indicator not in grouped_resources:
-            grouped_resources[indicator] = []
-        grouped_resources[indicator].append(resource)
+        # Try to get indicator ID from the abc_indicator field first, then fall back to indicator_id string
+        if resource.abc_indicator:
+            indicator_id = resource.abc_indicator.indicator_id
+        else:
+            indicator_id = resource.indicator_id or "Uncategorized"
+            
+        if indicator_id not in grouped_resources:
+            grouped_resources[indicator_id] = []
+        grouped_resources[indicator_id].append(resource)
     
     # Add the resources to the context
     context = {
-        'abc_resources': abc_resources,
+        'main_elements': main_elements,
         'grouped_resources': grouped_resources,
         **permissions_context
     }
     
-    return render(request, 'abc_quality.html', permissions_context | context)
+    return render(request, 'tottimeapp/abc_quality.html', context)
 
 @login_required
 def upload_documentation(request):
@@ -6557,6 +6575,12 @@ def upload_documentation(request):
         description = request.POST.get('description', '')
         files = request.FILES.getlist('document_file')
         
+        # Find the indicator model
+        try:
+            indicator = ABCQualityIndicator.objects.get(indicator_id=indicator_id)
+        except ABCQualityIndicator.DoesNotExist:
+            indicator = None
+            
         uploaded_count = 0
         for file in files:
             # Create a title that includes the indicator ID
@@ -6574,18 +6598,11 @@ def upload_documentation(request):
                 title=title,
                 description=description,
                 file=file,
-                resource_type='abc_quality'
+                resource_type='abc_quality',
+                indicator_id=indicator_id,  # Keep for backward compatibility
+                abc_indicator=indicator     # Link to the actual indicator model
             )
-            
-            # Explicitly set the indicator_id
-            resource.indicator_id = indicator_id
-            
-            # Save the resource
             resource.save()
-            
-            # Log for debugging
-            print(f"Uploaded document for indicator: {indicator_id}, saved to resource ID: {resource.id}")
-            
             uploaded_count += 1
         
         if uploaded_count > 0:
