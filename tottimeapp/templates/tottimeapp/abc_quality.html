@@ -143,7 +143,7 @@
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
                 <td class="points">{{ indicator.points }}</td>
-                <td><button class="upload-btn" data-indicator="{{ indicator.indicator_id }}">Upload</button></td>
+                <td><button class="upload-btn" data-indicator="{{ indicator.indicator_id }}" data-indicator-db-id="{{ indicator.id }}">Upload</button></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -168,7 +168,7 @@
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
                 <td class="points">{{ indicator.points }}</td>
-                <td><button class="upload-btn" data-indicator="{{ indicator.indicator_id }}">Upload</button></td>
+                <td><button class="upload-btn" data-indicator="{{ indicator.indicator_id }}" data-indicator-db-id="{{ indicator.id }}">Upload</button></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -186,6 +186,7 @@
         <form class="upload-form" enctype="multipart/form-data" method="post" action="{% url 'upload_documentation' %}">
             {% csrf_token %}
             <input type="hidden" id="indicatorId" name="indicator_id">
+            <input type="hidden" id="indicatorDbId" name="indicator_db_id">
             <div class="file-input-container">
                 <label for="documentFile">Select file(s):</label>
                 <input type="file" id="documentFile" name="document_file" multiple>
@@ -204,6 +205,7 @@
     var modal = document.getElementById("uploadModal");
     var indicatorLabel = document.getElementById("indicatorLabel");
     var indicatorIdField = document.getElementById("indicatorId");
+    var indicatorDbIdField = document.getElementById("indicatorDbId");
     
     // Get the <span> element that closes the modal
     var span = document.getElementsByClassName("close-modal")[0];
@@ -215,8 +217,14 @@
     uploadButtons.forEach(function(button) {
         button.onclick = function() {
             var indicatorId = this.getAttribute("data-indicator");
+            var indicatorDbId = this.getAttribute("data-indicator-db-id");
+            
             indicatorLabel.textContent = indicatorId;
             indicatorIdField.value = indicatorId;
+            if (indicatorDbId) {
+                indicatorDbIdField.value = indicatorDbId;
+            }
+            
             modal.style.display = "block";
         }
     });

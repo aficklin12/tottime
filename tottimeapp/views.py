@@ -6572,14 +6572,26 @@ def abc_quality(request):
 def upload_documentation(request):
     if request.method == 'POST':
         indicator_id = request.POST.get('indicator_id')
+        indicator_db_id = request.POST.get('indicator_db_id')
         description = request.POST.get('description', '')
         files = request.FILES.getlist('document_file')
         
-        # Find the indicator model
-        try:
-            indicator = ABCQualityIndicator.objects.get(indicator_id=indicator_id)
-        except ABCQualityIndicator.DoesNotExist:
-            indicator = None
+        # Find the indicator model - prefer using direct ID if available
+        indicator = None
+        if indicator_db_id:
+            try:
+                indicator = ABCQualityIndicator.objects.get(id=indicator_db_id)
+                # If we found it by DB ID, make sure we use the correct indicator_id
+                indicator_id = indicator.indicator_id
+            except (ABCQualityIndicator.DoesNotExist, ValueError):
+                pass
+                
+        # Fallback to string lookup if DB ID didn't work
+        if not indicator and indicator_id:
+            try:
+                indicator = ABCQualityIndicator.objects.get(indicator_id=indicator_id)
+            except ABCQualityIndicator.DoesNotExist:
+                pass
             
         uploaded_count = 0
         for file in files:
