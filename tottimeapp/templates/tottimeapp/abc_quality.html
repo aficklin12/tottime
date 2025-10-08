@@ -131,9 +131,42 @@
         color: #4CAF50;
     }
     
-    .document-count {
-        background-color: #4CAF50;
+    .btn-outline-primary.link-switch {
+        background-color: transparent !important;
+        color: rgb(57, 189, 180) !important;
+        border-color: rgb(57, 189, 180) !important;
+    }
+    
+    .btn-outline-primary.link-switch:hover {
+        background-color: rgb(57, 189, 180) !important;
+        color: #fff !important;
+        border-color: rgb(57, 189, 180) !important;
+    }
+    
+    /* Update the document-indicator-btn to match the requested style */
+    .document-indicator-btn {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 10px;
+        background-color: transparent;
+        color: rgb(57, 189, 180);
+        border: 1px solid rgb(57, 189, 180);
+        border-radius: 4px;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 0.9em;
+    }
+    
+    .document-indicator-btn:hover {
+        background-color: rgb(57, 189, 180);
         color: white;
+    }
+    
+    /* Update the document-count style to match the new color scheme */
+    .document-count {
+        background-color: rgba(57, 189, 180, 0.2);
+        color: rgb(57, 189, 180);
         border-radius: 50%;
         width: 20px;
         height: 20px;
@@ -142,25 +175,42 @@
         align-items: center;
         font-size: 0.8em;
         margin-left: 5px;
+        font-weight: bold;
+    }
+    
+    /* Keep the document count visible on hover */
+    .document-indicator-btn:hover .document-count {
+        background-color: white;
+        color: rgb(57, 189, 180);
     }
     
     .document-preview {
         position: relative;
         cursor: pointer;
+        z-index: 10;
     }
     
     .document-list {
         display: none;
-        position: absolute;
-        right: 0;
-        top: 100%;
+        position: fixed; /* Change to fixed positioning */
         background: white;
         border: 1px solid #ddd;
         border-radius: 4px;
         padding: 10px;
-        min-width: 250px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        z-index: 100;
+        min-width: 300px;
+        max-height: 400px;
+        overflow-y: auto;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        z-index: 1000; /* Ensure it's above everything */
+    }
+    
+    /* Remove the positioning rules that were causing problems */
+    tr:first-child .document-list,
+    tr:nth-child(2) .document-list,
+    tr:nth-last-child(1) .document-list,
+    tr:nth-last-child(2) .document-list {
+        position: fixed;
+        transform: none;
     }
     
     .document-preview:hover .document-list {
@@ -170,35 +220,145 @@
     .document-item {
         padding: 8px;
         border-bottom: 1px solid #eee;
+        margin-bottom: 8px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
     }
     
     .document-item:last-child {
         border-bottom: none;
+        margin-bottom: 0;
     }
     
     .document-actions {
         display: flex;
         justify-content: space-between;
-        margin-top: 5px;
+        margin-top: 8px;
+        padding-top: 5px;
+        border-top: 1px dashed #eee;
     }
     
     .doc-action {
         color: #39BDB4;
         cursor: pointer;
         font-size: 0.9em;
+        padding: 3px 8px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+    }
+    
+    .doc-action:hover {
+        background-color: rgba(57, 189, 180, 0.1);
+        text-decoration: none;
+    }
+    
+    .doc-action.delete {
+        color: #e74c3c;
+    }
+    
+    .doc-action.delete:hover {
+        background-color: rgba(231, 76, 60, 0.1);
     }
     
     .doc-filename {
         font-weight: bold;
         font-size: 0.9em;
         color: #333;
+        word-break: break-word;
     }
     
     .doc-date {
         font-size: 0.8em;
         color: #666;
+        margin-top: 3px;
     }
+    
+    .doc-description {
+        margin-top: 5px;
+        font-size: 0.85em;
+        color: #555;
+        font-style: italic;
+        background-color: #f5f5f5;
+        padding: 4px 6px;
+        border-radius: 3px;
+    }
+    
+    .document-count-large {
+        font-size: 1.2em;
+        color: #4CAF50;
+        margin-right: 5px;
+    }
+    
+    .file-type-icon {
+        margin-right: 5px;
+        color: #777;
+    }
+    
+    .doc-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 5px;
+    }
+    
+    .doc-list-title {
+        font-weight: bold;
+        color: #39BDB4;
+    }
+    
+    .doc-list-count {
+        background-color: #4CAF50;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.9em;
+    }
+    
+    /* Document modal styles */
+    .document-modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    
+    .document-modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 20px;
+        width: 70%;
+        max-width: 800px;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    
+    .close-document-modal {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close-document-modal:hover {
+        color: black;
+    }
+    
 </style>
+
+
 {% endblock %}
 
 {% block content %}
@@ -229,29 +389,13 @@
                     
                     {% for key, resources in grouped_resources.items %}
                         {% if key == indicator.indicator_id %}
-                        <div class="document-preview">
-                            <div class="document-indicator">
-                                <i class="fas fa-file-alt"></i>
-                                <span class="document-count">{{ resources|length }}</span>
-                            </div>
-                            
-                            <div class="document-list">
-                                <strong>Uploaded Documents:</strong>
-                                {% for resource in resources %}
-                                <div class="document-item">
-                                    <div class="doc-filename">{{ resource.filename }}</div>
-                                    <div class="doc-date">Uploaded: {{ resource.uploaded_at|date:"M d, Y" }}</div>
-                                    {% if resource.description %}
-                                    <div class="doc-description">{{ resource.description }}</div>
-                                    {% endif %}
-                                    <div class="document-actions">
-                                        <a href="{{ resource.file.url }}" target="_blank" class="doc-action">View</a>
-                                        <a href="{% url 'delete_resource' resource.id %}" onclick="return confirm('Are you sure you want to delete this document?')" class="doc-action">Delete</a>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        <!-- Updated button to match the requested style -->
+                        <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                data-indicator="{{ indicator.indicator_id }}" 
+                                data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                            <i class="fas fa-file-alt"></i>
+                            <span class="document-count">{{ resources|length }}</span>
+                        </button>
                         {% endif %}
                     {% endfor %}
                 </td>
@@ -284,29 +428,13 @@
                     
                     {% for key, resources in grouped_resources.items %}
                         {% if key == indicator.indicator_id %}
-                        <div class="document-preview">
-                            <div class="document-indicator">
-                                <i class="fas fa-file-alt"></i>
-                                <span class="document-count">{{ resources|length }}</span>
-                            </div>
-                            
-                            <div class="document-list">
-                                <strong>Uploaded Documents:</strong>
-                                {% for resource in resources %}
-                                <div class="document-item">
-                                    <div class="doc-filename">{{ resource.filename }}</div>
-                                    <div class="doc-date">Uploaded: {{ resource.uploaded_at|date:"M d, Y" }}</div>
-                                    {% if resource.description %}
-                                    <div class="doc-description">{{ resource.description }}</div>
-                                    {% endif %}
-                                    <div class="document-actions">
-                                        <a href="{{ resource.file.url }}" target="_blank" class="doc-action">View</a>
-                                        <a href="{% url 'delete_resource' resource.id %}" onclick="return confirm('Are you sure you want to delete this document?')" class="doc-action">Delete</a>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                        <!-- Updated button to match the requested style -->
+                        <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                data-indicator="{{ indicator.indicator_id }}" 
+                                data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                            <i class="fas fa-file-alt"></i> View Files
+                            <span class="document-count">{{ resources|length }}</span>
+                        </button>
                         {% endif %}
                     {% endfor %}
                 </td>
@@ -341,20 +469,65 @@
     </div>
 </div>
 
+<!-- New Documents Modal -->
+<div id="documentsModal" class="document-modal">
+    <div class="document-modal-content">
+        <span class="close-document-modal">&times;</span>
+        <div class="doc-list-header">
+            <h2>Documents for Indicator <span id="documentModalIndicator"></span></h2>
+        </div>
+        <div id="documentModalContent">
+            <!-- Documents will be loaded here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    // Get the modal
-    var modal = document.getElementById("uploadModal");
+    // Add this script to handle positioning
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all document indicators
+        var indicators = document.querySelectorAll('.document-indicator');
+        
+        // Add mouseover event to each indicator
+        indicators.forEach(function(indicator) {
+            indicator.addEventListener('mouseover', function() {
+                // Get the dropdown associated with this indicator
+                var dropdown = this.parentElement.querySelector('.document-list');
+                
+                // Get indicator position
+                var rect = this.getBoundingClientRect();
+                
+                // Calculate best position for dropdown
+                var left = rect.right - dropdown.offsetWidth;
+                var top = rect.bottom + window.scrollY;
+                
+                // Ensure dropdown doesn't go off-screen to the left
+                if (left < 10) left = 10;
+                
+                // Check if dropdown would go off bottom of screen
+                if (top + dropdown.offsetHeight > window.innerHeight + window.scrollY) {
+                    // Position above the indicator instead
+                    top = rect.top + window.scrollY - dropdown.offsetHeight;
+                }
+                
+                // Apply position
+                dropdown.style.left = left + 'px';
+                dropdown.style.top = top + 'px';
+            });
+        });
+    });
+</script>
+<script>
+    // Existing script for upload modal
+    var uploadModal = document.getElementById("uploadModal");
     var indicatorLabel = document.getElementById("indicatorLabel");
     var indicatorIdField = document.getElementById("indicatorId");
     var indicatorDbIdField = document.getElementById("indicatorDbId");
-    
-    // Get the <span> element that closes the modal
-    var span = document.getElementsByClassName("close-modal")[0];
-    
-    // Get all upload buttons
+    var uploadModalClose = document.getElementsByClassName("close-modal")[0];
     var uploadButtons = document.querySelectorAll(".upload-btn");
     
-    // When the user clicks on an upload button, open the modal
     uploadButtons.forEach(function(button) {
         button.onclick = function() {
             var indicatorId = this.getAttribute("data-indicator");
@@ -366,19 +539,152 @@
                 indicatorDbIdField.value = indicatorDbId;
             }
             
-            modal.style.display = "block";
+            uploadModal.style.display = "block";
         }
     });
     
-    // When the user clicks on <span> (x), close the modal
-    span.onclick = function() {
-        modal.style.display = "none";
+    uploadModalClose.onclick = function() {
+        uploadModal.style.display = "none";
     }
     
-    // When the user clicks anywhere outside of the modal, close it
+    // New script for documents modal
+    var documentsModal = document.getElementById("documentsModal");
+    var documentModalClose = document.getElementsByClassName("close-document-modal")[0];
+    var documentButtons = document.querySelectorAll(".document-indicator-btn");
+    var documentModalIndicator = document.getElementById("documentModalIndicator");
+    var documentModalDescription = document.getElementById("documentModalDescription");
+    var documentModalContent = document.getElementById("documentModalContent");
+    
+    // Group the resources data in JavaScript for easier access
+    var groupedResources = {};
+    {% for key, resources in grouped_resources.items %}
+        groupedResources["{{ key }}"] = [
+            {% for resource in resources %}
+                {
+                    id: {{ resource.id }},
+                    filename: "{{ resource.filename }}",
+                    description: "{{ resource.description|default:''|escapejs }}",
+                    uploadedAt: "{{ resource.uploaded_at|date:"M d, Y" }}",
+                    url: "{{ resource.file.url }}",
+                    deleteUrl: "{% url 'delete_resource' resource.id %}"
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+    {% endfor %}
+    
+    // Set up click event for document buttons
+    documentButtons.forEach(function(button) {
+        button.onclick = function() {
+            var indicatorId = this.getAttribute("data-indicator");
+            var indicatorName = this.getAttribute("data-indicator-name");
+            
+            documentModalIndicator.textContent = indicatorId;
+            
+            // Clear previous content
+            documentModalContent.innerHTML = "";
+            
+            // Add documents for this indicator
+            var resources = groupedResources[indicatorId] || [];
+            if (resources.length > 0) {
+                resources.forEach(function(resource) {
+                    var fileIcon = getFileIcon(resource.filename);
+                    
+                    var documentItem = document.createElement("div");
+                    documentItem.className = "document-item";
+                    documentItem.innerHTML = `
+                        <div class="doc-filename">
+                            <i class="${fileIcon} file-type-icon"></i>
+                            ${resource.filename}
+                        </div>
+                        <div class="doc-date">Uploaded: ${resource.uploadedAt}</div>
+                        ${resource.description ? `<div class="doc-description">${resource.description}</div>` : ''}
+                        <div class="document-actions">
+                            <a href="${resource.url}" target="_blank" class="doc-action">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="${resource.url}" download class="doc-action">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                            <a href="javascript:void(0);" class="doc-action delete" data-delete-url="${resource.deleteUrl}" data-filename="${resource.filename}">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                    `;
+                    
+                    documentModalContent.appendChild(documentItem);
+                });
+
+                // Add event listeners for delete buttons
+                document.querySelectorAll('.doc-action.delete').forEach(function(deleteBtn) {
+                    deleteBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const deleteUrl = this.getAttribute('data-delete-url');
+                        const filename = this.getAttribute('data-filename');
+                        
+                        // Show Toastr confirmation
+                        toastr.warning(
+                            `<div>Are you sure you want to delete this file?<br><strong>${filename}</strong></div>
+                            <div style="margin-top:10px; text-align:center;">
+                                <button class="btn btn-sm btn-danger confirm-delete-btn" style="margin-right:5px;">Delete</button>
+                                <button class="btn btn-sm btn-secondary cancel-delete-btn">Cancel</button>
+                            </div>`,
+                            'Confirm Deletion',
+                            {
+                                closeButton: false,
+                                timeOut: 0,
+                                extendedTimeOut: 0,
+                                tapToDismiss: false,
+                                onShown: function() {
+                                    // When the toastr is shown, add click handlers to the buttons
+                                    document.querySelector('.confirm-delete-btn').addEventListener('click', function() {
+                                        // Perform the actual delete
+                                        window.location.href = deleteUrl;
+                                    });
+                                    
+                                    document.querySelector('.cancel-delete-btn').addEventListener('click', function() {
+                                        // Just close the toastr
+                                        toastr.clear();
+                                    });
+                                }
+                            }
+                        );
+                    });
+                });
+            } else {
+                documentModalContent.innerHTML = "<p>No documents found for this indicator.</p>";
+            }
+            
+            documentsModal.style.display = "block";
+        }
+    });
+    
+    documentModalClose.onclick = function() {
+        documentsModal.style.display = "none";
+    }
+    
+    // Helper function to get the appropriate icon based on file extension
+    function getFileIcon(filename) {
+        filename = filename.toLowerCase();
+        if (filename.includes(".pdf")) {
+            return "fas fa-file-pdf";
+        } else if (filename.includes(".doc")) {
+            return "fas fa-file-word";
+        } else if (filename.includes(".xls")) {
+            return "fas fa-file-excel";
+        } else if (filename.includes(".jpg") || filename.includes(".png") || filename.includes(".gif")) {
+            return "fas fa-file-image";
+        } else {
+            return "fas fa-file";
+        }
+    }
+    
+    // Close both modals when clicking outside of them
     window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
+        if (event.target == uploadModal) {
+            uploadModal.style.display = "none";
+        }
+        if (event.target == documentsModal) {
+            documentsModal.style.display = "none";
         }
     }
 </script>
