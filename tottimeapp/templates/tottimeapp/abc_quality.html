@@ -917,11 +917,20 @@
             
             // If action is download, we need to handle it differently
             if (action === 'download') {
+                // Show the processing modal first
+                processingModal.show();
+                
+                // Set loading state
+                statusText.textContent = 'Preparing your PDF...';
+                progressBar.style.width = '50%';
+                
                 // Create a form to submit directly for file download
                 const downloadForm = document.createElement('form');
                 downloadForm.method = 'POST';
                 downloadForm.action = '{% url "compile_all_documents" %}';
-                downloadForm.target = '_blank'; // Open in new tab
+                
+                // Important: Don't use _blank for downloads as it can be blocked
+                // downloadForm.target = '_blank';
                 
                 // Add CSRF token
                 const csrfInput = document.createElement('input');
@@ -939,6 +948,21 @@
                     downloadForm.appendChild(input);
                 }
                 
+                // Add a special flag to identify download requests
+                const downloadFlag = document.createElement('input');
+                downloadFlag.type = 'hidden';
+                downloadFlag.name = 'is_download_request';
+                downloadFlag.value = 'true';
+                downloadForm.appendChild(downloadFlag);
+                
+                // Set up a fallback in case the download doesn't start
+                setTimeout(() => {
+                    processingModal.hide();
+                    toastr.info('If your download doesn\'t start automatically, please try again', 'Download Info', {
+                        timeOut: 7000
+                    });
+                }, 5000);
+                
                 // Append form to body and submit
                 document.body.appendChild(downloadForm);
                 downloadForm.submit();
@@ -946,8 +970,15 @@
                 
                 // Hide processing modal after a delay
                 setTimeout(() => {
-                    processingModal.hide();
-                    toastr.success('Download started!');
+                    progressBar.style.width = '100%';
+                    statusText.textContent = 'Complete!';
+                    
+                    setTimeout(() => {
+                        processingModal.hide();
+                        toastr.success('Your PDF has been generated successfully!', 'Success', {
+                            timeOut: 3000
+                        });
+                    }, 1000);
                 }, 2000);
                 
                 return;

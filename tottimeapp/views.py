@@ -6652,6 +6652,9 @@ def upload_documentation(request):
 def compile_all_documents(request):
     """Handle compiling all documents for an element or section into PDF"""
     if request.method == 'POST':
+        # Log incoming request details
+        logger.info(f"PDF compilation request received. Headers: {request.headers}")
+        
         element = request.POST.get('element')
         section = request.POST.get('section', '')
         action = request.POST.get('action')
@@ -6804,16 +6807,21 @@ def compile_all_documents(request):
                     try:
                         indicator_obj = ABCQualityIndicator.objects.get(indicator_id=current_indicator)
                         indicator_desc = indicator_obj.description
-                    except:
+                    except Exception as e:
+                        logger.error(f"Error getting indicator description: {e}")
                         indicator_desc = "Unknown Description"
                     
                     elements.append(Paragraph(f"Indicator {current_indicator}: {indicator_desc}", indicator_style))
                 
                 # Get the file details
-                if hasattr(resource.file, 'name'):
-                    file_name = os.path.basename(resource.file.name)
-                else:
-                    file_name = resource.title or "Untitled Document"
+                try:
+                    if hasattr(resource.file, 'name'):
+                        file_name = os.path.basename(resource.file.name)
+                    else:
+                        file_name = resource.title or "Untitled Document"
+                except Exception as e:
+                    logger.error(f"Error getting filename: {e}")
+                    file_name = "Unknown File"
                 
                 # Add file info
                 elements.append(Paragraph(f"File: {file_name}", file_title_style))
@@ -6863,6 +6871,7 @@ def compile_all_documents(request):
                             elements.append(img_obj)
                             
                         except Exception as img_err:
+                            logger.error(f"Error processing image {file_name}: {img_err}")
                             elements.append(Paragraph(f"Error loading image: {str(img_err)}", normal_style))
                     
                     elif file_name_lower.endswith('.pdf'):
@@ -6910,6 +6919,7 @@ def compile_all_documents(request):
                             # Close the PDF
                             pdf_document.close()
                         except Exception as pdf_err:
+                            logger.error(f"Error processing PDF {file_name}: {pdf_err}")
                             elements.append(Paragraph(f"Error processing PDF: {str(pdf_err)}", normal_style))
                     
                     else:
@@ -6917,6 +6927,7 @@ def compile_all_documents(request):
                         elements.append(Paragraph(f"Preview not available for this file type.", normal_style))
                 
                 except Exception as e:
+                    logger.error(f"Error processing file {file_name}: {e}")
                     elements.append(Paragraph(f"Error processing file: {str(e)}", normal_style))
                 
                 # Add a separator after each file
@@ -6928,16 +6939,34 @@ def compile_all_documents(request):
             
             # Get the PDF data
             buffer.seek(0)
+            logger.info(f"PDF compilation complete. Size: {buffer.getbuffer().nbytes} bytes")
             
             if action == 'download':
-                # Return the PDF as a download
-                from django.http import FileResponse
-                response = FileResponse(
-                    buffer,
-                    as_attachment=True,
-                    filename=f'abc_quality_{filename_suffix}.pdf'
-                )
-                return response
+                # Return the PDF as a download with explicit headers
+                try:
+                    logger.info(f"Preparing download response for: {scope_description}")
+                    
+                    from django.http import HttpResponse
+                    
+                    # Create an HttpResponse instead of FileResponse for more control
+                    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+                    
+                    # Set explicit Content-Disposition header
+                    response['Content-Disposition'] = f'attachment; filename="abc_quality_{filename_suffix}.pdf"'
+                    
+                    # Set additional headers to prevent caching
+                    response['Content-Length'] = buffer.getbuffer().nbytes
+                    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response['Pragma'] = 'no-cache'
+                    response['Expires'] = '0'
+                    
+                    logger.info("PDF download response created successfully")
+                    return response
+                    
+                except Exception as download_error:
+                    logger.error(f"Error creating download response: {download_error}")
+                    messages.error(request, f"Error preparing download: {str(download_error)}")
+                    return redirect('abc_quality')
             
             elif action == 'email' and email:
                 # Save PDF to a temporary file
@@ -6947,6 +6976,8 @@ def compile_all_documents(request):
                 
                 # Send email with PDF attachment
                 try:
+                    logger.info(f"Preparing email to {email} with PDF attachment")
+                    
                     email_subject = f"ABC Quality Documentation - {scope_description}"
                     email_body = f"Please find attached the compiled documentation for {scope_description}."
                     
@@ -6971,6 +7002,7 @@ def compile_all_documents(request):
                     
                     # Send the email
                     email_obj.send()
+                    logger.info(f"Email with PDF attachment sent to {email}")
                     
                     # Delete the temporary file
                     os.unlink(temp_pdf_path)
@@ -6984,7 +7016,7 @@ def compile_all_documents(request):
                 except Exception as e:
                     import traceback
                     error_details = traceback.format_exc()
-                    print(error_details)  # Log the full error
+                    logger.error(f"Failed to send email: {error_details}")
                     
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({'success': False, 'error': str(e)})
@@ -6995,7 +7027,7 @@ def compile_all_documents(request):
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
-            print(error_details)  # Log the full error
+            logger.error(f"Error compiling documents: {error_details}")
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': False, 'error': str(e)})
