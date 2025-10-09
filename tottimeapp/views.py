@@ -6687,28 +6687,23 @@ def compile_all_documents(request):
                     logger.error(f"Error initializing S3 client: {e}")
                     s3_client = None
             
-            # Handle the 'all' case for compiling everything
-            if element == 'all':
-                scope_description = "All Elements and Sections"
-                indicators = ABCQualityIndicator.objects.all()
-                filename_suffix = "all"
+            # Remove the 'all' case and only handle specific element/section
+            scope_description = f"Element {element}"
+            filename_suffix = element
+            
+            if section:
+                scope_description += f", Section: {section}"
+                filename_suffix += f"_{section.replace(' ', '_')}"
+            
+            if section:
+                indicators = ABCQualityIndicator.objects.filter(
+                    element__element_number=element,
+                    section__name=section
+                )
             else:
-                scope_description = f"Element {element}"
-                filename_suffix = element
-                
-                if section:
-                    scope_description += f", Section: {section}"
-                    filename_suffix += f"_{section.replace(' ', '_')}"
-                
-                if section:
-                    indicators = ABCQualityIndicator.objects.filter(
-                        element__element_number=element,
-                        section__name=section
-                    )
-                else:
-                    indicators = ABCQualityIndicator.objects.filter(
-                        element__element_number=element
-                    )
+                indicators = ABCQualityIndicator.objects.filter(
+                    element__element_number=element
+                )
             
             # Get all resources for these indicators
             indicator_ids = [indicator.indicator_id for indicator in indicators]
