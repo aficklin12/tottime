@@ -30,6 +30,9 @@ from django.core.mail import send_mail
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 import bleach
+import boto3
+from botocore.client import Config
+
 ALLOWED_TAGS = [
     'p', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br', 'span'
 ]
@@ -6660,9 +6663,14 @@ def compile_all_documents(request):
         action = request.POST.get('action')
         email = request.POST.get('email', '')
         email_message = request.POST.get('email_message', '')
-        is_download_request = request.POST.get('is_download_request', '') == 'true'
         
         try:
+            # Get AWS credentials from settings
+            aws_access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
+            aws_secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
+            s3_bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
+            s3_region = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+            
             # Handle the 'all' case for compiling everything
             if element == 'all':
                 scope_description = "All Elements and Sections"
@@ -6711,9 +6719,22 @@ def compile_all_documents(request):
             import fitz  # PyMuPDF
             from PIL import Image as PILImage
             import io
-            import requests
-            from urllib.parse import urlparse
-            from django.conf import settings
+            
+            # Initialize S3 client if we have AWS credentials
+            s3_client = None
+            if aws_access_key and aws_secret_key and s3_bucket_name:
+                try:
+                    s3_client = boto3.client(
+                        's3',
+                        aws_access_key_id=aws_access_key,
+                        aws_secret_access_key=aws_secret_key,
+                        region_name=s3_region,
+                        config=Config(signature_version='s3v4')
+                    )
+                    logger.info(f"S3 client initialized successfully for bucket: {s3_bucket_name}")
+                except Exception as e:
+                    logger.error(f"Error initializing S3 client: {e}")
+                    s3_client = None
             
             # Create a BytesIO buffer for the PDF
             buffer = BytesIO()
@@ -6849,47 +6870,67 @@ def compile_all_documents(request):
                     if not hasattr(resource, 'file') or not resource.file:
                         elements.append(Paragraph("File is not available", normal_style))
                         continue
-
-                    # Check if the file is accessible
-                    file_url = None
-                    file_content = None
-
-                    # Try to get the file URL
-                    try:
-                        file_url = resource.file.url
-                        logger.info(f"File URL obtained: {file_url}")
-                    except Exception as url_err:
-                        logger.error(f"Error getting file URL: {url_err}")
-                        elements.append(Paragraph(f"Error accessing file: {str(url_err)}", normal_style))
-                        continue
                     
-                    # Get file content using the URL
-                    try:
-                        # Handle both absolute URLs and relative paths
-                        parsed_url = urlparse(file_url)
-                        if parsed_url.netloc:  # It's an absolute URL (like S3)
-                            logger.info(f"Fetching file from URL: {file_url}")
-                            response = requests.get(file_url)
+                    # Get the file content using S3 pre-signed URL or direct file access
+                    file_content = None
+                    
+                    # If we have S3 client, try to get pre-signed URL
+                    if s3_client and hasattr(resource.file, 'name'):
+                        try:
+                            # Parse the S3 key from the file name
+                            # This assumes resource.file.name contains the path relative to bucket
+                            s3_key = resource.file.name
+                            if s3_key.startswith('/'):
+                                s3_key = s3_key[1:]  # Remove leading slash if present
+                            
+                            logger.info(f"Getting pre-signed URL for: {s3_key} from bucket {s3_bucket_name}")
+                            
+                            # Generate pre-signed URL with one hour expiration
+                            url = s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={'Bucket': s3_bucket_name, 'Key': s3_key},
+                                ExpiresIn=3600  # URL valid for 1 hour
+                            )
+                            
+                            logger.info(f"Pre-signed URL generated: {url}")
+                            
+                            # Download the file using the pre-signed URL
+                            response = requests.get(url)
                             if response.status_code == 200:
                                 file_content = BytesIO(response.content)
+                                logger.info(f"File downloaded successfully from pre-signed URL")
                             else:
                                 raise Exception(f"Failed to download file: HTTP {response.status_code}")
-                        else:  # It's a relative path
-                            # For local development/storage
-                            local_path = os.path.join(settings.MEDIA_ROOT, resource.file.name)
-                            logger.info(f"Reading file from local path: {local_path}")
-                            if os.path.exists(local_path):
-                                with open(local_path, 'rb') as f:
-                                    file_content = BytesIO(f.read())
-                            else:
-                                # Try to read directly from the storage
+                                
+                        except Exception as s3_err:
+                            logger.error(f"Error getting file from S3: {s3_err}")
+                            # We'll fall back to the next method
+                    
+                    # If we still don't have the file content, try other methods
+                    if not file_content:
+                        try:
+                            # Try to get file URL first
+                            if hasattr(resource.file, 'url'):
+                                url = resource.file.url
+                                # Try direct download if it's a full URL
+                                if url.startswith(('http://', 'https://')):
+                                    response = requests.get(url)
+                                    if response.status_code == 200:
+                                        file_content = BytesIO(response.content)
+                                    else:
+                                        raise Exception(f"Failed to download file: HTTP {response.status_code}")
+                            
+                            # If still no content, try direct file read
+                            if not file_content and hasattr(resource.file, 'read'):
                                 file_content = BytesIO(resource.file.read())
-                                resource.file.seek(0)
-                    except Exception as content_err:
-                        logger.error(f"Error reading file content: {content_err}")
-                        elements.append(Paragraph(f"Error reading file: {str(content_err)}", normal_style))
-                        continue
-
+                                resource.file.seek(0)  # Reset file pointer
+                                
+                        except Exception as file_err:
+                            logger.error(f"Error accessing file: {file_err}")
+                            elements.append(Paragraph(f"Error reading file: {str(file_err)}", normal_style))
+                            continue
+                    
+                    # If we still don't have the content, report error and continue
                     if not file_content:
                         elements.append(Paragraph("Could not retrieve file content", normal_style))
                         continue
@@ -6982,17 +7023,6 @@ def compile_all_documents(request):
                 except Exception as e:
                     logger.error(f"Error processing file {file_name}: {e}")
                     elements.append(Paragraph(f"Error processing file: {str(e)}", normal_style))
-                    
-                    # Add debugging info
-                    if hasattr(resource, 'file'):
-                        if hasattr(resource.file, 'url'):
-                            try:
-                                elements.append(Paragraph(f"File URL: {resource.file.url}", normal_style))
-                            except Exception:
-                                pass
-                        
-                        if hasattr(resource.file, 'storage'):
-                            elements.append(Paragraph(f"Storage type: {resource.file.storage.__class__.__name__}", normal_style))
                 
                 # Add a separator after each file
                 elements.append(Spacer(1, 0.3*inch))
@@ -7023,9 +7053,6 @@ def compile_all_documents(request):
                     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                     response['Pragma'] = 'no-cache'
                     response['Expires'] = '0'
-                    
-                    # Add X-Accel-Redirect header for Nginx if appropriate
-                    # This can help with large file downloads in production
                     
                     logger.info("PDF download response created successfully")
                     return response
