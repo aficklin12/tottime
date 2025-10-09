@@ -6687,37 +6687,56 @@ def compile_all_documents(request):
                     logger.error(f"Error initializing S3 client: {e}")
                     s3_client = None
             
-            # Remove the 'all' case and only handle specific element/section
-            scope_description = f"Element {element}"
-            filename_suffix = element
+            # Get the main user for resource lookup
+            main_user = get_user_for_view(request)
             
-            if section:
-                scope_description += f", Section: {section}"
-                filename_suffix += f"_{section.replace(' ', '_')}"
-            
-            if section:
-                indicators = ABCQualityIndicator.objects.filter(
-                    element__element_number=element,
-                    section__name=section
-                )
+            # Handle the 'all' case for compiling everything
+            if element == 'all':
+                scope_description = "All Elements and Sections"
+                indicators = ABCQualityIndicator.objects.all()
+                filename_suffix = "all"
             else:
-                indicators = ABCQualityIndicator.objects.filter(
-                    element__element_number=element
-                )
+                scope_description = f"Element {element}"
+                filename_suffix = element
+                
+                if section:
+                    scope_description += f", Section: {section}"
+                    filename_suffix += f"_{section.replace(' ', '_')}"
+                
+                if section:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element,
+                        section__name=section
+                    )
+                else:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element
+                    )
             
             # Get all resources for these indicators
             indicator_ids = [indicator.indicator_id for indicator in indicators]
             
-            # First try to find resources linked to the indicator model
+            # Log debug information
+            logger.debug(f"Found {len(indicator_ids)} indicators: {indicator_ids}")
+            
+            # First try to find resources linked to the indicator model - filter by main_user
             resources_with_abc_indicator = Resource.objects.filter(
-                abc_indicator__indicator_id__in=indicator_ids
+                main_user=main_user,
+                abc_indicator__indicator_id__in=indicator_ids,
+                resource_type='abc_quality'
             ).order_by('abc_indicator__indicator_id')
             
-            # Also get resources that only have the string indicator_id
+            # Also get resources that only have the string indicator_id - filter by main_user
             resources_with_string_id = Resource.objects.filter(
+                main_user=main_user,
                 indicator_id__in=indicator_ids,
-                abc_indicator__isnull=True
+                abc_indicator__isnull=True,
+                resource_type='abc_quality'
             ).order_by('indicator_id')
+            
+            # Log debug information
+            logger.debug(f"Found {resources_with_abc_indicator.count()} resources with ABC indicator")
+            logger.debug(f"Found {resources_with_string_id.count()} resources with string indicator ID")
             
             # Combine the querysets
             from itertools import chain
@@ -6725,11 +6744,17 @@ def compile_all_documents(request):
             
             # If no resources, return a message
             if not resources:
+                error_message = f'No documents found for {scope_description}. Please upload documents for this element/section first.'
+                logger.warning(error_message)
+                
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'error': f'No documents found for {scope_description}.'})
+                    return JsonResponse({'success': False, 'error': error_message})
                 else:
-                    messages.warning(request, f"No documents found for {scope_description}.")
+                    messages.warning(request, error_message)
                     return redirect('abc_quality')
+            
+            # Log the number of resources found
+            logger.info(f"Found {len(resources)} resources to compile")
             
             # Import required libraries for PDF generation
             from reportlab.lib.pagesizes import letter
@@ -6990,7 +7015,6 @@ def compile_all_documents(request):
                                 matrix = fitz.Matrix(zoom_factor, zoom_factor)
                                 
                                 # Get the pixmap with higher resolution and no alpha channel
-                                # Remove 'annots=True' if it causes issues
                                 pix = page.get_pixmap(matrix=matrix, alpha=False)
                                 
                                 # Calculate DPI based on zoom factor (72 is the base DPI)
