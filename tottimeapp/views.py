@@ -7078,16 +7078,17 @@ def compile_all_documents(request):
                 try:
                     logger.info(f"Preparing download response for: {scope_description}")
                     
-                    from django.http import HttpResponse
+                    from django.http import HttpResponse, FileResponse
                     
-                    # Create an HttpResponse instead of FileResponse for more control
-                    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-                    
-                    # Set explicit Content-Disposition header
-                    response['Content-Disposition'] = f'attachment; filename="abc_quality_{filename_suffix}.pdf"'
+                    # Use FileResponse which is better for handling file downloads
+                    response = FileResponse(
+                        buffer,
+                        as_attachment=True,
+                        filename=f"abc_quality_{filename_suffix}.pdf",
+                        content_type='application/pdf'
+                    )
                     
                     # Set additional headers to prevent caching
-                    response['Content-Length'] = buffer.getbuffer().nbytes
                     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                     response['Pragma'] = 'no-cache'
                     response['Expires'] = '0'
