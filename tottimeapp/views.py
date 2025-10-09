@@ -6651,6 +6651,11 @@ def upload_documentation(request):
     # If GET request, redirect to ABC Quality page
     return redirect('abc_quality')
 
+import boto3
+from botocore.client import Config
+import logging
+logger = logging.getLogger(__name__)
+
 @login_required
 def compile_all_documents(request):
     """Handle compiling all documents for an element or section into PDF"""
@@ -6670,6 +6675,22 @@ def compile_all_documents(request):
             aws_secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
             s3_bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
             s3_region = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+            
+            # Initialize S3 client if we have AWS credentials
+            s3_client = None
+            if aws_access_key and aws_secret_key and s3_bucket_name:
+                try:
+                    s3_client = boto3.client(
+                        's3',
+                        aws_access_key_id=aws_access_key,
+                        aws_secret_access_key=aws_secret_key,
+                        region_name=s3_region,
+                        config=Config(signature_version='s3v4')
+                    )
+                    logger.info(f"S3 client initialized successfully for bucket: {s3_bucket_name}")
+                except Exception as e:
+                    logger.error(f"Error initializing S3 client: {e}")
+                    s3_client = None
             
             # Handle the 'all' case for compiling everything
             if element == 'all':
@@ -6696,10 +6717,24 @@ def compile_all_documents(request):
             
             # Get all resources for these indicators
             indicator_ids = [indicator.indicator_id for indicator in indicators]
-            resources = Resource.objects.filter(indicator_id__in=indicator_ids).order_by('indicator_id')
+            
+            # First try to find resources linked to the indicator model
+            resources_with_abc_indicator = Resource.objects.filter(
+                abc_indicator__indicator_id__in=indicator_ids
+            ).order_by('abc_indicator__indicator_id')
+            
+            # Also get resources that only have the string indicator_id
+            resources_with_string_id = Resource.objects.filter(
+                indicator_id__in=indicator_ids,
+                abc_indicator__isnull=True
+            ).order_by('indicator_id')
+            
+            # Combine the querysets
+            from itertools import chain
+            resources = list(chain(resources_with_abc_indicator, resources_with_string_id))
             
             # If no resources, return a message
-            if not resources.exists():
+            if not resources:
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({'success': False, 'error': f'No documents found for {scope_description}.'})
                 else:
@@ -6719,22 +6754,7 @@ def compile_all_documents(request):
             import fitz  # PyMuPDF
             from PIL import Image as PILImage
             import io
-            
-            # Initialize S3 client if we have AWS credentials
-            s3_client = None
-            if aws_access_key and aws_secret_key and s3_bucket_name:
-                try:
-                    s3_client = boto3.client(
-                        's3',
-                        aws_access_key_id=aws_access_key,
-                        aws_secret_access_key=aws_secret_key,
-                        region_name=s3_region,
-                        config=Config(signature_version='s3v4')
-                    )
-                    logger.info(f"S3 client initialized successfully for bucket: {s3_bucket_name}")
-                except Exception as e:
-                    logger.error(f"Error initializing S3 client: {e}")
-                    s3_client = None
+            import requests
             
             # Create a BytesIO buffer for the PDF
             buffer = BytesIO()
@@ -6820,121 +6840,111 @@ def compile_all_documents(request):
             
             # Process each resource
             for resource in resources:
-                # Check if we need to start a new indicator section
-                if current_indicator != resource.indicator_id:
-                    current_indicator = resource.indicator_id
-                    
-                    # Add some spacing between indicator sections
-                    if elements and not isinstance(elements[-1], PageBreak):
-                        elements.append(Spacer(1, 0.3*inch))
-                    
-                    # Add indicator header
-                    try:
-                        indicator_obj = ABCQualityIndicator.objects.get(indicator_id=current_indicator)
-                        indicator_desc = indicator_obj.description
-                    except Exception as e:
-                        logger.error(f"Error getting indicator description: {e}")
-                        indicator_desc = "Unknown Description"
-                    
-                    elements.append(Paragraph(f"Indicator {current_indicator}: {indicator_desc}", indicator_style))
-                
-                # Get the file details
                 try:
-                    if hasattr(resource.file, 'name'):
-                        file_name = os.path.basename(resource.file.name)
-                    elif hasattr(resource, 'filename'):
-                        if callable(resource.filename):
-                            file_name = resource.filename()
-                        else:
-                            file_name = resource.filename
+                    # Get the indicator ID from the resource
+                    if hasattr(resource, 'abc_indicator') and resource.abc_indicator:
+                        indicator_id = resource.abc_indicator.indicator_id
                     else:
-                        file_name = resource.title or "Untitled Document"
-                except Exception as e:
-                    logger.error(f"Error getting filename: {e}")
-                    file_name = "Unknown File"
-                
-                # Add file info
-                elements.append(Paragraph(f"File: {file_name}", file_title_style))
-                
-                if hasattr(resource, 'uploaded_at'):
-                    upload_date = resource.uploaded_at.strftime('%b %d, %Y')
-                    elements.append(Paragraph(f"Uploaded: {upload_date}", normal_style))
-                
-                if hasattr(resource, 'description') and resource.description:
-                    elements.append(Paragraph(f"{resource.description}", description_style))
-                
-                elements.append(Spacer(1, 0.1*inch))
-                
-                # Get file content and add preview based on file type
-                try:
+                        indicator_id = resource.indicator_id
+                    
+                    # Check if we need to start a new indicator section
+                    if current_indicator != indicator_id:
+                        current_indicator = indicator_id
+                        
+                        # Add some spacing between indicator sections
+                        if elements and not isinstance(elements[-1], PageBreak):
+                            elements.append(Spacer(1, 0.3*inch))
+                        
+                        # Add indicator header
+                        try:
+                            indicator_obj = ABCQualityIndicator.objects.get(indicator_id=current_indicator)
+                            indicator_desc = indicator_obj.description
+                        except Exception as e:
+                            logger.error(f"Error getting indicator description: {e}")
+                            indicator_desc = "Unknown Description"
+                        
+                        elements.append(Paragraph(f"Indicator {current_indicator}: {indicator_desc}", indicator_style))
+                    
+                    # Get the file details
+                    try:
+                        if hasattr(resource, 'filename') and callable(resource.filename):
+                            file_name = resource.filename()
+                        elif hasattr(resource, 'filename') and resource.filename:
+                            file_name = resource.filename
+                        elif hasattr(resource.file, 'name'):
+                            file_name = os.path.basename(resource.file.name)
+                        else:
+                            file_name = "Untitled Document"
+                    except Exception as e:
+                        logger.error(f"Error getting filename: {e}")
+                        file_name = "Unknown File"
+                    
+                    # Add file info
+                    elements.append(Paragraph(f"File: {file_name}", file_title_style))
+                    
+                    if hasattr(resource, 'uploaded_at'):
+                        upload_date = resource.uploaded_at.strftime('%b %d, %Y')
+                        elements.append(Paragraph(f"Uploaded: {upload_date}", normal_style))
+                    
+                    if hasattr(resource, 'description') and resource.description:
+                        elements.append(Paragraph(f"{resource.description}", description_style))
+                    
+                    elements.append(Spacer(1, 0.1*inch))
+                    
+                    # Get file content and add preview based on file type
                     if not hasattr(resource, 'file') or not resource.file:
                         elements.append(Paragraph("File is not available", normal_style))
                         continue
                     
                     # Get the file content using S3 pre-signed URL or direct file access
                     file_content = None
+                    file_key = None
                     
-                    # If we have S3 client, try to get pre-signed URL
-                    if s3_client and hasattr(resource.file, 'name'):
+                    # First try to get the S3 key directly
+                    if hasattr(resource.file, 'name'):
+                        file_key = resource.file.name
+                        # Remove any leading slash
+                        if file_key.startswith('/'):
+                            file_key = file_key[1:]
+                    
+                    # If we have S3 client and a key, use presigned URL
+                    if s3_client and file_key and s3_bucket_name:
                         try:
-                            # Parse the S3 key from the file name
-                            # This assumes resource.file.name contains the path relative to bucket
-                            s3_key = resource.file.name
-                            if s3_key.startswith('/'):
-                                s3_key = s3_key[1:]  # Remove leading slash if present
-                            
-                            logger.info(f"Getting pre-signed URL for: {s3_key} from bucket {s3_bucket_name}")
+                            logger.info(f"Generating presigned URL for: {file_key} from bucket {s3_bucket_name}")
                             
                             # Generate pre-signed URL with one hour expiration
                             url = s3_client.generate_presigned_url(
-                                'get_object',
-                                Params={'Bucket': s3_bucket_name, 'Key': s3_key},
+                                ClientMethod='get_object',
+                                Params={'Bucket': s3_bucket_name, 'Key': file_key},
                                 ExpiresIn=3600  # URL valid for 1 hour
                             )
                             
-                            logger.info(f"Pre-signed URL generated: {url}")
+                            logger.info(f"Presigned URL generated: {url}")
                             
-                            # Download the file using the pre-signed URL
-                            response = requests.get(url)
+                            # Download file using requests
+                            response = requests.get(url, timeout=30)
                             if response.status_code == 200:
                                 file_content = BytesIO(response.content)
-                                logger.info(f"File downloaded successfully from pre-signed URL")
+                                logger.info(f"File successfully downloaded from S3: {file_key}")
                             else:
-                                raise Exception(f"Failed to download file: HTTP {response.status_code}")
-                                
+                                logger.warning(f"Failed to download S3 file: {response.status_code}")
                         except Exception as s3_err:
-                            logger.error(f"Error getting file from S3: {s3_err}")
-                            # We'll fall back to the next method
+                            logger.error(f"Error downloading from S3: {s3_err}")
                     
-                    # If we still don't have the file content, try other methods
+                    # If S3 download failed or not available, try direct read
                     if not file_content:
                         try:
-                            # Try to get file URL first
-                            if hasattr(resource.file, 'url'):
-                                url = resource.file.url
-                                # Try direct download if it's a full URL
-                                if url.startswith(('http://', 'https://')):
-                                    response = requests.get(url)
-                                    if response.status_code == 200:
-                                        file_content = BytesIO(response.content)
-                                    else:
-                                        raise Exception(f"Failed to download file: HTTP {response.status_code}")
-                            
-                            # If still no content, try direct file read
-                            if not file_content and hasattr(resource.file, 'read'):
-                                file_content = BytesIO(resource.file.read())
-                                resource.file.seek(0)  # Reset file pointer
-                                
+                            file_content = BytesIO()
+                            file_content.write(resource.file.read())
+                            file_content.seek(0)
+                            resource.file.seek(0)  # Reset file pointer
+                            logger.info(f"File read directly from storage: {file_name}")
                         except Exception as file_err:
-                            logger.error(f"Error accessing file: {file_err}")
-                            elements.append(Paragraph(f"Error reading file: {str(file_err)}", normal_style))
+                            logger.error(f"Error reading file directly: {file_err}")
+                            elements.append(Paragraph(f"Could not access file: {str(file_err)}", normal_style))
                             continue
                     
-                    # If we still don't have the content, report error and continue
-                    if not file_content:
-                        elements.append(Paragraph("Could not retrieve file content", normal_style))
-                        continue
-                    
+                    # Process file based on type
                     file_name_lower = file_name.lower()
                     
                     # Handle different file types
@@ -7021,7 +7031,7 @@ def compile_all_documents(request):
                         elements.append(Paragraph(f"Preview not available for this file type.", normal_style))
                 
                 except Exception as e:
-                    logger.error(f"Error processing file {file_name}: {e}")
+                    logger.error(f"Error processing resource: {e}")
                     elements.append(Paragraph(f"Error processing file: {str(e)}", normal_style))
                 
                 # Add a separator after each file
