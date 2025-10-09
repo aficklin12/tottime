@@ -6651,6 +6651,11 @@ def upload_documentation(request):
     # If GET request, redirect to ABC Quality page
     return redirect('abc_quality')
 
+import boto3
+from botocore.client import Config
+import logging
+logger = logging.getLogger(__name__)
+
 @login_required
 def compile_all_documents(request):
     """Handle compiling all documents for an element or section into PDF"""
@@ -6987,23 +6992,10 @@ def compile_all_documents(request):
                             max_pages = min(page_count, 10)
                             for page_num in range(max_pages):
                                 page = pdf_document[page_num]
-                                
-                                # INCREASED RESOLUTION: Use a higher zoom factor (2.0 instead of 0.5)
-                                # Higher values mean clearer text but larger file sizes
-                                zoom_factor = 2.0
-                                
-                                # Create a matrix with higher resolution
-                                matrix = fitz.Matrix(zoom_factor, zoom_factor)
-                                
-                                # Get the pixmap with higher resolution and no alpha channel
-                                pix = page.get_pixmap(matrix=matrix, alpha=False, annots=True)
-                                
-                                # Calculate DPI based on zoom factor (72 is the base DPI)
-                                dpi = 72 * zoom_factor
-                                logger.info(f"Rendering PDF page at {dpi} DPI")
+                                pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5))
                                 
                                 # Create a temp BytesIO for this page
-                                img_data = pix.tobytes("jpeg", quality=95)  # Use JPEG with high quality
+                                img_data = pix.tobytes("png")
                                 img_stream = io.BytesIO(img_data)
                                 
                                 # Calculate dimensions
