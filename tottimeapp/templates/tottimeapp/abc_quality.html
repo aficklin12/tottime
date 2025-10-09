@@ -72,6 +72,8 @@
         cursor: pointer;
         font-size: 0.9em;
         transition: background-color 0.3s;
+        white-space: nowrap; /* Prevent text wrapping */
+        flex-shrink: 0; /* Prevent button from shrinking */
     }
     
     .upload-btn:hover {
@@ -121,7 +123,15 @@
     /* New styles for document indicators */
     .doc-container {
         display: flex;
-        align-items: center;
+        align-items: center; /* Center vertically */
+        justify-content: center; /* Center horizontally */
+        flex-wrap: nowrap; /* Prevent wrapping to keep buttons in same row */
+        gap: 5px; /* Add space between buttons */
+        background: transparent;
+        height: 100%;
+        padding: 5px 0;
+        border: none;
+        min-width: 180px; /* Ensure minimum width for buttons */
     }
     
     .document-indicator {
@@ -147,15 +157,16 @@
     .document-indicator-btn {
         display: inline-flex;
         align-items: center;
-        margin-left: 10px;
+        margin-left: 5px; /* Reduce margin to fit better */
         background-color: transparent;
         color: rgb(57, 189, 180);
         border: 1px solid rgb(57, 189, 180);
         border-radius: 4px;
-        padding: 6px 10px;
+        padding: 6px 8px; /* Slightly reduce padding */
         cursor: pointer;
         transition: all 0.3s;
         font-size: 0.9em;
+        white-space: nowrap; /* Prevent text wrapping */
     }
     
     .document-indicator-btn:hover {
@@ -356,6 +367,67 @@
         color: black;
     }
     
+    .table-header-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+        margin-right: 10px;
+    }
+    
+    /* Compile all button */
+    .compile-all-btn {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 0.95em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.3s;
+    }
+    
+    .compile-all-btn:hover {
+        background-color: #5a6268;
+    }
+    
+    /* Modal styles for Bootstrap compatibility */
+    .modal-backdrop {
+        z-index: 1040;
+    }
+    
+    .modal {
+        z-index: 1050;
+    }
+    
+    /* Custom button styles to match your design */
+    .btn-primarytwo {
+        background-color: rgb(57, 189, 180);
+        color: white;
+        border: none;
+    }
+    
+    .btn-primarytwo:hover {
+        background-color: rgb(45, 160, 152);
+        color: white;
+    }
+    
+    /* Progress bar styles */
+    .progress {
+        height: 20px;
+        background-color: #f5f5f5;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 20px;
+    }
+    
+    .progress-bar.bg-info {
+        background-color: rgb(57, 189, 180) !important;
+    }
+    
+    /* ...existing styles... */
 </style>
 
 
@@ -364,11 +436,18 @@
 {% block content %}
 <h1>ABC Quality Standards</h1>
 <div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div></div> <!-- Empty div for flex spacing -->
+        <button id="master-compile-btn" class="compile-all-btn">
+            <i class="fas fa-file-pdf"></i> Submit All Documentation
+        </button>
+    </div>
    
     {% for element in main_elements %}
     <div class="section-header">
         <h2>Element {{ element.element_number }}: {{ element.name }}</h2>
     </div>
+    <!-- Remove the individual compile buttons -->
     <table>
         <thead>
             <tr>
@@ -384,20 +463,22 @@
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
                 <td class="points">{{ indicator.points }}</td>
-                <td class="doc-container">
-                    <button class="upload-btn" data-indicator="{{ indicator.indicator_id }}" data-indicator-db-id="{{ indicator.id }}">Upload</button>
-                    
-                    {% for key, resources in grouped_resources.items %}
-                        {% if key == indicator.indicator_id %}
-                        <!-- Updated button to match the requested style -->
-                        <button class="document-indicator-btn btn-outline-primary link-switch" 
-                                data-indicator="{{ indicator.indicator_id }}" 
-                                data-indicator-name="{{ indicator.description|truncatechars:30 }}">
-                            <i class="fas fa-file-alt"></i>
-                            <span class="document-count">{{ resources|length }}</span>
-                        </button>
-                        {% endif %}
-                    {% endfor %}
+                <td>
+                    <div class="doc-container">
+                        <button class="upload-btn" data-indicator="{{ indicator.indicator_id }}" data-indicator-db-id="{{ indicator.id }}">Upload</button>
+                        
+                        {% for key, resources in grouped_resources.items %}
+                            {% if key == indicator.indicator_id %}
+                            <!-- Updated button to match the requested style -->
+                            <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                    data-indicator="{{ indicator.indicator_id }}" 
+                                    data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                                <i class="fas fa-file-alt"></i>
+                                <span class="document-count">{{ resources|length }}</span>
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -423,20 +504,22 @@
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
                 <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
                 <td class="points">{{ indicator.points }}</td>
-                <td class="doc-container">
-                    <button class="upload-btn" data-indicator="{{ indicator.indicator_id }}" data-indicator-db-id="{{ indicator.id }}">Upload</button>
-                    
-                    {% for key, resources in grouped_resources.items %}
-                        {% if key == indicator.indicator_id %}
-                        <!-- Updated button to match the requested style -->
-                        <button class="document-indicator-btn btn-outline-primary link-switch" 
-                                data-indicator="{{ indicator.indicator_id }}" 
-                                data-indicator-name="{{ indicator.description|truncatechars:30 }}">
-                            <i class="fas fa-file-alt"></i> View Files
-                            <span class="document-count">{{ resources|length }}</span>
-                        </button>
-                        {% endif %}
-                    {% endfor %}
+                <td>
+                    <div class="doc-container">
+                        <button class="upload-btn" data-indicator="{{ indicator.indicator_id }}" data-indicator-db-id="{{ indicator.id }}">Upload</button>
+                        
+                        {% for key, resources in grouped_resources.items %}
+                            {% if key == indicator.indicator_id %}
+                            <!-- Updated button to match the requested style -->
+                            <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                    data-indicator="{{ indicator.indicator_id }}" 
+                                    data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                                <i class="fas fa-file-alt"></i> View Files
+                                <span class="document-count">{{ resources|length }}</span>
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -478,6 +561,74 @@
         </div>
         <div id="documentModalContent">
             <!-- Documents will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Add this after your existing modals -->
+<div class="modal fade" id="compileOptionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Compile Documentation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="compileDocumentsForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="element_number" name="element">
+                    <input type="hidden" id="section_name" name="section">
+                    
+                    <p>You're about to compile all documentation for: <strong id="compileScope"></strong></p>
+                    
+                    <div class="form-group mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="action" id="actionDownload" value="download" checked>
+                            <label class="form-check-label" for="actionDownload">
+                                <i class="fas fa-download"></i> Download as PDF
+                            </label>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="radio" name="action" id="actionEmail" value="email">
+                            <label class="form-check-label" for="actionEmail">
+                                <i class="fas fa-envelope"></i> Email PDF
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="emailOptionsContainer" class="mt-3" style="display: none;">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" placeholder="Enter recipient's email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="email_message" class="form-label">Message (Optional)</label>
+                            <textarea class="form-control" id="email_message" name="email_message" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primarytwo">Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Processing modal with progress indicator -->
+<div class="modal fade" id="processingModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <h4 class="mb-3">Processing Documents</h4>
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                         role="progressbar" style="width: 0%" 
+                         id="compileProgressBar"></div>
+                </div>
+                <p id="processingStatus">Initializing...</p>
+            </div>
         </div>
     </div>
 </div>
@@ -687,5 +838,188 @@
             documentsModal.style.display = "none";
         }
     }
+</script>
+<script>
+    // Compile all documentation functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get the master compile button
+        const masterCompileBtn = document.getElementById('master-compile-btn');
+        
+        // Handle action radio buttons for showing/hiding email fields
+        const actionRadios = document.querySelectorAll('input[name="action"]');
+        const emailOptionsContainer = document.getElementById('emailOptionsContainer');
+        
+        actionRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'email') {
+                    emailOptionsContainer.style.display = 'block';
+                    document.getElementById('email').required = true;
+                } else {
+                    emailOptionsContainer.style.display = 'none';
+                    document.getElementById('email').required = false;
+                }
+            });
+        });
+        
+        // Set up click handler for master compile button
+        masterCompileBtn.addEventListener('click', function() {
+            // Set values in the modal for all documentation
+            document.getElementById('element_number').value = 'all';
+            document.getElementById('section_name').value = '';
+            document.getElementById('compileScope').textContent = 'All Elements and Sections';
+            
+            // Show the modal using Bootstrap modal
+            const modal = new bootstrap.Modal(document.getElementById('compileOptionsModal'));
+            modal.show();
+        });
+        
+        // REMOVE THIS SECTION - compileButtons is not defined
+        // Set up click handler for compile buttons
+        // compileButtons.forEach(button => {
+        //     button.addEventListener('click', function() {
+        //         // Get data attributes
+        //         const elementNumber = this.getAttribute('data-element');
+        //         const elementName = this.getAttribute('data-element-name');
+        //         const sectionName = this.getAttribute('data-section') || null;
+        //         
+        //         // Set values in the modal
+        //         document.getElementById('element_number').value = elementNumber;
+        //         if (sectionName) {
+        //             document.getElementById('section_name').value = sectionName;
+        //             document.getElementById('compileScope').textContent = `Element ${elementNumber} - ${sectionName}`;
+        //         } else {
+        //             document.getElementById('section_name').value = '';
+        //             document.getElementById('compileScope').textContent = `Element ${elementNumber}: ${elementName}`;
+        //         }
+        //         
+        //         // Show the modal using Bootstrap modal
+        //         const modal = new bootstrap.Modal(document.getElementById('compileOptionsModal'));
+        //         modal.show();
+        //     });
+        // });
+        
+        // Handle form submission
+        document.getElementById('compileDocumentsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Hide the options modal
+            bootstrap.Modal.getInstance(document.getElementById('compileOptionsModal')).hide();
+            
+            // Show the processing modal
+            const processingModal = new bootstrap.Modal(document.getElementById('processingModal'));
+            processingModal.show();
+            
+            // Start progress animation
+            startProgressAnimation();
+            
+            const formData = new FormData(this);
+            const action = formData.get('action');
+            
+            // If action is download, we need to handle it differently
+            if (action === 'download') {
+                // Create a form to submit directly for file download
+                const downloadForm = document.createElement('form');
+                downloadForm.method = 'POST';
+                downloadForm.action = '{% url "compile_all_documents" %}';
+                downloadForm.target = '_blank'; // Open in new tab
+                
+                // Add CSRF token
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                downloadForm.appendChild(csrfInput);
+                
+                // Add form fields
+                for (const pair of formData.entries()) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = pair[0];
+                    input.value = pair[1];
+                    downloadForm.appendChild(input);
+                }
+                
+                // Append form to body and submit
+                document.body.appendChild(downloadForm);
+                downloadForm.submit();
+                document.body.removeChild(downloadForm);
+                
+                // Hide processing modal after a delay
+                setTimeout(() => {
+                    processingModal.hide();
+                    toastr.success('Download started!');
+                }, 2000);
+                
+                return;
+            }
+            
+            // For email action, use fetch
+            fetch('{% url "compile_all_documents" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide processing modal
+                processingModal.hide();
+                
+                if (data.success) {
+                    toastr.success('Documentation has been emailed successfully!');
+                } else {
+                    toastr.error('Error: ' + (data.error || 'Unknown error occurred'));
+                }
+            })
+            .catch(error => {
+                processingModal.hide();
+                toastr.error('An error occurred while compiling documents');
+                console.error('Error:', error);
+            });
+        });
+        
+        // Function to animate the progress bar
+        function startProgressAnimation() {
+            const progressBar = document.getElementById('compileProgressBar');
+            const statusText = document.getElementById('processingStatus');
+            let width = 0;
+            
+            // Reset
+            progressBar.style.width = '0%';
+            statusText.textContent = 'Gathering documents...';
+            
+            const interval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(interval);
+                } else {
+                    if (width === 0) {
+                        width = 15;
+                        statusText.textContent = 'Gathering documents...';
+                    } else if (width === 15) {
+                        width = 35;
+                        statusText.textContent = 'Processing files...';
+                    } else if (width === 35) {
+                        width = 65;
+                        statusText.textContent = 'Creating PDF...';
+                    } else if (width === 65) {
+                        width = 85;
+                        statusText.textContent = 'Finalizing...';
+                    } else if (width === 85) {
+                        width = 95;
+                        statusText.textContent = 'Almost done...';
+                    } else {
+                        width = 100;
+                        statusText.textContent = 'Complete!';
+                    }
+                    progressBar.style.width = width + '%';
+                }
+            }, 700); // Update every 700ms for a smoother animation
+            
+            return interval;
+        }
+    });
+    
+    // ...existing script code...
 </script>
 {% endblock %}

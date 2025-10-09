@@ -192,7 +192,8 @@ urlpatterns = [
     path('pdf-records/', login_required(views.pdf_records), name='pdf_records'),
     path('abc_quality/', login_required(views.abc_quality), name='abc_quality'),
     path('upload_documentation/', views.upload_documentation, name='upload_documentation'),
-    
+    path('compile-all-documents/', views.compile_all_documents, name='compile_all_documents'),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

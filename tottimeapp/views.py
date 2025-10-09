@@ -6647,3 +6647,361 @@ def upload_documentation(request):
     
     # If GET request, redirect to ABC Quality page
     return redirect('abc_quality')
+
+@login_required
+def compile_all_documents(request):
+    """Handle compiling all documents for an element or section into PDF"""
+    if request.method == 'POST':
+        element = request.POST.get('element')
+        section = request.POST.get('section', '')
+        action = request.POST.get('action')
+        email = request.POST.get('email', '')
+        email_message = request.POST.get('email_message', '')
+        
+        try:
+            # Handle the 'all' case for compiling everything
+            if element == 'all':
+                scope_description = "All Elements and Sections"
+                indicators = ABCQualityIndicator.objects.all()
+                filename_suffix = "all"
+            else:
+                scope_description = f"Element {element}"
+                filename_suffix = element
+                
+                if section:
+                    scope_description += f", Section: {section}"
+                    filename_suffix += f"_{section.replace(' ', '_')}"
+                
+                if section:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element,
+                        section__name=section
+                    )
+                else:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element
+                    )
+            
+            # Get all resources for these indicators
+            indicator_ids = [indicator.indicator_id for indicator in indicators]
+            resources = Resource.objects.filter(indicator_id__in=indicator_ids).order_by('indicator_id')
+            
+            # If no resources, return a message
+            if not resources.exists():
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': f'No documents found for {scope_description}.'})
+                else:
+                    messages.warning(request, f"No documents found for {scope_description}.")
+                    return redirect('abc_quality')
+            
+            # Import required libraries for PDF generation
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib import colors
+            from reportlab.lib.units import inch
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT
+            from io import BytesIO
+            import os
+            import tempfile
+            import fitz  # PyMuPDF
+            from PIL import Image as PILImage
+            import io
+            
+            # Create a BytesIO buffer for the PDF
+            buffer = BytesIO()
+            
+            # Create the PDF document
+            doc = SimpleDocTemplate(
+                buffer,
+                pagesize=letter,
+                title=f"ABC Quality Documentation - {scope_description}",
+                author="ABC Quality System",
+                subject=f"Documentation for {scope_description}",
+                topMargin=0.5*inch,
+                bottomMargin=0.5*inch,
+                leftMargin=0.5*inch,
+                rightMargin=0.5*inch
+            )
+            
+            # Get styles
+            styles = getSampleStyleSheet()
+            
+            # Create custom styles
+            header_style = ParagraphStyle(
+                'HeaderStyle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                alignment=TA_CENTER,
+                spaceAfter=12
+            )
+            
+            subheader_style = ParagraphStyle(
+                'SubHeaderStyle',
+                parent=styles['Heading2'],
+                fontSize=14,
+                alignment=TA_CENTER,
+                spaceAfter=10
+            )
+            
+            indicator_style = ParagraphStyle(
+                'IndicatorStyle',
+                parent=styles['Heading3'],
+                fontSize=12,
+                backColor=colors.lightgrey,
+                borderPadding=5,
+                spaceAfter=8
+            )
+            
+            file_title_style = ParagraphStyle(
+                'FileTitleStyle',
+                parent=styles['Normal'],
+                fontSize=10,
+                fontName='Helvetica-Bold'
+            )
+            
+            normal_style = ParagraphStyle(
+                'NormalStyle',
+                parent=styles['Normal'],
+                fontSize=10
+            )
+            
+            description_style = ParagraphStyle(
+                'DescriptionStyle',
+                parent=styles['Italic'],
+                fontSize=9,
+                textColor=colors.darkgrey,
+                leftIndent=10
+            )
+            
+            # Start building the document content
+            elements = []
+            
+            # Add title
+            elements.append(Paragraph(f"ABC Quality Documentation", header_style))
+            elements.append(Paragraph(f"{scope_description}", subheader_style))
+            
+            # Add date
+            from datetime import datetime
+            current_date = datetime.now().strftime("%B %d, %Y")
+            elements.append(Paragraph(f"Compiled on: {current_date}", normal_style))
+            elements.append(Spacer(1, 0.25*inch))
+            
+            # Track the current indicator to group resources
+            current_indicator = None
+            
+            # Process each resource
+            for resource in resources:
+                # Check if we need to start a new indicator section
+                if current_indicator != resource.indicator_id:
+                    current_indicator = resource.indicator_id
+                    
+                    # Add some spacing between indicator sections
+                    if elements and not isinstance(elements[-1], PageBreak):
+                        elements.append(Spacer(1, 0.3*inch))
+                    
+                    # Add indicator header
+                    try:
+                        indicator_obj = ABCQualityIndicator.objects.get(indicator_id=current_indicator)
+                        indicator_desc = indicator_obj.description
+                    except:
+                        indicator_desc = "Unknown Description"
+                    
+                    elements.append(Paragraph(f"Indicator {current_indicator}: {indicator_desc}", indicator_style))
+                
+                # Get the file details
+                if hasattr(resource.file, 'name'):
+                    file_name = os.path.basename(resource.file.name)
+                else:
+                    file_name = resource.title or "Untitled Document"
+                
+                # Add file info
+                elements.append(Paragraph(f"File: {file_name}", file_title_style))
+                
+                if hasattr(resource, 'uploaded_at'):
+                    upload_date = resource.uploaded_at.strftime('%b %d, %Y')
+                    elements.append(Paragraph(f"Uploaded: {upload_date}", normal_style))
+                
+                if hasattr(resource, 'description') and resource.description:
+                    elements.append(Paragraph(f"{resource.description}", description_style))
+                
+                elements.append(Spacer(1, 0.1*inch))
+                
+                # Get file content and add preview based on file type
+                try:
+                    # Use file's content instead of path
+                    file_content = BytesIO(resource.file.read())
+                    resource.file.seek(0)  # Reset the file pointer for later use
+                    
+                    file_name_lower = file_name.lower()
+                    
+                    # Handle different file types
+                    if file_name_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                        # It's an image, add it directly
+                        try:
+                            img = PILImage.open(file_content)
+                            img_width, img_height = img.size
+                            
+                            # Calculate dimensions to fit in PDF
+                            max_width = 6 * inch
+                            max_height = 7 * inch
+                            
+                            width_ratio = max_width / img_width
+                            height_ratio = max_height / img_height
+                            ratio = min(width_ratio, height_ratio)
+                            
+                            display_width = img_width * ratio
+                            display_height = img_height * ratio
+                            
+                            # Create a temporary BytesIO for the image
+                            img_temp = BytesIO()
+                            img.save(img_temp, format=img.format or 'PNG')
+                            img_temp.seek(0)
+                            
+                            # Add the image to the PDF
+                            img_obj = Image(img_temp, width=display_width, height=display_height)
+                            elements.append(img_obj)
+                            
+                        except Exception as img_err:
+                            elements.append(Paragraph(f"Error loading image: {str(img_err)}", normal_style))
+                    
+                    elif file_name_lower.endswith('.pdf'):
+                        # Handle PDF files - add all pages
+                        try:
+                            # Use PyMuPDF to open the PDF from memory
+                            pdf_document = fitz.open(stream=file_content.getvalue(), filetype="pdf")
+                            page_count = pdf_document.page_count
+                            
+                            elements.append(Paragraph(f"PDF document with {page_count} pages:", normal_style))
+                            elements.append(Spacer(1, 0.1*inch))
+                            
+                            # Process each page (limit to first 10 pages for performance)
+                            max_pages = min(page_count, 10)
+                            for page_num in range(max_pages):
+                                page = pdf_document[page_num]
+                                pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5))
+                                
+                                # Create a temp BytesIO for this page
+                                img_data = pix.tobytes("png")
+                                img_stream = io.BytesIO(img_data)
+                                
+                                # Calculate dimensions
+                                max_width = 6 * inch
+                                max_height = 8 * inch
+                                
+                                width_ratio = max_width / pix.width
+                                height_ratio = max_height / pix.height
+                                ratio = min(width_ratio, height_ratio)
+                                
+                                display_width = pix.width * ratio
+                                display_height = pix.height * ratio
+                                
+                                # Add page number
+                                elements.append(Paragraph(f"Page {page_num + 1} of {page_count}", normal_style))
+                                
+                                # Add the image
+                                img = Image(img_stream, width=display_width, height=display_height)
+                                elements.append(img)
+                                elements.append(Spacer(1, 0.2*inch))
+                            
+                            if page_count > max_pages:
+                                elements.append(Paragraph(f"(Showing {max_pages} of {page_count} pages)", normal_style))
+                            
+                            # Close the PDF
+                            pdf_document.close()
+                        except Exception as pdf_err:
+                            elements.append(Paragraph(f"Error processing PDF: {str(pdf_err)}", normal_style))
+                    
+                    else:
+                        # Unsupported file type
+                        elements.append(Paragraph(f"Preview not available for this file type.", normal_style))
+                
+                except Exception as e:
+                    elements.append(Paragraph(f"Error processing file: {str(e)}", normal_style))
+                
+                # Add a separator after each file
+                elements.append(Spacer(1, 0.3*inch))
+                elements.append(PageBreak())
+            
+            # Build the PDF document
+            doc.build(elements)
+            
+            # Get the PDF data
+            buffer.seek(0)
+            
+            if action == 'download':
+                # Return the PDF as a download
+                from django.http import FileResponse
+                response = FileResponse(
+                    buffer,
+                    as_attachment=True,
+                    filename=f'abc_quality_{filename_suffix}.pdf'
+                )
+                return response
+            
+            elif action == 'email' and email:
+                # Save PDF to a temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_pdf:
+                    temp_pdf.write(buffer.getvalue())
+                    temp_pdf_path = temp_pdf.name
+                
+                # Send email with PDF attachment
+                try:
+                    email_subject = f"ABC Quality Documentation - {scope_description}"
+                    email_body = f"Please find attached the compiled documentation for {scope_description}."
+                    
+                    if email_message:
+                        email_body += f"\n\nMessage from sender:\n{email_message}"
+                    
+                    from django.core.mail import EmailMessage
+                    email_obj = EmailMessage(
+                        subject=email_subject,
+                        body=email_body,
+                        from_email=None,  # Use DEFAULT_FROM_EMAIL
+                        to=[email],
+                    )
+                    
+                    # Attach the PDF
+                    with open(temp_pdf_path, 'rb') as f:
+                        email_obj.attach(
+                            f'abc_quality_{filename_suffix}.pdf',
+                            f.read(),
+                            'application/pdf'
+                        )
+                    
+                    # Send the email
+                    email_obj.send()
+                    
+                    # Delete the temporary file
+                    os.unlink(temp_pdf_path)
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': True})
+                    else:
+                        messages.success(request, f"Documentation for {scope_description} has been emailed to {email}.")
+                        return redirect('abc_quality')
+                    
+                except Exception as e:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    print(error_details)  # Log the full error
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': False, 'error': str(e)})
+                    else:
+                        messages.error(request, f"Failed to send email: {str(e)}")
+                        return redirect('abc_quality')
+        
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(error_details)  # Log the full error
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)})
+            else:
+                messages.error(request, f"Error compiling documents: {str(e)}")
+                return redirect('abc_quality')
+    
+    # If not a POST request or any other issue
+    return redirect('abc_quality')
