@@ -6660,6 +6660,7 @@ def compile_all_documents(request):
         action = request.POST.get('action')
         email = request.POST.get('email', '')
         email_message = request.POST.get('email_message', '')
+        is_download_request = request.POST.get('is_download_request', '') == 'true'
         
         try:
             # Handle the 'all' case for compiling everything
@@ -6710,6 +6711,9 @@ def compile_all_documents(request):
             import fitz  # PyMuPDF
             from PIL import Image as PILImage
             import io
+            import requests
+            from urllib.parse import urlparse
+            from django.conf import settings
             
             # Create a BytesIO buffer for the PDF
             buffer = BytesIO()
@@ -6817,6 +6821,11 @@ def compile_all_documents(request):
                 try:
                     if hasattr(resource.file, 'name'):
                         file_name = os.path.basename(resource.file.name)
+                    elif hasattr(resource, 'filename'):
+                        if callable(resource.filename):
+                            file_name = resource.filename()
+                        else:
+                            file_name = resource.filename
                     else:
                         file_name = resource.title or "Untitled Document"
                 except Exception as e:
@@ -6837,9 +6846,53 @@ def compile_all_documents(request):
                 
                 # Get file content and add preview based on file type
                 try:
-                    # Use file's content instead of path
-                    file_content = BytesIO(resource.file.read())
-                    resource.file.seek(0)  # Reset the file pointer for later use
+                    if not hasattr(resource, 'file') or not resource.file:
+                        elements.append(Paragraph("File is not available", normal_style))
+                        continue
+
+                    # Check if the file is accessible
+                    file_url = None
+                    file_content = None
+
+                    # Try to get the file URL
+                    try:
+                        file_url = resource.file.url
+                        logger.info(f"File URL obtained: {file_url}")
+                    except Exception as url_err:
+                        logger.error(f"Error getting file URL: {url_err}")
+                        elements.append(Paragraph(f"Error accessing file: {str(url_err)}", normal_style))
+                        continue
+                    
+                    # Get file content using the URL
+                    try:
+                        # Handle both absolute URLs and relative paths
+                        parsed_url = urlparse(file_url)
+                        if parsed_url.netloc:  # It's an absolute URL (like S3)
+                            logger.info(f"Fetching file from URL: {file_url}")
+                            response = requests.get(file_url)
+                            if response.status_code == 200:
+                                file_content = BytesIO(response.content)
+                            else:
+                                raise Exception(f"Failed to download file: HTTP {response.status_code}")
+                        else:  # It's a relative path
+                            # For local development/storage
+                            local_path = os.path.join(settings.MEDIA_ROOT, resource.file.name)
+                            logger.info(f"Reading file from local path: {local_path}")
+                            if os.path.exists(local_path):
+                                with open(local_path, 'rb') as f:
+                                    file_content = BytesIO(f.read())
+                            else:
+                                # Try to read directly from the storage
+                                file_content = BytesIO(resource.file.read())
+                                resource.file.seek(0)
+                    except Exception as content_err:
+                        logger.error(f"Error reading file content: {content_err}")
+                        elements.append(Paragraph(f"Error reading file: {str(content_err)}", normal_style))
+                        continue
+
+                    if not file_content:
+                        elements.append(Paragraph("Could not retrieve file content", normal_style))
+                        continue
                     
                     file_name_lower = file_name.lower()
                     
@@ -6929,6 +6982,17 @@ def compile_all_documents(request):
                 except Exception as e:
                     logger.error(f"Error processing file {file_name}: {e}")
                     elements.append(Paragraph(f"Error processing file: {str(e)}", normal_style))
+                    
+                    # Add debugging info
+                    if hasattr(resource, 'file'):
+                        if hasattr(resource.file, 'url'):
+                            try:
+                                elements.append(Paragraph(f"File URL: {resource.file.url}", normal_style))
+                            except Exception:
+                                pass
+                        
+                        if hasattr(resource.file, 'storage'):
+                            elements.append(Paragraph(f"Storage type: {resource.file.storage.__class__.__name__}", normal_style))
                 
                 # Add a separator after each file
                 elements.append(Spacer(1, 0.3*inch))
@@ -6959,6 +7023,9 @@ def compile_all_documents(request):
                     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                     response['Pragma'] = 'no-cache'
                     response['Expires'] = '0'
+                    
+                    # Add X-Accel-Redirect header for Nginx if appropriate
+                    # This can help with large file downloads in production
                     
                     logger.info("PDF download response created successfully")
                     return response

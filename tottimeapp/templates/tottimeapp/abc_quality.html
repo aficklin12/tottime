@@ -920,6 +920,10 @@
                 // Show the processing modal first
                 processingModal.show();
                 
+                // Define these variables here
+                const progressBar = document.getElementById('compileProgressBar');
+                const statusText = document.getElementById('processingStatus');
+                
                 // Set loading state
                 statusText.textContent = 'Preparing your PDF...';
                 progressBar.style.width = '50%';
