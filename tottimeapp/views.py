@@ -6690,23 +6690,28 @@ def compile_all_documents(request):
             # Get the main user for resource lookup
             main_user = get_user_for_view(request)
             
-            # Handle element and section - removed 'all' case
-            scope_description = f"Element {element}"
-            filename_suffix = element
-            
-            if section:
-                scope_description += f", Section: {section}"
-                filename_suffix += f"_{section.replace(' ', '_')}"
-            
-            if section:
-                indicators = ABCQualityIndicator.objects.filter(
-                    element__element_number=element,
-                    section__name=section
-                )
+            # Handle the 'all' case for compiling everything
+            if element == 'all':
+                scope_description = "All Elements and Sections"
+                indicators = ABCQualityIndicator.objects.all()
+                filename_suffix = "all"
             else:
-                indicators = ABCQualityIndicator.objects.filter(
-                    element__element_number=element
-                )
+                scope_description = f"Element {element}"
+                filename_suffix = element
+                
+                if section:
+                    scope_description += f", Section: {section}"
+                    filename_suffix += f"_{section.replace(' ', '_')}"
+                
+                if section:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element,
+                        section__name=section
+                    )
+                else:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element
+                    )
             
             # Get all resources for these indicators
             indicator_ids = [indicator.indicator_id for indicator in indicators]
