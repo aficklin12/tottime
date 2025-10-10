@@ -6,6 +6,34 @@
     <title>Enrollment Form</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+     /* Updated styles for floating language toggle button */
+.language-toggle.floating {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #0d6efd;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    z-index: 1000;
+    transition: opacity 0.3s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.language-toggle.floating:hover {
+    background-color: #0b5ed7;
+}
+
+/* Hide Google Translate widget, we'll use our own interface */
+.goog-te-banner-frame, .goog-te-menu-value {
+    display: none !important;
+}
+.VIpgJd-ZVi9od-l4eHX-hSRGPd, .VIpgJd-ZVi9od-ORHb-OEVmcd {
+    display: none !important;
+}
       .form-container {
         max-width: 800px;
         margin: 0 auto;
@@ -149,6 +177,14 @@
 </head>
 <body>
    <div class="form-container">
+    <!-- Add language toggle button -->
+    <button type="button" id="language-toggle" class="language-toggle floating">
+        Español / Spanish
+    </button>
+    
+    <!-- Google Translate Element (hidden) -->
+    <div id="google_translate_element" style="display: none;"></div>
+    
     <div class="form-header">
         <h2>South Carolina Department of Social Services</h2>
         <h3>Child Care Regulatory Services</h3>
@@ -186,7 +222,7 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="child_last_name">Child's Last Name:</label>
-                <input type="text" id="child_last_name" name="child_last_name" class="form-control" required>
+              <input type="text" id="child_last_name" name="child_last_name" class="form-control" required>
             </div>
             <div class="form-group">
                 <label for="child_first_name">First Name:</label>
@@ -1074,6 +1110,29 @@ document.getElementById('parent2_signature_date_display').textContent = today;
     
     // Initialize signature pads
     initializeSignaturePads();
+    
+    // Handle floating language toggle button
+    const langToggleBtn = document.getElementById('language-toggle');
+    let lastScrollTop = 0;
+    
+    // Show/hide button on scroll
+    window.addEventListener('scroll', function() {
+        let currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Show button when scrolling up or at the top, hide when scrolling down
+        if (currentScroll <= 50) {
+            // At the top or near the top
+            langToggleBtn.style.opacity = "1";
+        } else if (currentScroll < lastScrollTop) {
+            // Scrolling up
+            langToggleBtn.style.opacity = "1";
+        } else {
+            // Scrolling down
+            langToggleBtn.style.opacity = "0";
+        }
+        
+        lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
+    }, false);
 });
 
 function printForm() {
@@ -1220,12 +1279,75 @@ function updateChildInfoEmails() {
     }
 }
 
-// Add these event listeners in the DOMContentLoaded section after the existing ones:
-const pickupMotherEmail = document.getElementById('pickup_mother_email');
-const pickupFatherEmail = document.getElementById('pickup_father_email');
+// Replace your current translatePage and translatePolicies functions with these:
 
-if (pickupMotherEmail) pickupMotherEmail.addEventListener('blur', updateChildInfoEmails);
-if (pickupFatherEmail) pickupFatherEmail.addEventListener('blur', updateChildInfoEmails);
-</script>
+// Make isSpanish a global variable
+let isSpanish = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const langToggleBtn = document.getElementById('language-toggle');
+    
+    if (langToggleBtn) {
+        langToggleBtn.addEventListener('click', function() {
+            isSpanish = !isSpanish;
+            
+            if (isSpanish) {
+                // Set Google Translate cookie for Spanish
+                document.cookie = 'googtrans=/en/es; path=/; domain=' + document.domain;
+                
+                // Reload the translate element with Spanish
+                if (window.google && window.google.translate) {
+                    const translateElement = document.getElementById('google_translate_element');
+                    translateElement.innerHTML = '';
+                    new google.translate.TranslateElement({
+                        pageLanguage: 'en',
+                        includedLanguages: 'es',
+                        autoDisplay: false
+                    }, 'google_translate_element');
+                } else {
+                    // Load Google Translate script if not loaded
+                    loadGoogleTranslate();
+                }
+                
+                langToggleBtn.textContent = 'English / Inglés';
+            } else {
+                // Set Google Translate cookie for English
+                document.cookie = 'googtrans=/en/en; path=/; domain=' + document.domain;
+                
+                // Reset translation
+                document.location.reload();q
+                langToggleBtn.textContent = 'Español / Spanish';
+            }
+        });
+    }
+    
+    // Add Google Translate element right after body tag if it doesn't exist
+    if (!document.getElementById('google_translate_element')) {
+        const googleTranslateDiv = document.createElement('div');
+        googleTranslateDiv.id = 'google_translate_element';
+        googleTranslateDiv.style.display = 'none';
+        document.body.insertBefore(googleTranslateDiv, document.body.firstChild);
+    }
+});
+
+function loadGoogleTranslate() {
+    if (!document.getElementById('google-translate-script')) {
+        const script = document.createElement('script');
+        script.id = 'google-translate-script';
+        script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateCallback';
+        document.body.appendChild(script);
+    }
+}
+
+function googleTranslateCallback() {
+    // This gets called when Google Translate script is loaded
+    new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'es',
+        autoDisplay: false,
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+    }, 'google_translate_element');
+}
+    </script>
 </body>
 </html>
