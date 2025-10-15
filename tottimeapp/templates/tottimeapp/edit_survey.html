@@ -1,0 +1,211 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+{% block title %}Edit Survey{% endblock %}
+
+{% block styles %}
+<style>
+.btn-add-question-yellow {
+    background-color: rgb(228, 218, 79) !important;
+    color: #333 !important;
+    border: 1px solid #e4da4f !important;
+}
+.btn-add-question-yellow:hover {
+    background-color: #e4da4f !important;
+    color: #222 !important;
+}
+.btn-preview-teal {
+    border: 2px solid rgb(57, 189, 180) !important;
+    color: rgb(57, 189, 180) !important;
+    background: #fff !important;
+}
+.btn-preview-teal:hover {
+    background: rgb(57, 189, 180) !important;
+    color: #fff !important;
+}
+
+.btn-results-teal {
+    background-color: rgb(57, 189, 180) !important;
+    color: #fff !important;
+    border: 1px solid rgb(57, 189, 180) !important;
+}
+.btn-results-teal:hover {
+    background-color: #2fa89e !important;
+    color: #fff !important;
+}
+</style>
+{% endblock %}
+{% block content %}
+<h1>Edit Survey</h1>
+
+<!-- Action Bar -->
+<div class="d-flex justify-content-between align-items-center mb-4 w-100"  style="margin-left:15px;">
+    <div>
+    <a href="{% url 'take_survey' survey.id %}" class="btn btn-sm btn-preview-teal" target="_blank">
+    <i class="fas fa-eye"></i> Preview
+</a>
+<a href="{% url 'survey_results' survey.id %}" class="btn btn-sm btn-results-teal">
+    <i class="fas fa-chart-pie"></i> Results
+</a>
+        
+        <span><strong>Responses:</strong> {{ survey.responses.count }}</span>
+    </div>
+    
+</div>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="id_title">Survey Title</label>
+                    {{ form.title.errors }}
+                    <input type="text" class="form-control" id="id_title" name="title" value="{{ survey.title }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_description">Description</label>
+                    {{ form.description.errors }}
+                    <textarea class="form-control" id="id_description" name="description" rows="4">{{ survey.description }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_audience">Target Audience</label>
+                    {{ form.audience.errors }}
+                    <select class="form-control" id="id_audience" name="audience">
+                        <option value="both" {% if survey.audience == 'both' %}selected{% endif %}>Both Staff and Parents</option>
+                        <option value="staff" {% if survey.audience == 'staff' %}selected{% endif %}>Staff Only</option>
+                        <option value="parent" {% if survey.audience == 'parent' %}selected{% endif %}>Parents Only</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="id_active" name="active" {% if survey.active %}checked{% endif %}>
+                        <label class="custom-control-label" for="id_active">Active Survey</label>
+                    </div>
+                </div>
+                
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-primarytwo">Save Changes</button>
+                  <a href="{% url 'surveys_list' %}" class="btn btn-outline-secondary ml-2">Cancel</a>
+                  </div>
+            </form>
+            
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Survey Questions</h5>
+                    <a href="{% url 'add_question' survey.id %}" class="btn btn-sm btn-add-question-yellow">
+    <i class="fas fa-plus"></i>Question
+</a>
+                </div>
+                <div class="card-body">
+                    {% if questions %}
+                        <div id="question-list" class="list-group">
+                            {% for question in questions %}
+                                <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ forloop.counter }}. {{ question.text|truncatechars:50 }}</strong>
+                                        <span class="badge badge-secondary ml-2">
+                                            {% if question.question_type == 'text' %}
+                                                Text Response
+                                            {% elif question.question_type == 'rating' %}
+                                                Rating (1-5)
+                                            {% elif question.question_type == 'multiple' %}
+                                                Multiple Choice
+                                            {% elif question.question_type == 'boolean' %}
+                                                Yes/No
+                                            {% endif %}
+                                        </span>
+                                        {% if question.required %}
+                                            <span class="badge badge-danger ml-1">Required</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'edit_question' question.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="confirmDelete({{ question.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-light text-center p-4">
+                            <i class="fas fa-question-circle fa-2x mb-3 text-muted"></i>
+                            <h5>No Questions Added Yet</h5>
+                            <p>Add questions to your survey using the button above.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <!-- Delete Question Modal -->
+    <div class="modal fade" id="deleteQuestionModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Question</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this question? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <form id="deleteQuestionForm" method="post" action="">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Delete Question</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    function confirmDelete(questionId) {
+        const form = document.getElementById('deleteQuestionForm');
+        form.action = `/questions/${questionId}/delete/`;
+        $('#deleteQuestionModal').modal('show');
+    }
+    
+    // Enable drag and drop to reorder questions
+    $(document).ready(function() {
+        $("#question-list").sortable({
+            update: function(event, ui) {
+                // Get the new order
+                const questionIds = $(this).sortable('toArray', { attribute: 'data-id' });
+                
+                // Send the new order to the server
+                $.ajax({
+                    url: '/surveys/{{ survey.id }}/reorder-questions/',
+                    type: 'POST',
+                    data: {
+                        'question_ids': questionIds,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        console.log('Questions reordered successfully');
+                    },
+                    error: function(error) {
+                        console.error('Error reordering questions:', error);
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

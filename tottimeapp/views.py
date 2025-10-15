@@ -13,9 +13,10 @@ from django.utils.timezone import now
 from decimal import Decimal
 from django.db import transaction, models
 from django.contrib import messages
+from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
-from .forms import SignupForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
+from .models import Classroom, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -32,6 +33,9 @@ from django.core.exceptions import ValidationError
 import bleach
 import boto3
 from botocore.client import Config
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 
 ALLOWED_TAGS = [
     'p', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br', 'span'
@@ -7170,3 +7174,448 @@ def compile_all_documents(request):
     
     # If not a POST request or any other issue
     return redirect('abc_quality')
+
+@login_required
+def surveys_list(request):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    surveys = Survey.objects.all().order_by('-created_at')
+    context = {
+        'surveys': surveys,
+        **permissions_context
+    }
+    return render(request, 'tottimeapp/surveys.html', context)
+
+@login_required
+def create_survey(request):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    from .forms import SurveyForm
+    if request.method == 'POST':
+        form = SurveyForm(request.POST)
+        if form.is_valid():
+            survey = form.save(commit=False)
+            survey.main_user = get_user_for_view(request)
+            survey.save()
+            return redirect('edit_survey', survey_id=survey.id)
+    else:
+        form = SurveyForm()
+    return render(request, 'tottimeapp/create_survey.html', {'form': form, **permissions_context})
+
+@login_required
+def edit_survey(request, survey_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    survey = get_object_or_404(Survey, id=survey_id)
+    if request.method == 'POST':
+        form = SurveyForm(request.POST, instance=survey)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Survey updated successfully")
+            return redirect('surveys_list')
+    else:
+        form = SurveyForm(instance=survey)
+    questions = survey.questions.all().order_by('order')
+    context = {
+        'form': form,
+        'survey': survey,
+        'questions': questions,
+        **permissions_context
+    }
+    return render(request, 'tottimeapp/edit_survey.html', context)
+
+@login_required
+def add_question(request, survey_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    survey = get_object_or_404(Survey, id=survey_id)
+    if request.method == 'POST':
+        form = QuestionForm(request.POST)
+        if form.is_valid():
+            question = form.save(commit=False)
+            question.survey = survey
+            question.order = survey.questions.count() + 1
+            question.save()
+            if question.question_type == 'multiple' and 'choices' in request.POST:
+                for choice_text in request.POST.getlist('choices'):
+                    if choice_text.strip():
+                        Choice.objects.create(question=question, text=choice_text.strip())
+            messages.success(request, "Question added successfully")
+            return redirect('edit_survey', survey_id=survey.id)
+    else:
+        form = QuestionForm()
+    context = {
+        'form': form,
+        'survey': survey,
+        **permissions_context
+    }
+    return render(request, 'tottimeapp/add_question.html', context)
+
+@login_required
+def edit_question(request, question_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    question = get_object_or_404(Question, id=question_id)
+    survey = question.survey
+    if request.method == 'POST':
+        form = QuestionForm(request.POST, instance=question)
+        if form.is_valid():
+            form.save()
+            if question.question_type == 'multiple':
+                question.choices.all().delete()
+                for choice_text in request.POST.getlist('choices'):
+                    if choice_text.strip():
+                        Choice.objects.create(question=question, text=choice_text.strip())
+            messages.success(request, "Question updated successfully")
+            return redirect('edit_survey', survey_id=survey.id)
+    else:
+        form = QuestionForm(instance=question)
+    context = {
+        'form': form,
+        'question': question,
+        'survey': survey,
+        **permissions_context
+    }
+    return render(request, 'tottimeapp/edit_question.html', context)
+
+@login_required
+def delete_question(request, question_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    question = get_object_or_404(Question, id=question_id)
+    survey_id = question.survey.id
+    if request.method == 'POST':
+        question.delete()
+        messages.success(request, "Question deleted successfully")
+    else:
+        messages.error(request, "Invalid request method")
+    return redirect('edit_survey', survey_id=survey_id)
+
+@login_required
+def send_survey(request, survey_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    survey = get_object_or_404(Survey, id=survey_id)
+    if request.method == 'POST':
+        recipient_email = request.POST.get('recipient_email')
+        email_message = request.POST.get('email_message', '')
+
+        if not recipient_email:
+            return JsonResponse({'success': False, 'error': 'Recipient email is required.'})
+
+        survey_link = request.build_absolute_uri(reverse('take_survey', kwargs={'survey_id': survey.id}))
+        subject = f"Please complete our survey: {survey.title}"
+
+        message = f"""
+Hello,
+
+You have been invited to complete the survey: {survey.title}
+
+Survey link: {survey_link}
+"""
+        if email_message:
+            message += f"\nMessage from sender:\n{email_message}\n"
+
+        message += f"\nRegards,\n{request.user.get_full_name() or request.user.username}"
+
+        try:
+            send_mail(
+                subject,
+                message,
+                None,  # Use DEFAULT_FROM_EMAIL from settings
+                [recipient_email],
+                fail_silently=False,
+            )
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+def take_survey(request, survey_id):
+    survey = get_object_or_404(Survey, id=survey_id, active=True)
+    questions = survey.questions.all().order_by('order')
+    if request.method == 'POST':
+        respondent_type = request.POST.get('respondent_type', 'parent')
+        main_user = survey.main_user
+        response = Response.objects.create(
+            survey=survey,
+            main_user=main_user,
+            respondent=request.user if request.user.is_authenticated else None,
+            respondent_type=respondent_type
+        )
+        for question in questions:
+            answer_key = f'question_{question.id}'
+            if question.question_type == 'text':
+                text_answer = request.POST.get(answer_key, '')
+                if text_answer:
+                    Answer.objects.create(
+                        response=response,
+                        question=question,
+                        text_answer=text_answer
+                    )
+            elif question.question_type == 'rating':
+                rating = request.POST.get(answer_key)
+                if rating:
+                    Answer.objects.create(
+                        response=response,
+                        question=question,
+                        rating_answer=int(rating)
+                    )
+            elif question.question_type == 'multiple':
+                choice_id = request.POST.get(answer_key)
+                if choice_id:
+                    choice = Choice.objects.get(id=choice_id)
+                    Answer.objects.create(
+                        response=response,
+                        question=question,
+                        choice_answer=choice
+                    )
+            elif question.question_type == 'boolean':
+                boolean_answer = request.POST.get(answer_key)
+                if boolean_answer:
+                    Answer.objects.create(
+                        response=response,
+                        question=question,
+                        boolean_answer=(boolean_answer == 'true')
+                    )
+        return render(request, 'tottimeapp/survey_thank_you.html')
+    context = {
+        'survey': survey,
+        'questions': questions,
+    }
+    return render(request, 'tottimeapp/take_survey.html', context)
+
+@login_required
+def survey_results(request, survey_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    survey = get_object_or_404(Survey, id=survey_id)
+    questions = survey.questions.all().order_by('order')
+    responses = survey.responses.all()
+    results = {}
+    for question in questions:
+        if question.question_type == 'text':
+            answers = Answer.objects.filter(
+                question=question, 
+                response__in=responses
+            ).values_list('text_answer', flat=True)
+            results[question.id] = {
+                'question': question,
+                'text_answers': answers
+            }
+        elif question.question_type == 'rating':
+            answers = Answer.objects.filter(
+                question=question, 
+                response__in=responses
+            )
+            avg_rating = answers.aggregate(avg=Avg('rating_answer'))['avg']
+            distribution = {i: answers.filter(rating_answer=i).count() for i in range(1, 6)}
+            results[question.id] = {
+                'question': question,
+                'average': avg_rating,
+                'distribution': distribution,
+                'count': answers.count()
+            }
+        elif question.question_type == 'multiple':
+            choice_counts = Answer.objects.filter(
+                question=question, 
+                response__in=responses
+            ).values('choice_answer').annotate(count=Count('choice_answer'))
+            choices_dict = {}
+            for choice in question.choices.all():
+                count = 0
+                for item in choice_counts:
+                    if item['choice_answer'] == choice.id:
+                        count = item['count']
+                        break
+                choices_dict[choice.id] = {
+                    'text': choice.text,
+                    'count': count
+                }
+            results[question.id] = {
+                'question': question,
+                'choices': choices_dict,
+                'count': sum(item['count'] for item in choice_counts)
+            }
+        elif question.question_type == 'boolean':
+            answers = Answer.objects.filter(
+                question=question, 
+                response__in=responses
+            )
+            yes_count = answers.filter(boolean_answer=True).count()
+            no_count = answers.filter(boolean_answer=False).count()
+            results[question.id] = {
+                'question': question,
+                'yes_count': yes_count,
+                'no_count': no_count,
+                'count': answers.count()
+            }
+    improvement_plans = survey.improvement_plans.all()
+    suggested_goals = []
+    for question in survey.questions.all():
+        answers = Answer.objects.filter(question=question, response__survey=survey)
+        if question.question_type == 'boolean':
+            no_count = answers.filter(boolean_answer=False).count()
+            total = answers.count()
+            if total > 0 and no_count / total > 0.3:
+                suggested_goals.append({
+                    'description': f"Improve '{question.text}' (high rate of 'No' responses)",
+                    'target_date': ''
+                })
+        elif question.question_type == 'multiple':
+            pass
+    context = {
+        'survey': survey,
+        'results': results,
+        'response_count': responses.count(),
+        'improvement_plans': improvement_plans,
+        'suggested_goals': suggested_goals,
+        **permissions_context
+    }
+    return render(request, 'tottimeapp/survey_results.html', context)
+
+@login_required
+def create_improvement_plan(request, survey_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    survey = get_object_or_404(Survey, id=survey_id)
+    main_user = get_user_for_view(request)
+    suggested_goals = []
+    for question in survey.questions.all():
+        answers = Answer.objects.filter(question=question, response__survey=survey)
+        if question.question_type == 'boolean':
+            no_count = answers.filter(boolean_answer=False).count()
+            total = answers.count()
+            if total > 0 and no_count / total > 0.3:
+                suggested_goals.append({
+                    'description': f"Improve '{question.text}' (high rate of 'No' responses)",
+                    'target_date': ''
+                })
+        elif question.question_type == 'multiple':
+            pass
+    if request.method == 'POST':
+        form = ImprovementPlanForm(request.POST)
+        if form.is_valid():
+            plan = form.save(commit=False)
+            plan.survey = survey
+            plan.main_user = main_user
+            plan.created_by = request.user
+            plan.save()
+            goal_descriptions = request.POST.getlist('goal_description', [])
+            goal_dates = request.POST.getlist('goal_target_date', [])
+            for i in range(len(goal_descriptions)):
+                if goal_descriptions[i].strip() and goal_dates[i].strip():
+                    ImprovementGoal.objects.create(
+                        plan=plan,
+                        main_user=main_user,
+                        description=goal_descriptions[i],
+                        target_date=goal_dates[i],
+                    )
+            messages.success(request, "Improvement plan created successfully")
+            return redirect('survey_results', survey_id=survey.id)
+    else:
+        form = ImprovementPlanForm()
+    context = {
+        'form': form,
+        'survey': survey,
+        'suggested_goals': suggested_goals,
+        **permissions_context
+    }
+    return render(request, 'tottimeapp/create_improvement_plan.html', context)
+
+@login_required
+def edit_improvement_plan(request, plan_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    plan = get_object_or_404(ImprovementPlan, id=plan_id)
+    survey = plan.survey
+    main_user = get_user_for_view(request)
+    if request.method == 'POST':
+        form = ImprovementPlanForm(request.POST, instance=plan)
+        if form.is_valid():
+            form.save()
+            plan.goals.all().delete()
+            goal_descriptions = request.POST.getlist('goal_description', [])
+            goal_dates = request.POST.getlist('goal_target_date', [])
+            goal_completed = request.POST.getlist('goal_completed', [])
+            for i in range(len(goal_descriptions)):
+                if goal_descriptions[i].strip() and goal_dates[i].strip():
+                    completed = str(i) in goal_completed
+                    ImprovementGoal.objects.create(
+                        plan=plan,
+                        main_user=main_user,
+                        description=goal_descriptions[i],
+                        target_date=goal_dates[i],
+                        completed=completed
+                    )
+            messages.success(request, "Improvement plan updated successfully")
+            return redirect('survey_results', survey_id=survey.id)
+    else:
+        form = ImprovementPlanForm(instance=plan)
+    context = {
+        'form': form,
+        'plan': plan,
+        'survey': survey,
+        **permissions_context
+    }
+    return render(request, 'tottimeapp/edit_improvement_plan.html', context)
+
+@login_required
+def delete_survey(request, survey_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    survey = get_object_or_404(Survey, id=survey_id)
+    if request.method == 'POST':
+        survey.delete()
+        messages.success(request, "Survey deleted successfully.")
+        return redirect('surveys_list')
+    return render(request, 'tottimeapp/confirm_delete_survey.html', {'survey': survey, **permissions_context})
+
+@login_required
+def complete_improvement_plan(request, plan_id):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    plan = get_object_or_404(ImprovementPlan, id=plan_id)
+    if request.method == 'POST':
+        plan.is_completed = True
+        plan.save()
+        messages.success(request, "Improvement plan marked as complete.")
+    return redirect('survey_results', survey_id=plan.survey.id)
+

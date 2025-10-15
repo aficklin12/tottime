@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Survey Invitation</title>
+</head>
+<body>
+    <h2>{{ survey.title }}</h2>
+    <p>{{ survey.description }}</p>
+    <p>
+        You have been invited to complete a survey. Please click the link below to participate:
+    </p>
+    <p>
+        <a href="{{ survey_link }}" style="background:#007bff;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;">
+            Take Survey
+        </a>
+    </p>
+    <p>Thank you!</p>
+</body>
+</html>

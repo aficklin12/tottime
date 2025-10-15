@@ -1,0 +1,127 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+{% block title %}Edit Question{% endblock %}
+
+{% block content %}
+<h1>Edit Question</h1>
+<div class="container mt-4">
+    <div class="row">
+        
+    </div>
+    <div class="row">
+        <div class="col-md-8">
+           
+                    <form method="post" id="questionForm">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="id_text">Question Text</label>
+                            {{ form.text.errors }}
+                            <textarea class="form-control" id="id_text" name="text" rows="3" required>{{ form.text.value }}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_question_type">Question Type</label>
+                            {{ form.question_type.errors }}
+                            <select class="form-control" id="id_question_type" name="question_type" required>
+                                <option value="text" {% if form.question_type.value == 'text' %}selected{% endif %}>Text Response</option>
+                                <option value="rating" {% if form.question_type.value == 'rating' %}selected{% endif %}>Rating (1-5)</option>
+                                <option value="multiple" {% if form.question_type.value == 'multiple' %}selected{% endif %}>Multiple Choice</option>
+                                <option value="boolean" {% if form.question_type.value == 'boolean' %}selected{% endif %}>Yes/No</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="choices-container" style="display: none;">
+                            <label>Answer Choices</label>
+                            <div id="choice-fields">
+                                {% for choice in question.choices.all %}
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" name="choices" value="{{ choice.text }}" placeholder="Enter choice">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary remove-choice">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-choice">
+                                <i class="fas fa-plus"></i> Add Another Choice
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="id_required" name="required" {% if form.required.value %}checked{% endif %}>
+                                <label class="custom-control-label" for="id_required">Required Question</label>
+                            </div>
+                        </div>
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primarytwo">Save Changes</button>
+                            <a href="{% url 'edit_survey' survey.id %}" class="btn btn-outline-secondary ml-2">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    $(document).ready(function() {
+        // Show/hide choices section based on question type
+        function toggleChoices() {
+            const questionType = $('#id_question_type').val();
+            $('#type-info-text, #type-info-rating, #type-info-multiple, #type-info-boolean').hide();
+            $(`#type-info-${questionType}`).show();
+            if (questionType === 'multiple') {
+                $('#choices-container').show();
+            } else {
+                $('#choices-container').hide();
+            }
+        }
+        toggleChoices();
+        $('#id_question_type').change(toggleChoices);
+
+        // Add more choice fields
+        $('#add-choice').click(function() {
+            const newChoice = `
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" name="choices" placeholder="Enter choice">
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-secondary remove-choice">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            $('#choice-fields').append(newChoice);
+        });
+
+        // Remove choice field
+        $(document).on('click', '.remove-choice', function() {
+            $(this).closest('.input-group').remove();
+        });
+
+        // Form validation
+        $('#questionForm').submit(function(e) {
+            const questionType = $('#id_question_type').val();
+            if (questionType === 'multiple') {
+                const choiceFields = $('input[name="choices"]');
+                let validChoices = 0;
+                choiceFields.each(function() {
+                    if ($(this).val().trim() !== '') {
+                        validChoices++;
+                    }
+                });
+                if (validChoices < 2) {
+                    alert('Please provide at least two choices for multiple choice questions');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            return true;
+        });
+    });
+</script>
+{% endblock %}

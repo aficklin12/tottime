@@ -1212,3 +1212,89 @@ class ResourceSignature(models.Model):
     
     def __str__(self):
         return f"Signature by {self.signer_name} for {self.resource.title}"
+    
+class Survey(models.Model):
+    AUDIENCE_CHOICES = [
+        ('staff', 'Staff'),
+        ('parent', 'Parent'),
+        ('both', 'Both Staff and Parents')
+    ]
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='surveys')  # <-- Added
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    audience = models.CharField(max_length=10, choices=AUDIENCE_CHOICES, default='both')
+    created_at = models.DateTimeField(auto_now_add=True)
+    active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.title
+
+class Question(models.Model):
+    QUESTION_TYPES = [
+        ('text', 'Text Response'),
+        ('rating', 'Rating (1-5)'),
+        ('multiple', 'Multiple Choice'),
+        ('boolean', 'Yes/No')
+    ]
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
+    required = models.BooleanField(default=True)
+    order = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.survey.title} - {self.text[:30]}..."
+
+    class Meta:
+        ordering = ['order']
+
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='choices')
+    text = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.text
+
+class Response(models.Model):
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name='responses')
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='responses')
+    respondent = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)  # <-- Fixed
+    respondent_type = models.CharField(max_length=10, choices=[('staff', 'Staff'), ('parent', 'Parent')], default='parent')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        name = self.respondent.get_full_name() if self.respondent else "Anonymous"
+        return f"{name} - {self.survey.title}"
+
+class Answer(models.Model):
+    response = models.ForeignKey(Response, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    text_answer = models.TextField(blank=True, null=True)
+    rating_answer = models.IntegerField(blank=True, null=True)
+    choice_answer = models.ForeignKey(Choice, on_delete=models.SET_NULL, null=True, blank=True)
+    boolean_answer = models.BooleanField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Answer to {self.question.text[:30]}..."
+
+class ImprovementPlan(models.Model):
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='improvement_plans')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    survey = models.ForeignKey(Survey, on_delete=models.CASCADE, related_name='improvement_plans')
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    is_completed = models.BooleanField(default=False)  # <-- Add this line
+
+    def __str__(self):
+        return self.title
+
+class ImprovementGoal(models.Model):
+    plan = models.ForeignKey(ImprovementPlan, on_delete=models.CASCADE, related_name='goals')
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='improvement_goals')  # <-- Added
+    description = models.TextField()
+    target_date = models.DateField()
+    completed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.plan.title} - Goal {self.id}"

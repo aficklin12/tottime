@@ -1,0 +1,77 @@
+<!-- filepath: c:\Users\afick\OneDrive\Python Scripts\tottime\tottimeapp\templates\tottimeapp\create_improvement_plan.html -->
+{% extends 'tottimeapp/base.html' %}
+{% block title %}Create Improvement Plan{% endblock %}
+
+{% block styles %}
+<style>
+@media (max-width: 1000px) {
+    .suggested-goal-input {
+        width: 100% !important;
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }
+}
+</style>
+{% endblock %}
+{% block content %}
+<h1>Create Improvement Plan for "{{ survey.title }}"</h1>
+    {% if suggested_goals %}
+    <div class="alert alert-warning">
+        <h5>Suggested Goals Based on Survey Results</h5>
+        <ul>
+            {% for goal in suggested_goals %}
+                <li>
+                    <textarea name="goal_description" class="form-control mb-2 suggested-goal-input" rows="2" readonly>{{ goal.description }}</textarea>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+<div style="margin-left: 15px; margin-right: 15px;">
+    <form method="post">
+    
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_title">Plan Title</label>
+            {{ form.title.errors }}
+            <input type="text" class="form-control" id="id_title" name="title" value="{{ form.title.value|default_if_none:'' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="id_description">Description</label>
+            {{ form.description.errors }}
+            <textarea class="form-control" id="id_description" name="description" rows="4">{{ form.description.value|default_if_none:'' }}</textarea>
+        </div>
+        <hr>
+        <h4>Goals</h4>
+        <div id="goals-list">
+            <div class="goal-item mb-3">
+                <input type="text" name="goal_description" class="form-control mb-2 suggested-goal-input" rows="2" placeholder="Goal description">
+                <input type="date" name="goal_target_date" class="form-control" placeholder="Target date">
+            </div>
+        </div>
+        <button type="button" class="btn btn-outline-primary mb-3" id="add-goal-btn">
+            <i class="fas fa-plus"></i> Add Another Goal
+        </button>
+        <div>
+            <button type="submit" class="btn btn-primarytwo">Save Plan</button>
+            <a href="{% url 'survey_results' survey.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('add-goal-btn').onclick = function() {
+    var goalsList = document.getElementById('goals-list');
+    var newGoal = document.createElement('div');
+    newGoal.className = 'goal-item mb-3';
+    newGoal.innerHTML = `
+        <input type="text" name="goal_description" class="form-control mb-2" placeholder="Goal description">
+        <input type="date" name="goal_target_date" class="form-control" placeholder="Target date">
+    `;
+    goalsList.appendChild(newGoal);
+};
+</script>
+{% endblock %}

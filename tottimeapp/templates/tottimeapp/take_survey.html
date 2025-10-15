@@ -1,0 +1,145 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+{% block title %}{{ survey.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">{{ survey.title }}</h2>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ survey.description }}</p>
+                    
+                    <form method="post" id="surveyForm">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="respondent_type">I am a:</label>
+                            <select class="form-control" id="respondent_type" name="respondent_type" required>
+                                <option value="parent">Parent</option>
+                                <option value="staff">Staff Member</option>
+                            </select>
+                        </div>
+                        
+                        <hr>
+                        
+                        {% for question in questions %}
+                            <div class="card mb-4 question-card">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        {{ forloop.counter }}. {{ question.text }}
+                                        {% if question.required %}
+                                            <span class="text-danger">*</span>
+                                        {% endif %}
+                                    </h5>
+                                    
+                                    {% if question.question_type == 'text' %}
+                                        <div class="form-group">
+                                            <textarea class="form-control" name="question_{{ question.id }}" rows="3"
+                                                {% if question.required %}required{% endif %}></textarea>
+                                        </div>
+                                    
+                                    {% elif question.question_type == 'rating' %}
+                                        <div class="form-group">
+                                            <div class="rating-container d-flex justify-content-between">
+                                                {% for i in '12345' %}
+                                                    <div class="rating-option text-center">
+                                                        <input type="radio" id="rating_{{ question.id }}_{{ i }}" 
+                                                               name="question_{{ question.id }}" value="{{ i }}"
+                                                               {% if question.required %}required{% endif %}>
+                                                        <label for="rating_{{ question.id }}_{{ i }}" class="btn btn-outline-secondary">
+                                                            {{ i }}
+                                                        </label>
+                                                        <div class="small text-muted">
+                                                            {% if i == '1' %}Poor{% elif i == '5' %}Excellent{% endif %}
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    
+                                    {% elif question.question_type == 'multiple' %}
+                                        <div class="form-group">
+                                            {% for choice in question.choices.all %}
+                                                <div class="custom-control custom-radio">
+                                                    <input type="radio" id="choice_{{ question.id }}_{{ choice.id }}" 
+                                                           name="question_{{ question.id }}" value="{{ choice.id }}" class="custom-control-input"
+                                                           {% if question.required %}required{% endif %}>
+                                                    <label class="custom-control-label" for="choice_{{ question.id }}_{{ choice.id }}">
+                                                        {{ choice.text }}
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    
+                                    {% elif question.question_type == 'boolean' %}
+                                        <div class="form-group">
+                                            <div class="custom-control custom-radio custom-control-inline">
+                                                <input type="radio" id="bool_{{ question.id }}_yes" name="question_{{ question.id }}" 
+                                                       value="true" class="custom-control-input" {% if question.required %}required{% endif %}>
+                                                <label class="custom-control-label" for="bool_{{ question.id }}_yes">Yes</label>
+                                            </div>
+                                            <div class="custom-control custom-radio custom-control-inline">
+                                                <input type="radio" id="bool_{{ question.id }}_no" name="question_{{ question.id }}" 
+                                                       value="false" class="custom-control-input">
+                                                <label class="custom-control-label" for="bool_{{ question.id }}_no">No</label>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                        
+                        <div class="form-group text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">Submit Survey</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    $(document).ready(function() {
+        // Style the rating buttons when selected
+        $('input[type="radio"]').change(function() {
+            $(this).closest('.rating-container').find('label').removeClass('btn-primary').addClass('btn-outline-secondary');
+            $(this).next('label').removeClass('btn-outline-secondary').addClass('btn-primary');
+        });
+        
+        // Form validation
+        $('#surveyForm').submit(function(e) {
+            let isValid = true;
+            
+            // Check required fields
+            $('[required]').each(function() {
+                if (!$(this).val()) {
+                    const questionCard = $(this).closest('.question-card');
+                    questionCard.addClass('border-danger');
+                    isValid = false;
+                } else {
+                    $(this).closest('.question-card').removeClass('border-danger');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                $('html, body').animate({
+                    scrollTop: $('.border-danger').first().offset().top - 100
+                }, 200);
+                alert('Please answer all required questions.');
+                return false;
+            }
+            
+            return true;
+        });
+    });
+</script>
+{% endblock %}

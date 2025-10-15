@@ -1,0 +1,10 @@
+{% extends 'tottimeapp/base.html' %}
+{% block title %}Thank You{% endblock %}
+
+{% block content %}
+<div class="container mt-5 text-center">
+    <h1>Thank You!</h1>
+    <p>Your survey response has been submitted.</p>
+    <a href="{% url 'surveys_list' %}" class="btn btn-primary mt-3">Back to Surveys</a>
+</div>
+{% endblock %}

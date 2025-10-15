@@ -405,6 +405,9 @@
                                 {% if show_orientation %}
                                 <a class="nav-link" href="{% url 'abc_quality' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">ABC Quality</a>
                                 {% endif %}
+                                {% if show_orientation %}
+                                <a class="nav-link" href="{% url 'surveys_list' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Surveys</a>
+                                {% endif %}
                             </nav>
                         </div>  
                         {% endif %}

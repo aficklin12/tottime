@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User, Group
-from .models import Rule, MainUser, SubUser, Message
+from .models import Rule, MainUser, SubUser, Message, Survey, Question, Choice, ImprovementPlan, ImprovementGoal
 
 class SignupForm(UserCreationForm):
     first_name = forms.CharField(max_length=30, required=False, help_text='Optional.')
@@ -43,3 +43,40 @@ class MessageForm(forms.ModelForm):
 class ForgotUsernameForm(forms.Form):
     email = forms.EmailField(label='Email', max_length=254)
 
+class SurveyForm(forms.ModelForm):
+    class Meta:
+        model = Survey
+        fields = ['title', 'description', 'audience', 'active']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+        }
+
+class QuestionForm(forms.ModelForm):
+    class Meta:
+        model = Question
+        fields = ['text', 'question_type', 'required']
+        widgets = {
+            'text': forms.Textarea(attrs={'rows': 3}),
+        }
+
+ChoiceFormSet = forms.inlineformset_factory(
+    Question, Choice, 
+    fields=['text'], 
+    extra=4, 
+    can_delete=True
+)
+
+class ImprovementPlanForm(forms.ModelForm):
+    class Meta:
+        model = ImprovementPlan
+        fields = ['title', 'description']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+        }
+
+ImprovementGoalFormSet = forms.inlineformset_factory(
+    ImprovementPlan, ImprovementGoal,
+    fields=['description', 'target_date', 'completed'],
+    extra=3,
+    can_delete=True
+)

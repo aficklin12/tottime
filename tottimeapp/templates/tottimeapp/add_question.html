@@ -1,0 +1,149 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+{% block title %}Add Question{% endblock %}
+
+{% block content %}
+<h1>Add Question</h1>
+<div class="container mt-4">
+    <div class="row">
+       
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            
+                    <form method="post" id="questionForm">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="id_text">Question Text</label>
+                            {{ form.text.errors }}
+                            <textarea class="form-control" id="id_text" name="text" rows="3" required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="id_question_type">Question Type</label>
+                            {{ form.question_type.errors }}
+                            <select class="form-control" id="id_question_type" name="question_type" required>
+                                <option value="text">Text Response</option>
+                                <option value="rating">Rating (1-5)</option>
+                                <option value="multiple">Multiple Choice</option>
+                                <option value="boolean">Yes/No</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group" id="choices-container" style="display: none;">
+                            <label>Answer Choices</label>
+                            <div id="choice-fields">
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" name="choices" placeholder="Enter choice">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary remove-choice" disabled>
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" name="choices" placeholder="Enter choice">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary remove-choice">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-choice">
+                                <i class="fas fa-plus"></i> Add Another Choice
+                            </button>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="id_required" name="required" checked>
+                                <label class="custom-control-label" for="id_required">Required Question</label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primarytwo">Add Question</button>
+                            <a href="{% url 'edit_survey' survey.id %}" class="btn btn-outline-secondary ml-2">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    $(document).ready(function() {
+        // Show/hide choices section based on question type
+        $('#id_question_type').change(function() {
+            const questionType = $(this).val();
+            
+            // Hide all type info sections
+            $('#type-info-text, #type-info-rating, #type-info-multiple, #type-info-boolean').hide();
+            
+            // Show the relevant type info section
+            $(`#type-info-${questionType}`).show();
+            
+            // Show choices container only for multiple choice questions
+            if (questionType === 'multiple') {
+                $('#choices-container').show();
+            } else {
+                $('#choices-container').hide();
+            }
+        });
+        
+        // Add more choice fields
+        $('#add-choice').click(function() {
+            const newChoice = `
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" name="choices" placeholder="Enter choice">
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-secondary remove-choice">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            $('#choice-fields').append(newChoice);
+        });
+        
+        // Remove choice field
+        $(document).on('click', '.remove-choice', function() {
+            $(this).closest('.input-group').remove();
+        });
+        
+        // Form validation
+        $('#questionForm').submit(function(e) {
+            const questionType = $('#id_question_type').val();
+            
+            // If multiple choice, ensure at least two choices are provided
+            if (questionType === 'multiple') {
+                const choiceFields = $('input[name="choices"]');
+                let validChoices = 0;
+                
+                choiceFields.each(function() {
+                    if ($(this).val().trim() !== '') {
+                        validChoices++;
+                    }
+                });
+                
+                if (validChoices < 2) {
+                    alert('Please provide at least two choices for multiple choice questions');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    });
+</script>
+{% endblock %}

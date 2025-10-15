@@ -193,6 +193,21 @@ urlpatterns = [
     path('abc_quality/', login_required(views.abc_quality), name='abc_quality'),
     path('upload_documentation/', views.upload_documentation, name='upload_documentation'),
     path('compile-all-documents/', views.compile_all_documents, name='compile_all_documents'),
+    # Survey management
+    path('surveys/', views.surveys_list, name='surveys_list'),
+    path('surveys/create/', views.create_survey, name='create_survey'),
+    path('surveys/<int:survey_id>/edit/', views.edit_survey, name='edit_survey'),
+    path('surveys/<int:survey_id>/add-question/', views.add_question, name='add_question'),
+    path('questions/<int:question_id>/edit/', views.edit_question, name='edit_question'),
+    path('questions/<int:question_id>/delete/', views.delete_question, name='delete_question'),
+    path('survey/<int:survey_id>/send/', views.send_survey, name='send_survey'),
+    path('survey/<int:survey_id>/results/', views.survey_results, name='survey_results'),
+    path('surveys/<int:survey_id>/improvement-plan/create/', views.create_improvement_plan, name='create_improvement_plan'),
+    path('improvement-plan/<int:plan_id>/edit/', views.edit_improvement_plan, name='edit_improvement_plan'),
+    path('surveys/<int:survey_id>/delete/', views.delete_survey, name='delete_survey'),
+    # Public survey taking
+    path('surveys/<int:survey_id>/take/', views.take_survey, name='take_survey'),
+    path('improvement-plan/<int:plan_id>/complete/', views.complete_improvement_plan, name='complete_improvement_plan'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
