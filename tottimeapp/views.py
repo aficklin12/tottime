@@ -49,12 +49,12 @@ ALLOWED_STYLES = ['font-weight', 'font-style', 'text-decoration']
 logger = logging.getLogger(__name__)
 
 def get_user_for_view(request):
-    try:
-        subuser = SubUser.objects.get(user=request.user)
-        return subuser.main_user  # Return the MainUser object
-    except SubUser.DoesNotExist:
-        return request.user  # This will return a MainUser object
-    
+    user = request.user
+    # If user has a main_account_owner_id, return that MainUser
+    if hasattr(user, 'main_account_owner_id') and user.main_account_owner_id:
+        return MainUser.objects.get(id=user.main_account_owner_id)
+    return user
+
 def check_permissions(request, required_permission_id=None):
     """
     Check user permissions and return context variables for links.
