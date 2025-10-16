@@ -7182,7 +7182,8 @@ def surveys_list(request):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    surveys = Survey.objects.all().order_by('-created_at')
+    main_user = get_user_for_view(request)
+    surveys = Survey.objects.filter(main_user=main_user).order_by('-created_at')
     context = {
         'surveys': surveys,
         **permissions_context

@@ -85,6 +85,30 @@
     }
 
     /* End of new styles */
+
+    /* Download PDF button: teal color scheme */
+    .btn-outline-success {
+        border-color: rgb(57, 189, 180) !important;
+        color: rgb(57, 189, 180) !important;
+        background-color: #fff !important;
+    }
+    .btn-outline-success:hover, .btn-outline-success:focus {
+        background-color: rgb(57, 189, 180) !important;
+        color: #fff !important;
+        border-color: rgb(57, 189, 180) !important;
+    }
+
+    /* Print button: yellow color scheme */
+    .btn-outline-primary {
+        border-color: rgb(228, 218, 79) !important;
+        color: rgb(228, 218, 79) !important;
+        background-color: #fff !important;
+    }
+    .btn-outline-primary:hover, .btn-outline-primary:focus {
+        background-color: rgb(228, 218, 79) !important;
+        color: #fff !important;
+        border-color: rgb(228, 218, 79) !important;
+    }
 </style>
 {% endblock %}
 
@@ -93,168 +117,179 @@
 
 <!-- Improvement Plans Section -->
 <div style="margin-left: 20px; margin-right: 20px;">
-    <div style="display: flex; align-items: center; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
         <a href="{% url 'surveys_list' %}" class="btn btn-secondary mb-3">
             <i class="fas fa-arrow-left"></i> Back
         </a>
         <a href="{% url 'create_improvement_plan' survey.id %}" class="btn btn-primarytwo mb-3">
             <i class="fas fa-plus"></i> Add Improvement Plan
         </a>
+        <button class="btn btn-outline-primary mb-3" onclick="printContent()">Print</button>
+        <button class="btn btn-outline-success mb-3" onclick="downloadPDF()">Download PDF</button>
     </div>
-    <ul style="list-style: none; padding-left: 0;">
-        {% for plan in improvement_plans %}
-            <li style="border-left: 4px solid #28a745; padding: 1rem 0 1rem 1rem; margin-bottom: 1rem; background: #f9f9f9;">
-                <div>
-                    <strong>{{ plan.title }}</strong>
-                </div>
-                <div style="font-size: 0.95em; color: #444;">
-                    {{ plan.description }}
-                </div>
-                <div style="margin-top: 0.5rem;">
-                    <span class="badge badge-pill goal-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                        {% if plan.is_completed %}Completed{% else %}Pending{% endif %}
-                    </span>
-                    <form method="post" action="{% url 'complete_improvement_plan' plan.id %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-success"
-                            {% if plan.is_completed %}disabled{% endif %}>
-                            <i class="fas fa-check"></i>
-                            {% if plan.is_completed %}Completed{% else %}Mark as Complete{% endif %}
-                        </button>
-                    </form>
-                </div>
-            </li>
-        {% empty %}
-            <li style="color: #888;">No improvement plans yet.</li>
-        {% endfor %}
-    </ul>
 </div>
 
-<!-- Suggested Goals Section BELOW Improvement Plans -->
-{% if suggested_goals %}
-<div style="margin-left: 20px; margin-right: 20px;">
-    <div class="alert alert-warning">
-        <h5>Suggested Goals Based on Survey Results</h5>
-        <ul>
-            {% for goal in suggested_goals %}
-                <li>
-                    <textarea name="goal_description" class="form-control mb-2 suggested-goal-input" rows="2" readonly>{{ goal.description }}</textarea>
+<!-- BEGIN PRINTABLE CONTENT -->
+<div id="printable-content">
+    <h1>Goals & Plans: {{ survey.title }}</h1>
+    <!-- Improvement Plans Section -->
+    <div style="margin-left: 20px; margin-right: 20px;">
+        <ul style="list-style: none; padding-left: 0;">
+            {% for plan in improvement_plans %}
+                <li style="border-left: 4px solid #28a745; padding: 1rem 0 1rem 1rem; margin-bottom: 1rem; background: #f9f9f9;">
+                    <div>
+                        <strong>{{ plan.title }}</strong>
+                    </div>
+                    <div style="font-size: 0.95em; color: #444;">
+                        {{ plan.description }}
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <span class="badge badge-pill goal-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                            {% if plan.is_completed %}Completed{% else %}Pending{% endif %}
+                        </span>
+                        <form method="post" action="{% url 'complete_improvement_plan' plan.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success"
+                                {% if plan.is_completed %}disabled{% endif %}>
+                                <i class="fas fa-check"></i>
+                                {% if plan.is_completed %}Completed{% else %}Mark as Complete{% endif %}
+                            </button>
+                        </form>
+                    </div>
                 </li>
+            {% empty %}
+                <li style="color: #888;">No improvement plans yet.</li>
             {% endfor %}
         </ul>
     </div>
-</div>
-{% endif %}
 
-<!-- Survey Analysis Section -->
-<div style="margin-left: 20px; margin-right: 20px;">
-    <div class="card mb-4">
-        <div class="card-header">
-            <h2 class="mb-0">Survey Analysis</h2>
-        </div>
-        <div class="card-body">
-            {% if response_count > 0 %}
-                <p>Total Responses: <strong>{{ response_count }}</strong></p>
-                
-                {% for question_id, data in results.items %}
-                    <div class="result-card">
-                        <h4>{{ data.question.text }}</h4>
-                        
-                        {% if data.question.question_type == 'text' %}
-                            <p class="response-count">{{ data.text_answers|length }} responses</p>
-                            {% for answer in data.text_answers %}
-                                <div class="text-response">{{ answer }}</div>
-                            {% endfor %}
-                        
-                        {% elif data.question.question_type == 'rating' %}
-                            <p class="response-count">{{ data.count }} responses</p>
-                            <p>Average Rating: <strong>{{ data.average|floatformat:2 }}/5</strong></p>
-                            
-                            {% for rating, count in data.distribution.items %}
-                                <div class="mb-2">
-                                    <div class="d-flex justify-content-between">
-                                        <span>{{ rating }} {% if rating == 1 %}(Poor){% elif rating == 5 %}(Excellent){% endif %}</span>
-                                        <span>{{ count }} ({{ count|floatformat:0 }}%)</span>
-                                    </div>
-                                    <div class="progress">
-                                        <div class="progress-bar" role="progressbar" 
-                                            style="width: {{ count|floatformat:0 }}%;" 
-                                            aria-valuenow="{{ count|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
-                                            {{ count }}
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                            
-                            <div class="chart-container">
-                                <canvas id="chart-{{ question_id }}"></canvas>
-                            </div>
-                        
-                        {% elif data.question.question_type == 'multiple' %}
-                            <p class="response-count">{{ data.count }} responses</p>
-                            
-                            {% for choice_id, choice_data in data.choices.items %}
-                                <div class="mb-2">
-                                    <div class="d-flex justify-content-between">
-                                        <span>{{ choice_data.text }}</span>
-                                        <span>{{ choice_data.count }} {% if data.count %}({{ choice_data.count|floatformat:0 }}%){% endif %}</span>
-                                    </div>
-                                    <div class="progress">
-                                        <div class="progress-bar" role="progressbar" 
-                                            style="width: {% if data.count %}{{ choice_data.count|floatformat:0 }}%{% else %}0%{% endif %};" 
-                                            aria-valuenow="{% if data.count %}{{ choice_data.count|floatformat:0 }}{% else %}0{% endif %}" 
-                                            aria-valuemin="0" aria-valuemax="100">
-                                            {{ choice_data.count }}
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                            
-                            <div class="chart-container">
-                                <canvas id="chart-{{ question_id }}"></canvas>
-                            </div>
-                        
-                        {% elif data.question.question_type == 'boolean' %}
-                            <p class="response-count">{{ data.count }} responses</p>
-                            
-                            <div class="mb-2">
-                                <div class="d-flex justify-content-between">
-                                    <span>Yes</span>
-                                    <span>{{ data.yes_count }} ({{ data.yes_count|floatformat:0 }}%)</span>
-                                </div>
-                                <div class="progress">
-                                    <div class="progress-bar bg-success" role="progressbar" 
-                                        style="width: {{ data.yes_count|floatformat:0 }}%;" 
-                                        aria-valuenow="{{ data.yes_count|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
-                                        {{ data.yes_count }}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-2">
-                                <div class="d-flex justify-content-between">
-                                    <span>No</span>
-                                    <span>{{ data.no_count }} ({{ data.no_count|floatformat:0 }}%)</span>
-                                </div>
-                                <div class="progress">
-                                    <div class="progress-bar bg-danger" role="progressbar" 
-                                        style="width: {{ data.no_count|floatformat:0 }}%;" 
-                                        aria-valuenow="{{ data.no_count|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
-                                        {{ data.no_count }}
-                                    </div>
-                                </div>
-                            </div>
-                        {% endif %}
-                    </div>
+    <!-- Suggested Goals Section -->
+    {% if suggested_goals %}
+    <div style="margin-left: 20px; margin-right: 20px;">
+        <div class="alert alert-warning">
+            <h5>Suggested Goals Based on Survey Results</h5>
+            <ul>
+                {% for goal in suggested_goals %}
+                    <li>
+                        <textarea name="goal_description" class="form-control mb-2 suggested-goal-input" rows="2" readonly>{{ goal.description }}</textarea>
+                    </li>
                 {% endfor %}
-            {% else %}
-                <div class="alert alert-info" role="alert">
-                    No responses have been recorded for this survey yet.
-                </div>
-            {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Survey Analysis Section -->
+    <div style="margin-left: 20px; margin-right: 20px;">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="mb-0">Survey Analysis</h2>
+            </div>
+            <div class="card-body">
+                {% if response_count > 0 %}
+                    <p>Total Responses: <strong>{{ response_count }}</strong></p>
+                    
+                    {% for question_id, data in results.items %}
+                        <div class="result-card">
+                            <h4>{{ data.question.text }}</h4>
+                            
+                            {% if data.question.question_type == 'text' %}
+                                <p class="response-count">{{ data.text_answers|length }} responses</p>
+                                {% for answer in data.text_answers %}
+                                    <div class="text-response">{{ answer }}</div>
+                                {% endfor %}
+                            
+                            {% elif data.question.question_type == 'rating' %}
+                                <p class="response-count">{{ data.count }} responses</p>
+                                <p>Average Rating: <strong>{{ data.average|floatformat:2 }}/5</strong></p>
+                                
+                                {% for rating, count in data.distribution.items %}
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between">
+                                            <span>{{ rating }} {% if rating == 1 %}(Poor){% elif rating == 5 %}(Excellent){% endif %}</span>
+                                            <span>{{ count }} ({{ count|floatformat:0 }}%)</span>
+                                        </div>
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" 
+                                                style="width: {{ count|floatformat:0 }}%;" 
+                                                aria-valuenow="{{ count|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                                                {{ count }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                
+                                <div class="chart-container">
+                                    <canvas id="chart-{{ question_id }}"></canvas>
+                                </div>
+                            
+                            {% elif data.question.question_type == 'multiple' %}
+                                <p class="response-count">{{ data.count }} responses</p>
+                                
+                                {% for choice_id, choice_data in data.choices.items %}
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between">
+                                            <span>{{ choice_data.text }}</span>
+                                            <span>{{ choice_data.count }} {% if data.count %}({{ choice_data.count|floatformat:0 }}%){% endif %}</span>
+                                        </div>
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" 
+                                                style="width: {% if data.count %}{{ choice_data.count|floatformat:0 }}%{% else %}0%{% endif %};" 
+                                                aria-valuenow="{% if data.count %}{{ choice_data.count|floatformat:0 }}{% else %}0{% endif %}" 
+                                                aria-valuemin="0" aria-valuemax="100">
+                                                {{ choice_data.count }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                
+                                <div class="chart-container">
+                                    <canvas id="chart-{{ question_id }}"></canvas>
+                                </div>
+                            
+                            {% elif data.question.question_type == 'boolean' %}
+                                <p class="response-count">{{ data.count }} responses</p>
+                                
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Yes</span>
+                                        <span>{{ data.yes_count }} ({{ data.yes_count|floatformat:0 }}%)</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                            style="width: {{ data.yes_count|floatformat:0 }}%;" 
+                                            aria-valuenow="{{ data.yes_count|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                                            {{ data.yes_count }}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>No</span>
+                                        <span>{{ data.no_count }} ({{ data.no_count|floatformat:0 }}%)</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-danger" role="progressbar" 
+                                            style="width: {{ data.no_count|floatformat:0 }}%;" 
+                                            aria-valuenow="{{ data.no_count|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                                            {{ data.no_count }}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-info" role="alert">
+                        No responses have been recorded for this survey yet.
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
+<!-- END PRINTABLE CONTENT -->
 
 {% endblock %}
 
@@ -297,5 +332,28 @@
             }
         {% endfor %}
     });
+</script>
+
+<script>
+function printContent() {
+    var printContents = document.getElementById('printable-content').innerHTML;
+    var originalContents = document.body.innerHTML;
+    document.body.innerHTML = printContents;
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload();
+}
+
+function downloadPDF() {
+    var element = document.getElementById('printable-content');
+    var opt = {
+        margin:       0.3,
+        filename:     'survey_results.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+}
 </script>
 {% endblock %}
