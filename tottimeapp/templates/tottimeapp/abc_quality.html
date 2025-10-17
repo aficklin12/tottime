@@ -990,27 +990,29 @@
             
             // For email action, use fetch
             fetch('{% url "compile_all_documents" %}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+              method: 'POST',
+              body: formData,
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+              }
             })
             .then(response => response.json())
             .then(data => {
-                // Hide processing modal
-                processingModal.hide();
-                
-                if (data.success) {
-                    toastr.success('Documentation has been emailed successfully!');
+              processingModal.hide();
+              if (data.success) {
+                if (data.queued) {
+                  toastr.info('Your request has been queued. You will receive the email when ready.');
                 } else {
-                    toastr.error('Error: ' + (data.error || 'Unknown error occurred'));
+                  toastr.success('Documentation has been emailed successfully!');
                 }
+              } else {
+                toastr.error('Error: ' + (data.error || 'Unknown error occurred'));
+              }
             })
             .catch(error => {
-                processingModal.hide();
-                toastr.error('An error occurred while compiling documents');
-                console.error('Error:', error);
+              processingModal.hide();
+              toastr.error('An error occurred while compiling documents');
+              console.error('Error:', error);
             });
         });
         
