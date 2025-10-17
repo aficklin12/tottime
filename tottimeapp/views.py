@@ -6655,366 +6655,525 @@ def upload_documentation(request):
     # If GET request, redirect to ABC Quality page
     return redirect('abc_quality')
 
-# ...existing code...
-import threading
-import tempfile
-import os
-import logging
-from io import BytesIO
-from django.http import FileResponse, JsonResponse
-from django.shortcuts import redirect
-from django.contrib import messages
-from django.db import close_old_connections
-from django.conf import settings
-from django.contrib.auth.decorators import login_required
-
-logger = logging.getLogger(__name__)
-
-def _compile_resources_to_pdf(resources, scope_description, filename_suffix, aws_config=None):
-    """Compile provided Resource instances into a PDF stored in BytesIO."""
-    # heavy imports local to function
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib import colors
-    from reportlab.lib.units import inch
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER
-    from PIL import Image as PILImage
-    import fitz  # PyMuPDF
-    import requests
-
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=letter,
-        title=f"ABC Quality Documentation - {scope_description}",
-        author="ABC Quality System",
-        subject=f"Documentation for {scope_description}",
-        topMargin=0.5 * inch,
-        bottomMargin=0.5 * inch,
-        leftMargin=0.5 * inch,
-        rightMargin=0.5 * inch,
-    )
-
-    styles = getSampleStyleSheet()
-    header_style = ParagraphStyle('HeaderStyle', parent=styles['Heading1'], fontSize=16, alignment=TA_CENTER, spaceAfter=12)
-    subheader_style = ParagraphStyle('SubHeaderStyle', parent=styles['Heading2'], fontSize=14, alignment=TA_CENTER, spaceAfter=10)
-    indicator_style = ParagraphStyle('IndicatorStyle', parent=styles['Heading3'], fontSize=12, backColor=colors.lightgrey, borderPadding=5, spaceAfter=8)
-    file_title_style = ParagraphStyle('FileTitleStyle', parent=styles['Normal'], fontSize=10, fontName='Helvetica-Bold')
-    normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=10)
-    description_style = ParagraphStyle('DescriptionStyle', parent=styles.get('Italic', styles['Normal']), fontSize=9, textColor=colors.darkgrey, leftIndent=10)
-
-    elements = []
-    elements.append(Paragraph("ABC Quality Documentation", header_style))
-    elements.append(Paragraph(f"{scope_description}", subheader_style))
-    from datetime import datetime
-    elements.append(Paragraph(f"Compiled on: {datetime.now().strftime('%B %d, %Y')}", normal_style))
-    elements.append(Spacer(1, 0.25 * inch))
-
-    current_indicator = None
-
-    for resource in resources:
-        try:
-            if hasattr(resource, 'abc_indicator') and resource.abc_indicator:
-                indicator_id = resource.abc_indicator.indicator_id
-            else:
-                indicator_id = resource.indicator_id
-
-            if current_indicator != indicator_id:
-                current_indicator = indicator_id
-                if elements and not isinstance(elements[-1], PageBreak):
-                    elements.append(Spacer(1, 0.3 * inch))
-                try:
-                    from tottime.tottimeapp.models import ABCQualityIndicator
-                    indicator_obj = ABCQualityIndicator.objects.get(indicator_id=current_indicator)
-                    indicator_desc = indicator_obj.description
-                except Exception:
-                    indicator_desc = "Unknown Description"
-                elements.append(Paragraph(f"Indicator {current_indicator}: {indicator_desc}", indicator_style))
-
-            try:
-                if hasattr(resource, 'filename') and callable(resource.filename):
-                    file_name = resource.filename()
-                elif hasattr(resource, 'filename') and resource.filename:
-                    file_name = resource.filename
-                elif hasattr(resource.file, 'name'):
-                    file_name = os.path.basename(resource.file.name)
-                else:
-                    file_name = "Untitled Document"
-            except Exception:
-                file_name = "Unknown File"
-
-            elements.append(Paragraph(f"File: {file_name}", file_title_style))
-            if hasattr(resource, 'uploaded_at') and resource.uploaded_at:
-                elements.append(Paragraph(f"Uploaded: {resource.uploaded_at.strftime('%b %d, %Y')}", normal_style))
-            if hasattr(resource, 'description') and resource.description:
-                elements.append(Paragraph(f"{resource.description}", description_style))
-            elements.append(Spacer(1, 0.1 * inch))
-
-            # obtain bytes
-            file_content = None
-            file_key = None
-            if hasattr(resource.file, 'name'):
-                file_key = resource.file.name.lstrip('/')
-
-            if aws_config and file_key:
-                try:
-                    import boto3
-                    from botocore.config import Config
-                    s3 = boto3.client(
-                        's3',
-                        aws_access_key_id=aws_config.get('aws_access_key'),
-                        aws_secret_access_key=aws_config.get('aws_secret_key'),
-                        region_name=aws_config.get('s3_region'),
-                        config=Config(signature_version='s3v4')
-                    )
-                    url = s3.generate_presigned_url('get_object', Params={'Bucket': aws_config.get('s3_bucket'), 'Key': file_key}, ExpiresIn=3600)
-                    resp = requests.get(url, timeout=30)
-                    if resp.status_code == 200:
-                        file_content = BytesIO(resp.content)
-                except Exception:
-                    file_content = None
-
-            if not file_content:
-                try:
-                    file_content = BytesIO(resource.file.read())
-                    resource.file.seek(0)
-                    file_content.seek(0)
-                except Exception as fe:
-                    elements.append(Paragraph(f"Could not access file: {str(fe)}", normal_style))
-                    continue
-
-            fname_lower = file_name.lower()
-            if fname_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
-                try:
-                    img = PILImage.open(file_content)
-                    img_width, img_height = img.size
-                    max_w, max_h = 6 * inch, 7 * inch
-                    ratio = min(max_w / img_width, max_h / img_height)
-                    display_w = img_width * ratio
-                    display_h = img_height * ratio
-                    img_temp = BytesIO()
-                    img.save(img_temp, format=img.format or 'PNG')
-                    img_temp.seek(0)
-                    elements.append(Image(img_temp, width=display_w, height=display_h))
-                except Exception as ie:
-                    elements.append(Paragraph(f"Error loading image: {str(ie)}", normal_style))
-
-            elif fname_lower.endswith('.pdf'):
-                try:
-                    pdf_document = fitz.open(stream=file_content.getvalue(), filetype="pdf")
-                    page_count = pdf_document.page_count
-                    elements.append(Paragraph(f"PDF document with {page_count} pages:", normal_style))
-                    elements.append(Spacer(1, 0.1 * inch))
-                    max_pages = min(page_count, 10)
-                    for page_num in range(max_pages):
-                        page = pdf_document[page_num]
-                        matrix = fitz.Matrix(2.0, 2.0)
-                        pix = page.get_pixmap(matrix=matrix, alpha=False)
-                        img_data = pix.tobytes("png")
-                        img_stream = BytesIO(img_data)
-                        width_ratio = (6 * inch) / pix.width
-                        height_ratio = (8 * inch) / pix.height
-                        ratio = min(width_ratio, height_ratio)
-                        display_w = pix.width * ratio
-                        display_h = pix.height * ratio
-                        elements.append(Paragraph(f"Page {page_num + 1} of {page_count}", normal_style))
-                        elements.append(Image(img_stream, width=display_w, height=display_h))
-                        elements.append(Spacer(1, 0.2 * inch))
-                    if page_count > max_pages:
-                        elements.append(Paragraph(f"(Showing {max_pages} of {page_count} pages)", normal_style))
-                    pdf_document.close()
-                except Exception as pe:
-                    elements.append(Paragraph(f"Error processing PDF: {str(pe)}", normal_style))
-            else:
-                elements.append(Paragraph("Preview not available for this file type.", normal_style))
-        except Exception as re:
-            elements.append(Paragraph(f"Error processing file: {str(re)}", normal_style))
-
-        elements.append(Spacer(1, 0.3 * inch))
-        elements.append(PageBreak())
-
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
-
-
-def _background_compile_and_send_email(resource_ids, scope_description, filename_suffix, email, email_message, aws_config=None, requesting_user_id=None):
-    """Background thread: re-query resources, compile PDF and send email."""
-    close_old_connections()
-    try:
-        logger.info("Background job started for email: %s", email)
-        from tottime.tottimeapp.models import Resource
-        resources = list(Resource.objects.filter(id__in=resource_ids).order_by('id'))
-
-        pdf_buffer = _compile_resources_to_pdf(resources, scope_description, filename_suffix, aws_config=aws_config)
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tf:
-            tf.write(pdf_buffer.getvalue())
-            temp_path = tf.name
-
-        try:
-            from django.core.mail import EmailMessage
-            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'SERVER_EMAIL', None)
-            if not from_email:
-                logger.warning("DEFAULT_FROM_EMAIL / SERVER_EMAIL not set; using empty from address may fail with some backends")
-
-            email_subject = f"ABC Quality Documentation - {scope_description}"
-            email_body = f"Please find attached the compiled documentation for {scope_description}."
-            if email_message:
-                email_body += f"\n\nMessage from sender:\n{email_message}"
-
-            email_obj = EmailMessage(subject=email_subject, body=email_body, from_email=from_email, to=[email])
-            with open(temp_path, 'rb') as fh:
-                email_obj.attach(f'abc_quality_{filename_suffix}.pdf', fh.read(), 'application/pdf')
-            email_obj.send(fail_silently=False)
-            logger.info("Background email sent to %s", email)
-        except Exception:
-            logger.exception("Background email send failed")
-        finally:
-            try:
-                os.unlink(temp_path)
-            except Exception:
-                pass
-    except Exception:
-        logger.exception("Background compile/email job failed")
-    finally:
-        close_old_connections()
-
-
 @login_required
 def compile_all_documents(request):
     """Handle compiling all documents for an element or section into PDF"""
-    if request.method != 'POST':
-        return redirect('abc_quality')
-
-    logger.info("PDF compilation request received. Headers: %s", request.headers)
-
-    element = request.POST.get('element')
-    section = request.POST.get('section', '')
-    action = request.POST.get('action')
-    email = request.POST.get('email', '').strip()
-    email_message = request.POST.get('email_message', '')
-
-    try:
-        aws_access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
-        aws_secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
-        s3_bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
-        s3_region = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
-        aws_config = None
-        if aws_access_key and aws_secret_key and s3_bucket_name:
-            aws_config = {
-                'aws_access_key': aws_access_key,
-                'aws_secret_key': aws_secret_key,
-                's3_bucket': s3_bucket_name,
-                's3_region': s3_region,
-            }
-
-        main_user = get_user_for_view(request)
-
-        from tottime.tottimeapp.models import ABCQualityIndicator, Resource
-
-        if element == 'all':
-            scope_description = "All Elements and Sections"
-            indicators = ABCQualityIndicator.objects.all()
-            filename_suffix = "all"
-        else:
-            scope_description = f"Element {element}"
-            filename_suffix = element
-            if section:
-                scope_description += f", Section: {section}"
-                filename_suffix += f"_{section.replace(' ', '_')}"
-            if section:
-                indicators = ABCQualityIndicator.objects.filter(element__element_number=element, section__name=section)
+    if request.method == 'POST':
+        # Log incoming request details
+        logger.info(f"PDF compilation request received. Headers: {request.headers}")
+        
+        element = request.POST.get('element')
+        section = request.POST.get('section', '')
+        action = request.POST.get('action')
+        email = request.POST.get('email', '')
+        email_message = request.POST.get('email_message', '')
+        
+        try:
+            # Get AWS credentials from settings
+            aws_access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
+            aws_secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
+            s3_bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
+            s3_region = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+            
+            # Initialize S3 client if we have AWS credentials
+            s3_client = None
+            if aws_access_key and aws_secret_key and s3_bucket_name:
+                try:
+                    s3_client = boto3.client(
+                        's3',
+                        aws_access_key_id=aws_access_key,
+                        aws_secret_access_key=aws_secret_key,
+                        region_name=s3_region,
+                        config=Config(signature_version='s3v4')
+                    )
+                    logger.info(f"S3 client initialized successfully for bucket: {s3_bucket_name}")
+                except Exception as e:
+                    logger.error(f"Error initializing S3 client: {e}")
+                    s3_client = None
+            
+            # Get the main user for resource lookup
+            main_user = get_user_for_view(request)
+            
+            # Handle the 'all' case for compiling everything
+            if element == 'all':
+                scope_description = "All Elements and Sections"
+                indicators = ABCQualityIndicator.objects.all()
+                filename_suffix = "all"
             else:
-                indicators = ABCQualityIndicator.objects.filter(element__element_number=element)
-
-        indicator_ids = [ind.indicator_id for ind in indicators]
-        logger.debug("Found %d indicators", len(indicator_ids))
-
-        resources_with_abc_indicator = Resource.objects.filter(
-            main_user=main_user,
-            abc_indicator__indicator_id__in=indicator_ids,
-            resource_type='abc_quality'
-        ).order_by('abc_indicator__indicator_id')
-
-        resources_with_string_id = Resource.objects.filter(
-            main_user=main_user,
-            indicator_id__in=indicator_ids,
-            abc_indicator__isnull=True,
-            resource_type='abc_quality'
-        ).order_by('indicator_id')
-
-        from itertools import chain
-        resources = list(chain(resources_with_abc_indicator, resources_with_string_id))
-
-        if not resources:
-            error_message = f'No documents found for {scope_description}. Please upload documents for this element/section first.'
-            logger.warning(error_message)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': error_message})
-            messages.warning(request, error_message)
-            return redirect('abc_quality')
-
-        logger.info("Found %d resources to compile", len(resources))
-
-        if action == 'download':
-            try:
-                pdf_buffer = _compile_resources_to_pdf(resources, scope_description, filename_suffix, aws_config=aws_config)
-                pdf_buffer.seek(0)
-                response = FileResponse(
-                    pdf_buffer,
-                    as_attachment=True,
-                    filename=f"abc_quality_{filename_suffix}.pdf",
-                    content_type='application/pdf'
-                )
-                response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                response['Pragma'] = 'no-cache'
-                response['Expires'] = '0'
-                logger.info("PDF download response created successfully")
-                return response
-            except Exception:
-                logger.exception("Error creating download response")
-                messages.error(request, "Error preparing download.")
-                return redirect('abc_quality')
-
-        elif action == 'email' and email:
-            try:
-                resource_ids = [r.id for r in resources]
-                thread = threading.Thread(
-                    target=_background_compile_and_send_email,
-                    args=(resource_ids, scope_description, filename_suffix, email, email_message, aws_config, request.user.id),
-                    daemon=False
-                )
-                thread.start()
-                logger.info("Compile & email job queued for %s", email)
+                scope_description = f"Element {element}"
+                filename_suffix = element
+                
+                if section:
+                    scope_description += f", Section: {section}"
+                    filename_suffix += f"_{section.replace(' ', '_')}"
+                
+                if section:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element,
+                        section__name=section
+                    )
+                else:
+                    indicators = ABCQualityIndicator.objects.filter(
+                        element__element_number=element
+                    )
+            
+            # Get all resources for these indicators
+            indicator_ids = [indicator.indicator_id for indicator in indicators]
+            
+            # Log debug information
+            logger.debug(f"Found {len(indicator_ids)} indicators: {indicator_ids}")
+            
+            # First try to find resources linked to the indicator model - filter by main_user
+            resources_with_abc_indicator = Resource.objects.filter(
+                main_user=main_user,
+                abc_indicator__indicator_id__in=indicator_ids,
+                resource_type='abc_quality'
+            ).order_by('abc_indicator__indicator_id')
+            
+            # Also get resources that only have the string indicator_id - filter by main_user
+            resources_with_string_id = Resource.objects.filter(
+                main_user=main_user,
+                indicator_id__in=indicator_ids,
+                abc_indicator__isnull=True,
+                resource_type='abc_quality'
+            ).order_by('indicator_id')
+            
+            # Log debug information
+            logger.debug(f"Found {resources_with_abc_indicator.count()} resources with ABC indicator")
+            logger.debug(f"Found {resources_with_string_id.count()} resources with string indicator ID")
+            
+            # Combine the querysets
+            from itertools import chain
+            resources = list(chain(resources_with_abc_indicator, resources_with_string_id))
+            
+            # If no resources, return a message
+            if not resources:
+                error_message = f'No documents found for {scope_description}. Please upload documents for this element/section first.'
+                logger.warning(error_message)
+                
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({'success': True, 'queued': True, 'message': 'Compile & email job queued'})
-                messages.success(request, f"Email job queued for {scope_description}. You will receive the email shortly.")
-                return redirect('abc_quality')
-            except Exception:
-                logger.exception("Failed to queue background job")
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({'success': False, 'error': 'Failed to queue email job'})
-                messages.error(request, "Failed to queue email job.")
-                return redirect('abc_quality')
-
-        else:
-            errmsg = "Invalid action or missing email address."
-            logger.warning(errmsg)
+                    return JsonResponse({'success': False, 'error': error_message})
+                else:
+                    messages.warning(request, error_message)
+                    return redirect('abc_quality')
+            
+            # Log the number of resources found
+            logger.info(f"Found {len(resources)} resources to compile")
+            
+            # Import required libraries for PDF generation
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib import colors
+            from reportlab.lib.units import inch
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT
+            from io import BytesIO
+            import os
+            import tempfile
+            import fitz  # PyMuPDF
+            from PIL import Image as PILImage
+            import io
+            import requests
+            
+            # Create a BytesIO buffer for the PDF
+            buffer = BytesIO()
+            
+            # Create the PDF document
+            doc = SimpleDocTemplate(
+                buffer,
+                pagesize=letter,
+                title=f"ABC Quality Documentation - {scope_description}",
+                author="ABC Quality System",
+                subject=f"Documentation for {scope_description}",
+                topMargin=0.5*inch,
+                bottomMargin=0.5*inch,
+                leftMargin=0.5*inch,
+                rightMargin=0.5*inch
+            )
+            
+            # Get styles
+            styles = getSampleStyleSheet()
+            
+            # Create custom styles
+            header_style = ParagraphStyle(
+                'HeaderStyle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                alignment=TA_CENTER,
+                spaceAfter=12
+            )
+            
+            subheader_style = ParagraphStyle(
+                'SubHeaderStyle',
+                parent=styles['Heading2'],
+                fontSize=14,
+                alignment=TA_CENTER,
+                spaceAfter=10
+            )
+            
+            indicator_style = ParagraphStyle(
+                'IndicatorStyle',
+                parent=styles['Heading3'],
+                fontSize=12,
+                backColor=colors.lightgrey,
+                borderPadding=5,
+                spaceAfter=8
+            )
+            
+            file_title_style = ParagraphStyle(
+                'FileTitleStyle',
+                parent=styles['Normal'],
+                fontSize=10,
+                fontName='Helvetica-Bold'
+            )
+            
+            normal_style = ParagraphStyle(
+                'NormalStyle',
+                parent=styles['Normal'],
+                fontSize=10
+            )
+            
+            description_style = ParagraphStyle(
+                'DescriptionStyle',
+                parent=styles['Italic'],
+                fontSize=9,
+                textColor=colors.darkgrey,
+                leftIndent=10
+            )
+            
+            # Start building the document content
+            elements = []
+            
+            # Add title
+            elements.append(Paragraph(f"ABC Quality Documentation", header_style))
+            elements.append(Paragraph(f"{scope_description}", subheader_style))
+            
+            # Add date
+            from datetime import datetime
+            current_date = datetime.now().strftime("%B %d, %Y")
+            elements.append(Paragraph(f"Compiled on: {current_date}", normal_style))
+            elements.append(Spacer(1, 0.25*inch))
+            
+            # Track the current indicator to group resources
+            current_indicator = None
+            
+            # Process each resource
+            for resource in resources:
+                try:
+                    # Get the indicator ID from the resource
+                    if hasattr(resource, 'abc_indicator') and resource.abc_indicator:
+                        indicator_id = resource.abc_indicator.indicator_id
+                    else:
+                        indicator_id = resource.indicator_id
+                    
+                    # Check if we need to start a new indicator section
+                    if current_indicator != indicator_id:
+                        current_indicator = indicator_id
+                        
+                        # Add some spacing between indicator sections
+                        if elements and not isinstance(elements[-1], PageBreak):
+                            elements.append(Spacer(1, 0.3*inch))
+                        
+                        # Add indicator header
+                        try:
+                            indicator_obj = ABCQualityIndicator.objects.get(indicator_id=current_indicator)
+                            indicator_desc = indicator_obj.description
+                        except Exception as e:
+                            logger.error(f"Error getting indicator description: {e}")
+                            indicator_desc = "Unknown Description"
+                        
+                        elements.append(Paragraph(f"Indicator {current_indicator}: {indicator_desc}", indicator_style))
+                    
+                    # Get the file details
+                    try:
+                        if hasattr(resource, 'filename') and callable(resource.filename):
+                            file_name = resource.filename()
+                        elif hasattr(resource, 'filename') and resource.filename:
+                            file_name = resource.filename
+                        elif hasattr(resource.file, 'name'):
+                            file_name = os.path.basename(resource.file.name)
+                        else:
+                            file_name = "Untitled Document"
+                    except Exception as e:
+                        logger.error(f"Error getting filename: {e}")
+                        file_name = "Unknown File"
+                    
+                    # Add file info
+                    elements.append(Paragraph(f"File: {file_name}", file_title_style))
+                    
+                    if hasattr(resource, 'uploaded_at'):
+                        upload_date = resource.uploaded_at.strftime('%b %d, %Y')
+                        elements.append(Paragraph(f"Uploaded: {upload_date}", normal_style))
+                    
+                    if hasattr(resource, 'description') and resource.description:
+                        elements.append(Paragraph(f"{resource.description}", description_style))
+                    
+                    elements.append(Spacer(1, 0.1*inch))
+                    
+                    # Get file content and add preview based on file type
+                    if not hasattr(resource, 'file') or not resource.file:
+                        elements.append(Paragraph("File is not available", normal_style))
+                        continue
+                    
+                    # Get the file content using S3 pre-signed URL or direct file access
+                    file_content = None
+                    file_key = None
+                    
+                    # First try to get the S3 key directly
+                    if hasattr(resource.file, 'name'):
+                        file_key = resource.file.name
+                        # Remove any leading slash
+                        if file_key.startswith('/'):
+                            file_key = file_key[1:]
+                    
+                    # If we have S3 client and a key, use presigned URL
+                    if s3_client and file_key and s3_bucket_name:
+                        try:
+                            logger.info(f"Generating presigned URL for: {file_key} from bucket {s3_bucket_name}")
+                            
+                            # Generate pre-signed URL with one hour expiration
+                            url = s3_client.generate_presigned_url(
+                                ClientMethod='get_object',
+                                Params={'Bucket': s3_bucket_name, 'Key': file_key},
+                                ExpiresIn=3600  # URL valid for 1 hour
+                            )
+                            
+                            logger.info(f"Presigned URL generated: {url}")
+                            
+                            # Download file using requests
+                            response = requests.get(url, timeout=30)
+                            if response.status_code == 200:
+                                file_content = BytesIO(response.content)
+                                logger.info(f"File successfully downloaded from S3: {file_key}")
+                            else:
+                                logger.warning(f"Failed to download S3 file: {response.status_code}")
+                        except Exception as s3_err:
+                            logger.error(f"Error downloading from S3: {s3_err}")
+                    
+                    # If S3 download failed or not available, try direct read
+                    if not file_content:
+                        try:
+                            file_content = BytesIO()
+                            file_content.write(resource.file.read())
+                            file_content.seek(0)
+                            resource.file.seek(0)  # Reset file pointer
+                            logger.info(f"File read directly from storage: {file_name}")
+                        except Exception as file_err:
+                            logger.error(f"Error reading file directly: {file_err}")
+                            elements.append(Paragraph(f"Could not access file: {str(file_err)}", normal_style))
+                            continue
+                    
+                    # Process file based on type
+                    file_name_lower = file_name.lower()
+                    
+                    # Handle different file types
+                    if file_name_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp')):
+                        # It's an image, add it directly
+                        try:
+                            img = PILImage.open(file_content)
+                            img_width, img_height = img.size
+                            
+                            # Calculate dimensions to fit in PDF
+                            max_width = 6 * inch
+                            max_height = 7 * inch
+                            
+                            width_ratio = max_width / img_width
+                            height_ratio = max_height / img_height
+                            ratio = min(width_ratio, height_ratio)
+                            
+                            display_width = img_width * ratio
+                            display_height = img_height * ratio
+                            
+                            # Create a temporary BytesIO for the image
+                            img_temp = BytesIO()
+                            img.save(img_temp, format=img.format or 'PNG')
+                            img_temp.seek(0)
+                            
+                            # Add the image to the PDF
+                            img_obj = Image(img_temp, width=display_width, height=display_height)
+                            elements.append(img_obj)
+                            
+                        except Exception as img_err:
+                            logger.error(f"Error processing image {file_name}: {img_err}")
+                            elements.append(Paragraph(f"Error loading image: {str(img_err)}", normal_style))
+                    
+                    elif file_name_lower.endswith('.pdf'):
+                        # Handle PDF files - add all pages
+                        try:
+                            # Use PyMuPDF to open the PDF from memory
+                            pdf_document = fitz.open(stream=file_content.getvalue(), filetype="pdf")
+                            page_count = pdf_document.page_count
+                            
+                            elements.append(Paragraph(f"PDF document with {page_count} pages:", normal_style))
+                            elements.append(Spacer(1, 0.1*inch))
+                            
+                            # Process each page (limit to first 10 pages for performance)
+                            max_pages = min(page_count, 10)
+                            for page_num in range(max_pages):
+                                page = pdf_document[page_num]
+                                
+                                # INCREASED RESOLUTION: Use a higher zoom factor
+                                zoom_factor = 2.0
+                                
+                                # Create a matrix with higher resolution
+                                matrix = fitz.Matrix(zoom_factor, zoom_factor)
+                                
+                                # Get the pixmap with higher resolution and no alpha channel
+                                pix = page.get_pixmap(matrix=matrix, alpha=False)
+                                
+                                # Calculate DPI based on zoom factor (72 is the base DPI)
+                                dpi = 72 * zoom_factor
+                                logger.info(f"Rendering PDF page at {dpi} DPI")
+                                
+                                # Create a temp BytesIO for this page
+                                # Don't use the 'quality' parameter with tobytes since older versions may not support it
+                                img_data = pix.tobytes("png")  # Use PNG instead of JPEG for better quality
+                                img_stream = io.BytesIO(img_data)
+                                
+                                # Calculate dimensions
+                                max_width = 6 * inch
+                                max_height = 8 * inch
+                                
+                                width_ratio = max_width / pix.width
+                                height_ratio = max_height / pix.height
+                                ratio = min(width_ratio, height_ratio)
+                                
+                                display_width = pix.width * ratio
+                                display_height = pix.height * ratio
+                                
+                                # Add page number
+                                elements.append(Paragraph(f"Page {page_num + 1} of {page_count}", normal_style))
+                                
+                                # Add the image
+                                img = Image(img_stream, width=display_width, height=display_height)
+                                elements.append(img)
+                                elements.append(Spacer(1, 0.2*inch))
+                            
+                            if page_count > max_pages:
+                                elements.append(Paragraph(f"(Showing {max_pages} of {page_count} pages)", normal_style))
+                            
+                            # Close the PDF
+                            pdf_document.close()
+                        except Exception as pdf_err:
+                            logger.error(f"Error processing PDF {file_name}: {pdf_err}")
+                            elements.append(Paragraph(f"Error processing PDF: {str(pdf_err)}", normal_style))
+                    
+                    else:
+                        # Unsupported file type
+                        elements.append(Paragraph(f"Preview not available for this file type.", normal_style))
+                
+                except Exception as e:
+                    logger.error(f"Error processing resource: {e}")
+                    elements.append(Paragraph(f"Error processing file: {str(e)}", normal_style))
+                
+                # Add a separator after each file
+                elements.append(Spacer(1, 0.3*inch))
+                elements.append(PageBreak())
+            
+            # Build the PDF document
+            doc.build(elements)
+            
+            # Get the PDF data
+            buffer.seek(0)
+            logger.info(f"PDF compilation complete. Size: {buffer.getbuffer().nbytes} bytes")
+            
+            if action == 'download':
+                # Return the PDF as a download with explicit headers
+                try:
+                    logger.info(f"Preparing download response for: {scope_description}")
+                    
+                    from django.http import HttpResponse, FileResponse
+                    
+                    # Use FileResponse which is better for handling file downloads
+                    response = FileResponse(
+                        buffer,
+                        as_attachment=True,
+                        filename=f"abc_quality_{filename_suffix}.pdf",
+                        content_type='application/pdf'
+                    )
+                    
+                    # Set additional headers to prevent caching
+                    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response['Pragma'] = 'no-cache'
+                    response['Expires'] = '0'
+                    
+                    logger.info("PDF download response created successfully")
+                    return response
+                    
+                except Exception as download_error:
+                    logger.error(f"Error creating download response: {download_error}")
+                    messages.error(request, f"Error preparing download: {str(download_error)}")
+                    return redirect('abc_quality')
+            
+            elif action == 'email' and email:
+                # Save PDF to a temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_pdf:
+                    temp_pdf.write(buffer.getvalue())
+                    temp_pdf_path = temp_pdf.name
+                
+                # Send email with PDF attachment
+                try:
+                    logger.info(f"Preparing email to {email} with PDF attachment")
+                    
+                    email_subject = f"ABC Quality Documentation - {scope_description}"
+                    email_body = f"Please find attached the compiled documentation for {scope_description}."
+                    
+                    if email_message:
+                        email_body += f"\n\nMessage from sender:\n{email_message}"
+                    
+                    from django.core.mail import EmailMessage
+                    email_obj = EmailMessage(
+                        subject=email_subject,
+                        body=email_body,
+                        from_email=None,  # Use DEFAULT_FROM_EMAIL
+                        to=[email],
+                    )
+                    
+                    # Attach the PDF
+                    with open(temp_pdf_path, 'rb') as f:
+                        email_obj.attach(
+                            f'abc_quality_{filename_suffix}.pdf',
+                            f.read(),
+                            'application/pdf'
+                        )
+                    
+                    # Send the email
+                    email_obj.send()
+                    logger.info(f"Email with PDF attachment sent to {email}")
+                    
+                    # Delete the temporary file
+                    os.unlink(temp_pdf_path)
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': True})
+                    else:
+                        messages.success(request, f"Documentation for {scope_description} has been emailed to {email}.")
+                        return redirect('abc_quality')
+                    
+                except Exception as e:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    logger.error(f"Failed to send email: {error_details}")
+                    
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({'success': False, 'error': str(e)})
+                    else:
+                        messages.error(request, f"Failed to send email: {str(e)}")
+                        return redirect('abc_quality')
+        
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Error compiling documents: {error_details}")
+            
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'error': errmsg})
-            messages.error(request, errmsg)
-            return redirect('abc_quality')
-
-    except Exception:
-        import traceback
-        logger.error("Error compiling documents: %s", traceback.format_exc())
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'error': 'Server error during compilation'})
-        messages.error(request, "Error compiling documents.")
-        return redirect('abc_quality')
-# ...existing code...
+                return JsonResponse({'success': False, 'error': str(e)})
+            else:
+                messages.error(request, f"Error compiling documents: {str(e)}")
+                return redirect('abc_quality')
+    
+    # If not a POST request or any other issue
+    return redirect('abc_quality')
 
 @login_required
 def surveys_list(request):
