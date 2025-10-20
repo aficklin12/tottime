@@ -1298,3 +1298,19 @@ class ImprovementGoal(models.Model):
 
     def __str__(self):
         return f"{self.plan.title} - Goal {self.id}"
+    
+class PublicLink(models.Model):
+    """
+    Model to store temporary public access links
+    """
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE)
+    token = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    created_by = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='created_public_links')
+    
+    def __str__(self):
+        return f"Public link for {self.main_user} (expires: {self.expires_at})"
+    
+    def is_expired(self):
+        return timezone.now() > self.expires_at

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Font Awesome -->
+    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Custom CSS -->
+    {% load static %}
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        @media (min-width: 1000px) {
+            h1 {
+                margin-top: 10px;
+                margin-bottom:10px;
+                margin-left: 20px;
+                font-weight: bold;
+                line-height: 1.2;
+                font-size: 40px;
+                color: #212529;
+            }
+        }
+        
+        table {
+            margin-top: 0;
+            border-top: none;
+            border-collapse: collapse;
+            margin-left: 27px;
+            margin-right: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            border: 1px solid #dddddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #272630;
+            color: #ffffff;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .navbar-brand {
+            margin-right: auto;
+            margin-left: 10px; /* Add a bit of padding */
+            display: flex;
+        }
+        
+        /* For mobile devices, center the logo */
+        @media (max-width: 1000px) {
+            .navbar-brand {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                margin: 0;
+            }
+            
+            /* Ensure navbar has enough height for the centered logo */
+            .sb-topnav {
+                min-height: 56px;
+                display: flex;
+                justify-content: center;
+            }
+        }
+        
+        .navbar-brand img {
+            width: auto;
+            max-width: 200px;
+            height: 40px;
+            object-fit: contain;
+            border-radius: 0;
+            overflow: visible;
+        }
+        
+        .section-header {
+            background-color: rgba(57, 189, 180, 0.15);
+            padding: 10px 15px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            margin-left: 17px;
+            border-left: 5px solid rgb(57, 189, 180);
+            font-size: 1.2em;
+        }
+        
+        .indicator-id {
+            color: rgb(57, 189, 180);
+            font-weight: bold;
+            font-size: 1.1em;
+            min-width: 70px;
+            display: inline-block;
+        }
+        
+        .indicator-desc {
+            font-size: 0.9em;
+        }
+        
+        .points {
+            text-align: center;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        
+        footer {
+            position: relative;
+            z-index: 10;
+            margin-top: 50px;
+        }
+        
+        @media (max-width: 1000px) {
+            html, body {
+                overflow-x: hidden;
+                padding-top: 0 !important;
+                margin-top: 0 !important;
+            }
+            
+            body::before {
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: env(safe-area-inset-top);
+                background-color: #000;
+                z-index: 9999;
+                pointer-events: none;
+            }
+            
+            .container, .card-container, .d-flex {
+                text-align: center;
+                justify-content: center;
+                align-items: center;
+            }
+            
+            h1 {
+                font-size: 1.6rem!important;
+                text-align: left;
+                background-color: rgb(57, 189, 180);
+                color: #fff !important;
+                width: 100vw; 
+                padding: 0.5em 1em;
+                border-radius: 0;
+                box-sizing: border-box;
+                display: block;
+                margin-top: 10px;
+            }
+            
+            .sb-topnav {
+                position: fixed !important;
+                top: env(safe-area-inset-top);
+                left: 0;
+                right: 0;
+                z-index: 1030;
+                padding-top: 0;
+            }
+            
+            #layoutSidenav_content {
+        padding-top: 10px !important; /* Slightly more padding for mobile */
+    }
+        }
+        
+        #layoutSidenav_content main {
+            margin-bottom: 40px;
+        }
+        
+        .temporary-access-alert {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            border-radius: 4px;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .alert-icon {
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+        
+        .expiry-info {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        
+        .expiry-date {
+            font-weight: bold;
+            color: #dc3545;
+        }
+    </style>
+    {% block styles %}{% endblock %}
+</head>
+<body class="sb-nav-fixed">
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark" style="position: fixed; top: 0; width: 100%; z-index: 1000;">
+        <a class="navbar-brand" href="#" onclick="return false;">
+            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
+        </a>
+        <!-- Empty div to help with spacing -->
+        <div class="ms-auto d-none d-md-block"></div>
+    </nav>
+    
+    <div id="layoutSidenav_content" style="margin-left: 0; margin-top: 70px !important; padding-top: 0px;">
+        <main style="padding-top: 20px;">
+            {% block content %}
+            <!-- Content will be inserted here -->
+            {% endblock %}
+        </main>
+        
+        <footer class="py-4 bg-light mt-auto">
+            <div class="container-fluid px-4">
+                <div class="d-flex align-items-center justify-content-between small">
+                    <div class="text-muted">Copyright &copy; Tot-Time 2025</div>
+                    <div>
+                        <a href="{% url 'privacy-policy' %}">Privacy Policy</a>
+                        &middot;
+                        <a href="#">Terms &amp; Conditions</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- JavaScript imports -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

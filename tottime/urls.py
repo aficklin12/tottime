@@ -208,6 +208,9 @@ urlpatterns = [
     # Public survey taking
     path('surveys/<int:survey_id>/take/', views.take_survey, name='take_survey'),
     path('improvement-plan/<int:plan_id>/complete/', views.complete_improvement_plan, name='complete_improvement_plan'),
+    # Public ABC Quality view
+    path('abc-quality/public/<str:token>/', views.abc_quality_public, name='abc_quality_public'),
+    path('create-public-link/', views.create_public_link, name='create_public_link'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

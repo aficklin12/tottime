@@ -16,7 +16,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -6627,6 +6627,96 @@ def abc_quality(request):
     }
     
     return render(request, 'tottimeapp/abc_quality.html', context)
+
+def abc_quality_public(request, token):
+    """
+    Public view function for displaying ABC Quality standards and documentation.
+    Accessible via a temporary token link. Shows the same content as abc_quality
+    but without upload functionality.
+    """
+    # Get the public link or return 404 if it doesn't exist
+    public_link = get_object_or_404(PublicLink, token=token)
+    
+    # Check if the link is expired
+    if public_link.expires_at < timezone.now():
+        return render(request, 'tottimeapp/link_expired.html')
+    
+    # Get the main user from the public link
+    main_user = public_link.main_user
+    
+    # Get all main elements (those without a parent) with prefetched related data
+    main_elements = ABCQualityElement.objects.filter(
+        parent_element__isnull=True
+    ).prefetch_related(
+        'indicators', 
+        'sections', 
+        'sections__indicators'
+    ).order_by('display_order')
+    
+    # Get only ABC Quality resources for this user
+    abc_resources = Resource.objects.filter(
+        main_user=main_user,
+        resource_type='abc_quality'
+    ).order_by('-uploaded_at')
+    
+    # Group resources by indicator for display
+    grouped_resources = {}
+    for resource in abc_resources:
+        # Try to get indicator ID from the abc_indicator field first, then fall back to indicator_id string
+        if resource.abc_indicator:
+            indicator_id = resource.abc_indicator.indicator_id
+        else:
+            indicator_id = resource.indicator_id or "Uncategorized"
+            
+        if indicator_id not in grouped_resources:
+            grouped_resources[indicator_id] = []
+        grouped_resources[indicator_id].append(resource)
+    
+    # Format expiry date for display
+    expiry_date = public_link.expires_at.strftime("%B %d, %Y at %I:%M %p")
+    
+    context = {
+        'main_elements': main_elements,
+        'grouped_resources': grouped_resources,
+        'expiry_date': expiry_date
+    }
+    
+    return render(request, 'tottimeapp/abc_quality_public.html', context)
+
+@login_required
+def create_public_link(request):
+    """
+    Creates a temporary public link for sharing ABC Quality documentation.
+    """
+    if request.method == 'POST':
+        # Get the main user for the current user
+        main_user = get_user_for_view(request)
+        
+        # Set expiration (default: 7 days from now)
+        days_valid = int(request.POST.get('days_valid', 7))
+        expires_at = timezone.now() + timedelta(days=days_valid)
+        
+        # Generate a unique token
+        token = str(uuid.uuid4())
+        
+        # Create the public link
+        public_link = PublicLink.objects.create(
+            main_user=main_user,
+            token=token,
+            expires_at=expires_at,
+            created_by=request.user
+        )
+        
+        # Get the full URL
+        public_url = request.build_absolute_uri(f'/abc-quality/public/{token}/')
+        
+        return JsonResponse({
+            'success': True,
+            'url': public_url,
+            'expires_at': expires_at.strftime("%B %d, %Y at %I:%M %p")
+        })
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @login_required
 def upload_documentation(request):

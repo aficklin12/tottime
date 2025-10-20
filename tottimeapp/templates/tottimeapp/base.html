@@ -222,6 +222,22 @@
 #layoutSidenav_content main {
     margin-bottom: 120px; /* Adjust as needed to ensure footer visibility */
 }
+/* For mobile devices, center the logo */
+@media (max-width: 1000px) {
+    .navbar-brand {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+    }
+    
+    /* Ensure navbar has enough height for the centered logo */
+    .sb-topnav {
+        min-height: 56px;
+        display: flex;
+        justify-content: center;
+    }
+}
     </style>
     {% block styles %}{% endblock %}
 </head>

@@ -1,0 +1,23 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+
+{% block title %}Link Expired{% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5 pt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="alert alert-warning p-5">
+                <h1 class="mb-4"><i class="fas fa-exclamation-triangle"></i></h1>
+                <h2>Link Expired</h2>
+                <p class="lead my-4">
+                    The access link you're using has expired.
+                </p>
+                <p class="text-muted">
+                    Please contact the person who shared this link with you to request a new one.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,563 @@
+{% extends 'tottimeapp/base_public.html' %}
+{% load static %}
+
+{% block title %}ABC Quality Standards - Public View{% endblock %}
+
+{% block styles %}
+<style>
+    .quality-table {
+        width: 100%;
+        margin-bottom: 30px;
+        border-collapse: collapse;
+    }
+    
+    .quality-table th {
+        background-color: #f2f2f2;
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 2px solid #ddd;
+    }
+    
+    .quality-table td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .quality-table tr:hover {
+        background-color: #f9f9f9;
+    }
+    
+    .section-header {
+        background-color: rgba(57, 189, 180, 0.15);
+        padding: 10px 15px;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        margin-left: 17px;
+        border-left: 5px solid rgb(57, 189, 180);
+        font-size: 1.2em;
+    }
+    
+   .indicator-id {
+        color: rgb(57, 189, 180);
+        font-weight: bold;
+        font-size: 1.1em;
+        min-width: 70px;
+        display: inline-block;
+    }
+    
+    .indicator-desc {
+        font-size: 0.9em;
+    }
+    
+    .points {
+        text-align: center;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+    a:hover .indicator-desc {
+        color: rgb(57, 189, 180);
+    }
+    
+    a {
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .doc-container {
+        display: flex;
+        align-items: center; /* Center vertically */
+        justify-content: center; /* Center horizontally */
+        flex-wrap: nowrap; /* Prevent wrapping to keep buttons in same row */
+        gap: 5px; /* Add space between buttons */
+        background: transparent;
+        height: 100%;
+        padding: 5px 0;
+        border: none;
+        min-width: 180px; /* Ensure minimum width for buttons */
+    }
+    
+    .document-indicator {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 10px;
+        color: #4CAF50;
+    }
+    
+    .btn-outline-primary.link-switch {
+        background-color: transparent !important;
+        color: rgb(57, 189, 180) !important;
+        border-color: rgb(57, 189, 180) !important;
+    }
+    
+    .btn-outline-primary.link-switch:hover {
+        background-color: rgb(57, 189, 180) !important;
+        color: #fff !important;
+        border-color: rgb(57, 189, 180) !important;
+    }
+    
+    /* Update the document-indicator-btn to match the requested style */
+    .document-indicator-btn {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 5px; /* Reduce margin to fit better */
+        background-color: transparent;
+        color: rgb(57, 189, 180);
+        border: 1px solid rgb(57, 189, 180);
+        border-radius: 4px;
+        padding: 6px 8px; /* Slightly reduce padding */
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 0.9em;
+        white-space: nowrap; /* Prevent text wrapping */
+    }
+    
+    .document-indicator-btn:hover {
+        background-color: rgb(57, 189, 180);
+        color: white;
+    }
+    
+    /* Update the document-count style to match the new color scheme */
+    .document-count {
+        background-color: rgba(57, 189, 180, 0.2);
+        color: rgb(57, 189, 180);
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.8em;
+        margin-left: 5px;
+        font-weight: bold;
+    }
+    
+    /* Keep the document count visible on hover */
+    .document-indicator-btn:hover .document-count {
+        background-color: white;
+        color: rgb(57, 189, 180);
+    }
+    
+    .document-preview {
+        position: relative;
+        cursor: pointer;
+        z-index: 10;
+    }
+    
+    .document-list {
+        display: none;
+        position: fixed; /* Change to fixed positioning */
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        min-width: 300px;
+        max-height: 400px;
+        overflow-y: auto;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        z-index: 1000; /* Ensure it's above everything */
+    }
+    
+    /* Remove the positioning rules that were causing problems */
+    tr:first-child .document-list,
+    tr:nth-child(2) .document-list,
+    tr:nth-last-child(1) .document-list,
+    tr:nth-last-child(2) .document-list {
+        position: fixed;
+        transform: none;
+    }
+    
+    .document-preview:hover .document-list {
+        display: block;
+    }
+    
+    .document-item {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 8px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+    }
+    
+    .document-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    
+    .document-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        padding-top: 5px;
+        border-top: 1px dashed #eee;
+    }
+    
+    .doc-action {
+        color: #39BDB4;
+        cursor: pointer;
+        font-size: 0.9em;
+        padding: 3px 8px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+    }
+    
+    .doc-action:hover {
+        background-color: rgba(57, 189, 180, 0.1);
+        text-decoration: none;
+    }
+    
+    .document-modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    
+    .document-modal-content {
+        background-color: white;
+        margin: 5% auto;
+        padding: 20px;
+        width: 70%;
+        max-width: 800px;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    
+    .close-document-modal {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close-document-modal:hover {
+        color: black;
+    }
+    
+    .file-type-icon {
+        margin-right: 5px;
+        color: #777;
+    }
+    
+    .doc-filename {
+        font-weight: bold;
+        font-size: 0.9em;
+        color: #333;
+        word-break: break-word;
+    }
+    
+    .doc-date {
+        font-size: 0.8em;
+        color: #666;
+        margin-top: 3px;
+    }
+    
+    .doc-description {
+        margin-top: 5px;
+        font-size: 0.85em;
+        color: #555;
+        font-style: italic;
+        background-color: #f5f5f5;
+        padding: 4px 6px;
+        border-radius: 3px;
+    }
+    
+    .doc-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 5px;
+    }
+    
+    .doc-list-title {
+        font-weight: bold;
+        color: #39BDB4;
+    }
+    
+    .public-notice {
+        background-color: #f8f9fa;
+        border-left: 4px solid #39BDB4;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 0 4px 4px 0;
+        color: #495057;
+    }
+    
+    .expiry-info {
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+    
+    .expiry-date {
+        font-weight: bold;
+        color: #dc3545;
+    }
+    
+    /* Alert badge for temporary access */
+    .temporary-access-alert {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+        border-radius: 4px;
+        padding: 10px 15px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .alert-icon {
+        margin-right: 10px;
+        font-size: 1.2em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>ABC Quality Standards</h1>
+<div class="container mt-5">
+    <!-- Public access notice -->
+    <div class="temporary-access-alert">
+        <i class="fas fa-clock alert-icon"></i>
+        <div>
+            <strong>Temporary Access:</strong> This is a read-only view of ABC Quality documentation.
+            <div class="expiry-info">Access expires on <span class="expiry-date">{{ expiry_date }}</span></div>
+        </div>
+    </div>
+   
+    {% for element in main_elements %}
+    <div class="section-header">
+        <h2>Element {{ element.element_number }}: {{ element.name }}</h2>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Indicator</th>
+                <th>Description</th>
+                <th>Points</th>
+                <th>Documentation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for indicator in element.indicators.all %}
+            <tr>
+                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
+                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
+                <td class="points">{{ indicator.points }}</td>
+                <td>
+                    <div class="doc-container">
+                        {% for key, resources in grouped_resources.items %}
+                            {% if key == indicator.indicator_id %}
+                            <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                    data-indicator="{{ indicator.indicator_id }}" 
+                                    data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                                <i class="fas fa-file-alt"></i> View Files
+                                <span class="document-count">{{ resources|length }}</span>
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% for section in element.sections.all %}
+    <div class="section-header">
+        <h3>{{ section.name }}</h3>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Indicator</th>
+                <th>Description</th>
+                <th>Points</th>
+                <th>Documentation</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for indicator in section.indicators.all %}
+            <tr>
+                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
+                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
+                <td class="points">{{ indicator.points }}</td>
+                <td>
+                    <div class="doc-container">
+                        {% for key, resources in grouped_resources.items %}
+                            {% if key == indicator.indicator_id %}
+                            <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                    data-indicator="{{ indicator.indicator_id }}" 
+                                    data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                                <i class="fas fa-file-alt"></i> View Files
+                                <span class="document-count">{{ resources|length }}</span>
+                            </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+    {% endfor %}
+</div>
+
+<!-- Documents Modal -->
+<div id="documentsModal" class="document-modal">
+    <div class="document-modal-content">
+        <span class="close-document-modal">&times;</span>
+        <div class="doc-list-header">
+            <h2>Documents for Indicator <span id="documentModalIndicator"></span></h2>
+        </div>
+        <div id="documentModalContent">
+            <!-- Documents will be loaded here -->
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add this script to handle positioning
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get all document indicators
+        var indicators = document.querySelectorAll('.document-indicator');
+        
+        // Add mouseover event to each indicator
+        indicators.forEach(function(indicator) {
+            indicator.addEventListener('mouseover', function() {
+                // Get the dropdown associated with this indicator
+                var dropdown = this.parentElement.querySelector('.document-list');
+                
+                // Get indicator position
+                var rect = this.getBoundingClientRect();
+                
+                // Calculate best position for dropdown
+                var left = rect.right - dropdown.offsetWidth;
+                var top = rect.bottom + window.scrollY;
+                
+                // Ensure dropdown doesn't go off-screen to the left
+                if (left < 10) left = 10;
+                
+                // Check if dropdown would go off bottom of screen
+                if (top + dropdown.offsetHeight > window.innerHeight + window.scrollY) {
+                    // Position above the indicator instead
+                    top = rect.top + window.scrollY - dropdown.offsetHeight;
+                }
+                
+                // Apply position
+                dropdown.style.left = left + 'px';
+                dropdown.style.top = top + 'px';
+            });
+        });
+    });
+</script>
+<script>
+    // Documents modal functionality
+    var documentsModal = document.getElementById("documentsModal");
+    var documentModalClose = document.getElementsByClassName("close-document-modal")[0];
+    var documentButtons = document.querySelectorAll(".document-indicator-btn");
+    var documentModalIndicator = document.getElementById("documentModalIndicator");
+    var documentModalContent = document.getElementById("documentModalContent");
+    
+    // Group the resources data in JavaScript for easier access
+    var groupedResources = {};
+    {% for key, resources in grouped_resources.items %}
+        groupedResources["{{ key }}"] = [
+            {% for resource in resources %}
+                {
+                    id: {{ resource.id }},
+                    filename: "{{ resource.filename }}",
+                    description: "{{ resource.description|default:''|escapejs }}",
+                    uploadedAt: "{{ resource.uploaded_at|date:"M d, Y" }}",
+                    url: "{{ resource.file.url }}"
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+    {% endfor %}
+    
+    // Set up click event for document buttons
+    documentButtons.forEach(function(button) {
+        button.onclick = function() {
+            var indicatorId = this.getAttribute("data-indicator");
+            var indicatorName = this.getAttribute("data-indicator-name");
+            
+            documentModalIndicator.textContent = indicatorId;
+            
+            // Clear previous content
+            documentModalContent.innerHTML = "";
+            
+            // Add documents for this indicator
+            var resources = groupedResources[indicatorId] || [];
+            if (resources.length > 0) {
+                resources.forEach(function(resource) {
+                    var fileIcon = getFileIcon(resource.filename);
+                    
+                    var documentItem = document.createElement("div");
+                    documentItem.className = "document-item";
+                    documentItem.innerHTML = `
+                        <div class="doc-filename">
+                            <i class="${fileIcon} file-type-icon"></i>
+                            ${resource.filename}
+                        </div>
+                        <div class="doc-date">Uploaded: ${resource.uploadedAt}</div>
+                        ${resource.description ? `<div class="doc-description">${resource.description}</div>` : ''}
+                        <div class="document-actions">
+                            <a href="${resource.url}" target="_blank" class="doc-action">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                            <a href="${resource.url}" download class="doc-action">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                        </div>
+                    `;
+                    
+                    documentModalContent.appendChild(documentItem);
+                });
+            } else {
+                documentModalContent.innerHTML = "<p>No documents found for this indicator.</p>";
+            }
+            
+            documentsModal.style.display = "block";
+        }
+    });
+    
+    documentModalClose.onclick = function() {
+        documentsModal.style.display = "none";
+    }
+    
+    // Helper function to get the appropriate icon based on file extension
+    function getFileIcon(filename) {
+        filename = filename.toLowerCase();
+        if (filename.includes(".pdf")) {
+            return "fas fa-file-pdf";
+        } else if (filename.includes(".doc")) {
+            return "fas fa-file-word";
+        } else if (filename.includes(".xls")) {
+            return "fas fa-file-excel";
+        } else if (filename.includes(".jpg") || filename.includes(".png") || filename.includes(".gif")) {
+            return "fas fa-file-image";
+        } else {
+            return "fas fa-file";
+        }
+    }
+    
+    // Close modal when clicking outside of it
+    window.onclick = function(event) {
+        if (event.target == documentsModal) {
+            documentsModal.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}
