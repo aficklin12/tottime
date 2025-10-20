@@ -161,7 +161,7 @@
             </div>
         {% endif %}
     </div>
-</div>
+</div> 
 
 <!-- Selection Toolbar -->
 <div class="selection-toolbar" id="selectionToolbar">
@@ -169,11 +169,53 @@
     <button class="btn btn-info btn-sm" id="requestSignaturesBtn">
         Request Signatures
     </button>
+    <button class="btn btn-warning btn-sm" id="sendForPrintBtn">
+        Send for Print
+    </button>
     <button class="btn btn-light btn-sm" id="clearSelectionBtn">
         Clear Selection
     </button>
 </div>
-
+<!-- Print Request Modal -->
+<div class="modal fade" id="printRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Send Forms for Print</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="printRequestForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="print_resource_ids" name="resource_ids">
+                    <p>Send the following documents for printing and manual completion:</p>
+                    <div class="mb-3" id="printSelectedResourcesList">
+                        <!-- Selected resources will be listed here dynamically -->
+                    </div>
+                    <div class="mb-3">
+                        <label for="print_recipient_email" class="form-label">Recipient Email</label>
+                        <input type="email" class="form-control" id="print_recipient_email" name="recipient_email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="print_email_message" class="form-label">Message (Optional)</label>
+                        <textarea class="form-control" id="print_email_message" name="email_message" rows="3" 
+                            placeholder="Add instructions for printing and returning the completed forms..."></textarea>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="includeReturnInstructions" name="include_return_instructions" checked>
+                        <label class="form-check-label" for="includeReturnInstructions">
+                            Include instructions to return completed forms
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Send Forms</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <!-- Multi-Signature Request Modal -->
 <div class="modal fade" id="signatureRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -270,6 +312,10 @@
         const selectedResourcesList = document.getElementById('selectedResourcesList');
         const resourceIdsInput = document.getElementById('resource_ids');
         const signatureModal = document.getElementById('signatureRequestModal');
+        const sendForPrintBtn = document.getElementById('sendForPrintBtn');
+        const printModal = document.getElementById('printRequestModal');
+        const printSelectedResourcesList = document.getElementById('printSelectedResourcesList');
+        const printResourceIdsInput = document.getElementById('print_resource_ids');
         let selectedResources = [];
         
         // Handle checkbox changes
@@ -311,6 +357,33 @@
             
             // Show the modal
             const modal = new bootstrap.Modal(signatureModal);
+            modal.show();
+        });
+        
+        // Handle "Send for Print" button
+        sendForPrintBtn.addEventListener('click', function() {
+            if (selectedResources.length === 0) {
+                alert('Please select at least one resource.');
+                return;
+            }
+            
+            // Update the modal with selected resources
+            printSelectedResourcesList.innerHTML = '';
+            const resourceIds = [];
+            
+            selectedResources.forEach(resource => {
+                const listItem = document.createElement('div');
+                listItem.className = 'resource-list-item';
+                listItem.textContent = resource.title;
+                printSelectedResourcesList.appendChild(listItem);
+                resourceIds.push(resource.id);
+            });
+            
+            // Set the resource IDs in the hidden input
+            printResourceIdsInput.value = resourceIds.join(',');
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(printModal);
             modal.show();
         });
         
@@ -363,6 +436,54 @@
                     toastr.success('Signature request sent successfully!');
                     this.reset();
                     bootstrap.Modal.getInstance(signatureModal).hide();
+                    
+                    // Clear selection
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    updateSelectedResources();
+                } else {
+                    toastr.error('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                toastr.error('An error occurred while sending the request.');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        });
+        
+        // Handle print request form submission
+        document.getElementById('printRequestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('is_print_request', 'true'); // Add flag to identify print requests
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Sending...';
+            
+            fetch('{% url "send_signature_request" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset form and close modal
+                if (data.success) {
+                    toastr.success('Print forms sent successfully!');
+                    this.reset();
+                    bootstrap.Modal.getInstance(printModal).hide();
                     
                     // Clear selection
                     checkboxes.forEach(checkbox => {

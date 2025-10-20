@@ -6416,11 +6416,12 @@ def signature_confirmation(request, uuid):
 
 @login_required
 def send_signature_request(request):
-    """Handle sending signature request emails for multiple resources"""
+    """Handle sending signature/print request emails for multiple resources"""
     if request.method == 'POST':
         resource_ids = request.POST.get('resource_ids', '').split(',')
         recipient_email = request.POST.get('recipient_email')
         email_message = request.POST.get('email_message', '')
+        is_print_request = request.POST.get('is_print_request') == 'true'
         
         if not resource_ids or not recipient_email:
             return JsonResponse({'success': False, 'error': 'Missing required parameters'})
@@ -6434,48 +6435,79 @@ def send_signature_request(request):
                 return JsonResponse({'success': False, 'error': 'Some resources could not be found'})
             
             # Build the email message
-            subject = f"Signature Request: {len(resources)} Document(s)"
+            if is_print_request:
+                subject = f"Forms to Print: {len(resources)} Document(s)"
+            else:
+                subject = f"Signature Request: {len(resources)} Document(s)"
             
             # Get the first resource for the main URL
             first_resource = resources.first()
             
-            # Build the signature URL with all resource IDs as query parameters
+            # Build the signature URL or download links for print
             current_site = get_current_site(request)
             
-            # Create URL with resource IDs as query parameters
-            resource_ids_param = ",".join([str(r.id) for r in resources])
-            signature_url = f"https://{current_site.domain}{reverse('public_resource_signature', kwargs={'uuid': first_resource.share_uuid})}?additional_ids={resource_ids_param}"
-            
-            message = f"""
+            if is_print_request:
+                message = f"""
+Hello,
+
+You have received forms to print, complete by hand, and return:
+
+"""
+                # List all documents in the email
+                for i, resource in enumerate(resources, 1):
+                    message += f"{i}. {resource.title}\n"
+                
+                message += f"""
+Please download, print, and complete these forms. 
+The forms are attached to this email for your convenience.
+
+"""
+            else:
+                # Create URL with resource IDs as query parameters
+                resource_ids_param = ",".join([str(r.id) for r in resources])
+                signature_url = f"https://{current_site.domain}{reverse('public_resource_signature', kwargs={'uuid': first_resource.share_uuid})}?additional_ids={resource_ids_param}"
+                
+                message = f"""
 Hello,
 
 You have received a signature request for the following documents:
 
 """
-            # List all documents in the email
-            for i, resource in enumerate(resources, 1):
-                message += f"{i}. {resource.title}\n"
-            
-            message += f"""
+                # List all documents in the email
+                for i, resource in enumerate(resources, 1):
+                    message += f"{i}. {resource.title}\n"
+                
+                message += f"""
 Please review and sign these documents using the link below:
 {signature_url}
 
 """
+            
             if email_message:
                 message += f"\nMessage from sender:\n{email_message}\n"
                 
             message += f"\nRegards,\n{request.user.get_full_name() or request.user.username}"
             
-            # Send the email with simplified parameters
-            from django.core.mail import send_mail
+            # Send the email with attachments for print requests
+            from django.core.mail import EmailMessage
             
-            send_mail(
+            email = EmailMessage(
                 subject,
                 message,
                 None,  # Use DEFAULT_FROM_EMAIL from settings
-                [recipient_email],
-                fail_silently=False,
+                [recipient_email]
             )
+            
+            # Attach PDFs for print requests
+            if is_print_request:
+                for resource in resources:
+                    # Read the file content instead of using attach_file
+                    if resource.file:
+                        file_content = resource.file.read()
+                        file_name = resource.file.name.split('/')[-1]  # Extract filename from path
+                        email.attach(file_name, file_content, 'application/pdf')
+            
+            email.send(fail_silently=False)
             
             return JsonResponse({'success': True})
             
