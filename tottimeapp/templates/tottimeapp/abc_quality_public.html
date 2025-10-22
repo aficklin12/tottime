@@ -349,10 +349,10 @@
         <tbody>
             {% for indicator in element.indicators.all %}
             <tr>
-                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
-                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
+                <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
+                <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
                 <td class="points">{{ indicator.points }}</td>
-                <td>
+                            <td>
                     <div class="doc-container">
                         {% for key, resources in grouped_resources.items %}
                             {% if key == indicator.indicator_id %}
@@ -423,6 +423,38 @@
             <!-- Documents will be loaded here -->
         </div>
     </div>
+</div>
+
+<!-- Page Preview Modal -->
+<div class="modal fade" id="pagePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="previewModalTitle">Page Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="pagePreviewContent">
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Page Preview</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="previewModalBody"></div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
@@ -559,5 +591,94 @@
             documentsModal.style.display = "none";
         }
     }
+</script>
+<script>
+    // Handle indicator link clicks for page preview
+    document.addEventListener('DOMContentLoaded', function() {
+        const indicatorLinks = document.querySelectorAll('.indicator-link');
+        
+        indicatorLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const indicatorId = this.getAttribute('data-indicator');
+                const indicatorDbId = this.getAttribute('data-id');
+                
+                // Show loading state in modal
+                document.getElementById('previewModalTitle').textContent = `Loading preview for ${indicatorId}...`;
+                document.getElementById('pagePreviewContent').innerHTML = `
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('pagePreviewModal'));
+                modal.show();
+                
+                // Fetch the linked page content
+                fetch(`/api/get-page-preview/${indicatorDbId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('previewModalTitle').textContent = data.title || `Preview for ${indicatorId}`;
+                            // if server returned a URL, embed it in an iframe
+                            if (data.type === 'url' && data.url) {
+                                document.getElementById('pagePreviewContent').innerHTML = `
+                                    <iframe src="${data.url}" style="width:100%;height:70vh;border:0"></iframe>
+                                `;
+                            } else if (data.content) {
+                                document.getElementById('pagePreviewContent').innerHTML = data.content;
+                            } else {
+                                document.getElementById('pagePreviewContent').innerHTML = '<div class="alert alert-info">No preview available.</div>';
+                            }
+                        } else {
+                            const msg = data.error || 'No linked page found for this indicator.';
+                            document.getElementById('pagePreviewContent').innerHTML = `<div class="alert alert-info"><p>${msg}</p></div>`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching page preview:', error);
+                        document.getElementById('pagePreviewContent').innerHTML = `
+                            <div class="alert alert-danger">
+                                <p>Failed to load page preview. Please try again later.</p>
+                            </div>
+                        `;
+                    });
+            });
+        });
+    });
+</script>
+<script>
+    document.addEventListener('click', function(e){
+  // adjust selector to your preview trigger
+  const btn = e.target.closest('.preview-linked-page');
+  if (!btn) return;
+  const indicatorDbId = btn.getAttribute('data-indicator-db-id');
+  if (!indicatorDbId) return;
+
+  fetch(`/api/indicator-preview/${indicatorDbId}/`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) return toastr.error(data.error || 'Preview failed');
+
+      // modal elements: #previewModal, #previewModalBody
+      const modalBody = document.getElementById('previewModalBody');
+      if (data.type === 'html') {
+        modalBody.innerHTML = data.html;
+      } else if (data.type === 'url') {
+        // use iframe for URL previews
+        modalBody.innerHTML = `<iframe src="${data.url}" style="width:100%;height:70vh;border:0"></iframe>`;
+      }
+      const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+      modal.show();
+    })
+    .catch(err => {
+      console.error(err);
+      toastr.error('Error loading preview');
+    });
+});
 </script>
 {% endblock %}

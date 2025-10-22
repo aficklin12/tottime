@@ -464,8 +464,8 @@
         <tbody>
             {% for indicator in element.indicators.all %}
             <tr>
-                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
-                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
+                <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
+                <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
                 <td class="points">{{ indicator.points }}</td>
                 <td>
                     <div class="doc-container">
@@ -674,6 +674,41 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-primarytwo" id="generateLinkBtn">Create Link</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Indicator Link Modal -->
+<div class="modal fade" id="indicatorLinkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Link Page to Indicator <span id="indicatorLinkId"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="indicatorLinkForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="indicator_db_id" name="indicator_id">
+                    
+                    <div class="form-group mb-3">
+                        <label for="page_template" class="form-label">Select Page to Link:</label>
+                        <select class="form-select" id="page_template" name="page_template">
+                        </select>
+                    </div>
+                    
+                    <div id="currentLinkInfo" class="alert alert-info d-none">
+                        <p class="mb-1"><strong>Current link:</strong> <span id="currentPageName"></span></p>
+                        <small>Last updated: <span id="lastUpdated"></span></small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="removeLinkBtn" class="btn btn-outline-danger d-none">
+                        Remove Link
+                    </button>
+                    <button type="submit" class="btn btn-primarytwo">Save Link</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -1170,6 +1205,139 @@
             
             // Show success message
             toastr.success('Link copied to clipboard');
+        });
+    });
+</script>
+<script>
+    // Handle indicator link clicks for page linking
+    document.addEventListener('DOMContentLoaded', function() {
+        const indicatorLinks = document.querySelectorAll('.indicator-link');
+        
+        indicatorLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const indicatorId = this.getAttribute('data-indicator');
+                const indicatorDbId = this.getAttribute('data-id');
+                
+                // Set modal values
+                document.getElementById('indicatorLinkId').textContent = indicatorId;
+                document.getElementById('indicator_db_id').value = indicatorDbId;
+                
+                // Fetch current link if it exists
+                fetch(`/api/indicator-link/${indicatorDbId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // populate page select with available pages
+                        const pageSelect = document.getElementById('page_template');
+                        pageSelect.innerHTML = ''; // clear
+
+                        if (Array.isArray(data.pages)) {
+                            const emptyOpt = document.createElement('option');
+                            emptyOpt.value = '';
+                            emptyOpt.textContent = '--- Select a page ---';
+                            pageSelect.appendChild(emptyOpt);
+
+                            data.pages.forEach(function(p) {
+                                const opt = document.createElement('option');
+                                // store the named URL key in value (use name if available)
+                                opt.value = p.name || p.path;
+                                opt.textContent = (p.name ? `${p.name} — ${p.path}` : p.path);
+                                pageSelect.appendChild(opt);
+                            });
+                        }
+
+                        if (data.success && data.link) {
+                            // Show current link info
+                            document.getElementById('currentLinkInfo').classList.remove('d-none');
+                            document.getElementById('removeLinkBtn').classList.remove('d-none');
+                            document.getElementById('currentPageName').textContent = data.link.page_name;
+                            document.getElementById('lastUpdated').textContent = data.link.updated_at;
+
+                            // set selected option if matches
+                            if (data.link.page_template) {
+                                // try to select by exact value
+                                const matching = Array.from(pageSelect.options).find(o => o.value === data.link.page_template);
+                                if (matching) {
+                                    pageSelect.value = data.link.page_template;
+                                } else {
+                                    // if stored path, try to match by path string
+                                    const matchByPath = Array.from(pageSelect.options).find(o => o.textContent.includes(data.link.page_template));
+                                    if (matchByPath) pageSelect.value = matchByPath.value;
+                                }
+                            }
+                        } else {
+                            // No link exists
+                            document.getElementById('currentLinkInfo').classList.add('d-none');
+                            document.getElementById('removeLinkBtn').classList.add('d-none');
+                            pageSelect.value = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching indicator link:', error);
+                        toastr.error('Failed to load current link information');
+                    });
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('indicatorLinkModal'));
+                modal.show();
+            });
+        });
+        
+        // Handle form submission
+        document.getElementById('indicatorLinkForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch('/api/save-indicator-link/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Hide modal and show success message
+                    bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
+                    toastr.success('Link saved successfully');
+                } else {
+                    toastr.error(data.error || 'Failed to save link');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving indicator link:', error);
+                toastr.error('An error occurred while saving');
+            });
+        });
+        
+        // Handle remove link button
+        document.getElementById('removeLinkBtn').addEventListener('click', function() {
+            const indicatorDbId = document.getElementById('indicator_db_id').value;
+            
+            if (confirm('Are you sure you want to remove this link?')) {
+                fetch(`/api/remove-indicator-link/${indicatorDbId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
+                        toastr.success('Link removed successfully');
+                    } else {
+                        toastr.error(data.error || 'Failed to remove link');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing indicator link:', error);
+                    toastr.error('An error occurred while removing the link');
+                });
+            }
         });
     });
 </script>

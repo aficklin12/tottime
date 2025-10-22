@@ -6,6 +6,7 @@ from django.db.models.functions import Concat, Lower
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
 from square.client import Client
+from django.urls import get_resolver, reverse, NoReverseMatch
 from django.conf import settings
 from django.core.paginator import Paginator
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -16,7 +17,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -6682,6 +6683,119 @@ def abc_quality_public(request, token):
     }
     
     return render(request, 'tottimeapp/abc_quality_public.html', context)
+
+def _collect_reverseable_named_urls():
+    resolver = get_resolver()
+    pages = []
+    # recursive helper
+    def walk(patterns):
+        from django.urls.resolvers import URLResolver, URLPattern
+        for p in patterns:
+            if isinstance(p, URLResolver):
+                walk(p.url_patterns)
+            elif isinstance(p, URLPattern):
+                name = getattr(p, 'name', None)
+                if name:
+                    try:
+                        path = reverse(name)
+                        pages.append({'name': name, 'path': path})
+                    except (NoReverseMatch, TypeError):
+                        # skip patterns that require args
+                        continue
+    walk(resolver.url_patterns)
+    # deduplicate by name
+    seen = set()
+    unique = []
+    for p in pages:
+        if p['name'] not in seen:
+            seen.add(p['name'])
+            unique.append(p)
+    return unique
+
+@login_required
+def get_indicator_link(request, indicator_id):
+    try:
+        indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
+    except ABCQualityIndicator.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
+
+    try:
+        link = indicator.page_link
+        link_data = {
+            'page_template': link.page_template,
+            'title': link.title,
+            'updated_at': link.updated_at.strftime('%b %d, %Y %H:%M'),
+            'page_name': link.page_template
+        }
+    except IndicatorPageLink.DoesNotExist:
+        link_data = None
+
+    pages = _collect_reverseable_named_urls()
+    return JsonResponse({'success': True, 'link': link_data, 'pages': pages})
+
+@login_required
+@require_POST
+def save_indicator_link(request):
+    indicator_db_id = request.POST.get('indicator_id')
+    page_template = request.POST.get('page_template', '').strip()
+    title = request.POST.get('title', '').strip()
+    if not indicator_db_id:
+        return JsonResponse({'success': False, 'error': 'Missing indicator id'}, status=400)
+    try:
+        indicator = ABCQualityIndicator.objects.get(pk=indicator_db_id)
+    except ABCQualityIndicator.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
+
+    IndicatorPageLink.objects.update_or_create(
+        indicator=indicator,
+        defaults={'page_template': page_template, 'title': title}
+    )
+    return JsonResponse({'success': True})
+
+@login_required
+@require_POST
+def remove_indicator_link(request, indicator_id):
+    try:
+        indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
+    except ABCQualityIndicator.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
+    IndicatorPageLink.objects.filter(indicator=indicator).delete()
+    return JsonResponse({'success': True})
+
+def get_page_preview(request, indicator_id):
+    """
+    Return JSON with either:
+      - {'success': True, 'type': 'url', 'url': '<absolute-url>', 'title': ...}
+      - {'success': False, 'error': '...'}
+    Avoid using django.test.Client — frontend will load the URL in an iframe.
+    """
+    try:
+        indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
+    except ABCQualityIndicator.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
+
+    link = IndicatorPageLink.objects.filter(indicator=indicator).first()
+    if not link or not (link.page_template or '').strip():
+        return JsonResponse({'success': False, 'error': 'No page linked for this indicator'}, status=404)
+
+    stored = (link.page_template or '').strip()
+    title = link.title or indicator.indicator_id
+
+    # External URL
+    if stored.lower().startswith(('http://', 'https://')):
+        return JsonResponse({'success': True, 'type': 'url', 'url': stored, 'title': title})
+
+    # Try to reverse named URL; otherwise accept raw path beginning with '/'
+    try:
+        path = reverse(stored)
+    except NoReverseMatch:
+        if stored.startswith('/'):
+            path = stored
+        else:
+            return JsonResponse({'success': False, 'error': f'Cannot resolve linked page: "{stored}"'}, status=400)
+
+    absolute = request.build_absolute_uri(path)
+    return JsonResponse({'success': True, 'type': 'url', 'url': absolute, 'title': title})
 
 @login_required
 def create_public_link(request):

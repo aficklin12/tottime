@@ -211,7 +211,12 @@ urlpatterns = [
     # Public ABC Quality view
     path('abc-quality/public/<str:token>/', views.abc_quality_public, name='abc_quality_public'),
     path('create-public-link/', views.create_public_link, name='create_public_link'),
-
+    
+    path('api/indicator-link/<int:indicator_id>/', views.get_indicator_link, name='api_get_indicator_link'),
+    path('api/save-indicator-link/', views.save_indicator_link, name='api_save_indicator_link'),
+    path('api/remove-indicator-link/<int:indicator_id>/', views.remove_indicator_link, name='api_remove_indicator_link'),
+    path('api/get-page-preview/<int:indicator_id>/', views.get_page_preview, name='api_get_page_preview'),
+     
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

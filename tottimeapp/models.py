@@ -1308,9 +1308,22 @@ class PublicLink(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     created_by = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='created_public_links')
+    metadata = models.TextField(blank=True, null=True)  # Add this field for storing JSON metadata
     
     def __str__(self):
         return f"Public link for {self.main_user} (expires: {self.expires_at})"
     
     def is_expired(self):
         return timezone.now() > self.expires_at
+    
+class IndicatorPageLink(models.Model):
+    """Model to link indicators with specific pages"""
+    indicator = models.OneToOneField('ABCQualityIndicator', on_delete=models.CASCADE, related_name='page_link')
+    page_template = models.CharField(max_length=255)  # store the named URL or path
+    title = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.indicator.indicator_id} → {self.page_template}"
+    
