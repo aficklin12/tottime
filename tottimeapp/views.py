@@ -6629,6 +6629,36 @@ def abc_quality(request):
     
     return render(request, 'tottimeapp/abc_quality.html', context)
 
+from django.http import HttpResponse
+def preview_proxy(request, indicator_id):
+    """Fetch linked page and return it from the same origin (embed this URL in iframe)."""
+    indicator = get_object_or_404(ABCQualityIndicator, pk=indicator_id)
+    link = IndicatorPageLink.objects.filter(indicator=indicator).first()
+    if not link or not (link.page_template or '').strip():
+        return JsonResponse({'success': False, 'error': 'No linked page'}, status=404)
+
+    target = link.page_template.strip()
+
+    # If it's a named URL try reverse, otherwise allow raw path or external URL
+    if not target.startswith(('http://', 'https://')):
+        try:
+            target = reverse(target)
+        except NoReverseMatch:
+            if not target.startswith('/'):
+                return JsonResponse({'success': False, 'error': 'Cannot resolve linked page'}, status=400)
+
+    # Build absolute URL to fetch (requests needs absolute URL)
+    absolute = request.build_absolute_uri(target) if target.startswith('/') else target
+
+    try:
+        resp = requests.get(absolute, timeout=10)
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': f'Error fetching target: {exc}'}, status=502)
+
+    content_type = resp.headers.get('Content-Type', 'text/html')
+    return HttpResponse(resp.content, content_type=content_type)
+
+
 def abc_quality_public(request, token):
     """
     Public view function for displaying ABC Quality standards and documentation.

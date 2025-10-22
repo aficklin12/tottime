@@ -216,7 +216,8 @@ urlpatterns = [
     path('api/save-indicator-link/', views.save_indicator_link, name='api_save_indicator_link'),
     path('api/remove-indicator-link/<int:indicator_id>/', views.remove_indicator_link, name='api_remove_indicator_link'),
     path('api/get-page-preview/<int:indicator_id>/', views.get_page_preview, name='api_get_page_preview'),
-     
+    path('api/preview-proxy/<int:indicator_id>/', views.preview_proxy, name='preview_proxy'),
+ 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 
