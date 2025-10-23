@@ -1,0 +1,17 @@
+{% extends 'tottimeapp/base_public.html' %}
+{% load static %}
+
+{% block title %}Invalid Access Link{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-danger">
+        <h4><i class="fas fa-times-circle"></i> Invalid Access Link</h4>
+        <p>The access link you're trying to use is invalid or has been deleted.</p>
+        <p>Please contact the person who shared this link with you to request a new one.</p>
+    </div>
+    <div class="text-center mt-4">
+        <a href="{% url 'home' %}" class="btn btn-primary">Go to Homepage</a>
+    </div>
+</div>
+{% endblock %}

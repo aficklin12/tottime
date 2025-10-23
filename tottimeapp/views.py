@@ -6,8 +6,9 @@ from django.db.models.functions import Concat, Lower
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
 from square.client import Client
-from django.urls import get_resolver, reverse, NoReverseMatch
 from django.conf import settings
+from django.http import Http404
+from functools import wraps
 from django.core.paginator import Paginator
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
@@ -17,7 +18,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, TemporaryAccess, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -37,6 +38,10 @@ from botocore.client import Config
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+import requests
+from django.http import HttpResponse
+from django.views.decorators.clickjacking import xframe_options_exempt
+from django.urls import get_resolver, reverse, NoReverseMatch
  
 ALLOWED_TAGS = [
     'p', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br', 'span'
@@ -48,6 +53,21 @@ ALLOWED_ATTRIBUTES = {
 ALLOWED_STYLES = ['font-weight', 'font-style', 'text-decoration']
 
 logger = logging.getLogger(__name__)
+
+def public_or_login_required(view_func):
+    """
+    Decorator that allows access either via login or temporary token
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # Allow access if already authenticated (via login or temp token)
+        if request.user.is_authenticated:
+            return view_func(request, *args, **kwargs)
+        
+        # Otherwise redirect to login
+        return login_required(view_func)(request, *args, **kwargs)
+    
+    return wrapper
 
 def get_user_for_view(request):
     user = request.user
@@ -796,7 +816,7 @@ def send_public_enrollment_link(request):
             return JsonResponse({"success": False, "error": str(e)})
     return JsonResponse({"success": False, "error": "Invalid request."})
 
-@login_required
+@public_or_login_required 
 def enrollment(request):
     """
     Display enrollment submissions for the current user's facility,
@@ -875,6 +895,12 @@ def enrollment(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    is_public = request.GET.get('public') == 'true'
+    if is_public:
+        template_name = 'tottimeapp/enrollment_public.html'
+    else:
+        template_name = 'tottimeapp/enrollment.html'
+    
     context = {
         'submissions': page_obj,
         **permissions_context,
@@ -888,7 +914,7 @@ def enrollment(request):
         'archived_submissions': archived_submissions,
     }
 
-    return render(request, 'tottimeapp/enrollment.html', context)
+    return render(request, template_name, context)
 
 @login_required
 def enrollment_submission_detail(request, submission_id):
@@ -6629,89 +6655,375 @@ def abc_quality(request):
     
     return render(request, 'tottimeapp/abc_quality.html', context)
 
-from django.http import HttpResponse
-def preview_proxy(request, indicator_id):
-    """Fetch linked page and return it from the same origin (embed this URL in iframe)."""
-    indicator = get_object_or_404(ABCQualityIndicator, pk=indicator_id)
-    link = IndicatorPageLink.objects.filter(indicator=indicator).first()
-    if not link or not (link.page_template or '').strip():
-        return JsonResponse({'success': False, 'error': 'No linked page'}, status=404)
+from bs4 import BeautifulSoup, Comment
 
-    target = link.page_template.strip()
-
-    # If it's a named URL try reverse, otherwise allow raw path or external URL
-    if not target.startswith(('http://', 'https://')):
-        try:
-            target = reverse(target)
-        except NoReverseMatch:
-            if not target.startswith('/'):
-                return JsonResponse({'success': False, 'error': 'Cannot resolve linked page'}, status=400)
-
-    # Build absolute URL to fetch (requests needs absolute URL)
-    absolute = request.build_absolute_uri(target) if target.startswith('/') else target
-
+@xframe_options_exempt
+def proxy_page(request):
+    """
+    Proxy view that fetches content from another URL and returns only the main content
+    without navigation, headers, and footers. Used for embedding pages in iframes.
+    """
+    url = request.GET.get('url')
+    if not url:
+        return HttpResponse("No URL provided", status=400)
+    
     try:
-        resp = requests.get(absolute, timeout=10)
-    except Exception as exc:
-        return JsonResponse({'success': False, 'error': f'Error fetching target: {exc}'}, status=502)
-
-    content_type = resp.headers.get('Content-Type', 'text/html')
-    return HttpResponse(resp.content, content_type=content_type)
-
-
+        # Get the content from the target URL
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()  # Raise exception for non-200 responses
+        
+        # Check if HTML content
+        content_type = response.headers.get('Content-Type', '')
+        if 'text/html' not in content_type:
+            # For non-HTML content, return as-is
+            return HttpResponse(
+                response.content,
+                content_type=content_type,
+                status=response.status_code
+            )
+        
+        # Parse HTML
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Initialize collection variables
+        styles = []
+        external_css = []
+        scripts = []
+        external_js = []
+        
+        # Extract all head content
+        head = soup.find('head')
+        if head:
+            # Get all style tags
+            for style in head.find_all('style'):
+                styles.append(str(style))
+            
+            # Get all CSS link tags
+            for link in head.find_all('link', rel='stylesheet'):
+                href = link.get('href', '')
+                if href:
+                    if href.startswith('/') and not href.startswith('//'):
+                        # Fix relative URLs
+                        base_url = '/'.join(url.split('/')[:3])  # http(s)://domain.com
+                        href = f"{base_url}{href}"
+                    elif not href.startswith(('http://', 'https://', '//')):
+                        # Handle path-relative URLs
+                        base_url = '/'.join(url.split('/')[:-1])
+                        if not base_url.endswith('/'):
+                            base_url += '/'
+                        href = f"{base_url}{href}"
+                    
+                    external_css.append(f'<link rel="stylesheet" href="{href}">')
+            
+            # Get script tags from head
+            for script in head.find_all('script'):
+                src = script.get('src', '')
+                if src:
+                    if src.startswith('/') and not src.startswith('//'):
+                        # Fix relative URLs
+                        base_url = '/'.join(url.split('/')[:3])  # http(s)://domain.com
+                        src = f"{base_url}{src}"
+                    elif not src.startswith(('http://', 'https://', '//')):
+                        # Handle path-relative URLs
+                        base_url = '/'.join(url.split('/')[:-1])
+                        if not base_url.endswith('/'):
+                            base_url += '/'
+                        src = f"{base_url}{src}"
+                    
+                    external_js.append(f'<script src="{src}"></script>')
+                else:
+                    scripts.append(str(script))
+        
+        # Try multiple methods to find the main content
+        content_area = None
+        
+        # Method 1: Look for Django block content markers as comments
+        content_comments = soup.find_all(string=lambda text: isinstance(text, Comment) and 
+                                        ('BLOCK CONTENT START' in text or 'CONTENT BLOCK START' in text))
+        
+        if content_comments:
+            for comment in content_comments:
+                start_comment = comment
+                end_comment = None
+                
+                # Find the ending comment
+                sibling = comment.next_element
+                content_elements = []
+                
+                while sibling and not end_comment:
+                    if isinstance(sibling, Comment) and ('BLOCK CONTENT END' in sibling or 'CONTENT BLOCK END' in sibling):
+                        end_comment = sibling
+                        break
+                    
+                    content_elements.append(str(sibling))
+                    sibling = sibling.next_element
+                
+                if end_comment:
+                    # We found a complete content block
+                    content_html = ''.join(content_elements)
+                    content_area = BeautifulSoup(content_html, 'html.parser')
+                    break
+        
+        # Method 2: Look for standard Django content containers
+        if not content_area:
+            content_area = soup.select_one('.container.mt-5')
+            
+        # Method 3: Look for main-content div
+        if not content_area:
+            content_area = soup.select_one('#main-content, .main-content')
+            
+        # Method 4: Look for article or main tag
+        if not content_area:
+            content_area = soup.select_one('main, article, .content, #content')
+        
+        # Extract useful scripts from body
+        body_scripts = []
+        if soup.body:
+            for script in soup.body.find_all('script'):
+                src = script.get('src', '')
+                if src:
+                    if 'bootstrap' in src or 'jquery' in src or 'popper' in src:
+                        if src.startswith('/') and not src.startswith('//'):
+                            # Fix relative URLs
+                            base_url = '/'.join(url.split('/')[:3])  # http(s)://domain.com
+                            src = f"{base_url}{src}"
+                        elif not src.startswith(('http://', 'https://', '//')):
+                            # Handle path-relative URLs
+                            base_url = '/'.join(url.split('/')[:-1])
+                            if not base_url.endswith('/'):
+                                base_url += '/'
+                            src = f"{base_url}{src}"
+                        
+                        body_scripts.append(f'<script src="{src}"></script>')
+                elif script.string and ('bootstrap' in script.string or 'jquery' in script.string):
+                    body_scripts.append(str(script))
+        
+        # Convert lists to strings for template insertion
+        styles_str = '\n'.join(styles)
+        external_css_str = '\n'.join(external_css)
+        scripts_str = '\n'.join(scripts)
+        external_js_str = '\n'.join(external_js)
+        body_scripts_str = '\n'.join(body_scripts)
+        
+        # If we found content, return it with styles
+        if content_area:
+            # Clean up any unwanted navigation elements
+            for nav_elem in content_area.select('nav, header, .navbar, footer, .footer, .site-header, .site-footer'):
+                nav_elem.extract()
+            
+            # Create response HTML
+            response_html = f"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Content Preview</title>
+                
+                <!-- Bootstrap CSS -->
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                
+                <!-- Font Awesome -->
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet">
+                
+                <!-- External CSS -->
+                {external_css_str}
+                
+                <!-- Inline styles -->
+                {styles_str}
+                
+                <style>
+                    body {{ 
+                        padding: 0;
+                        margin: 0;
+                        background-color: #ffffff;
+                    }}
+                    .proxy-container {{
+                        padding: 20px;
+                        width: 100%;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="proxy-container">
+                    {content_area}
+                </div>
+                
+                <!-- jQuery -->
+                <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                
+                <!-- Bootstrap JS -->
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+                
+                <!-- External JS -->
+                {external_js_str}
+                
+                <!-- Inline scripts -->
+                {scripts_str}
+                
+                <!-- Body scripts -->
+                {body_scripts_str}
+            </body>
+            </html>
+            """
+            
+            return HttpResponse(response_html, content_type='text/html')
+            
+        # Fallback: Just strip out navigation elements from the whole body
+        body = soup.find('body')
+        if body:
+            # Remove navigation, header, footer elements
+            for nav in body.select('nav, header, .navbar, footer, .site-header, .site-footer'):
+                nav.extract()
+                
+            # Create response HTML
+            response_html = f"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Page Preview</title>
+                
+                <!-- Bootstrap CSS -->
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                
+                <!-- Font Awesome -->
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet">
+                
+                <!-- External CSS -->
+                {external_css_str}
+                
+                <!-- Inline styles -->
+                {styles_str}
+                
+                <style>
+                    body {{ 
+                        padding: 0;
+                        margin: 0;
+                        background-color: #ffffff;
+                    }}
+                    .proxy-container {{
+                        padding: 20px;
+                        width: 100%;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="proxy-container">
+                    {body}
+                </div>
+                
+                <!-- jQuery -->
+                <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                
+                <!-- Bootstrap JS -->
+                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+                
+                <!-- External JS -->
+                {external_js_str}
+                
+                <!-- Inline scripts -->
+                {scripts_str}
+                
+                <!-- Body scripts -->
+                {body_scripts_str}
+            </body>
+            </html>
+            """
+            
+            return HttpResponse(response_html, content_type='text/html')
+        
+        # If all else fails, return the original content with a warning
+        return HttpResponse(f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Content Extraction Failed</title>
+        </head>
+        <body>
+            <div class="alert alert-warning">
+                <p>Could not extract main content from the page. Showing original content instead.</p>
+            </div>
+            {response.text}
+        </body>
+        </html>
+        """, content_type='text/html')
+        
+    except requests.RequestException as e:
+        logger.error(f"Error fetching URL {url}: {str(e)}")
+        return HttpResponse(f"""
+        <div class="alert alert-danger">
+            <h4>Error fetching page</h4>
+            <p>Could not load the requested page. The server may be unavailable or the URL may be incorrect.</p>
+            <p class="text-muted small">Error details: {str(e)}</p>
+        </div>
+        """, content_type='text/html', status=502)
+    except Exception as e:
+        logger.exception(f"Unexpected error in proxy_page: {str(e)}")
+        return HttpResponse(f"""
+        <div class="alert alert-danger">
+            <h4>Error processing page</h4>
+            <p>An error occurred while processing the requested page.</p>
+            <p class="text-muted small">Error details: {str(e)}</p>
+        </div>
+        """, content_type='text/html', status=500)
+       
 def abc_quality_public(request, token):
     """
     Public view function for displaying ABC Quality standards and documentation.
-    Accessible via a temporary token link. Shows the same content as abc_quality
-    but without upload functionality.
+    Accepts tokens created either as PublicLink or TemporaryAccess.
     """
-    # Get the public link or return 404 if it doesn't exist
-    public_link = get_object_or_404(PublicLink, token=token)
-    
-    # Check if the link is expired
-    if public_link.expires_at < timezone.now():
+    public_link = None
+    main_user = None
+
+    # Try PublicLink first
+    try:
+        public_link = PublicLink.objects.get(token=token)
+        main_user = public_link.main_user
+        expires_at = public_link.expires_at
+    except PublicLink.DoesNotExist:
+        # Fallback to TemporaryAccess (created by create_public_link if using TemporaryAccess)
+        try:
+            temp_access = TemporaryAccess.objects.get(token=token, is_active=True)
+            if not temp_access.is_valid:
+                return render(request, 'tottimeapp/link_expired.html')
+            main_user = temp_access.user
+            expires_at = temp_access.expires_at
+            # Optionally expose token/source info in template
+            public_link = None
+        except TemporaryAccess.DoesNotExist:
+            raise Http404("Public link not found")
+
+    # Final expiry check (covers both models)
+    if expires_at < timezone.now():
         return render(request, 'tottimeapp/link_expired.html')
-    
-    # Get the main user from the public link
-    main_user = public_link.main_user
-    
-    # Get all main elements (those without a parent) with prefetched related data
+
+    # Fetch elements/resources exactly as your private view does
     main_elements = ABCQualityElement.objects.filter(
         parent_element__isnull=True
-    ).prefetch_related(
-        'indicators', 
-        'sections', 
-        'sections__indicators'
-    ).order_by('display_order')
-    
-    # Get only ABC Quality resources for this user
+    ).prefetch_related('indicators', 'sections', 'sections__indicators').order_by('display_order')
+
     abc_resources = Resource.objects.filter(
         main_user=main_user,
         resource_type='abc_quality'
     ).order_by('-uploaded_at')
-    
-    # Group resources by indicator for display
+
     grouped_resources = {}
     for resource in abc_resources:
-        # Try to get indicator ID from the abc_indicator field first, then fall back to indicator_id string
-        if resource.abc_indicator:
-            indicator_id = resource.abc_indicator.indicator_id
-        else:
-            indicator_id = resource.indicator_id or "Uncategorized"
-            
-        if indicator_id not in grouped_resources:
-            grouped_resources[indicator_id] = []
-        grouped_resources[indicator_id].append(resource)
-    
-    # Format expiry date for display
-    expiry_date = public_link.expires_at.strftime("%B %d, %Y at %I:%M %p")
-    
+        indicator_id = resource.abc_indicator.indicator_id if resource.abc_indicator else (resource.indicator_id or "Uncategorized")
+        grouped_resources.setdefault(indicator_id, []).append(resource)
+
+    expiry_date = expires_at.strftime("%B %d, %Y at %I:%M %p")
+
     context = {
         'main_elements': main_elements,
         'grouped_resources': grouped_resources,
-        'expiry_date': expiry_date
+        'expiry_date': expiry_date,
+        'is_public': True,
+        'public_token': token,
     }
-    
+
     return render(request, 'tottimeapp/abc_quality_public.html', context)
 
 def _collect_reverseable_named_urls():
@@ -6793,74 +7105,71 @@ def remove_indicator_link(request, indicator_id):
     return JsonResponse({'success': True})
 
 def get_page_preview(request, indicator_id):
-    """
-    Return JSON with either:
-      - {'success': True, 'type': 'url', 'url': '<absolute-url>', 'title': ...}
-      - {'success': False, 'error': '...'}
-    Avoid using django.test.Client — frontend will load the URL in an iframe.
-    """
     try:
         indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
+        try:
+            page_link = indicator.page_link
+            
+            # Include the URL in the response
+            return JsonResponse({
+                'success': True,
+                'title': page_link.title or f"Preview for {indicator.indicator_id}",
+                'page_url': page_link.page_template,
+                'content': 'Loading content from URL...'  # Fallback content
+            })
+        except IndicatorPageLink.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'No page link found for this indicator'
+            })
     except ABCQualityIndicator.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
-
-    link = IndicatorPageLink.objects.filter(indicator=indicator).first()
-    if not link or not (link.page_template or '').strip():
-        return JsonResponse({'success': False, 'error': 'No page linked for this indicator'}, status=404)
-
-    stored = (link.page_template or '').strip()
-    title = link.title or indicator.indicator_id
-
-    # External URL
-    if stored.lower().startswith(('http://', 'https://')):
-        return JsonResponse({'success': True, 'type': 'url', 'url': stored, 'title': title})
-
-    # Try to reverse named URL; otherwise accept raw path beginning with '/'
-    try:
-        path = reverse(stored)
-    except NoReverseMatch:
-        if stored.startswith('/'):
-            path = stored
-        else:
-            return JsonResponse({'success': False, 'error': f'Cannot resolve linked page: "{stored}"'}, status=400)
-
-    absolute = request.build_absolute_uri(path)
-    return JsonResponse({'success': True, 'type': 'url', 'url': absolute, 'title': title})
-
+        return JsonResponse({
+            'success': False,
+            'message': 'Indicator not found'
+        }, status=404)
+        
 @login_required
 def create_public_link(request):
-    """
-    Creates a temporary public link for sharing ABC Quality documentation.
-    """
     if request.method == 'POST':
-        # Get the main user for the current user
         main_user = get_user_for_view(request)
-        
-        # Set expiration (default: 7 days from now)
         days_valid = int(request.POST.get('days_valid', 7))
-        expires_at = timezone.now() + timedelta(days=days_valid)
-        
-        # Generate a unique token
-        token = str(uuid.uuid4())
-        
-        # Create the public link
-        public_link = PublicLink.objects.create(
-            main_user=main_user,
-            token=token,
-            expires_at=expires_at,
-            created_by=request.user
+        purpose = request.POST.get('purpose', 'Temporary access')
+
+        temp_access = TemporaryAccess.create_for_user(
+            user=main_user,
+            expires_in_days=days_valid,
+            purpose=purpose,
+            target_url=f'/abc-quality/public/{temp_access.token}/' if False else '/abc-quality/public/'  # placeholder, overwritten below
         )
-        
-        # Get the full URL
-        public_url = request.build_absolute_uri(f'/abc-quality/public/{token}/')
-        
+
+        # Build direct link to the public view that renders abc_quality_public.html
+        public_path = reverse('abc_quality_public', args=[str(temp_access.token)])
+        public_url = request.build_absolute_uri(public_path)
+
         return JsonResponse({
             'success': True,
             'url': public_url,
-            'expires_at': expires_at.strftime("%B %d, %Y at %I:%M %p")
+            'expires_at': temp_access.expires_at.strftime("%B %d, %Y at %I:%M %p")
         })
-    
+
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+def public_access_redirect(request, token):
+    """
+    Clean public entrypoint. Look up token, validate, then redirect to target_url
+    with access_token query param so middleware/auth backend will log the user in.
+    """
+    temp_access = get_object_or_404(TemporaryAccess, token=token, is_active=True)
+    if not temp_access.is_valid:
+        return render(request, 'tottimeapp/link_expired.html')
+
+    # ensure target_url starts with '/'
+    target = temp_access.target_url or '/abc-quality/'
+    if not target.startswith('/'):
+        target = '/' + target
+
+    redirect_url = f"{target}?access_token={token}"
+    return redirect(redirect_url)
 
 @login_required
 def upload_documentation(request):

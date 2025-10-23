@@ -447,16 +447,6 @@
     </div>
 </div>
 
-<!-- Preview Modal -->
-<div class="modal fade" id="previewModal" tabindex="-1">
-  <div class="modal-dialog modal-xl modal-fullscreen-sm-down">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Page Preview</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body" id="previewModalBody"></div>
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
@@ -614,29 +604,71 @@
                     </div>
                 `;
                 
-                // Show the modal
-                const modal = new bootstrap.Modal(document.getElementById('pagePreviewModal'));
+                // Show the modal with larger size for better viewing
+                const previewModal = document.getElementById('pagePreviewModal');
+                previewModal.querySelector('.modal-dialog').classList.add('modal-xl');
+                const modal = new bootstrap.Modal(previewModal);
                 modal.show();
                 
                 // Fetch the linked page content
                 fetch(`/api/get-page-preview/${indicatorDbId}/`)
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
+                        if (data.success && data.page_url) {
+                            // Update modal title
                             document.getElementById('previewModalTitle').textContent = data.title || `Preview for ${indicatorId}`;
-                            // if server returned a URL, embed it in an iframe
-                            if (data.type === 'url' && data.url) {
-                                document.getElementById('pagePreviewContent').innerHTML = `
-                                    <iframe src="${data.url}" style="width:100%;height:70vh;border:0"></iframe>
-                                `;
-                            } else if (data.content) {
-                                document.getElementById('pagePreviewContent').innerHTML = data.content;
-                            } else {
-                                document.getElementById('pagePreviewContent').innerHTML = '<div class="alert alert-info">No preview available.</div>';
+                            
+                            // Format the URL properly
+                            let pageUrl = data.page_url;
+                            if (!pageUrl.startsWith('http://') && !pageUrl.startsWith('https://')) {
+                                pageUrl = window.location.protocol + '//' + window.location.host + 
+                                          (pageUrl.startsWith('/') ? '' : '/') + pageUrl;
                             }
+                            
+                            // attach public_token (if present) so the proxied request is authenticated by middleware/backend
+                            const publicToken = "{{ public_token|default:'' }}";
+                            if (publicToken) {
+                                pageUrl += (pageUrl.includes('?') ? '&' : '?') + 'access_token=' + encodeURIComponent(publicToken);
+                            }
+                            
+                            // set iframe to proxy-page which will fetch pageUrl (already contains access_token)
+                            document.getElementById('pagePreviewContent').innerHTML = `
+                                <div class="row mb-3">
+                                    <div class="col-12 d-flex justify-content-between align-items-center bg-light py-2 px-3 rounded">
+                                        <div>
+                                            <i class="fas fa-link me-2"></i>
+                                            <a href="${pageUrl}" target="_blank" class="text-decoration-none">${pageUrl}</a>
+                                        </div>
+                                        <div>
+                                            <button class="btn btn-primary open-new-window" data-url="${pageUrl}">
+                                                <i class="fas fa-external-link-alt me-2"></i>Open in Window
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <iframe src="/proxy-page/?url=${encodeURIComponent(pageUrl)}" id="preview-iframe" style="border:none;height:65vh;width:100%"></iframe>
+                            `;
+                            
+                            // Add event listener for the open window button
+                            document.querySelector('.open-new-window').addEventListener('click', function() {
+                                const url = this.getAttribute('data-url');
+                                // Open in a new window with specific dimensions
+                                const newWindow = window.open(url, 'previewWindow', 
+                                    'width=1024,height=768,toolbar=yes,location=yes,menubar=yes,resizable=yes,scrollbars=yes');
+                                
+                                if (!newWindow || newWindow.closed || typeof newWindow.closed=='undefined') {
+                                    // Popup was blocked
+                                    alert("The popup was blocked by your browser. Please allow popups for this site or use the direct link.");
+                                }
+                            });
+                            
                         } else {
-                            const msg = data.error || 'No linked page found for this indicator.';
-                            document.getElementById('pagePreviewContent').innerHTML = `<div class="alert alert-info"><p>${msg}</p></div>`;
+                            // No page URL available
+                            document.getElementById('pagePreviewContent').innerHTML = `
+                                <div class="alert alert-info">
+                                    <p>${data.message || 'No linked page found for this indicator.'}</p>
+                                </div>
+                            `;
                         }
                     })
                     .catch(error => {
@@ -644,41 +676,28 @@
                         document.getElementById('pagePreviewContent').innerHTML = `
                             <div class="alert alert-danger">
                                 <p>Failed to load page preview. Please try again later.</p>
+                                <p class="small text-muted">Technical details: ${error.message}</p>
                             </div>
                         `;
                     });
             });
         });
+        
+        // Clean up extra buttons when modal is hidden
+        document.getElementById('pagePreviewModal').addEventListener('hidden.bs.modal', function() {
+            // Remove any dynamically added buttons from the footer
+            const footer = document.querySelector('.modal-footer');
+            const buttons = footer.querySelectorAll('button');
+            
+            // Keep only the original close button
+            if (buttons.length > 1) {
+                for (let i = 0; i < buttons.length - 1; i++) {
+                    if (!buttons[i].classList.contains('btn-secondary')) {
+                        buttons[i].remove();
+                    }
+                }
+            }
+        });
     });
-</script>
-<script>
-    document.addEventListener('click', function(e){
-  // adjust selector to your preview trigger
-  const btn = e.target.closest('.preview-linked-page');
-  if (!btn) return;
-  const indicatorDbId = btn.getAttribute('data-indicator-db-id');
-  if (!indicatorDbId) return;
-
-  fetch(`/api/indicator-preview/${indicatorDbId}/`)
-    .then(r => r.json())
-    .then(data => {
-      if (!data.success) return toastr.error(data.error || 'Preview failed');
-
-      // modal elements: #previewModal, #previewModalBody
-      const modalBody = document.getElementById('previewModalBody');
-      if (data.type === 'html') {
-        modalBody.innerHTML = data.html;
-      } else if (data.type === 'url') {
-        // use iframe for URL previews
-        modalBody.innerHTML = `<iframe src="${data.url}" style="width:100%;height:70vh;border:0"></iframe>`;
-      }
-      const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-      modal.show();
-    })
-    .catch(err => {
-      console.error(err);
-      toastr.error('Error loading preview');
-    });
-});
 </script>
 {% endblock %}

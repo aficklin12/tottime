@@ -29,6 +29,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "tottimeapp.middleware.TemporaryAccessMiddleware", 
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -56,6 +57,8 @@ TEMPLATES = [
                 'tottimeapp.context_processors.is_app_context',
                 'tottimeapp.context_processors.show_back_button',
                 'tottimeapp.context_processors.account_switcher_context',
+                'tottimeapp.context_processors.template_type',
+                'tottimeapp.context_processors.template_base',
             ],
         },
     },
@@ -108,6 +111,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
+    'tottimeapp.auth.TemporaryAccessBackend', 
 ]
 
 # Logging configuration

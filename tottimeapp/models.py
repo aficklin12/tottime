@@ -1317,13 +1317,40 @@ class PublicLink(models.Model):
         return timezone.now() > self.expires_at
     
 class IndicatorPageLink(models.Model):
-    """Model to link indicators with specific pages"""
-    indicator = models.OneToOneField('ABCQualityIndicator', on_delete=models.CASCADE, related_name='page_link')
-    page_template = models.CharField(max_length=255)  # store the named URL or path
+    """Model to link an indicator to a page (named URL or path or absolute URL)"""
+    indicator = models.OneToOneField(ABCQualityIndicator, on_delete=models.CASCADE, related_name='page_link')
+    page_template = models.CharField(max_length=255)  # store URL name or path or full URL
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.indicator.indicator_id} → {self.page_template}"
+
+class TemporaryAccess(models.Model):
+    """Stores temporary access tokens that allow impersonation of a user"""
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='temporary_access_tokens')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    last_used = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    purpose = models.CharField(max_length=255, blank=True)
+    target_url = models.CharField(max_length=255, default='/abc-quality/')
     
+    @property
+    def is_valid(self):
+        return self.is_active and self.expires_at > timezone.now()
+    
+    @classmethod
+    def create_for_user(cls, user, expires_in_days=7, purpose='', target_url='/abc-quality/'):
+        expires_at = timezone.now() + timedelta(days=expires_in_days)
+        return cls.objects.create(
+            user=user,
+            expires_at=expires_at,
+            purpose=purpose,
+            target_url=target_url
+        )
+    
+    def __str__(self):
+        return f"Access token for {self.user} (expires: {self.expires_at.strftime('%Y-%m-%d')})"

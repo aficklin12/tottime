@@ -211,13 +211,19 @@ urlpatterns = [
     # Public ABC Quality view
     path('abc-quality/public/<str:token>/', views.abc_quality_public, name='abc_quality_public'),
     path('create-public-link/', views.create_public_link, name='create_public_link'),
-    
     path('api/indicator-link/<int:indicator_id>/', views.get_indicator_link, name='api_get_indicator_link'),
     path('api/save-indicator-link/', views.save_indicator_link, name='api_save_indicator_link'),
     path('api/remove-indicator-link/<int:indicator_id>/', views.remove_indicator_link, name='api_remove_indicator_link'),
-    path('api/get-page-preview/<int:indicator_id>/', views.get_page_preview, name='api_get_page_preview'),
-    path('api/preview-proxy/<int:indicator_id>/', views.preview_proxy, name='preview_proxy'),
- 
+    path('api/get-page-preview/<int:indicator_id>/', views.get_page_preview, name='get_page_preview'),
+    
+    path('proxy-page/', views.proxy_page, name='proxy_page'),
+    path('create-public-link/', views.create_public_link, name='create_public_link'),
+    
+    path('abc-quality/', views.abc_quality, name='abc_quality'),
+    path('abc-quality/public/<str:token>/', views.abc_quality_public, name='abc_quality_public'),
+    path('public/<uuid:token>/', views.public_access_redirect, name='public_access'),
+    
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 
