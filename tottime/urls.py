@@ -193,7 +193,7 @@ urlpatterns = [
     path('abc_quality/', login_required(views.abc_quality), name='abc_quality'),
     path('upload_documentation/', views.upload_documentation, name='upload_documentation'),
     path('compile-all-documents/', views.compile_all_documents, name='compile_all_documents'),
-    # Survey management
+    # Survey management 
     path('surveys/', views.surveys_list, name='surveys_list'),
     path('surveys/create/', views.create_survey, name='create_survey'),
     path('surveys/<int:survey_id>/edit/', views.edit_survey, name='edit_survey'),

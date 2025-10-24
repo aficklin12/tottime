@@ -6662,313 +6662,261 @@ def proxy_page(request):
     """
     Proxy view that fetches content from another URL and returns only the main content
     without navigation, headers, and footers. Used for embedding pages in iframes.
+    - Appends access_token from the incoming request to the fetched URL if missing.
+    - Strips script tags from the extracted content and injects a read-only enforcer script
+      that disables forms/inputs/buttons and prevents navigation.
     """
     url = request.GET.get('url')
+    proxy_token = request.GET.get('access_token') or request.GET.get('token') or ''
     if not url:
         return HttpResponse("No URL provided", status=400)
-    
+
     try:
-        # Get the content from the target URL
+        # If the proxied page doesn't already include an access_token, append the proxy token
+        if proxy_token and 'access_token=' not in url:
+            url += ('&' if '?' in url else '?') + f"access_token={urllib.parse.quote(proxy_token)}"
+
+        # Fetch target content
         response = requests.get(url, timeout=10)
-        response.raise_for_status()  # Raise exception for non-200 responses
-        
-        # Check if HTML content
+        response.raise_for_status()
+
         content_type = response.headers.get('Content-Type', '')
         if 'text/html' not in content_type:
-            # For non-HTML content, return as-is
-            return HttpResponse(
-                response.content,
-                content_type=content_type,
-                status=response.status_code
-            )
-        
-        # Parse HTML
+            return HttpResponse(response.content, content_type=content_type, status=response.status_code)
+
         soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Initialize collection variables
+
+        # Collect inline styles and linked CSS (fix relative URLs)
         styles = []
         external_css = []
-        scripts = []
-        external_js = []
-        
-        # Extract all head content
         head = soup.find('head')
         if head:
-            # Get all style tags
             for style in head.find_all('style'):
                 styles.append(str(style))
-            
-            # Get all CSS link tags
             for link in head.find_all('link', rel='stylesheet'):
                 href = link.get('href', '')
                 if href:
                     if href.startswith('/') and not href.startswith('//'):
-                        # Fix relative URLs
-                        base_url = '/'.join(url.split('/')[:3])  # http(s)://domain.com
+                        base_url = '/'.join(url.split('/')[:3])
                         href = f"{base_url}{href}"
                     elif not href.startswith(('http://', 'https://', '//')):
-                        # Handle path-relative URLs
                         base_url = '/'.join(url.split('/')[:-1])
                         if not base_url.endswith('/'):
                             base_url += '/'
                         href = f"{base_url}{href}"
-                    
                     external_css.append(f'<link rel="stylesheet" href="{href}">')
-            
-            # Get script tags from head
-            for script in head.find_all('script'):
-                src = script.get('src', '')
-                if src:
-                    if src.startswith('/') and not src.startswith('//'):
-                        # Fix relative URLs
-                        base_url = '/'.join(url.split('/')[:3])  # http(s)://domain.com
-                        src = f"{base_url}{src}"
-                    elif not src.startswith(('http://', 'https://', '//')):
-                        # Handle path-relative URLs
-                        base_url = '/'.join(url.split('/')[:-1])
-                        if not base_url.endswith('/'):
-                            base_url += '/'
-                        src = f"{base_url}{src}"
-                    
-                    external_js.append(f'<script src="{src}"></script>')
-                else:
-                    scripts.append(str(script))
-        
-        # Try multiple methods to find the main content
+
+        # Try to find main content using several heuristics
         content_area = None
-        
-        # Method 1: Look for Django block content markers as comments
-        content_comments = soup.find_all(string=lambda text: isinstance(text, Comment) and 
-                                        ('BLOCK CONTENT START' in text or 'CONTENT BLOCK START' in text))
-        
+
+        content_comments = soup.find_all(string=lambda text: isinstance(text, Comment) and
+                                         ('BLOCK CONTENT START' in text or 'CONTENT BLOCK START' in text))
         if content_comments:
             for comment in content_comments:
-                start_comment = comment
-                end_comment = None
-                
-                # Find the ending comment
                 sibling = comment.next_element
                 content_elements = []
-                
-                while sibling and not end_comment:
+                end_found = False
+                while sibling and not end_found:
                     if isinstance(sibling, Comment) and ('BLOCK CONTENT END' in sibling or 'CONTENT BLOCK END' in sibling):
-                        end_comment = sibling
+                        end_found = True
                         break
-                    
                     content_elements.append(str(sibling))
                     sibling = sibling.next_element
-                
-                if end_comment:
-                    # We found a complete content block
+                if end_found:
                     content_html = ''.join(content_elements)
                     content_area = BeautifulSoup(content_html, 'html.parser')
                     break
-        
-        # Method 2: Look for standard Django content containers
+
         if not content_area:
             content_area = soup.select_one('.container.mt-5')
-            
-        # Method 3: Look for main-content div
         if not content_area:
             content_area = soup.select_one('#main-content, .main-content')
-            
-        # Method 4: Look for article or main tag
         if not content_area:
             content_area = soup.select_one('main, article, .content, #content')
-        
-        # Extract useful scripts from body
-        body_scripts = []
-        if soup.body:
-            for script in soup.body.find_all('script'):
-                src = script.get('src', '')
-                if src:
-                    if 'bootstrap' in src or 'jquery' in src or 'popper' in src:
-                        if src.startswith('/') and not src.startswith('//'):
-                            # Fix relative URLs
-                            base_url = '/'.join(url.split('/')[:3])  # http(s)://domain.com
-                            src = f"{base_url}{src}"
-                        elif not src.startswith(('http://', 'https://', '//')):
-                            # Handle path-relative URLs
-                            base_url = '/'.join(url.split('/')[:-1])
-                            if not base_url.endswith('/'):
-                                base_url += '/'
-                            src = f"{base_url}{src}"
-                        
-                        body_scripts.append(f'<script src="{src}"></script>')
-                elif script.string and ('bootstrap' in script.string or 'jquery' in script.string):
-                    body_scripts.append(str(script))
-        
-        # Convert lists to strings for template insertion
+
+        # Build safe CSS strings
         styles_str = '\n'.join(styles)
         external_css_str = '\n'.join(external_css)
-        scripts_str = '\n'.join(scripts)
-        external_js_str = '\n'.join(external_js)
-        body_scripts_str = '\n'.join(body_scripts)
-        
-        # If we found content, return it with styles
+
+        # Read-only enforcer script (disables forms, inputs, buttons, prevents navigation)
+        read_only_script = r"""
+        <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            // Disable forms and prevent submission
+            document.querySelectorAll('form').forEach(function(f){
+                try {
+                    f.querySelectorAll('input,textarea,select,button').forEach(function(el){ el.disabled = true; });
+                    f.addEventListener('submit', function(e){ e.preventDefault(); }, true);
+                    f.removeAttribute('action');
+                } catch(e){}
+            });
+
+            // Disable standalone buttons
+            document.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+
+            // Make links inert and preserve original href in data-original-href
+            document.querySelectorAll('a[href]').forEach(function(a){
+                var href = a.getAttribute('href');
+                if(!href) return;
+                // Keep anchor/hash links inert as well
+                a.setAttribute('data-original-href', href);
+                a.removeAttribute('href');
+                a.style.cursor = 'default';
+                a.addEventListener('click', function(e){ e.preventDefault(); });
+            });
+
+            // Remove inline event handler attributes
+            document.querySelectorAll('*').forEach(function(el){
+                ['onclick','onchange','onsubmit','onmouseover','onmousedown','onmouseup','onfocus','onblur'].forEach(function(attr){
+                    if(el.hasAttribute && el.hasAttribute(attr)){
+                        el.removeAttribute(attr);
+                    }
+                });
+            });
+        });
+        </script>
+        """
+
+        # If content_area found, strip scripts and return cleaned HTML
         if content_area:
-            # Clean up any unwanted navigation elements
+            # Remove unwanted nav/header/footer elements
             for nav_elem in content_area.select('nav, header, .navbar, footer, .footer, .site-header, .site-footer'):
                 nav_elem.extract()
-            
-            # Create response HTML
-            response_html = f"""
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>Content Preview</title>
-                
-                <!-- Bootstrap CSS -->
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                
-                <!-- Font Awesome -->
-                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet">
-                
-                <!-- External CSS -->
-                {external_css_str}
-                
-                <!-- Inline styles -->
-                {styles_str}
-                
-                <style>
-                    body {{ 
-                        padding: 0;
-                        margin: 0;
-                        background-color: #ffffff;
-                    }}
-                    .proxy-container {{
-                        padding: 20px;
-                        width: 100%;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="proxy-container">
-                    {content_area}
-                </div>
-                
-                <!-- jQuery -->
-                <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-                
-                <!-- Bootstrap JS -->
-                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-                
-                <!-- External JS -->
-                {external_js_str}
-                
-                <!-- Inline scripts -->
-                {scripts_str}
-                
-                <!-- Body scripts -->
-                {body_scripts_str}
-            </body>
-            </html>
-            """
-            
+
+            # Remove all <script> tags from the extracted content to avoid activating behaviors
+            for s in content_area.find_all('script'):
+                s.decompose()
+
+            # Also remove inline event attributes server-side where possible
+            for el in content_area.find_all(True):
+                for attr in list(el.attrs):
+                    if attr.lower().startswith('on'):
+                        try:
+                            del el[attr]
+                        except Exception:
+                            pass
+
+            response_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Preview</title>
+
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet">
+
+{external_css_str}
+{styles_str}
+
+<style>
+body {{ padding: 0; margin: 0; background-color: #ffffff; }}
+.proxy-container {{ padding: 20px; width: 100%; }}
+</style>
+</head>
+<body>
+<div class="proxy-container">
+{str(content_area)}
+</div>
+
+<!-- jQuery (used only for styling/helpers) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Bootstrap JS (kept minimal) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{read_only_script}
+</body>
+</html>"""
             return HttpResponse(response_html, content_type='text/html')
-            
-        # Fallback: Just strip out navigation elements from the whole body
+
+        # Fallback: strip navigation from full body and return
         body = soup.find('body')
         if body:
-            # Remove navigation, header, footer elements
             for nav in body.select('nav, header, .navbar, footer, .site-header, .site-footer'):
                 nav.extract()
-                
-            # Create response HTML
-            response_html = f"""
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>Page Preview</title>
-                
-                <!-- Bootstrap CSS -->
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-                
-                <!-- Font Awesome -->
-                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet">
-                
-                <!-- External CSS -->
-                {external_css_str}
-                
-                <!-- Inline styles -->
-                {styles_str}
-                
-                <style>
-                    body {{ 
-                        padding: 0;
-                        margin: 0;
-                        background-color: #ffffff;
-                    }}
-                    .proxy-container {{
-                        padding: 20px;
-                        width: 100%;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="proxy-container">
-                    {body}
-                </div>
-                
-                <!-- jQuery -->
-                <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-                
-                <!-- Bootstrap JS -->
-                <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-                
-                <!-- External JS -->
-                {external_js_str}
-                
-                <!-- Inline scripts -->
-                {scripts_str}
-                
-                <!-- Body scripts -->
-                {body_scripts_str}
-            </body>
-            </html>
-            """
-            
+
+            # Remove scripts and inline on* attrs from fallback body
+            for s in body.find_all('script'):
+                s.decompose()
+            for el in body.find_all(True):
+                for attr in list(el.attrs):
+                    if attr.lower().startswith('on'):
+                        try:
+                            del el[attr]
+                        except Exception:
+                            pass
+
+            response_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Preview</title>
+
+<!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet">
+
+{external_css_str}
+{styles_str}
+
+<style>
+body {{ padding: 0; margin: 0; background-color: #ffffff; }}
+.proxy-container {{ padding: 20px; width: 100%; }}
+</style>
+</head>
+<body>
+<div class="proxy-container">
+{str(body)}
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{read_only_script}
+</body>
+</html>"""
             return HttpResponse(response_html, content_type='text/html')
-        
-        # If all else fails, return the original content with a warning
-        return HttpResponse(f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Content Extraction Failed</title>
-        </head>
-        <body>
-            <div class="alert alert-warning">
-                <p>Could not extract main content from the page. Showing original content instead.</p>
-            </div>
-            {response.text}
-        </body>
-        </html>
-        """, content_type='text/html')
-        
+
+        # If all else fails, return original content with warning
+        return HttpResponse(f"""<!DOCTYPE html>
+<html>
+<head><title>Content Extraction Failed</title></head>
+<body>
+<div class="alert alert-warning">
+<p>Could not extract main content from the page. Showing original content instead.</p>
+</div>
+{response.text}
+</body>
+</html>""", content_type='text/html')
+
     except requests.RequestException as e:
         logger.error(f"Error fetching URL {url}: {str(e)}")
         return HttpResponse(f"""
-        <div class="alert alert-danger">
-            <h4>Error fetching page</h4>
-            <p>Could not load the requested page. The server may be unavailable or the URL may be incorrect.</p>
-            <p class="text-muted small">Error details: {str(e)}</p>
-        </div>
-        """, content_type='text/html', status=502)
+<div class="alert alert-danger">
+<h4>Error fetching page</h4>
+<p>Could not load the requested page. The server may be unavailable or the URL may be incorrect.</p>
+<p class="text-muted small">Error details: {str(e)}</p>
+</div>
+""", content_type='text/html', status=502)
     except Exception as e:
         logger.exception(f"Unexpected error in proxy_page: {str(e)}")
         return HttpResponse(f"""
-        <div class="alert alert-danger">
-            <h4>Error processing page</h4>
-            <p>An error occurred while processing the requested page.</p>
-            <p class="text-muted small">Error details: {str(e)}</p>
-        </div>
-        """, content_type='text/html', status=500)
-       
+<div class="alert alert-danger">
+<h4>Error processing page</h4>
+<p>An error occurred while processing the requested page.</p>
+<p class="text-muted small">Error details: {str(e)}</p>
+</div>
+""", content_type='text/html', status=500)
+
+
 def abc_quality_public(request, token):
     """
     Public view function for displaying ABC Quality standards and documentation.
@@ -6983,23 +6931,20 @@ def abc_quality_public(request, token):
         main_user = public_link.main_user
         expires_at = public_link.expires_at
     except PublicLink.DoesNotExist:
-        # Fallback to TemporaryAccess (created by create_public_link if using TemporaryAccess)
+        # Fallback to TemporaryAccess
         try:
             temp_access = TemporaryAccess.objects.get(token=token, is_active=True)
             if not temp_access.is_valid:
                 return render(request, 'tottimeapp/link_expired.html')
             main_user = temp_access.user
             expires_at = temp_access.expires_at
-            # Optionally expose token/source info in template
             public_link = None
         except TemporaryAccess.DoesNotExist:
             raise Http404("Public link not found")
 
-    # Final expiry check (covers both models)
     if expires_at < timezone.now():
         return render(request, 'tottimeapp/link_expired.html')
 
-    # Fetch elements/resources exactly as your private view does
     main_elements = ABCQualityElement.objects.filter(
         parent_element__isnull=True
     ).prefetch_related('indicators', 'sections', 'sections__indicators').order_by('display_order')
@@ -7056,6 +7001,10 @@ def _collect_reverseable_named_urls():
 
 @login_required
 def get_indicator_link(request, indicator_id):
+    """
+    Return indicator link data for the specified indicator.
+    Users can paste any URL they want to link.
+    """
     try:
         indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
     except ABCQualityIndicator.DoesNotExist:
@@ -7067,13 +7016,12 @@ def get_indicator_link(request, indicator_id):
             'page_template': link.page_template,
             'title': link.title,
             'updated_at': link.updated_at.strftime('%b %d, %Y %H:%M'),
-            'page_name': link.page_template
+            'page_url': link.page_template
         }
     except IndicatorPageLink.DoesNotExist:
         link_data = None
 
-    pages = _collect_reverseable_named_urls()
-    return JsonResponse({'success': True, 'link': link_data, 'pages': pages})
+    return JsonResponse({'success': True, 'link': link_data})
 
 @login_required
 @require_POST

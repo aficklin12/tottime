@@ -691,21 +691,37 @@
                 <div class="modal-body">
                     <input type="hidden" id="indicator_db_id" name="indicator_id">
                     
-                    <div class="form-group mb-3">
-                        <label for="page_template" class="form-label">Select Page to Link:</label>
-                        <select class="form-select" id="page_template" name="page_template">
-                        </select>
+                    <div class="mb-3">
+                        <label for="page_url" class="form-label">Page URL</label>
+                        <input 
+                            type="url" 
+                            class="form-control" 
+                            id="page_url" 
+                            name="page_template" 
+                            placeholder="https://example.com/page or /internal/path"
+                            required>
+                        <div class="form-text">Paste the full URL or relative path you want to link to this indicator.</div>
                     </div>
                     
-                    <div id="currentLinkInfo" class="alert alert-info d-none">
-                        <p class="mb-1"><strong>Current link:</strong> <span id="currentPageName"></span></p>
-                        <small>Last updated: <span id="lastUpdated"></span></small>
+                    <div class="mb-3">
+                        <label for="link_title" class="form-label">Link Title (optional)</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="link_title" 
+                            name="title" 
+                            placeholder="Enter a descriptive title">
+                    </div>
+                    
+                    <div id="currentLinkInfo" style="display: none;" class="alert alert-info">
+                        <strong>Current Link:</strong>
+                        <div id="currentLinkDisplay"></div>
+                        <small class="text-muted">Last updated: <span id="currentLinkDate"></span></small>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" id="removeLinkBtn" class="btn btn-outline-danger d-none">
-                        Remove Link
-                    </button>
+                    <button type="button" class="btn btn-danger" id="removeLinkBtn" style="display: none;">Remove Link</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primarytwo">Save Link</button>
                 </div>
             </form>
@@ -1216,70 +1232,48 @@
         indicatorLinks.forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
-                
                 const indicatorId = this.getAttribute('data-indicator');
                 const indicatorDbId = this.getAttribute('data-id');
                 
-                // Set modal values
+                // Set modal title
                 document.getElementById('indicatorLinkId').textContent = indicatorId;
                 document.getElementById('indicator_db_id').value = indicatorDbId;
                 
-                // Fetch current link if it exists
-                fetch(`/api/indicator-link/${indicatorDbId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // populate page select with available pages
-                        const pageSelect = document.getElementById('page_template');
-                        pageSelect.innerHTML = ''; // clear
-
-                        if (Array.isArray(data.pages)) {
-                            const emptyOpt = document.createElement('option');
-                            emptyOpt.value = '';
-                            emptyOpt.textContent = '--- Select a page ---';
-                            pageSelect.appendChild(emptyOpt);
-
-                            data.pages.forEach(function(p) {
-                                const opt = document.createElement('option');
-                                // store the named URL key in value (use name if available)
-                                opt.value = p.name || p.path;
-                                opt.textContent = (p.name ? `${p.name} — ${p.path}` : p.path);
-                                pageSelect.appendChild(opt);
-                            });
+                // Clear form
+                document.getElementById('page_url').value = '';
+                document.getElementById('link_title').value = '';
+                document.getElementById('currentLinkInfo').style.display = 'none';
+                document.getElementById('removeLinkBtn').style.display = 'none';
+                
+                // Show modal immediately
+                const modal = new bootstrap.Modal(document.getElementById('indicatorLinkModal'));
+                modal.show();
+                
+                // Fetch existing link data (but don't block modal opening)
+                fetch(`/api/get-indicator-link/${indicatorDbId}/`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
                         }
-
+                        return response.json();
+                    })
+                    .then(data => {
                         if (data.success && data.link) {
+                            // Populate form with existing link
+                            document.getElementById('page_url').value = data.link.page_url || data.link.page_template;
+                            document.getElementById('link_title').value = data.link.title || '';
+                            
                             // Show current link info
-                            document.getElementById('currentLinkInfo').classList.remove('d-none');
-                            document.getElementById('removeLinkBtn').classList.remove('d-none');
-                            document.getElementById('currentPageName').textContent = data.link.page_name;
-                            document.getElementById('lastUpdated').textContent = data.link.updated_at;
-
-                            // set selected option if matches
-                            if (data.link.page_template) {
-                                // try to select by exact value
-                                const matching = Array.from(pageSelect.options).find(o => o.value === data.link.page_template);
-                                if (matching) {
-                                    pageSelect.value = data.link.page_template;
-                                } else {
-                                    // if stored path, try to match by path string
-                                    const matchByPath = Array.from(pageSelect.options).find(o => o.textContent.includes(data.link.page_template));
-                                    if (matchByPath) pageSelect.value = matchByPath.value;
-                                }
-                            }
-                        } else {
-                            // No link exists
-                            document.getElementById('currentLinkInfo').classList.add('d-none');
-                            document.getElementById('removeLinkBtn').classList.add('d-none');
-                            pageSelect.value = '';
+                            document.getElementById('currentLinkDisplay').textContent = data.link.page_url || data.link.page_template;
+                            document.getElementById('currentLinkDate').textContent = data.link.updated_at;
+                            document.getElementById('currentLinkInfo').style.display = 'block';
+                            document.getElementById('removeLinkBtn').style.display = 'inline-block';
                         }
                     })
                     .catch(error => {
-                        console.error('Error fetching indicator link:', error);
-                        toastr.error('Failed to load current link information');
+                        console.error('Error fetching link data:', error);
+                        // Don't show error toast - modal is already open and user can still create a new link
                     });
-                    // Show the modal
-                    const modal = new bootstrap.Modal(document.getElementById('indicatorLinkModal'));
-                    modal.show();
             });
         });
         
@@ -1293,21 +1287,20 @@
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
                 }
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Hide modal and show success message
-                    bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
                     toastr.success('Link saved successfully');
+                    bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
                 } else {
                     toastr.error(data.error || 'Failed to save link');
                 }
             })
             .catch(error => {
-                console.error('Error saving indicator link:', error);
+                console.error('Error:', error);
                 toastr.error('An error occurred while saving');
             });
         });
@@ -1320,22 +1313,21 @@
                 fetch(`/api/remove-indicator-link/${indicatorDbId}/`, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     }
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
                         toastr.success('Link removed successfully');
+                        bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
                     } else {
-                        toastr.error(data.error || 'Failed to remove link');
+                        toastr.error('Failed to remove link');
                     }
                 })
                 .catch(error => {
-                    console.error('Error removing indicator link:', error);
-                    toastr.error('An error occurred while removing the link');
+                    console.error('Error:', error);
+                    toastr.error('An error occurred');
                 });
             }
         });

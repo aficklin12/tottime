@@ -451,81 +451,68 @@
 
 {% block scripts %}
 <script>
-    // Add this script to handle positioning
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get all document indicators
-        var indicators = document.querySelectorAll('.document-indicator');
-        
-        // Add mouseover event to each indicator
-        indicators.forEach(function(indicator) {
-            indicator.addEventListener('mouseover', function() {
-                // Get the dropdown associated with this indicator
-                var dropdown = this.parentElement.querySelector('.document-list');
-                
-                // Get indicator position
-                var rect = this.getBoundingClientRect();
-                
-                // Calculate best position for dropdown
-                var left = rect.right - dropdown.offsetWidth;
-                var top = rect.bottom + window.scrollY;
-                
-                // Ensure dropdown doesn't go off-screen to the left
-                if (left < 10) left = 10;
-                
-                // Check if dropdown would go off bottom of screen
-                if (top + dropdown.offsetHeight > window.innerHeight + window.scrollY) {
-                    // Position above the indicator instead
-                    top = rect.top + window.scrollY - dropdown.offsetHeight;
-                }
-                
-                // Apply position
-                dropdown.style.left = left + 'px';
-                dropdown.style.top = top + 'px';
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    // Positioning helper for document dropdowns
+    var indicators = document.querySelectorAll('.document-indicator');
+    indicators.forEach(function(indicator) {
+        indicator.addEventListener('mouseover', function() {
+            var dropdown = this.parentElement.querySelector('.document-list');
+            if (!dropdown) return;
+            var rect = this.getBoundingClientRect();
+            var left = rect.right - dropdown.offsetWidth;
+            var top = rect.bottom + window.scrollY;
+            if (left < 10) left = 10;
+            if (top + dropdown.offsetHeight > window.innerHeight + window.scrollY) {
+                top = rect.top + window.scrollY - dropdown.offsetHeight;
+            }
+            dropdown.style.left = left + 'px';
+            dropdown.style.top = top + 'px';
         });
     });
-</script>
-<script>
-    // Documents modal functionality
+
+    // Documents modal logic
     var documentsModal = document.getElementById("documentsModal");
     var documentModalClose = document.getElementsByClassName("close-document-modal")[0];
     var documentButtons = document.querySelectorAll(".document-indicator-btn");
     var documentModalIndicator = document.getElementById("documentModalIndicator");
     var documentModalContent = document.getElementById("documentModalContent");
-    
-    // Group the resources data in JavaScript for easier access
+
+    // Build groupedResources object from template context
     var groupedResources = {};
     {% for key, resources in grouped_resources.items %}
         groupedResources["{{ key }}"] = [
             {% for resource in resources %}
-                {
-                    id: {{ resource.id }},
-                    filename: "{{ resource.filename }}",
-                    description: "{{ resource.description|default:''|escapejs }}",
-                    uploadedAt: "{{ resource.uploaded_at|date:"M d, Y" }}",
-                    url: "{{ resource.file.url }}"
-                }{% if not forloop.last %},{% endif %}
+            {
+                id: {{ resource.id }},
+                filename: "{{ resource.filename|escapejs }}",
+                description: "{{ resource.description|default:''|escapejs }}",
+                uploadedAt: "{{ resource.uploaded_at|date:"M d, Y" }}",
+                url: "{{ resource.file.url }}"
+            }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ];
     {% endfor %}
-    
-    // Set up click event for document buttons
+
+    function getFileIcon(filename) {
+        filename = filename.toLowerCase();
+        if (filename.includes(".pdf")) return "fas fa-file-pdf";
+        if (filename.includes(".doc")) return "fas fa-file-word";
+        if (filename.includes(".xls")) return "fas fa-file-excel";
+        if (filename.includes(".jpg") || filename.includes(".png") || filename.includes(".gif")) return "fas fa-file-image";
+        return "fas fa-file";
+    }
+
     documentButtons.forEach(function(button) {
-        button.onclick = function() {
+        button.addEventListener('click', function() {
             var indicatorId = this.getAttribute("data-indicator");
-            var indicatorName = this.getAttribute("data-indicator-name");
-            
+            var indicatorName = this.getAttribute("data-indicator-name") || indicatorId;
             documentModalIndicator.textContent = indicatorId;
-            
-            // Clear previous content
             documentModalContent.innerHTML = "";
-            
-            // Add documents for this indicator
+
             var resources = groupedResources[indicatorId] || [];
             if (resources.length > 0) {
                 resources.forEach(function(resource) {
                     var fileIcon = getFileIcon(resource.filename);
-                    
                     var documentItem = document.createElement("div");
                     documentItem.className = "document-item";
                     documentItem.innerHTML = `
@@ -544,160 +531,104 @@
                             </a>
                         </div>
                     `;
-                    
                     documentModalContent.appendChild(documentItem);
                 });
             } else {
                 documentModalContent.innerHTML = "<p>No documents found for this indicator.</p>";
             }
-            
+
             documentsModal.style.display = "block";
-        }
+        });
     });
-    
-    documentModalClose.onclick = function() {
+
+    documentModalClose && (documentModalClose.onclick = function() {
         documentsModal.style.display = "none";
-    }
-    
-    // Helper function to get the appropriate icon based on file extension
-    function getFileIcon(filename) {
-        filename = filename.toLowerCase();
-        if (filename.includes(".pdf")) {
-            return "fas fa-file-pdf";
-        } else if (filename.includes(".doc")) {
-            return "fas fa-file-word";
-        } else if (filename.includes(".xls")) {
-            return "fas fa-file-excel";
-        } else if (filename.includes(".jpg") || filename.includes(".png") || filename.includes(".gif")) {
-            return "fas fa-file-image";
-        } else {
-            return "fas fa-file";
-        }
-    }
-    
-    // Close modal when clicking outside of it
+    });
+
     window.onclick = function(event) {
         if (event.target == documentsModal) {
             documentsModal.style.display = "none";
         }
-    }
-</script>
-<script>
-    // Handle indicator link clicks for page preview
-    document.addEventListener('DOMContentLoaded', function() {
-        const indicatorLinks = document.querySelectorAll('.indicator-link');
-        
-        indicatorLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const indicatorId = this.getAttribute('data-indicator');
-                const indicatorDbId = this.getAttribute('data-id');
-                
-                // Show loading state in modal
-                document.getElementById('previewModalTitle').textContent = `Loading preview for ${indicatorId}...`;
-                document.getElementById('pagePreviewContent').innerHTML = `
-                    <div class="d-flex justify-content-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
+    };
+
+    // Page preview handling (indicator links)
+    const indicatorLinks = document.querySelectorAll('.indicator-link');
+    indicatorLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const indicatorId = this.getAttribute('data-indicator');
+            const indicatorDbId = this.getAttribute('data-id');
+
+            // Loading UI
+            document.getElementById('previewModalTitle').textContent = `Loading preview for ${indicatorId}...`;
+            document.getElementById('pagePreviewContent').innerHTML = `
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                `;
-                
-                // Show the modal with larger size for better viewing
-                const previewModal = document.getElementById('pagePreviewModal');
-                previewModal.querySelector('.modal-dialog').classList.add('modal-xl');
-                const modal = new bootstrap.Modal(previewModal);
-                modal.show();
-                
-                // Fetch the linked page content
-                fetch(`/api/get-page-preview/${indicatorDbId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.page_url) {
-                            // Update modal title
-                            document.getElementById('previewModalTitle').textContent = data.title || `Preview for ${indicatorId}`;
-                            
-                            // Format the URL properly
-                            let pageUrl = data.page_url;
-                            if (!pageUrl.startsWith('http://') && !pageUrl.startsWith('https://')) {
-                                pageUrl = window.location.protocol + '//' + window.location.host + 
-                                          (pageUrl.startsWith('/') ? '' : '/') + pageUrl;
-                            }
-                            
-                            // attach public_token (if present) so the proxied request is authenticated by middleware/backend
-                            const publicToken = "{{ public_token|default:'' }}";
-                            if (publicToken) {
-                                pageUrl += (pageUrl.includes('?') ? '&' : '?') + 'access_token=' + encodeURIComponent(publicToken);
-                            }
-                            
-                            // set iframe to proxy-page which will fetch pageUrl (already contains access_token)
-                            document.getElementById('pagePreviewContent').innerHTML = `
-                                <div class="row mb-3">
-                                    <div class="col-12 d-flex justify-content-between align-items-center bg-light py-2 px-3 rounded">
-                                        <div>
-                                            <i class="fas fa-link me-2"></i>
-                                            <a href="${pageUrl}" target="_blank" class="text-decoration-none">${pageUrl}</a>
-                                        </div>
-                                        <div>
-                                            <button class="btn btn-primary open-new-window" data-url="${pageUrl}">
-                                                <i class="fas fa-external-link-alt me-2"></i>Open in Window
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <iframe src="/proxy-page/?url=${encodeURIComponent(pageUrl)}" id="preview-iframe" style="border:none;height:65vh;width:100%"></iframe>
-                            `;
-                            
-                            // Add event listener for the open window button
-                            document.querySelector('.open-new-window').addEventListener('click', function() {
-                                const url = this.getAttribute('data-url');
-                                // Open in a new window with specific dimensions
-                                const newWindow = window.open(url, 'previewWindow', 
-                                    'width=1024,height=768,toolbar=yes,location=yes,menubar=yes,resizable=yes,scrollbars=yes');
-                                
-                                if (!newWindow || newWindow.closed || typeof newWindow.closed=='undefined') {
-                                    // Popup was blocked
-                                    alert("The popup was blocked by your browser. Please allow popups for this site or use the direct link.");
-                                }
-                            });
-                            
-                        } else {
-                            // No page URL available
-                            document.getElementById('pagePreviewContent').innerHTML = `
-                                <div class="alert alert-info">
-                                    <p>${data.message || 'No linked page found for this indicator.'}</p>
-                                </div>
-                            `;
+                </div>
+            `;
+
+            // Show modal
+            const previewModal = document.getElementById('pagePreviewModal');
+            previewModal.querySelector('.modal-dialog').classList.add('modal-xl');
+            const modal = new bootstrap.Modal(previewModal);
+            modal.show();
+
+            // Fetch preview metadata (page URL, title)
+            fetch(`/api/get-page-preview/${indicatorDbId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.page_url) {
+                        document.getElementById('previewModalTitle').textContent = data.title || `Preview for ${indicatorId}`;
+
+                        // Normalize page URL to absolute
+                        let pageUrl = data.page_url;
+                        if (!pageUrl.startsWith('http://') && !pageUrl.startsWith('https://')) {
+                            pageUrl = window.location.protocol + '//' + window.location.host + (pageUrl.startsWith('/') ? '' : '/') + pageUrl;
                         }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching page preview:', error);
+
+                        // Attach public token so proxy can append access_token
+                        const publicToken = "{{ public_token|default:'' }}";
+                        if (publicToken && pageUrl.indexOf('access_token=') === -1) {
+                            pageUrl += (pageUrl.includes('?') ? '&' : '?') + 'access_token=' + encodeURIComponent(publicToken);
+                        }
+
+                        // Only embed iframe via proxy; remove link/button UI
+                        const iframeSrc = '/proxy-page/?url=' + encodeURIComponent(pageUrl);
                         document.getElementById('pagePreviewContent').innerHTML = `
-                            <div class="alert alert-danger">
-                                <p>Failed to load page preview. Please try again later.</p>
-                                <p class="small text-muted">Technical details: ${error.message}</p>
+                            <iframe src="${iframeSrc}" id="preview-iframe" style="border:none;height:65vh;width:100%"></iframe>
+                        `;
+                    } else {
+                        document.getElementById('pagePreviewContent').innerHTML = `
+                            <div class="alert alert-info">
+                                <p>${data.message || 'No linked page found for this indicator.'}</p>
                             </div>
                         `;
-                    });
-            });
-        });
-        
-        // Clean up extra buttons when modal is hidden
-        document.getElementById('pagePreviewModal').addEventListener('hidden.bs.modal', function() {
-            // Remove any dynamically added buttons from the footer
-            const footer = document.querySelector('.modal-footer');
-            const buttons = footer.querySelectorAll('button');
-            
-            // Keep only the original close button
-            if (buttons.length > 1) {
-                for (let i = 0; i < buttons.length - 1; i++) {
-                    if (!buttons[i].classList.contains('btn-secondary')) {
-                        buttons[i].remove();
                     }
-                }
-            }
+                })
+                .catch(error => {
+                    console.error('Error fetching page preview:', error);
+                    document.getElementById('pagePreviewContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            <p>Failed to load page preview. Please try again later.</p>
+                        </div>
+                    `;
+                });
         });
     });
+
+    // Cleanup modal extras on hide
+    document.getElementById('pagePreviewModal').addEventListener('hidden.bs.modal', function() {
+        const previewContent = document.getElementById('pagePreviewContent');
+        if (previewContent) previewContent.innerHTML = `
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+    });
+});
 </script>
 {% endblock %}
