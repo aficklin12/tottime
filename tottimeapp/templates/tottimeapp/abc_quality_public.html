@@ -553,6 +553,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Page preview handling (indicator links)
     const indicatorLinks = document.querySelectorAll('.indicator-link');
+    const publicToken = "{{ public_token|default:'' }}";
+    
     indicatorLinks.forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
@@ -575,10 +577,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const modal = new bootstrap.Modal(previewModal);
             modal.show();
 
-            // Fetch preview metadata (page URL, title)
-            fetch(`/api/get-page-preview/${indicatorDbId}/`)
+            // Build preview URL with access token
+            let previewUrl = `/api/get-page-preview/${indicatorDbId}/`;
+            if (publicToken) {
+                previewUrl += `?access_token=${encodeURIComponent(publicToken)}`;
+            }
+            
+            console.log('Fetching preview from:', previewUrl); // Debug log
+            
+            fetch(previewUrl)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Preview data:', data); // Debug log
+                    
                     if (data.success && data.page_url) {
                         document.getElementById('previewModalTitle').textContent = data.title || `Preview for ${indicatorId}`;
 
@@ -588,14 +599,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             pageUrl = window.location.protocol + '//' + window.location.host + (pageUrl.startsWith('/') ? '' : '/') + pageUrl;
                         }
 
-                        // Attach public token so proxy can append access_token
-                        const publicToken = "{{ public_token|default:'' }}";
+                        // Attach public token to the page URL so proxy can authenticate
                         if (publicToken && pageUrl.indexOf('access_token=') === -1) {
                             pageUrl += (pageUrl.includes('?') ? '&' : '?') + 'access_token=' + encodeURIComponent(publicToken);
                         }
 
-                        // Only embed iframe via proxy; remove link/button UI
-                        const iframeSrc = '/proxy-page/?url=' + encodeURIComponent(pageUrl);
+                        // Build iframe via proxy
+                        const iframeSrc = '/proxy-page/?url=' + encodeURIComponent(pageUrl) + 
+                                         (publicToken ? '&access_token=' + encodeURIComponent(publicToken) : '');
+                        
                         document.getElementById('pagePreviewContent').innerHTML = `
                             <iframe src="${iframeSrc}" id="preview-iframe" style="border:none;height:65vh;width:100%"></iframe>
                         `;

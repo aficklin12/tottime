@@ -1,38 +1,41 @@
 from django.utils.deprecation import MiddlewareMixin
-from django.contrib.auth import authenticate, login
 from .models import TemporaryAccess
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TemporaryAccessMiddleware(MiddlewareMixin):
-    """Automatically authenticates users with temporary access tokens"""
-
+    """
+    Middleware to handle temporary access tokens in query parameters.
+    When a valid access_token is present, sets request.temp_main_user to the
+    location that was shared (TemporaryAccess.user), regardless of who created it
+    or what location they're currently viewing.
+    """
     def process_request(self, request):
-        # Skip if user is already authenticated
-        if request.user.is_authenticated:
-            return None
-
-        token = None
-        # query param
-        token_param = request.GET.get('access_token')
-        if token_param:
-            token = token_param
-
-        # path form /public/<token>/
-        path_parts = request.path.strip('/').split('/')
-        if len(path_parts) >= 2 and path_parts[-2] == 'public':
-            token = path_parts[-1]
-
+        # Check for access_token in query params (don't skip if user is authenticated)
+        token = request.GET.get('access_token')
         if not token:
             return None
-
-        user = authenticate(request=request, token=token)
-        if user:
-            login(request, user)
-            request.session['is_temporary_access'] = True
-            request.session['access_token'] = str(token)
-            try:
-                temp_access = TemporaryAccess.objects.get(token=token)
-                request.session['temp_access_expires'] = temp_access.expires_at.isoformat()
-            except TemporaryAccess.DoesNotExist:
-                pass
-
+        
+        try:
+            temp_access = TemporaryAccess.objects.get(token=token, is_active=True)
+            
+            if temp_access.is_valid:
+                # The temp_main_user is the location that was shared when the link was created
+                # This is locked at creation time and never changes
+                request.temp_main_user = temp_access.user
+                request.is_public_access = True
+                
+                # Update last used
+                temp_access.last_used = timezone.now()
+                temp_access.save(update_fields=['last_used'])
+                
+                logger.info(f"Public access granted for location {temp_access.user.id} ({temp_access.user.company_name}) via token {token}")
+            else:
+                logger.warning(f"Expired access token used: {token}")
+                
+        except (TemporaryAccess.DoesNotExist, ValueError):
+            logger.warning(f"Invalid access token: {token}")
+        
         return None

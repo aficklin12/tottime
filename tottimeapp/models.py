@@ -469,7 +469,7 @@ class CompanyAccountOwner(models.Model):
         parts = [self.facility_city, self.facility_state, self.facility_zip]
         return ", ".join([part for part in parts if part])
     
-MAX_IMAGE_SIZE = 5 * 1024 * 1024
+MAX_IMAGE_SIZE = 5 * 1024 * 1024 
 class MainUser(AbstractUser):
     first_name = models.CharField(max_length=30, blank=False)
     last_name = models.CharField(max_length=30, blank=False)
@@ -1318,14 +1318,18 @@ class PublicLink(models.Model):
     
 class IndicatorPageLink(models.Model):
     """Model to link an indicator to a page (named URL or path or absolute URL)"""
-    indicator = models.OneToOneField(ABCQualityIndicator, on_delete=models.CASCADE, related_name='page_link')
-    page_template = models.CharField(max_length=255)  # store URL name or path or full URL
+    indicator = models.ForeignKey(ABCQualityIndicator, on_delete=models.CASCADE, related_name='page_links')  # Changed from OneToOne
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='indicator_page_links')  # Added
+    page_template = models.CharField(max_length=255)
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('indicator', 'main_user')  # Each location can have their own link per indicator
 
     def __str__(self):
-        return f"{self.indicator.indicator_id} → {self.page_template}"
+        return f"{self.main_user.company_name or self.main_user.username} - {self.indicator.indicator_id} → {self.page_template}"
 
 class TemporaryAccess(models.Model):
     """Stores temporary access tokens that allow impersonation of a user"""

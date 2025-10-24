@@ -70,10 +70,40 @@ def public_or_login_required(view_func):
     return wrapper
 
 def get_user_for_view(request):
+    """
+    Returns the appropriate main_user for the current request.
+    Checks for:
+    1. Public access token (request.temp_main_user set by middleware)
+    2. Linked account (main_account_owner_id)
+    3. Current user
+    """
+    # Check if this is a public access request
+    if hasattr(request, 'temp_main_user'):
+        logger.info(f"Using temp_main_user from public access: {request.temp_main_user.id}")
+        return request.temp_main_user
+    
     user = request.user
-    # If user has a main_account_owner_id, return that MainUser
-    if hasattr(user, 'main_account_owner_id') and user.main_account_owner_id:
-        return MainUser.objects.get(id=user.main_account_owner_id)
+    logger.info(f"get_user_for_view called for user: {user.id} ({user.username})")
+    
+    # If user has a main_account_owner and they are currently viewing as that account owner
+    # This handles the "switch" functionality where users can view other locations
+    if hasattr(user, 'main_account_owner') and user.main_account_owner:
+        # Check if there's a session variable indicating which location they're viewing
+        current_viewing_location = request.session.get('current_viewing_location')
+        if current_viewing_location:
+            try:
+                main_user = MainUser.objects.get(id=current_viewing_location)
+                logger.info(f"Using session location: {main_user.id} ({main_user.username})")
+                return main_user
+            except MainUser.DoesNotExist:
+                pass
+        
+        # Default to main_account_owner if no session override
+        main_user = user.main_account_owner
+        logger.info(f"Returning main_account_owner: {main_user.id} ({main_user.username})")
+        return main_user
+    
+    logger.info(f"Returning original user: {user.id} ({user.username})")
     return user
 
 def check_permissions(request, required_permission_id=None):
@@ -6665,6 +6695,7 @@ def proxy_page(request):
     - Appends access_token from the incoming request to the fetched URL if missing.
     - Strips script tags from the extracted content and injects a read-only enforcer script
       that disables forms/inputs/buttons and prevents navigation.
+    - Respects main_user context when fetching pages with public access tokens.
     """
     url = request.GET.get('url')
     proxy_token = request.GET.get('access_token') or request.GET.get('token') or ''
@@ -6672,12 +6703,24 @@ def proxy_page(request):
         return HttpResponse("No URL provided", status=400)
 
     try:
+        # Build request with appropriate session/auth context
+        session = requests.Session()
+        
+        # If we have a public access token, we need to ensure the proxied request
+        # maintains the same main_user context
+        headers = {}
+        cookies = {}
+        
+        # Copy cookies from the current request to maintain session
+        if request.COOKIES:
+            cookies = dict(request.COOKIES)
+        
         # If the proxied page doesn't already include an access_token, append the proxy token
         if proxy_token and 'access_token=' not in url:
             url += ('&' if '?' in url else '?') + f"access_token={urllib.parse.quote(proxy_token)}"
 
-        # Fetch target content
-        response = requests.get(url, timeout=10)
+        # Fetch target content with session context
+        response = session.get(url, timeout=10, cookies=cookies, headers=headers)
         response.raise_for_status()
 
         content_type = response.headers.get('Content-Type', '')
@@ -6916,191 +6959,253 @@ body {{ padding: 0; margin: 0; background-color: #ffffff; }}
 </div>
 """, content_type='text/html', status=500)
 
-
 def abc_quality_public(request, token):
     """
     Public view function for displaying ABC Quality standards and documentation.
-    Accepts tokens created either as PublicLink or TemporaryAccess.
+    Accepts tokens created as TemporaryAccess and scopes data to the token's user (location).
     """
-    public_link = None
-    main_user = None
-
-    # Try PublicLink first
+    # Try to find the temporary access token
     try:
-        public_link = PublicLink.objects.get(token=token)
-        main_user = public_link.main_user
-        expires_at = public_link.expires_at
-    except PublicLink.DoesNotExist:
-        # Fallback to TemporaryAccess
-        try:
-            temp_access = TemporaryAccess.objects.get(token=token, is_active=True)
-            if not temp_access.is_valid:
-                return render(request, 'tottimeapp/link_expired.html')
-            main_user = temp_access.user
-            expires_at = temp_access.expires_at
-            public_link = None
-        except TemporaryAccess.DoesNotExist:
-            raise Http404("Public link not found")
+        temp_access = TemporaryAccess.objects.get(token=token, is_active=True)
+        if not temp_access.is_valid:
+            return render(request, 'tottimeapp/link_expired.html')
+        
+        # The main_user is derived from the token's user field (the location)
+        main_user = temp_access.user
+        expires_at = temp_access.expires_at
+        
+        # Update last_used timestamp
+        temp_access.last_used = timezone.now()
+        temp_access.save(update_fields=['last_used'])
+        
+    except TemporaryAccess.DoesNotExist:
+        raise Http404("Public link not found or expired")
 
-    if expires_at < timezone.now():
-        return render(request, 'tottimeapp/link_expired.html')
-
+    # Fetch ABC Quality elements (same for all locations)
     main_elements = ABCQualityElement.objects.filter(
         parent_element__isnull=True
-    ).prefetch_related('indicators', 'sections', 'sections__indicators').order_by('display_order')
+    ).prefetch_related(
+        'indicators', 
+        'sections', 
+        'sections__indicators'
+    ).order_by('display_order')
 
+    # Get resources scoped to this specific location (main_user)
     abc_resources = Resource.objects.filter(
         main_user=main_user,
         resource_type='abc_quality'
     ).order_by('-uploaded_at')
 
+    # Group resources by indicator
     grouped_resources = {}
     for resource in abc_resources:
-        indicator_id = resource.abc_indicator.indicator_id if resource.abc_indicator else (resource.indicator_id or "Uncategorized")
+        if resource.abc_indicator:
+            indicator_id = resource.abc_indicator.indicator_id
+        else:
+            indicator_id = resource.indicator_id or "Uncategorized"
         grouped_resources.setdefault(indicator_id, []).append(resource)
 
     expiry_date = expires_at.strftime("%B %d, %Y at %I:%M %p")
+    location_name = main_user.company_name or main_user.get_full_name()
 
     context = {
         'main_elements': main_elements,
         'grouped_resources': grouped_resources,
         'expiry_date': expiry_date,
+        'location_name': location_name,
         'is_public': True,
-        'public_token': token,
+        'public_token': str(token),
     }
 
     return render(request, 'tottimeapp/abc_quality_public.html', context)
 
-def _collect_reverseable_named_urls():
-    resolver = get_resolver()
-    pages = []
-    # recursive helper
-    def walk(patterns):
-        from django.urls.resolvers import URLResolver, URLPattern
-        for p in patterns:
-            if isinstance(p, URLResolver):
-                walk(p.url_patterns)
-            elif isinstance(p, URLPattern):
-                name = getattr(p, 'name', None)
-                if name:
-                    try:
-                        path = reverse(name)
-                        pages.append({'name': name, 'path': path})
-                    except (NoReverseMatch, TypeError):
-                        # skip patterns that require args
-                        continue
-    walk(resolver.url_patterns)
-    # deduplicate by name
-    seen = set()
-    unique = []
-    for p in pages:
-        if p['name'] not in seen:
-            seen.add(p['name'])
-            unique.append(p)
-    return unique
-
 @login_required
 def get_indicator_link(request, indicator_id):
     """
-    Return indicator link data for the specified indicator.
-    Users can paste any URL they want to link.
+    Return indicator link data for the specified indicator, scoped to current location.
     """
+    main_user = get_user_for_view(request)
+    
+    logger.info(f"Fetching link for indicator {indicator_id}, main_user {main_user.id}")
+    
     try:
         indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
     except ABCQualityIndicator.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
 
     try:
-        link = indicator.page_link
+        link = IndicatorPageLink.objects.get(indicator=indicator, main_user=main_user)
+        logger.info(f"Found link: {link.id}, page_template: {link.page_template}")
         link_data = {
             'page_template': link.page_template,
             'title': link.title,
             'updated_at': link.updated_at.strftime('%b %d, %Y %H:%M'),
-            'page_url': link.page_template
+            'page_url': link.page_template,
+            'main_user_id': main_user.id  # Added for debugging
         }
     except IndicatorPageLink.DoesNotExist:
+        logger.info(f"No link found for indicator {indicator.id} and main_user {main_user.id}")
         link_data = None
 
-    return JsonResponse({'success': True, 'link': link_data})
+    return JsonResponse({'success': True, 'link': link_data, 'main_user_id': main_user.id})
 
 @login_required
 @require_POST
 def save_indicator_link(request):
-    indicator_db_id = request.POST.get('indicator_id')
-    page_template = request.POST.get('page_template', '').strip()
-    title = request.POST.get('title', '').strip()
-    if not indicator_db_id:
-        return JsonResponse({'success': False, 'error': 'Missing indicator id'}, status=400)
     try:
-        indicator = ABCQualityIndicator.objects.get(pk=indicator_db_id)
-    except ABCQualityIndicator.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
+        main_user = get_user_for_view(request)
+        indicator_db_id = request.POST.get('indicator_id')
+        page_template = request.POST.get('page_template', '').strip()
+        title = request.POST.get('title', '').strip()
+        
+        logger.info(f"Save request - User: {request.user.id}, Main User: {main_user.id}, Indicator: {indicator_db_id}")
+        
+        if not indicator_db_id:
+            return JsonResponse({'success': False, 'error': 'Missing indicator id'}, status=400)
+        
+        if not page_template:
+            return JsonResponse({'success': False, 'error': 'Page URL is required'}, status=400)
+        
+        try:
+            indicator = ABCQualityIndicator.objects.get(pk=indicator_db_id)
+        except ABCQualityIndicator.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
 
-    IndicatorPageLink.objects.update_or_create(
-        indicator=indicator,
-        defaults={'page_template': page_template, 'title': title}
-    )
-    return JsonResponse({'success': True})
+        # Debug logging
+        logger.info(f"Saving link for indicator {indicator.id}, main_user {main_user.id}, page_template: {page_template}")
+
+        link, created = IndicatorPageLink.objects.update_or_create(
+            indicator=indicator,
+            main_user=main_user,
+            defaults={'page_template': page_template, 'title': title}
+        )
+        
+        logger.info(f"Link {'created' if created else 'updated'}: {link.id}")
+        
+        # Return more info for debugging
+        return JsonResponse({
+            'success': True,
+            'created': created,
+            'link_id': link.id,
+            'main_user_id': main_user.id,
+            'indicator_id': indicator.id
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error saving indicator link: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
 
 @login_required
 @require_POST
 def remove_indicator_link(request, indicator_id):
+    main_user = get_user_for_view(request)
+    
     try:
         indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
     except ABCQualityIndicator.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Indicator not found'}, status=404)
-    IndicatorPageLink.objects.filter(indicator=indicator).delete()
+    
+    IndicatorPageLink.objects.filter(indicator=indicator, main_user=main_user).delete()
     return JsonResponse({'success': True})
 
+
 def get_page_preview(request, indicator_id):
+    """
+    Returns page preview info for the indicator, scoped to the authenticated user's location.
+    Works for both logged-in users and public token access.
+    """
+    # Determine main_user from either logged-in user or public token
+    if request.user.is_authenticated:
+        main_user = get_user_for_view(request)
+    else:
+        # Public access: get main_user from token in query params
+        token = request.GET.get('access_token')
+        if not token:
+            return JsonResponse({'success': False, 'message': 'No access token provided'}, status=403)
+        
+        try:
+            temp_access = TemporaryAccess.objects.get(token=token, is_active=True)
+            if not temp_access.is_valid:
+                return JsonResponse({'success': False, 'message': 'Access token expired'}, status=403)
+            main_user = temp_access.user
+            
+            # Update last_used timestamp
+            temp_access.last_used = timezone.now()
+            temp_access.save(update_fields=['last_used'])
+            
+        except (TemporaryAccess.DoesNotExist, ValueError):
+            # ValueError handles malformed UUIDs
+            return JsonResponse({'success': False, 'message': 'Invalid access token'}, status=403)
+    
     try:
         indicator = ABCQualityIndicator.objects.get(pk=indicator_id)
         try:
-            page_link = indicator.page_link
+            # Fetch the page link scoped to the main_user from the token
+            page_link = IndicatorPageLink.objects.get(indicator=indicator, main_user=main_user)
             
-            # Include the URL in the response
             return JsonResponse({
                 'success': True,
                 'title': page_link.title or f"Preview for {indicator.indicator_id}",
                 'page_url': page_link.page_template,
-                'content': 'Loading content from URL...'  # Fallback content
+                'content': 'Loading content from URL...',
+                'main_user_id': main_user.id  # Debug info
             })
         except IndicatorPageLink.DoesNotExist:
             return JsonResponse({
                 'success': False,
-                'message': 'No page link found for this indicator'
+                'message': f'No page link found for this indicator at {main_user.company_name or "this location"}'
             })
     except ABCQualityIndicator.DoesNotExist:
         return JsonResponse({
             'success': False,
             'message': 'Indicator not found'
         }, status=404)
-        
+    
 @login_required
 def create_public_link(request):
+    """
+    Creates a public access link for the current user's location.
+    The link is permanently tied to the location at the time of creation,
+    regardless of future location switches.
+    """
     if request.method == 'POST':
+        # Get the CURRENT location the user is viewing
         main_user = get_user_for_view(request)
+        
         days_valid = int(request.POST.get('days_valid', 7))
-        purpose = request.POST.get('purpose', 'Temporary access')
+        purpose = request.POST.get('purpose', 'ABC Quality Documentation Access')
 
-        temp_access = TemporaryAccess.create_for_user(
-            user=main_user,
-            expires_in_days=days_valid,
+        # Calculate expiry
+        expires_at = timezone.now() + timedelta(days=days_valid)
+
+        # Create temporary access token - this locks to the current main_user
+        # Even if the creator switches locations later, this token will always
+        # show data for the main_user it was created with
+        temp_access = TemporaryAccess.objects.create(
+            user=main_user,  # This is the location being shared
+            expires_at=expires_at,
             purpose=purpose,
-            target_url=f'/abc-quality/public/{temp_access.token}/' if False else '/abc-quality/public/'  # placeholder, overwritten below
+            target_url=f'/abc-quality/public/',
+            is_active=True
         )
 
-        # Build direct link to the public view that renders abc_quality_public.html
+        # Build the public URL with the token
         public_path = reverse('abc_quality_public', args=[str(temp_access.token)])
         public_url = request.build_absolute_uri(public_path)
+
+        logger.info(f"Public link created by user {request.user.id} for location {main_user.id} ({main_user.company_name})")
 
         return JsonResponse({
             'success': True,
             'url': public_url,
-            'expires_at': temp_access.expires_at.strftime("%B %d, %Y at %I:%M %p")
+            'expires_at': expires_at.strftime("%B %d, %Y at %I:%M %p"),
+            'location': main_user.company_name or main_user.get_full_name()
         })
 
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
 
 def public_access_redirect(request, token):
     """

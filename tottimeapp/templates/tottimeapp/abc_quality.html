@@ -686,7 +686,43 @@
                 <h5 class="modal-title">Link Page to Indicator <span id="indicatorLinkId"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="indicatorLinkForm">
+            
+            <!-- Existing Link View -->
+            <div id="existingLinkView" style="display: none;">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-link"></i> Current Linked Page</h6>
+                        <div class="mt-3">
+                            <strong>URL:</strong>
+                            <div class="mb-2">
+                                <a href="#" id="existingLinkUrl" target="_blank" class="text-break"></a>
+                            </div>
+                        </div>
+                        <div id="existingLinkTitleContainer" style="display: none;">
+                            <strong>Title:</strong>
+                            <div class="mb-2" id="existingLinkTitle"></div>
+                        </div>
+                        <div class="text-muted small">
+                            Last updated: <span id="existingLinkDate"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="viewLinkedPageBtn">
+                        <i class="fas fa-eye"></i> View Page
+                    </button>
+                    <button type="button" class="btn btn-danger" id="removeExistingLinkBtn">
+                        <i class="fas fa-trash"></i> Remove Link
+                    </button>
+                    <button type="button" class="btn btn-warning" id="editLinkBtn">
+                        <i class="fas fa-edit"></i> Edit Link
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+            
+            <!-- Create/Edit Link Form -->
+            <form id="indicatorLinkForm" style="display: none;">
                 {% csrf_token %}
                 <div class="modal-body">
                     <input type="hidden" id="indicator_db_id" name="indicator_id">
@@ -712,16 +748,9 @@
                             name="title" 
                             placeholder="Enter a descriptive title">
                     </div>
-                    
-                    <div id="currentLinkInfo" style="display: none;" class="alert alert-info">
-                        <strong>Current Link:</strong>
-                        <div id="currentLinkDisplay"></div>
-                        <small class="text-muted">Last updated: <span id="currentLinkDate"></span></small>
-                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" id="removeLinkBtn" style="display: none;">Remove Link</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
                     <button type="submit" class="btn btn-primarytwo">Save Link</button>
                 </div>
             </form>
@@ -969,31 +998,6 @@
             modal.show();
         });
         
-        // REMOVE THIS SECTION - compileButtons is not defined
-        // Set up click handler for compile buttons
-        // compileButtons.forEach(button => {
-        //     button.addEventListener('click', function() {
-        //         // Get data attributes
-        //         const elementNumber = this.getAttribute('data-element');
-        //         const elementName = this.getAttribute('data-element-name');
-        //         const sectionName = this.getAttribute('data-section') || null;
-        //         
-        //         // Set values in the modal
-        //         document.getElementById('element_number').value = elementNumber;
-        //         if (sectionName) {
-        //             document.getElementById('section_name').value = sectionName;
-        //             document.getElementById('compileScope').textContent = `Element ${elementNumber} - ${sectionName}`;
-        //         } else {
-        //             document.getElementById('section_name').value = '';
-        //             document.getElementById('compileScope').textContent = `Element ${elementNumber}: ${elementName}`;
-        //         }
-        //         
-        //         // Show the modal using Bootstrap modal
-        //         const modal = new bootstrap.Modal(document.getElementById('compileOptionsModal'));
-        //         modal.show();
-        //     });
-        // });
-        
         // Handle form submission
         document.getElementById('compileDocumentsForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -1228,6 +1232,9 @@
     // Handle indicator link clicks for page linking
     document.addEventListener('DOMContentLoaded', function() {
         const indicatorLinks = document.querySelectorAll('.indicator-link');
+        const existingLinkView = document.getElementById('existingLinkView');
+        const indicatorLinkForm = document.getElementById('indicatorLinkForm');
+        let currentLinkData = null;
         
         indicatorLinks.forEach(link => {
             link.addEventListener('click', function(e) {
@@ -1239,17 +1246,15 @@
                 document.getElementById('indicatorLinkId').textContent = indicatorId;
                 document.getElementById('indicator_db_id').value = indicatorDbId;
                 
-                // Clear form
-                document.getElementById('page_url').value = '';
-                document.getElementById('link_title').value = '';
-                document.getElementById('currentLinkInfo').style.display = 'none';
-                document.getElementById('removeLinkBtn').style.display = 'none';
+                // Reset views
+                existingLinkView.style.display = 'none';
+                indicatorLinkForm.style.display = 'none';
                 
-                // Show modal immediately
+                // Show modal with loading state
                 const modal = new bootstrap.Modal(document.getElementById('indicatorLinkModal'));
                 modal.show();
                 
-                // Fetch existing link data (but don't block modal opening)
+                // Fetch existing link data
                 fetch(`/api/get-indicator-link/${indicatorDbId}/`)
                     .then(response => {
                         if (!response.ok) {
@@ -1259,54 +1264,133 @@
                     })
                     .then(data => {
                         if (data.success && data.link) {
-                            // Populate form with existing link
-                            document.getElementById('page_url').value = data.link.page_url || data.link.page_template;
-                            document.getElementById('link_title').value = data.link.title || '';
-                            
-                            // Show current link info
-                            document.getElementById('currentLinkDisplay').textContent = data.link.page_url || data.link.page_template;
-                            document.getElementById('currentLinkDate').textContent = data.link.updated_at;
-                            document.getElementById('currentLinkInfo').style.display = 'block';
-                            document.getElementById('removeLinkBtn').style.display = 'inline-block';
+                            // Show existing link view
+                            currentLinkData = data.link;
+                            showExistingLinkView(data.link);
+                        } else {
+                            // No existing link, show form to create new
+                            showCreateLinkForm();
                         }
                     })
                     .catch(error => {
                         console.error('Error fetching link data:', error);
-                        // Don't show error toast - modal is already open and user can still create a new link
+                        // On error, show create form
+                        showCreateLinkForm();
                     });
             });
         });
         
-        // Handle form submission
-        document.getElementById('indicatorLinkForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        function showExistingLinkView(linkData) {
+            // Populate existing link info
+            const linkUrl = linkData.page_url || linkData.page_template;
+            document.getElementById('existingLinkUrl').href = linkUrl;
+            document.getElementById('existingLinkUrl').textContent = linkUrl;
+            document.getElementById('existingLinkDate').textContent = linkData.updated_at;
             
-            const formData = new FormData(this);
+            if (linkData.title) {
+                document.getElementById('existingLinkTitle').textContent = linkData.title;
+                document.getElementById('existingLinkTitleContainer').style.display = 'block';
+            } else {
+                document.getElementById('existingLinkTitleContainer').style.display = 'none';
+            }
             
-            fetch('/api/save-indicator-link/', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    toastr.success('Link saved successfully');
-                    bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
-                } else {
-                    toastr.error(data.error || 'Failed to save link');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                toastr.error('An error occurred while saving');
-            });
+            // Show existing link view, hide form
+            existingLinkView.style.display = 'block';
+            indicatorLinkForm.style.display = 'none';
+        }
+        
+        function showCreateLinkForm() {
+            // Clear form
+            document.getElementById('page_url').value = '';
+            document.getElementById('link_title').value = '';
+            
+            // Show form, hide existing link view
+            existingLinkView.style.display = 'none';
+            indicatorLinkForm.style.display = 'block';
+        }
+        
+        function showEditLinkForm() {
+            // Populate form with existing data
+            const linkUrl = currentLinkData.page_url || currentLinkData.page_template;
+            document.getElementById('page_url').value = linkUrl;
+            document.getElementById('link_title').value = currentLinkData.title || '';
+            
+            // Show form, hide existing link view
+            existingLinkView.style.display = 'none';
+            indicatorLinkForm.style.display = 'block';
+        }
+        
+        // View linked page button
+        document.getElementById('viewLinkedPageBtn').addEventListener('click', function() {
+            const indicatorDbId = document.getElementById('indicator_db_id').value;
+            const indicatorId = document.getElementById('indicatorLinkId').textContent;
+            
+            // Close the link modal
+            bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
+            
+            // Open the page preview modal
+            document.getElementById('previewModalTitle').textContent = `Loading preview for ${indicatorId}...`;
+            document.getElementById('pagePreviewContent').innerHTML = `
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            const previewModal = new bootstrap.Modal(document.getElementById('pagePreviewModal'));
+            previewModal.show();
+            
+            // Fetch and display preview
+            fetch(`/api/get-page-preview/${indicatorDbId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.page_url) {
+                        document.getElementById('previewModalTitle').textContent = data.title || `Preview for ${indicatorId}`;
+                        
+                        let pageUrl = data.page_url;
+                        if (!pageUrl.startsWith('http://') && !pageUrl.startsWith('https://')) {
+                            pageUrl = window.location.protocol + '//' + window.location.host + (pageUrl.startsWith('/') ? '' : '/') + pageUrl;
+                        }
+                        
+                        const iframeSrc = '/proxy-page/?url=' + encodeURIComponent(pageUrl);
+                        document.getElementById('pagePreviewContent').innerHTML = `
+                            <iframe src="${iframeSrc}" style="border:none;height:65vh;width:100%"></iframe>
+                        `;
+                    } else {
+                        document.getElementById('pagePreviewContent').innerHTML = `
+                            <div class="alert alert-info">
+                                <p>${data.message || 'No linked page found for this indicator.'}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('pagePreviewContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            <p>Failed to load page preview.</p>
+                        </div>
+                    `;
+                });
         });
         
-        // Handle remove link button
-        document.getElementById('removeLinkBtn').addEventListener('click', function() {
+        // Edit link button
+        document.getElementById('editLinkBtn').addEventListener('click', function() {
+            showEditLinkForm();
+        });
+        
+        // Cancel edit button
+        document.getElementById('cancelEditBtn').addEventListener('click', function() {
+            if (currentLinkData) {
+                showExistingLinkView(currentLinkData);
+            } else {
+                bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
+            }
+        });
+        
+        // Remove existing link button
+        document.getElementById('removeExistingLinkBtn').addEventListener('click', function() {
             const indicatorDbId = document.getElementById('indicator_db_id').value;
             
             if (confirm('Are you sure you want to remove this link?')) {
@@ -1320,6 +1404,7 @@
                 .then(data => {
                     if (data.success) {
                         toastr.success('Link removed successfully');
+                        currentLinkData = null;
                         bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
                     } else {
                         toastr.error('Failed to remove link');
@@ -1330,6 +1415,43 @@
                     toastr.error('An error occurred');
                 });
             }
+        });
+        
+        // Handle form submission
+        document.getElementById('indicatorLinkForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const csrfToken = formData.get('csrfmiddlewaretoken');
+            
+            fetch('/api/save-indicator-link/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    toastr.success('Link saved successfully');
+                    currentLinkData = null;
+                    bootstrap.Modal.getInstance(document.getElementById('indicatorLinkModal')).hide();
+                } else {
+                    toastr.error(data.error || 'Failed to save link');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving link:', error);
+                toastr.error('An error occurred while saving: ' + error.message);
+            });
         });
     });
 </script>
