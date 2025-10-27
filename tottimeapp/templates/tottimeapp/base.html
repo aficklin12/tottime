@@ -224,20 +224,123 @@
 }
 /* For mobile devices, center the logo */
 @media (max-width: 1000px) {
-    .navbar-brand {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        margin: 0;
-    }
-    
-    /* Ensure navbar has enough height for the centered logo */
-    .sb-topnav {
-        min-height: 56px;
-        display: flex;
-        justify-content: center;
-    }
-}
+.navbar-brand {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          margin: 0;
+      }
+      
+      /* Ensure navbar has enough height for the centered logo */
+      .sb-topnav {
+          min-height: 56px;
+          display: flex;
+          justify-content: center;
+      }
+  }
+
+  /* Location in navbar (hidden by default, shown for >=1000px) */
+  .navbar-location {
+      display: none;
+      color: #ffffff;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 400px; /* limit width so it doesn't collide with controls */
+      pointer-events: none; /* not interactive */
+      margin-left: 12px; /* space to right of logo */
+  }
+
+  /* group logo + location so location appears immediately to the right of logo */
+  .navbar-left-group {
+      display: inline-flex;
+      align-items: center;
+  }
+
+  @media (min-width: 1000px) {
+      .navbar-location {
+          display: block;
+      }
+  }
+
+  /* Small-screen location bar (hidden on desktop) */
+  .navbar-location-bar {
+      display: none;
+      background-color: #212529; /* match dark navbar background */
+      color: #ffffff;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      text-align: center;
+      padding: 8px 12px;
+      box-sizing: border-box;
+      width: 100%;
+      z-index: 1040;
+  }
+
+  /* Make the location bar fixed directly under the (fixed) navbar on small screens
+     and push page content down so it is visible (override earlier rules). */
+  @media (max-width: 999px) {
+      .navbar-location-bar {
+          display: block;
+          position: fixed;
+          top: calc(56px + env(safe-area-inset-top)); /* below the top navbar */
+          left: 0;
+          right: 0;
+          height: 44px; /* adjust if you want a taller/shorter bar */
+          line-height: 28px;
+          padding-top: 8px;
+          padding-bottom: 8px;
+          box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+          z-index: 1040;
+      }
+
+      /* Ensure the fixed navbar + location bar do not overlap the page content */
+      #layoutSidenav {
+          margin-top: calc(56px + env(safe-area-inset-top) + 44px) !important;
+          min-height: calc(100vh - 56px - 44px - env(safe-area-inset-top));
+      }
+
+      /* keep inline desktop location hidden on small screens */
+      .navbar-location { display: none !important; }
+  }
+
+  @media (max-width: 1000px) {
+      /* existing mobile rules... */
+
+      /* Ensure sidebar toggle sits to the left of the centered logo */
+      #sidebarToggle {
+          position: absolute;
+          left: 12px;                 /* distance from left edge */
+          top: 50%;
+          transform: translateY(-50%);/* vertically center in navbar */
+          z-index: 1060;              /* above navbar content */
+      }
+
+      /* If you also have a back button, move it to the left of the toggle */
+      .btn-outline-light.me-2 {
+          position: absolute;
+          left: 52px;                 /* make room for the toggle */
+          top: 50%;
+          transform: translateY(-50%);
+          z-index: 1060;
+      }
+
+      /* Give the centered logo enough space so it doesn't overlap the toggle */
+      .sb-topnav .navbar-brand {
+          max-width: 160px; /* reduce if needed */
+          z-index: 1050;    /* behind the toggle */
+      }
+
+      /* Optional: prevent other right-side navbar items overlapping the logo */
+      .sb-topnav .ms-auto {
+          margin-right: 12px;
+      }
+  }
     </style>
     {% block styles %}{% endblock %}
 </head>
@@ -254,10 +357,23 @@
             <i class="fas fa-bars"></i>
         </button>
         {% endif %}
-        <a class="navbar-brand" href="{% url 'index' %}" onclick="window.location.replace(this.href); return false;">
-            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
-        </a>
-       
+
+        <div class="navbar-left-group">
+            <a class="navbar-brand" href="{% url 'index' %}" onclick="window.location.replace(this.href); return false;">
+                <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
+            </a>
+
+            {# Location text to the right of the logo (visible >=1000px via existing CSS) #}
+            {% if user.is_authenticated and available_account_owners %}
+                {% for account_owner in available_account_owners %}
+                    {% if user.main_account_owner_id == account_owner.main_account_owner.id %}
+                        <div class="navbar-location" aria-hidden="true">
+                            {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
 
         <!-- Navbar-->
         <div class="ms-auto">
@@ -300,6 +416,18 @@
             </ul>
         </div>
     </nav>
+
+    <!-- Small-screen location bar: appears directly below navbar and above content -->
+    <div class="navbar-location-bar" role="region" aria-label="Current location">
+        {% if user.is_authenticated and available_account_owners %}
+            {% for account_owner in available_account_owners %}
+                {% if user.main_account_owner_id == account_owner.main_account_owner.id %}
+                    {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+
     <div id="layoutSidenav">
         <div id="layoutSidenav_nav">
             <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">

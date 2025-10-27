@@ -178,7 +178,6 @@ class LastInventoryUpdate(models.Model):
 
     def __str__(self):
         return f"Last inventory update for {self.user.username}"
-    
 
 class OrderList(models.Model):
     CATEGORY_CHOICES = [
@@ -193,14 +192,14 @@ class OrderList(models.Model):
         ('Other', 'Other'),
     ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='order_lists')  # <-- Add this line
     item = models.CharField(max_length=100, unique=True, default='default_item')
-    quantity = models.IntegerField(default=1)  # Add default value here
+    quantity = models.IntegerField(default=1)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='Other')
     ordered = models.BooleanField(default=False)
 
     def __str__(self):
         return self.item
-
    
 class Classroom(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

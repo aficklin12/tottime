@@ -9,6 +9,7 @@ from square.client import Client
 from django.conf import settings
 from django.http import Http404
 from functools import wraps
+from bs4 import BeautifulSoup, Comment
 from django.core.paginator import Paginator
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
@@ -1468,35 +1469,41 @@ def menu(request):
     is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
         'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
     ])
-    # If it's a mobile request, redirect to the app_redirect page
     if is_mobile:
-        return HttpResponseRedirect(reverse('app_redirect'))  # Ensure 'app_redirect' is defined in your URLs
-    
-    # Check permissions for the specific page
+        return HttpResponseRedirect(reverse('app_redirect'))
+
     required_permission_id = 271  # Permission ID for menu view
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    
-    # Get the company account owner for the current user
-    try:
-        company_account_owner = CompanyAccountOwner.objects.select_related('company', 'main_account_owner').get(
-            main_account_owner=request.user
-        )
-        facility_name = company_account_owner.location_name or "Not Set"
-        sponsor_name = company_account_owner.company.name
-    except CompanyAccountOwner.DoesNotExist:
+
+    # Use canonical main user for lookups (handles subusers)
+    main_user = get_user_for_view(request)
+
+    # Try to find a CompanyAccountOwner for the main_user, then fallback to company/primary
+    company_account_owner = None
+    if main_user:
+        company_account_owner = CompanyAccountOwner.objects.select_related('company', 'main_account_owner') \
+            .filter(main_account_owner=main_user) \
+            .first()
+
+    if not company_account_owner and getattr(main_user, 'company', None):
+        company_account_owner = CompanyAccountOwner.objects.select_related('company') \
+            .filter(company=main_user.company, is_primary=True) \
+            .first()
+
+    if company_account_owner:
+        facility_name = company_account_owner.location_name or company_account_owner.company.name or "Not Set"
+        sponsor_name = company_account_owner.company.name if company_account_owner.company else (main_user.company.name if getattr(main_user, 'company', None) else "Not Set")
+    else:
         facility_name = "Not Set"
-        sponsor_name = "Not Set"
-    
-    # Add facility and sponsor to the context
+        sponsor_name = getattr(main_user, 'company').name if getattr(main_user, 'company', None) else "Not Set"
+
     permissions_context.update({
         'facility_name': facility_name,
         'sponsor_name': sponsor_name,
     })
-    
-    # If access is allowed, proceed with rendering the menu
+
     return render(request, 'tottimeapp/weekly-menu.html', permissions_context)
 
 @login_required
@@ -2561,45 +2568,63 @@ def delete_recipe(request, recipe_id, category):
 def order_list(request):
     if request.method == 'POST':
         item = request.POST.get('item', '')
-        quantity = request.POST.get('quantity', 1)  # Default to 1 if not provided
-        category = request.POST.get('category', 'Other')  # Default to 'Other' if not provided
+        quantity = request.POST.get('quantity', 1)
+        category = request.POST.get('category', 'Other')
 
         if item:
-            # Get the user using get_user_for_view
-            user = get_user_for_view(request)
-            OrderList.objects.create(user=user, item=item, quantity=quantity, category=category)
+            user = request.user
+            main_user = get_user_for_view(request)
+            OrderList.objects.create(
+                user=user,
+                main_user=main_user,  # <-- Save the location
+                item=item,
+                quantity=quantity,
+                category=category
+            )
             return redirect('order_list')
         else:
             return HttpResponseBadRequest('Invalid form submission')
     else:
-        # Get the user using get_user_for_view
-        user = get_user_for_view(request)
-        order_items = OrderList.objects.filter(user=user)
+        user = request.user
+        main_user = get_user_for_view(request)
+        order_items = OrderList.objects.filter(user=user, main_user=main_user)
         return render(request, 'index.html', {'order_items': order_items})
-
+    
+# views.py
 @login_required
 def shopping_list_api(request):
     if request.method == 'GET':
-        user = get_user_for_view(request)
-        shopping_list_items = OrderList.objects.filter(user=user)
-        serialized_items = [{'id': item.id, 'name': item.item, 'quantity': item.quantity, 'ordered': item.ordered} for item in shopping_list_items]
+        user = request.user
+        main_user = get_user_for_view(request)
+        shopping_list_items = OrderList.objects.filter(user=user, main_user=main_user)
+        serialized_items = [
+            {
+                'id': item.id,
+                'name': item.item,
+                'quantity': item.quantity,
+                'ordered': item.ordered
+            }
+            for item in shopping_list_items
+        ]
         return JsonResponse(serialized_items, safe=False)
     else:
         return HttpResponseNotAllowed(['GET'])
-
+    
+@login_required
 def update_orders(request):
     if request.method == 'POST':
         item_ids = request.POST.getlist('items')
         try:
-            user = get_user_for_view(request)
+            user = request.user
+            main_user = get_user_for_view(request)
             for item_id in item_ids:
-                order_item = get_object_or_404(OrderList, id=item_id, user=user)
+                order_item = get_object_or_404(OrderList, id=item_id, user=user, main_user=main_user)
                 order_item.ordered = True
                 order_item.save()
                 
                 # Add ordered item to inventory automatically
                 inventory_item, created = Inventory.objects.get_or_create(
-                    user=user,
+                    user=main_user,
                     item=order_item.item,
                     defaults={
                         'quantity': order_item.quantity,
@@ -2609,27 +2634,15 @@ def update_orders(request):
                         'total_quantity': order_item.quantity,
                     }
                 )
-                
                 if not created:
                     inventory_item.quantity += order_item.quantity
                     inventory_item.total_quantity += order_item.quantity
                     inventory_item.save()
-                    
             return JsonResponse({'success': True, 'message': 'Orders updated successfully'})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     else:
         return HttpResponseNotAllowed(['POST'])
-    
-def delete_shopping_items(request):
-    if request.method == 'POST':
-        item_ids = request.POST.getlist('items[]')
-        # Assuming your model is called OrderList and has a primary key 'id'
-        OrderList.objects.filter(id__in=item_ids).delete()
-        return redirect('order_list')  # Redirect to the order list page after deletion
-    else:
-        # Handle other HTTP methods if needed
-        pass
 
 @login_required
 def update_shopping_item_status(request):
@@ -2638,10 +2651,10 @@ def update_shopping_item_status(request):
         data = json.loads(request.body)
         item_id = data.get('item_id')
         ordered = data.get('ordered')
-        
         try:
-            user = get_user_for_view(request)
-            order_item = get_object_or_404(OrderList, id=item_id, user=user)
+            user = request.user
+            main_user = get_user_for_view(request)
+            order_item = get_object_or_404(OrderList, id=item_id, user=user, main_user=main_user)
             order_item.ordered = ordered
             order_item.save()
             return JsonResponse({'success': True, 'message': 'Status updated successfully'})
@@ -2654,14 +2667,26 @@ def update_shopping_item_status(request):
 def delete_shopping_item(request, item_id):
     if request.method == 'DELETE':
         try:
-            user = get_user_for_view(request)
-            order_item = get_object_or_404(OrderList, id=item_id, user=user)
+            user = request.user
+            main_user = get_user_for_view(request)
+            order_item = get_object_or_404(OrderList, id=item_id, user=user, main_user=main_user)
             order_item.delete()
             return JsonResponse({'success': True, 'message': 'Item deleted successfully'})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     else:
         return HttpResponseNotAllowed(['DELETE'])
+
+@login_required
+def delete_shopping_items(request):
+    if request.method == 'POST':
+        user = request.user
+        main_user = get_user_for_view(request)
+        item_ids = request.POST.getlist('items[]')
+        OrderList.objects.filter(id__in=item_ids, user=user, main_user=main_user).delete()
+        return redirect('order_list')
+    else:
+        return HttpResponseNotAllowed(['POST'])
 
 @login_required
 def sign_in(request):
@@ -6685,8 +6710,6 @@ def abc_quality(request):
     
     return render(request, 'tottimeapp/abc_quality.html', context)
 
-from bs4 import BeautifulSoup, Comment
-
 @xframe_options_exempt
 def proxy_page(request):
     """
@@ -7110,7 +7133,6 @@ def remove_indicator_link(request, indicator_id):
     
     IndicatorPageLink.objects.filter(indicator=indicator, main_user=main_user).delete()
     return JsonResponse({'success': True})
-
 
 def get_page_preview(request, indicator_id):
     """

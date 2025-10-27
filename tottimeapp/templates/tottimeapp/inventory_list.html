@@ -22,6 +22,8 @@
         margin-right: 5px; /* Spacing between tabs */
         cursor: pointer; /* Pointer cursor for tabs */
         transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+        white-space: nowrap; /* Prevent text wrapping */
+        display: inline-block; /* Ensure proper width calculation */
     }
 
     /* Hover effect for inactive tabs */
@@ -1151,15 +1153,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 success: function(response) {
                     // Show success message using Toastr
                     toastr.success('Item deleted successfully!', 'Success', {
-                        timeOut: 3000,
+                        timeOut: 1000,
                         closeButton: true,
                         progressBar: true
                     });
 
-                    // Refresh the page after a short delay
+                    // Refresh the page immediately after showing success message
                     setTimeout(() => {
                         location.reload();
-                    }, 1000); // 1-second delay to allow the user to see the success message
+                    }, 500); // Reduced delay to 0.5 seconds
                 },
                 error: function(xhr, status, error) {
                     // Show error message using Toastr
@@ -1168,9 +1170,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         closeButton: true,
                         progressBar: true
                     });
-                },
-                complete: function() {
-                    isSubmitting = false; // Reset the flag after the request completes
+                    isSubmitting = false; // Reset flag on error
                 }
             });
         }
