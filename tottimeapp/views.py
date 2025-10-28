@@ -1657,6 +1657,7 @@ def inventory_list(request):
     # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
+
     # Get the user (MainUser) for filtering
     user = get_user_for_view(request)
     # Retrieve inventory data for the user
@@ -1665,8 +1666,7 @@ def inventory_list(request):
     categories = Inventory.objects.filter(user_id=user.id).values_list('category', flat=True).distinct()
     # Retrieve all rules
     rules = Rule.objects.all()
-    
-    # ADD THIS: Get order items for shopping list and ordered items tabs
+    # Get order items for shopping list and ordered items tabs
     order_items = OrderList.objects.filter(user=user)
 
     # Handle AJAX request for category filtering
@@ -1677,13 +1677,21 @@ def inventory_list(request):
         inventory_data = list(inventory_items.values('id', 'item', 'quantity', 'units', 'category'))
         return JsonResponse({'inventory_items': inventory_data})
 
+    # Determine which base template to use
+    popup = request.GET.get('popup')
+    if popup == '1':
+        base_template = 'tottimeapp/base_public.html'
+    else:
+        base_template = 'tottimeapp/base.html'
+
     # Render the inventory list page
     return render(request, 'inventory_list.html', {
         'inventory_items': inventory_items,
         'categories': categories,
-        'rules': rules,  # Pass the rules to the template
-        'order_items': order_items,  # ADD THIS LINE
-        **permissions_context,  # Include permission flags dynamically
+        'rules': rules,
+        'order_items': order_items,
+        'base_template': base_template,
+        **permissions_context,
     })
 
 @login_required
