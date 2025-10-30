@@ -643,15 +643,13 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
 </style>
 {% endblock %}
 {% block content %}
+{% if not hide_inventory_controls %}
 <h1 class="mt-4">Inventory List</h1>
 
 <div class="d-flex justify-content-start align-items-center mt-4">
     <div class="text-center me-3">
         <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
     </div>
-  <!--  <button type="button" class="btn btn-warning btn-sm ms-2" onclick="startWebBarcodeScanner(updateItemQuantity)">
-        <i class="fas fa-barcode"></i> Scan
-    </button> -->
     <div class="d-flex align-items-center">
         <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addItemModal" style="font-weight: bold; font-size: 1em;">
             <span>+Add</span>
@@ -660,17 +658,16 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
             <i class="fas fa-trash-alt" style="color: red;"></i>
         </button>
     </div>
-  
 </div>
 
-  <!-- Shopping List buttons - positioned between existing buttons and table -->
-    <div class="d-flex justify-content-start align-items-center mt-3" style="margin-left: 50px;">
-        <div id="shoppingListButtons" class="shopping-list-buttons">
-            <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
-                <i class="fas fa-plus"></i> Add to Shopping List
-            </button>
-        </div>
+<div class="d-flex justify-content-start align-items-center mt-3" style="margin-left: 50px;">
+    <div id="shoppingListButtons" class="shopping-list-buttons">
+        <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
+            <i class="fas fa-plus"></i> Add to Shopping List
+        </button>
     </div>
+</div>
+{% endif %}
 
 <!-- barcode scanner modal
 <div class="modal fade" id="barcodeScannerModal" tabindex="-1" aria-labelledby="barcodeScannerModalLabel" aria-hidden="true">

@@ -1677,12 +1677,14 @@ def inventory_list(request):
         inventory_data = list(inventory_items.values('id', 'item', 'quantity', 'units', 'category'))
         return JsonResponse({'inventory_items': inventory_data})
 
-    # Determine which base template to use
+    # Determine which base template to use and whether to hide controls
     popup = request.GET.get('popup')
     if popup == '1':
         base_template = 'tottimeapp/base_public.html'
+        hide_inventory_controls = True
     else:
         base_template = 'tottimeapp/base.html'
+        hide_inventory_controls = False
 
     # Render the inventory list page
     return render(request, 'inventory_list.html', {
@@ -1691,6 +1693,7 @@ def inventory_list(request):
         'rules': rules,
         'order_items': order_items,
         'base_template': base_template,
+        'hide_inventory_controls': hide_inventory_controls,
         **permissions_context,
     })
 
@@ -8278,3 +8281,18 @@ def complete_improvement_plan(request, plan_id):
         messages.success(request, "Improvement plan marked as complete.")
     return redirect('survey_results', survey_id=plan.survey.id)
 
+@login_required
+def asq(request):
+    required_permission_id = 450  # Permission ID for "orientation"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+
+    context = {
+        **permissions_context,
+        'main_user': main_user,
+    }
+
+    return render(request, 'tottimeapp/asq.html', context)

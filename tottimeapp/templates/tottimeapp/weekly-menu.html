@@ -183,10 +183,6 @@ border-color: rgb(54, 56, 56);
     
 }
 
-.btn-secondary:hover {
-    background-color: #b4ad46;
-    border-color: #b4ad46;
-}
 .btn-outline-primary.link-switch {
     background-color: transparent !important;
     color: rgb(57, 189, 180) !important;
@@ -196,6 +192,11 @@ border-color: rgb(54, 56, 56);
     background-color: rgb(57, 189, 180) !important;
     color: #fff !important;
     border-color: rgb(57, 189, 180) !important;
+}
+/* Additional hover styles (optional) */
+.btn-secondary:hover {
+    background-color: #b4ad46;
+    border-color: #b4ad46;
 }
 </style>
 {% endblock %}
@@ -210,12 +211,13 @@ border-color: rgb(54, 56, 56);
                             <button id="generateMenuBtn" class="btn btn-primaryoff mr-2" type="button">Generate Menu</button>
                             <button id="saveMenuBtn" type="submit" class="btn btn-secondary">Save Menu</button> <!-- Button type set to submit -->
                             <a href="{% url 'past_menus' %}" class="btn btn-rec" style="margin-left: 15px;">
-                                Saved Menus
-                            </a> 
+                                Saved Weekly Menus
+                            </a>    
                             <button type="button" class="btn btn-outline-primary link-switch" style="margin-left: 10px;" onclick="openInventoryWindow()">
-                                Inventory
-                            </button>
+                            Inventory
+                        </button>
                         </div>
+                        
                     </div>
                 </div>
 
@@ -604,9 +606,9 @@ function enableEditablesForAllCells() {
 function updateDates() {
     var today = new Date();
     var currentDayIndex = today.getDay();
-    var daysUntilNext Monday = (currentDayIndex === 0) ? 1 : (8 - currentDayIndex);
+    var daysUntilNextMonday = (currentDayIndex === 0) ? 1 : (8 - currentDayIndex);
     var nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilNext Monday);
+    nextMonday.setDate(today.getDate() + daysUntilNextMonday);
     var nextFriday = new Date(nextMonday);
     nextFriday.setDate(nextMonday.getDate() + 4);
     var startDateString = ('0' + (nextMonday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextMonday.getDate()).slice(-2);

@@ -221,7 +221,8 @@ urlpatterns = [
     path('abc-quality/public/<str:token>/', views.abc_quality_public, name='abc_quality_public'),
     path('public/<uuid:token>/', views.public_access_redirect, name='public_access'),
     path('api/get-indicator-link/<int:indicator_id>/', views.get_indicator_link, name='get_indicator_link'),
-    
+    #asq
+    path('asq/', views.asq, name='asq'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
