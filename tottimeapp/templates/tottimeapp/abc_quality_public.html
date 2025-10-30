@@ -318,6 +318,16 @@
         margin-right: 10px;
         font-size: 1.2em;
     }
+
+    @media (max-width: 1000px) {
+        .responsive-table-container {
+            overflow-x: auto;
+            width: 100%;
+        }
+        table {
+            min-width: 600px; /* or whatever fits your columns */
+        }
+    }
 </style>
 {% endblock %}
 
@@ -337,77 +347,81 @@
     <div class="section-header">
         <h2>Element {{ element.element_number }}: {{ element.name }}</h2>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Indicator</th>
-                <th>Description</th>
-                <th>Points</th>
-                <th>Documentation</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for indicator in element.indicators.all %}
-            <tr>
-                <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
-                <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
-                <td class="points">{{ indicator.points }}</td>
-                            <td>
-                    <div class="doc-container">
-                        {% for key, resources in grouped_resources.items %}
-                            {% if key == indicator.indicator_id %}
-                            <button class="document-indicator-btn btn-outline-primary link-switch" 
-                                    data-indicator="{{ indicator.indicator_id }}" 
-                                    data-indicator-name="{{ indicator.description|truncatechars:30 }}">
-                                <i class="fas fa-file-alt"></i> View Files
-                                <span class="document-count">{{ resources|length }}</span>
-                            </button>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="responsive-table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th>Description</th>
+                    <th>Points</th>
+                    <th>Documentation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for indicator in element.indicators.all %}
+                <tr>
+                    <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
+                    <td><a href="javascript:void(0)" class="indicator-link" data-indicator="{{ indicator.indicator_id }}" data-id="{{ indicator.id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
+                    <td class="points">{{ indicator.points }}</td>
+                                <td>
+                        <div class="doc-container">
+                            {% for key, resources in grouped_resources.items %}
+                                {% if key == indicator.indicator_id %}
+                                <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                        data-indicator="{{ indicator.indicator_id }}" 
+                                        data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                                    <i class="fas fa-file-alt"></i> View Files
+                                    <span class="document-count">{{ resources|length }}</span>
+                                </button>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     
     {% for section in element.sections.all %}
     <div class="section-header">
         <h3>{{ section.name }}</h3>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Indicator</th>
-                <th>Description</th>
-                <th>Points</th>
-                <th>Documentation</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for indicator in section.indicators.all %}
-            <tr>
-                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
-                <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
-                <td class="points">{{ indicator.points }}</td>
-                <td>
-                    <div class="doc-container">
-                        {% for key, resources in grouped_resources.items %}
-                            {% if key == indicator.indicator_id %}
-                            <button class="document-indicator-btn btn-outline-primary link-switch" 
-                                    data-indicator="{{ indicator.indicator_id }}" 
-                                    data-indicator-name="{{ indicator.description|truncatechars:30 }}">
-                                <i class="fas fa-file-alt"></i> View Files
-                                <span class="document-count">{{ resources|length }}</span>
-                            </button>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="responsive-table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th>Description</th>
+                    <th>Points</th>
+                    <th>Documentation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for indicator in section.indicators.all %}
+                <tr>
+                    <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-id">{{ indicator.indicator_id }}</span></a></td>
+                    <td><a href="#{{ indicator.indicator_id }}"><span class="indicator-desc">{{ indicator.description }}</span></a></td>
+                    <td class="points">{{ indicator.points }}</td>
+                    <td>
+                        <div class="doc-container">
+                            {% for key, resources in grouped_resources.items %}
+                                {% if key == indicator.indicator_id %}
+                                <button class="document-indicator-btn btn-outline-primary link-switch" 
+                                        data-indicator="{{ indicator.indicator_id }}" 
+                                        data-indicator-name="{{ indicator.description|truncatechars:30 }}">
+                                    <i class="fas fa-file-alt"></i> View Files
+                                    <span class="document-count">{{ resources|length }}</span>
+                                </button>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% endfor %}
     {% endfor %}
 </div>
