@@ -25,6 +25,7 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
 from PIL import Image
 from io import BytesIO
+from botocore.exceptions import ClientError
 from pytz import utc
 from datetime import datetime, timedelta, date, time
 from collections import defaultdict
@@ -8406,17 +8407,48 @@ def theme_activities(request, theme_id, view_type='weeks'):
     activities = theme.activities.filter(main_user=main_user)
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-    # Build weeks data: list of lists, each inner list has 5 activities (or None)
-    num_weeks = 5  # 4 weeks + 1 extra
+    # Initialize S3 client for presigned URLs
+    s3_client = None
+    if hasattr(settings, 'AWS_ACCESS_KEY_ID') and hasattr(settings, 'AWS_STORAGE_BUCKET_NAME'):
+        try:
+            s3_client = boto3.client(
+                's3',
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1'),
+                config=Config(signature_version='s3v4')
+            )
+        except Exception as e:
+            print(f"Error initializing S3 client: {e}")
+
+    # Build weeks data
+    num_weeks = 5
     weeks = []
     for week_num in range(1, num_weeks + 1):
         week_activities = []
         for day in weekdays:
             activity = activities.filter(week=week_num, day=day).first()
+            
+            # Generate presigned URL for attachment if it exists
+            attachment_url = None
+            if activity and activity.attachment and s3_client:
+                try:
+                    attachment_url = s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                            'Key': activity.attachment.name
+                        },
+                        ExpiresIn=3600
+                    )
+                except Exception as e:
+                    print(f"Error generating presigned URL: {e}")
+            
             week_activities.append({
                 'day': day,
                 'activity': activity,
-                'week_num': week_num
+                'week_num': week_num,
+                'attachment_url': attachment_url
             })
         weeks.append(week_activities)
 
@@ -8431,20 +8463,24 @@ def theme_activities(request, theme_id, view_type='weeks'):
 
 @login_required
 @require_POST
-def upload_activity_pdf(request, activity_id):
+def upload_activity_file(request, activity_id):
     main_user = get_user_for_view(request)
     activity = get_object_or_404(CurriculumActivity, id=activity_id, main_user=main_user)
     
-    if request.FILES.get('pdf'):
-        pdf = request.FILES['pdf']
-        if not pdf.name.endswith('.pdf'):
-            messages.error(request, 'Only PDF files are allowed!')
-        elif pdf.size > 10 * 1024 * 1024:
+    if request.FILES.get('attachment'):
+        attachment = request.FILES['attachment']
+        
+        # Validate file type
+        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']
+        ext = attachment.name.split('.')[-1].lower()
+        if f'.{ext}' not in allowed_extensions:
+            messages.error(request, 'Invalid file type! Allowed: PDF, JPEG, PNG, DOC, DOCX')
+        elif attachment.size > 10 * 1024 * 1024:
             messages.error(request, 'File size too large! Maximum size is 10MB.')
         else:
-            activity.pdf = pdf
+            activity.attachment = attachment
             activity.save()
-            messages.success(request, 'PDF uploaded successfully!')
+            messages.success(request, 'File uploaded successfully!')
     
     return redirect('theme_activities', theme_id=activity.theme.id, view_type='weeks')
 
@@ -8458,7 +8494,18 @@ def add_activity(request, theme_id):
     description = request.POST.get('description', '')
     week = request.POST.get('week')
     day = request.POST.get('day')
-    pdf = request.FILES.get('pdf')
+    attachment = request.FILES.get('attachment')
+    
+    # Validate file type
+    allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']
+    if attachment:
+        ext = attachment.name.split('.')[-1].lower()
+        if f'.{ext}' not in allowed_extensions:
+            messages.error(request, 'Invalid file type! Allowed: PDF, JPEG, PNG, DOC, DOCX')
+            return redirect('theme_activities', theme_id=theme.id, view_type='weeks')
+        if attachment.size > 10 * 1024 * 1024:  # 10MB limit
+            messages.error(request, 'File size too large! Maximum size is 10MB.')
+            return redirect('theme_activities', theme_id=theme.id, view_type='weeks')
     
     if title and week and day:
         try:
@@ -8469,7 +8516,7 @@ def add_activity(request, theme_id):
                 description=description,
                 week=int(week),
                 day=day,
-                pdf=pdf
+                attachment=attachment
             )
             messages.success(request, f'Activity "{title}" added successfully!')
         except Exception as e:

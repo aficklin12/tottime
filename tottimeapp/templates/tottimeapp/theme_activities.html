@@ -43,26 +43,28 @@
                         {% if day_data.activity %}
                             <strong>{{ day_data.activity.title }}</strong><br>
                             <small>{{ day_data.activity.description }}</small><br>
-                            {% if day_data.activity.pdf %}
-                                <a href="{{ day_data.activity.pdf.url }}" target="_blank" class="btn btn-outline-primary btn-sm mt-2">View PDF</a>
+                            {% if day_data.attachment_url %}
+                                <a href="{{ day_data.attachment_url }}" target="_blank" class="btn btn-outline-primary btn-sm mt-2">
+                                    <i class="fas {{ day_data.activity.get_attachment_icon }}"></i> View File
+                                </a>
                             {% endif %}
-                            <button type="button" class="btn btn-primarytwo btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#uploadPdfModal{{ day_data.activity.id }}">
-                                {% if day_data.activity.pdf %}Replace PDF{% else %}Upload PDF{% endif %}
+                            <button type="button" class="btn btn-primarytwo btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#uploadFileModal{{ day_data.activity.id }}">
+                                {% if day_data.attachment_url %}Replace File{% else %}Upload File{% endif %}
                             </button>
                             
-                            <!-- Upload PDF Modal -->
-                            <div class="modal fade" id="uploadPdfModal{{ day_data.activity.id }}" tabindex="-1" aria-hidden="true">
+                            <!-- Upload File Modal -->
+                            <div class="modal fade" id="uploadFileModal{{ day_data.activity.id }}" tabindex="-1" aria-hidden="true">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
-                                        <form method="post" enctype="multipart/form-data" action="{% url 'upload_activity_pdf' day_data.activity.id %}">
+                                        <form method="post" enctype="multipart/form-data" action="{% url 'upload_activity_file' day_data.activity.id %}">
                                             {% csrf_token %}
                                             <div class="modal-header">
-                                                <h5 class="modal-title">Upload PDF for "{{ day_data.activity.title }}"</h5>
+                                                <h5 class="modal-title">Upload File for "{{ day_data.activity.title }}"</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
                                             <div class="modal-body">
-                                                <input type="file" name="pdf" accept="application/pdf" class="form-control" required>
-                                                <small class="text-muted">PDF only, max 10MB.</small>
+                                                <input type="file" name="attachment" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="form-control" required>
+                                                <small class="text-muted">Allowed: PDF, JPEG, PNG, DOC, DOCX (max 10MB)</small>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -100,8 +102,9 @@
                                                     <textarea class="form-control" id="description{{ day_data.week_num }}{{ forloop.counter }}" name="description" rows="2"></textarea>
                                                 </div>
                                                 <div class="mb-3">
-                                                    <label for="pdf{{ day_data.week_num }}{{ forloop.counter }}" class="form-label">PDF (optional, max 10MB)</label>
-                                                    <input type="file" class="form-control" id="pdf{{ day_data.week_num }}{{ forloop.counter }}" name="pdf" accept="application/pdf">
+                                                    <label for="attachment{{ day_data.week_num }}{{ forloop.counter }}" class="form-label">File (optional, max 10MB)</label>
+                                                    <input type="file" class="form-control" id="attachment{{ day_data.week_num }}{{ forloop.counter }}" name="attachment" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                                    <small class="text-muted">Allowed: PDF, JPEG, PNG, DOC, DOCX</small>
                                                 </div>
                                             </div>
                                             <div class="modal-footer">

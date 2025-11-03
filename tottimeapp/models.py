@@ -1378,7 +1378,21 @@ class CurriculumActivity(models.Model):
     day = models.CharField(max_length=10)  # e.g., "Monday"
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    pdf = models.FileField(upload_to='activity_pdfs/', blank=True, null=True)
+    attachment = models.FileField(upload_to='activity_files/', blank=True, null=True)  # Changed from pdf
 
     def __str__(self):
         return f"{self.title} (Week {self.week}, {self.day})"
+    
+    def get_attachment_icon(self):
+        """Return icon class based on file extension"""
+        if not self.attachment:
+            return 'fa-file'
+        ext = self.attachment.name.split('.')[-1].lower()
+        if ext == 'pdf':
+            return 'fa-file-pdf'
+        elif ext in ['jpg', 'jpeg', 'png', 'gif']:
+            return 'fa-file-image'
+        elif ext in ['doc', 'docx']:
+            return 'fa-file-word'
+        else:
+            return 'fa-file'
