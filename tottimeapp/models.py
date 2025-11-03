@@ -1357,3 +1357,28 @@ class TemporaryAccess(models.Model):
     
     def __str__(self):
         return f"Access token for {self.user} (expires: {self.expires_at.strftime('%Y-%m-%d')})"
+    
+class CurriculumTheme(models.Model):
+    main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='curriculum_themes')
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='themes')
+    month = models.IntegerField(choices=[(i, i) for i in range(1, 13)])
+    title = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('classroom', 'month')
+
+    def __str__(self):
+        return f"{self.classroom.name} - {self.title} ({self.month})"
+
+class CurriculumActivity(models.Model):
+    main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='curriculum_activities')
+    theme = models.ForeignKey(CurriculumTheme, on_delete=models.CASCADE, related_name='activities')
+    week = models.IntegerField()  # 1-4, or 5 for "Extra"
+    day = models.CharField(max_length=10)  # e.g., "Monday"
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    pdf = models.FileField(upload_to='activity_pdfs/', blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.title} (Week {self.week}, {self.day})"

@@ -1,0 +1,125 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+
+{% block title %}Curriculum{% endblock %}
+{% block styles %}
+<style>
+.section-header {
+    background-color: rgba(57, 189, 180, 0.15);
+    padding: 10px 15px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    margin-left: 17px;
+    border-left: 5px solid rgb(57, 189, 180);
+    font-size: 1.2em;
+}
+</style>
+{% endblock %}
+{% block content %}
+<h1>{{ theme.title }} Activities</h1>
+<p style='margin-left: 17px;'>{{ theme.description }}</p>
+<a href="{% url 'classroom_themes' theme.classroom.id %}" class="btn btn-secondary mt-4" style="margin-left: 17px;">
+    &larr; Back to Themes
+</a>
+
+{% for week in weeks %}
+    {% if forloop.counter == 5 %}
+        <div class="section-header"><h2>Extra</h2></div>
+    {% else %}
+        <div class="section-header"><h2>Week {{ forloop.counter }}</h2></div>
+    {% endif %}
+    <table>
+        <thead>
+            <tr>
+                {% for day in weekdays %}
+                    <th>{{ day }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                {% for day_data in week %}
+                    <td>
+                        {% if day_data.activity %}
+                            <strong>{{ day_data.activity.title }}</strong><br>
+                            <small>{{ day_data.activity.description }}</small><br>
+                            {% if day_data.activity.pdf %}
+                                <a href="{{ day_data.activity.pdf.url }}" target="_blank" class="btn btn-outline-primary btn-sm mt-2">View PDF</a>
+                            {% endif %}
+                            <button type="button" class="btn btn-primarytwo btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#uploadPdfModal{{ day_data.activity.id }}">
+                                {% if day_data.activity.pdf %}Replace PDF{% else %}Upload PDF{% endif %}
+                            </button>
+                            
+                            <!-- Upload PDF Modal -->
+                            <div class="modal fade" id="uploadPdfModal{{ day_data.activity.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="post" enctype="multipart/form-data" action="{% url 'upload_activity_pdf' day_data.activity.id %}">
+                                            {% csrf_token %}
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Upload PDF for "{{ day_data.activity.title }}"</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <input type="file" name="pdf" accept="application/pdf" class="form-control" required>
+                                                <small class="text-muted">PDF only, max 10MB.</small>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primarytwo">Upload</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            
+                            <button type="button" class="btn btn-primarytwo btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#addActivityModal{{ day_data.week_num }}{{ forloop.counter }}">
+                                Add Activity
+                            </button>
+                            
+                            <!-- Add Activity Modal -->
+                            <div class="modal fade" id="addActivityModal{{ day_data.week_num }}{{ forloop.counter }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="post" enctype="multipart/form-data" action="{% url 'add_activity' theme.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="week" value="{{ day_data.week_num }}">
+                                            <input type="hidden" name="day" value="{{ day_data.day }}">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Add Activity - {{ day_data.day }}, Week {{ day_data.week_num }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label for="title{{ day_data.week_num }}{{ forloop.counter }}" class="form-label">Title</label>
+                                                    <input type="text" class="form-control" id="title{{ day_data.week_num }}{{ forloop.counter }}" name="title" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="description{{ day_data.week_num }}{{ forloop.counter }}" class="form-label">Description</label>
+                                                    <textarea class="form-control" id="description{{ day_data.week_num }}{{ forloop.counter }}" name="description" rows="2"></textarea>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="pdf{{ day_data.week_num }}{{ forloop.counter }}" class="form-label">PDF (optional, max 10MB)</label>
+                                                    <input type="file" class="form-control" id="pdf{{ day_data.week_num }}{{ forloop.counter }}" name="pdf" accept="application/pdf">
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primarytwo">Add Activity</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+{% endfor %}
+{% endblock %}
+{% block scripts %}
+
+{% endblock %}

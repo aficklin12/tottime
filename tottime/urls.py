@@ -222,8 +222,17 @@ urlpatterns = [
     path('public/<uuid:token>/', views.public_access_redirect, name='public_access'),
     path('api/get-indicator-link/<int:indicator_id>/', views.get_indicator_link, name='get_indicator_link'),
     #asq
-    path('asq/', views.asq, name='asq'),
+    path('asq/', login_required(views.asq), name='asq'),
+    path('asq_infant/', login_required(views.asq_infant), name='asq_infant'),
+    #curriculum
+    path('curriculum/', login_required(views.curriculum), name='curriculum'),
+    path('curriculum/classroom/<int:classroom_id>/', login_required(views.classroom_themes), name='classroom_themes'),
+    path('curriculum/theme/<int:theme_id>/add_activity/', views.add_activity, name='add_activity'),  # Move this BEFORE the next line
+    path('curriculum/activity/<int:activity_id>/upload_pdf/', views.upload_activity_pdf, name='upload_activity_pdf'),
+    path('curriculum/theme/<int:theme_id>/<str:view_type>/', login_required(views.theme_activities), name='theme_activities'),
+    path('curriculum/theme/<int:theme_id>/', login_required(views.theme_activities), name='theme_activities_default'),
 
+    
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 

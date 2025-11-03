@@ -1,0 +1,184 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+
+{% block title %}Ages and Stages Questionnaire - 12 Month{% endblock %}
+
+{% block styles %}
+<style>
+body {
+    background: #f2f2f2;
+}
+.paper-sheet {
+    background: #fff;
+    max-width: 900px;
+    margin: 40px auto 40px auto;
+    padding: 40px 40px 30px 40px;
+    border: 1.5px solid #bbb;
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    font-family: 'Arial', 'Helvetica', sans-serif;
+}
+.asq-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}
+.asq-table th, .asq-table td {
+    border: 1px solid #bbb;
+    padding: 0.5em 0.3em;
+    text-align: center;
+    vertical-align: middle;
+}
+.asq-table th {
+    background: #e9ecef;
+    font-weight: bold;
+    font-size: 1.05em;
+}
+.asq-table td.text-left {
+    text-align: left;
+    background: #fcfcfc;
+}
+.asq-section {
+    margin-top: 2rem;
+}
+.asq-label {
+    font-weight: bold;
+}
+.question-number {
+    font-weight: bold;
+    margin-right: 0.5em;
+}
+@media print {
+    body, .paper-sheet {
+        background: #fff !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="paper-sheet">
+    <h2 style="text-align:center; margin-bottom:0.5em;">12 Month Questionnaire</h2>
+    <div style="text-align:center; font-size:1.1em; margin-bottom:1em;">
+        <span>For children 9 months 0 days through 14 months 30 days</span>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="asq-section" style="margin-bottom:1.5em;">
+            <div style="display:flex; flex-wrap:wrap; gap:1em;">
+                <div>
+                    <label>Baby's first name: <input type="text" name="baby_first_name" style="width:120px;"></label>
+                </div>
+                <div>
+                    <label>Middle initial: <input type="text" name="baby_middle_initial" size="1" style="width:30px;"></label>
+                </div>
+                <div>
+                    <label>Last name: <input type="text" name="baby_last_name" style="width:120px;"></label>
+                </div>
+                <div>
+                    <label>Date of birth: <input type="date" name="baby_dob" style="width:140px;"></label>
+                </div>
+                <div>
+                    <label>Gender: 
+                        <input type="radio" name="baby_gender" value="male"> Male
+                        <input type="radio" name="baby_gender" value="female"> Female
+                    </label>
+                </div>
+                <div>
+                    <label>If premature (3+ weeks), # weeks: <input type="number" name="premature_weeks" min="0" max="20" style="width:50px;"></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="asq-section" style="margin-bottom:1.5em;">
+            <div style="display:flex; flex-wrap:wrap; gap:1em;">
+                <div>
+                    <label>Person filling out form: <input type="text" name="parent_first_name" placeholder="First" style="width:100px;">
+                        <input type="text" name="parent_middle_initial" size="1" placeholder="M" style="width:30px;">
+                        <input type="text" name="parent_last_name" placeholder="Last" style="width:100px;">
+                    </label>
+                </div>
+                <div>
+                    <label>Relationship to baby:
+                        <select name="relationship" style="width:160px;">
+                            <option>Parent</option>
+                            <option>Guardian</option>
+                            <option>Grandparent/Other relative</option>
+                            <option>Foster parent</option>
+                            <option>Teacher</option>
+                            <option>Child care provider</option>
+                            <option>Other</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="asq-section">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:45%;">Question</th>
+                        <th style="width:13%;">Often or Always<br>(Z)</th>
+                        <th style="width:13%;">Sometimes<br>(V)</th>
+                        <th style="width:13%;">Rarely or Never<br>(X)</th>
+                        <th style="width:16%;">Check if<br>Concern</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i, q in questions %}
+                    <tr>
+                        <td class="text-left">
+                            <span class="question-number">{{ i }}.</span> {{ q }}
+                        </td>
+                        <td><input type="radio" name="q{{ i }}" value="z" required></td>
+                        <td><input type="radio" name="q{{ i }}" value="v"></td>
+                        <td><input type="radio" name="q{{ i }}" value="x"></td>
+                        <td><input type="checkbox" name="concern{{ i }}"></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="text-align:right; margin-top:0.5em;">
+                <label>Total Points on Page: <input type="number" name="total_points_page" readonly style="width:80px;"></label>
+            </div>
+        </div>
+
+        <div class="asq-section">
+            <h4 style="margin-bottom:0.5em;">Overall</h4>
+            <div style="margin-bottom:0.7em;">
+                <label>28. Do you have concerns about your baby's eating or sleeping behaviors?</label>
+                <input type="radio" name="eating_sleeping_concern" value="yes"> Yes
+                <input type="radio" name="eating_sleeping_concern" value="no"> No
+                <br>
+                <textarea name="eating_sleeping_explain" rows="2" style="width:100%;"></textarea>
+            </div>
+            <div style="margin-bottom:0.7em;">
+                <label>29. Does anything about your baby worry you?</label>
+                <input type="radio" name="worry_concern" value="yes"> Yes
+                <input type="radio" name="worry_concern" value="no"> No
+                <br>
+                <textarea name="worry_explain" rows="2" style="width:100%;"></textarea>
+            </div>
+            <div>
+                <label>30. What do you enjoy about your baby?</label>
+                <br>
+                <textarea name="enjoy_baby" rows="2" style="width:100%;"></textarea>
+            </div>
+        </div>
+
+        <div class="asq-section" style="text-align:right;">
+            <button type="submit" class="btn btn-primary" style="margin-top:1em;">Submit Questionnaire</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Optionally, you can add JS here for auto-calculating points if you wish.
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+
+{% block title %}Curriculum{% endblock %}
+
+{% block styles %}
+
+
+{% endblock %}
+
+{% block content %}
+<h1>Curriculum</h1>
+<div class="container mt-5">
+    <h3>Select a Classroom:</h3>
+    <ul>
+        {% for classroom in classrooms %}
+            <li>
+                <a href="{% url 'classroom_themes' classroom.id %}" style="color: {{ classroom.color }};">
+                    {{ classroom.name }}
+                </a>
+            </li>
+        {% empty %}
+            <li>No classrooms found.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+{% endblock %}

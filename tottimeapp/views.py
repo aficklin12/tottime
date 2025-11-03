@@ -19,7 +19,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, TemporaryAccess, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, TemporaryAccess, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -33,8 +33,7 @@ from calendar import monthrange
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.core.exceptions import ValidationError
-import bleach
-import boto3
+import bleach, calendar, boto3
 from botocore.client import Config
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -8296,3 +8295,186 @@ def asq(request):
     }
 
     return render(request, 'tottimeapp/asq.html', context)
+
+@login_required
+def asq_infant(request):
+    required_permission_id = 450  # Permission ID for "orientation"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+
+    questions = [
+        "Does your baby laugh or smile at you and other family members?",
+        "Does your baby look for you when a stranger comes near?",
+        "Does your baby like to play near or be with family and friends?",
+        "Does your baby like to be picked up and held?",
+        "When upset, can your baby calm down within a half hour?",
+        "Does your baby stiffen and arch her back when picked up?",
+        "Does your baby like to play games such as Peekaboo?",
+        "Is your baby's body relaxed?",
+        "Does your baby cry, scream, or have tantrums for long periods of time?",
+        "Is your baby able to calm himself down (for example, by sucking his hand or pacifier)?",
+        "Is your baby interested in things around her, such as people, toys, and foods?",
+        "Does it take longer than 30 minutes to feed your baby?",
+        "Do you and your baby enjoy mealtimes together?",
+        "Does your baby have any eating problems, such as gagging, vomiting, or ______? (Please describe.)",
+        "Does your baby have trouble falling asleep at naptime or at night?",
+        "Does your baby make babbling sounds? For example, does he put sounds together such as “ba-ba-ba-ba” or “na-na-na-na”?",
+        "Does your baby sleep at least 10 hours in a 24-hour period?",
+        "Does your baby get constipated or have diarrhea?",
+        "Does your baby let you know when she is hungry, hurt, or tired?",
+        "When you talk to your baby, does he turn his head, look, or smile?",
+        "Does your baby try to hurt other children, adults, or animals (for example, by kicking or biting)?",
+        "Does your baby try to show you things? For example, does she hold out a toy and look at you?",
+        "Does your baby respond to his name when you call him? For example, does he turn his head and look at you?",
+        "When you point at something, does your baby look in the direction you are pointing?",
+        "Does your baby make sounds or use gestures to let you know she wants something (for example, by reaching)?",
+        "When you copy sounds your baby makes, does your baby repeat the same sounds back to you?",
+        "Has anyone shared concerns about your baby’s behaviors? If “sometimes” or “often or always,” please explain.",
+    ]
+
+    context = {
+        **permissions_context,
+        'main_user': main_user,
+        'questions': list(enumerate(questions, 1)),
+    }
+
+    return render(request, 'tottimeapp/asq_infant.html', context)
+
+@login_required
+def curriculum(request):
+    required_permission_id = 450  # Permission ID for "orientation"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+    classrooms = Classroom.objects.filter(user=main_user)
+
+    context = {
+        **permissions_context,
+        'main_user': main_user,
+        'classrooms': classrooms,
+    }
+
+    return render(request, 'tottimeapp/curriculum.html', context)
+
+@login_required
+def classroom_themes(request, classroom_id):
+    required_permission_id = 450  # Permission ID for "orientation"
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+    classroom = get_object_or_404(Classroom, id=classroom_id, user=main_user)
+
+    MONTH_CHOICES = [
+        (1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'),
+        (5, 'May'), (6, 'June'), (7, 'July'), (8, 'August'),
+        (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')
+    ]
+
+    themes = classroom.themes.filter(main_user=main_user).order_by('month')
+    # Build a list of (value, name, theme) for each month
+    month_theme_list = []
+    for value, name in MONTH_CHOICES:
+        theme = next((t for t in themes if t.month == value), None)
+        month_theme_list.append((value, name, theme))
+
+    context = {
+        **permissions_context,
+        'main_user': main_user,
+        'classroom': classroom,
+        'themes': themes,
+        'months': MONTH_CHOICES,
+        'month_theme_list': month_theme_list,
+    }
+    return render(request, 'tottimeapp/classroom_themes.html', context)
+
+@login_required
+def theme_activities(request, theme_id, view_type='weeks'):
+    required_permission_id = 450
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+    theme = get_object_or_404(CurriculumTheme, id=theme_id, classroom__user=main_user, main_user=main_user)
+    activities = theme.activities.filter(main_user=main_user)
+    weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+    # Build weeks data: list of lists, each inner list has 5 activities (or None)
+    num_weeks = 5  # 4 weeks + 1 extra
+    weeks = []
+    for week_num in range(1, num_weeks + 1):
+        week_activities = []
+        for day in weekdays:
+            activity = activities.filter(week=week_num, day=day).first()
+            week_activities.append({
+                'day': day,
+                'activity': activity,
+                'week_num': week_num
+            })
+        weeks.append(week_activities)
+
+    context = {
+        **permissions_context,
+        'main_user': main_user,
+        'theme': theme,
+        'weeks': weeks,
+        'weekdays': weekdays,
+    }
+    return render(request, 'tottimeapp/theme_activities.html', context)
+
+@login_required
+@require_POST
+def upload_activity_pdf(request, activity_id):
+    main_user = get_user_for_view(request)
+    activity = get_object_or_404(CurriculumActivity, id=activity_id, main_user=main_user)
+    
+    if request.FILES.get('pdf'):
+        pdf = request.FILES['pdf']
+        if not pdf.name.endswith('.pdf'):
+            messages.error(request, 'Only PDF files are allowed!')
+        elif pdf.size > 10 * 1024 * 1024:
+            messages.error(request, 'File size too large! Maximum size is 10MB.')
+        else:
+            activity.pdf = pdf
+            activity.save()
+            messages.success(request, 'PDF uploaded successfully!')
+    
+    return redirect('theme_activities', theme_id=activity.theme.id, view_type='weeks')
+
+@login_required
+@require_POST
+def add_activity(request, theme_id):
+    main_user = get_user_for_view(request)
+    theme = get_object_or_404(CurriculumTheme, id=theme_id, main_user=main_user)
+    
+    title = request.POST.get('title')
+    description = request.POST.get('description', '')
+    week = request.POST.get('week')
+    day = request.POST.get('day')
+    pdf = request.FILES.get('pdf')
+    
+    if title and week and day:
+        try:
+            CurriculumActivity.objects.create(
+                main_user=main_user,
+                theme=theme,
+                title=title,
+                description=description,
+                week=int(week),
+                day=day,
+                pdf=pdf
+            )
+            messages.success(request, f'Activity "{title}" added successfully!')
+        except Exception as e:
+            messages.error(request, f'Error creating activity: {e}')
+    else:
+        messages.error(request, 'Missing required fields!')
+    
+    return redirect('theme_activities', theme_id=theme.id, view_type='weeks')
