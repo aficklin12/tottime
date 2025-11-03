@@ -4,25 +4,105 @@
 {% block title %}Curriculum{% endblock %}
 
 {% block styles %}
-
-
+<style>
+    .curriculum-container {
+        padding: 20px;
+    }
+    
+    .classroom-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .classroom-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .classroom-card-header {
+        padding: 20px;
+        color: white;
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    
+    .classroom-card-body {
+        padding: 20px;
+    }
+    
+    .classroom-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    
+    .classroom-link:hover {
+        text-decoration: none;
+    }
+    
+    .arrow-icon {
+        float: right;
+        transition: transform 0.2s;
+    }
+    
+    .classroom-card:hover .arrow-icon {
+        transform: translateX(5px);
+    }
+    
+    .page-header {
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #39bdb4;
+    }
+    
+    @media (min-width: 768px) {
+        .classroom-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+    }
+    
+    @media (min-width: 1200px) {
+        .classroom-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<h1>Curriculum</h1>
-<div class="container mt-5">
-    <h3>Select a Classroom:</h3>
-    <ul>
+<div class="curriculum-container">
+    <div class="page-header">
+        <h1>Curriculum</h1>
+
+    </div>
+    
+    <div class="classroom-grid">
         {% for classroom in classrooms %}
-            <li>
-                <a href="{% url 'classroom_themes' classroom.id %}" style="color: {{ classroom.color }};">
-                    {{ classroom.name }}
-                </a>
-            </li>
+            <a href="{% url 'classroom_themes' classroom.id %}" class="classroom-link">
+                <div class="classroom-card">
+                    <div class="classroom-card-header" style="background-color: {{ classroom.color }};">
+                        {{ classroom.name }}
+                        <i class="fas fa-arrow-right arrow-icon"></i>
+                    </div>
+                    <div class="classroom-card-body">
+                        <p class="mb-0 text-muted">
+                            <i class="fas fa-book"></i> View Themes & Activities
+                        </p>
+                    </div>
+                </div>
+            </a>
         {% empty %}
-            <li>No classrooms found.</li>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No classrooms found. Please create a classroom first.
+            </div>
         {% endfor %}
-    </ul>
+    </div>
 </div>
 {% endblock %}
 

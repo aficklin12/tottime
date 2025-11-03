@@ -514,7 +514,7 @@
                             </nav>
                         </div>
                         {% endif %}
-                        {% if show_clock_in %}
+                        {% if show_clock_in or show_orientation%}
                         <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsEmployees" aria-expanded="false" aria-controls="collapseLayoutsEmployees" style="font-family: 'Poppins', sans-serif; font-size: 1.2rem;">
                             <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div> Employees
                             <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
@@ -526,6 +526,9 @@
                                 {% endif %}
                                 {% if show_clock_in %}
                                 <a class="nav-link" href="{% url 'time_sheet' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Time Sheet</a>
+                                {% endif %}
+                                {% if show_orientation %}
+                                <a class="nav-link" href="{% url 'curriculum' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Curriculum</a>
                                 {% endif %}
                                 
                             </nav>
