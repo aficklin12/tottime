@@ -11,6 +11,7 @@ from django.http import Http404
 from functools import wraps
 from bs4 import BeautifulSoup, Comment
 from django.core.paginator import Paginator
+from django.db import IntegrityError
 stripe.api_key = settings.STRIPE_SECRET_KEY
 from django.utils.timezone import now
 from decimal import Decimal
@@ -25,6 +26,7 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
 from PIL import Image
 from io import BytesIO
+from django.urls import reverse, resolve, Resolver404
 from botocore.exceptions import ClientError
 from pytz import utc
 from datetime import datetime, timedelta, date, time
@@ -5954,51 +5956,75 @@ def all_pay_history(request):
 @login_required
 @csrf_exempt
 def switch_account(request):
-
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             account_owner_id = data.get('account_owner_id')
-            
+            current_path = data.get('current_path')  # optional
             # Verify user has permission to switch
             if not request.user.can_switch:
                 return JsonResponse({'success': False, 'error': 'Permission denied'})
-            
+
             # Verify the account owner exists and is in the same company
             if request.user.company:
-                # Check if the account owner ID exists in the CompanyAccountOwner table for this company
                 account_owner = get_object_or_404(
-                    CompanyAccountOwner, 
+                    CompanyAccountOwner,
                     main_account_owner_id=account_owner_id,
                     company=request.user.company
                 )
-                
-                # Get the MainUser object for the selected account owner
+
                 new_main_account_owner = get_object_or_404(MainUser, id=account_owner_id)
-                
+
                 # Update the user's main_account_owner_id
                 request.user.main_account_owner_id = account_owner_id
                 request.user.save()
-                
-                # Check if this user is also a SubUser and update accordingly
+
+                # Update SubUser.main_user if applicable
                 try:
                     subuser = SubUser.objects.get(user=request.user)
                     if subuser.can_switch:
                         subuser.main_user = new_main_account_owner
                         subuser.save()
-                        print(f"Updated SubUser {subuser.id} main_user to {new_main_account_owner.id}")
                 except SubUser.DoesNotExist:
-                    # User is not a SubUser, which is fine
                     pass
-                
-                return JsonResponse({'success': True})
+
+                # Decide whether current page is valid for new_main_account_owner.
+                redirect_url = None
+                if current_path:
+                    try:
+                        match = resolve(current_path)
+                        url_name = match.url_name or match.view_name
+                        kwargs = match.kwargs
+                        # check known views that are tied to a main_user/classroom/theme
+                        if url_name == 'classroom_themes':
+                            classroom_id = kwargs.get('classroom_id') or kwargs.get('pk') or kwargs.get('id')
+                            from .models import Classroom
+                            if not Classroom.objects.filter(id=classroom_id, user=new_main_account_owner).exists():
+                                redirect_url = reverse('curriculum')
+                        elif url_name == 'theme_activities':
+                            theme_id = kwargs.get('theme_id') or kwargs.get('pk') or kwargs.get('id')
+                            from .models import CurriculumTheme
+                            if not CurriculumTheme.objects.filter(id=theme_id, main_user=new_main_account_owner).exists():
+                                redirect_url = reverse('curriculum')
+                        # add more url_name checks here if you have other per-main-user pages
+                    except Resolver404:
+                        # unknown path -> fall back to safe landing
+                        redirect_url = reverse('curriculum')
+                    except Exception:
+                        # any unexpected error -> return safe landing
+                        redirect_url = reverse('curriculum')
+
+                response_payload = {'success': True}
+                if redirect_url:
+                    response_payload['redirect_url'] = redirect_url
+                return JsonResponse(response_payload)
             else:
                 return JsonResponse({'success': False, 'error': 'No company associated'})
-                
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
-    
+
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
 
 @login_required
 def staff_orientation(request):
@@ -8378,8 +8404,41 @@ def classroom_themes(request, classroom_id):
         (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')
     ]
 
+    # Handle Add Theme form submission
+    if request.method == 'POST':
+        month = request.POST.get('month')
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+
+        if not month or not title:
+            messages.error(request, 'Month and Title are required to add a theme.')
+            return redirect('classroom_themes', classroom_id=classroom.id)
+
+        try:
+            month_int = int(month)
+        except (TypeError, ValueError):
+            messages.error(request, 'Invalid month selected.')
+            return redirect('classroom_themes', classroom_id=classroom.id)
+
+        # Create theme, respecting unique_together on (classroom, month)
+        try:
+            CurriculumTheme.objects.create(
+                main_user=main_user,
+                classroom=classroom,
+                month=month_int,
+                title=title,
+                description=description
+            )
+            messages.success(request, f'Theme "{title}" added for {MONTH_CHOICES[month_int-1][1]}.')
+        except IntegrityError:
+            messages.error(request, 'A theme for that month already exists for this classroom.')
+        except Exception as e:
+            messages.error(request, f'Error creating theme: {e}')
+
+        return redirect('classroom_themes', classroom_id=classroom.id)
+
+    # GET: render page
     themes = classroom.themes.filter(main_user=main_user).order_by('month')
-    # Build a list of (value, name, theme) for each month
     month_theme_list = []
     for value, name in MONTH_CHOICES:
         theme = next((t for t in themes if t.month == value), None)
@@ -8394,6 +8453,7 @@ def classroom_themes(request, classroom_id):
         'month_theme_list': month_theme_list,
     }
     return render(request, 'tottimeapp/classroom_themes.html', context)
+
 
 @login_required
 def theme_activities(request, theme_id, view_type='weeks'):
