@@ -9,6 +9,7 @@ from square.client import Client
 from django.conf import settings
 from django.http import Http404
 from functools import wraps
+from django.core.exceptions import FieldError
 from bs4 import BeautifulSoup, Comment
 from django.core.paginator import Paginator
 from django.db import IntegrityError
@@ -3656,11 +3657,46 @@ def classroom_options_classrooms(request):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
+    # Determine which main user to show data for
+    main_user = get_user_for_view(request)
+
     # Get filter parameters from the request
     search_query = request.GET.get('search', '').strip()
 
-    # Fetch the list of classrooms with optional filtering
-    classrooms = Classroom.objects.prefetch_related('assignments__subuser__user', 'assignments__mainuser').all()
+    # Base queryset with prefetches
+    base_qs = Classroom.objects.prefetch_related('assignments__subuser__user', 'assignments__mainuser')
+
+    # Try a sequence of likely FK names so we filter by the correct owner field.
+    classrooms = None
+    attempts = [
+        ('user', False),
+        ('main_user', False),
+        ('mainuser', False),
+        ('owner', False),
+        ('user_id', True),
+        ('main_user_id', True),
+        ('mainuser_id', True),
+        ('owner_id', True),
+    ]
+    for field_name, is_id in attempts:
+        try:
+            if is_id:
+                kwargs = {field_name: main_user.id}
+            else:
+                kwargs = {field_name: main_user}
+            classrooms = base_qs.filter(**kwargs)
+            # If no FieldError was raised, we've applied a valid filter (even if it returns empty)
+            break
+        except FieldError:
+            classrooms = None
+            continue
+
+    # If none of the attempted fields exist, avoid leaking data by returning empty queryset
+    if classrooms is None:
+        logger.warning("No matching FK field found on Classroom; returning empty queryset.")
+        classrooms = base_qs.none()
+
+    # Apply name search filter if provided
     if search_query:
         classrooms = classrooms.filter(name__icontains=search_query)
 
@@ -3674,7 +3710,7 @@ def classroom_options_classrooms(request):
             elif assignment.mainuser:
                 assigned_teachers.append(f"{assignment.mainuser.first_name} {assignment.mainuser.last_name}")
         classroom_data.append({
-            'id': classroom.id,  # Include the classroom ID
+            'id': classroom.id,
             'name': classroom.name,
             'ratios': classroom.ratios,
             'color': classroom.color,
@@ -6024,7 +6060,6 @@ def switch_account(request):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
-
 
 @login_required
 def staff_orientation(request):
@@ -8453,7 +8488,6 @@ def classroom_themes(request, classroom_id):
         'month_theme_list': month_theme_list,
     }
     return render(request, 'tottimeapp/classroom_themes.html', context)
-
 
 @login_required
 def theme_activities(request, theme_id, view_type='weeks'):
