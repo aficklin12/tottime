@@ -220,7 +220,7 @@ class Student(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    main_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)  # Changed from 'user' to 'main_user'
     code = models.CharField(max_length=4, unique=True)
     classroom = models.ForeignKey('Classroom', on_delete=models.CASCADE, related_name='students')
     profile_picture = models.ImageField(

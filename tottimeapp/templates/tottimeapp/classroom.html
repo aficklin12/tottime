@@ -297,7 +297,7 @@ body {
                             {% for classroom in classrooms %}
                             <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == request.GET.classroom_id %}selected{% endif %}>
                                 {{ classroom.name }}
-                            </option>
+                            </option> 
                             {% endfor %}
                         </select>
                        

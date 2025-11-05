@@ -2917,8 +2917,38 @@ def classroom(request):
         return permissions_context
 
     try:
-        main_user = MainUser.objects.get(id=request.user.id)
-        classrooms = Classroom.objects.all()
+        # Get the appropriate main user for filtering
+        main_user = get_user_for_view(request)
+        
+        # Filter classrooms by main user - try common FK field names
+        classrooms = None
+        attempts = [
+            ('user', False),
+            ('main_user', False),
+            ('mainuser', False),
+            ('owner', False),
+            ('user_id', True),
+            ('main_user_id', True),
+            ('mainuser_id', True),
+            ('owner_id', True),
+        ]
+        for field_name, is_id in attempts:
+            try:
+                if is_id:
+                    kwargs = {field_name: main_user.id}
+                else:
+                    kwargs = {field_name: main_user}
+                classrooms = Classroom.objects.filter(**kwargs)
+                break
+            except FieldError:
+                classrooms = None
+                continue
+        
+        # If no matching field found, return empty queryset
+        if classrooms is None:
+            logger.warning("No matching FK field found on Classroom; returning empty queryset.")
+            classrooms = Classroom.objects.none()
+        
         selected_classroom_id = request.GET.get('classroom_id')
         status_filter = request.GET.get('status', 'signed_in')  # Default to 'signed_in'
 
@@ -2930,7 +2960,8 @@ def classroom(request):
 
         selected_classroom = None
         if selected_classroom_id:
-            selected_classroom = Classroom.objects.filter(id=selected_classroom_id).first()
+            # Also filter selected classroom by main user
+            selected_classroom = classrooms.filter(id=selected_classroom_id).first()
 
         # Build the base queryset for students
         if selected_classroom_id:
@@ -3512,6 +3543,10 @@ def rosters(request):
     # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
+    
+    # Get the appropriate main user for filtering
+    main_user = get_user_for_view(request)
+    
     # Get current date information
     current_date = datetime.now()
     current_year = current_date.year
@@ -3548,8 +3583,36 @@ def rosters(request):
             for day in range(num_days_in_month):
                 if attendance_list[day] == '':
                     attendance_list[day] = '-'
-    # Retrieve all classrooms
-    classrooms = Classroom.objects.all()
+    
+    # Filter classrooms by main user - try common FK field names
+    classrooms = None
+    attempts = [
+        ('user', False),
+        ('main_user', False),
+        ('mainuser', False),
+        ('owner', False),
+        ('user_id', True),
+        ('main_user_id', True),
+        ('mainuser_id', True),
+        ('owner_id', True),
+    ]
+    for field_name, is_id in attempts:
+        try:
+            if is_id:
+                kwargs = {field_name: main_user.id}
+            else:
+                kwargs = {field_name: main_user}
+            classrooms = Classroom.objects.filter(**kwargs)
+            break
+        except FieldError:
+            classrooms = None
+            continue
+    
+    # If no matching field found, return empty queryset
+    if classrooms is None:
+        logger.warning("No matching FK field found on Classroom; returning empty queryset.")
+        classrooms = Classroom.objects.none()
+    
     # Get the selected classroom ID from the request.GET dictionary
     selected_classroom_id = request.GET.get('classroom', None)
     # Query students based on the selected classroom, if any
@@ -3577,7 +3640,7 @@ def rosters(request):
     }
     return render(request, 'rosters.html', context)
 
-@login_required
+login_required
 def add_student(request):
     if request.method == 'POST':
         first_name = request.POST.get('first_name')
@@ -3591,7 +3654,7 @@ def add_student(request):
 
             # Generate a unique 4-digit code for the student
             code = None
-            while not code or Student.objects.filter(user=main_user, code=code).exists():
+            while not code or Student.objects.filter(main_user=main_user, code=code).exists():
                 code = str(random.randint(1000, 9999))
 
             # Create the student
@@ -3601,7 +3664,7 @@ def add_student(request):
                 date_of_birth=date_of_birth,
                 code=code,
                 classroom=classroom,
-                user=main_user,
+                main_user=main_user,  # Changed from 'user' to 'main_user'
             )
             student.save()
 
@@ -3623,13 +3686,20 @@ def classroom_options(request):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
+    # Get the appropriate main user for filtering
+    main_user = get_user_for_view(request)
+
     # Get filter parameters from the request
     classroom_id = request.GET.get('classroom')
     search_query = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', 'active')  # Default to 'active'
 
-    # Fetch the list of students with optional filtering
-    students = Student.objects.select_related('classroom').filter(status=status_filter).order_by('last_name', 'first_name')
+    # Fetch the list of students filtered by main_user, with optional additional filtering
+    students = Student.objects.select_related('classroom').filter(
+        main_user=main_user,
+        status=status_filter
+    ).order_by('last_name', 'first_name')
+    
     if classroom_id:
         students = students.filter(classroom_id=classroom_id)
     if search_query:
@@ -3637,8 +3707,33 @@ def classroom_options(request):
             Q(first_name__icontains=search_query) | Q(last_name__icontains=search_query)
         )
 
-    # Fetch all classrooms for the filter dropdown
-    classrooms = Classroom.objects.all()
+    # Fetch all classrooms for the filter dropdown, filtered by main_user
+    classrooms = None
+    attempts = [
+        ('user', False),
+        ('main_user', False),
+        ('mainuser', False),
+        ('owner', False),
+        ('user_id', True),
+        ('main_user_id', True),
+        ('mainuser_id', True),
+        ('owner_id', True),
+    ]
+    for field_name, is_id in attempts:
+        try:
+            if is_id:
+                kwargs = {field_name: main_user.id}
+            else:
+                kwargs = {field_name: main_user}
+            classrooms = Classroom.objects.filter(**kwargs)
+            break
+        except FieldError:
+            classrooms = None
+            continue
+    
+    if classrooms is None:
+        logger.warning("No matching FK field found on Classroom; returning empty queryset.")
+        classrooms = Classroom.objects.none()
 
     return render(request, 'tottimeapp/classroom_options.html', {
         **permissions_context,  # Include permission flags dynamically
