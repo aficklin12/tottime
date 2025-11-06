@@ -92,6 +92,7 @@
         width: 100%;
         border-collapse: collapse;
         margin-top: 0; /* Remove gap between tabs and table */
+        margin-right: 50px;
         background: white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         border: 1px solid #ddd; /* Add border to connect with tabs */
@@ -151,6 +152,44 @@
         color: #666;
         font-style: italic;
     }
+    @media (max-width: 999px) {
+    .meal-calculator {
+        padding: 10px;
+        margin: 10px;
+    }
+    
+    .results-table {
+        margin-right: 30px;
+        margin-left: 10px;
+    }
+    
+    .results-table th,
+    .results-table td {
+        padding: 8px 6px;
+        font-size: 13px;
+    }
+    
+    .meal-type-tabs {
+        margin-left: 25px;
+    }
+    
+    .meal-tab {
+        padding: 5px 8px;
+        font-size: 13px;
+    }
+    
+    .food-component {
+        font-size: 13px;
+    }
+    
+    .sub-item {
+        font-size: 12px;
+    }
+    
+    .total-amount {
+        font-size: 13px;
+    }
+}
 </style>
 {% endblock %}
 
