@@ -8714,3 +8714,20 @@ def add_activity(request, theme_id):
         messages.error(request, 'Missing required fields!')
     
     return redirect('theme_activities', theme_id=theme.id, view_type='weeks')
+
+
+@login_required
+def meal_calculator(request):
+    required_permission_id = 272
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+
+    context = {
+        **permissions_context,
+        'main_user': main_user,
+    }
+
+    return render(request, 'tottimeapp/meal_calculator.html', context)

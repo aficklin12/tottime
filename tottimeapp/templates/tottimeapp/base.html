@@ -490,6 +490,9 @@
                                 {% if show_meal_count %}
                                 <a class="nav-link" href="{% url 'meal_count' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Meal Count</a>
                                 {% endif %}
+                                {% if show_inventory %}
+                                <a class="nav-link" href="{% url 'meal_calculator' %}" style="font-family: 'Poppins', sans-serif; font-size: 1rem;">Meal Calculator</a>
+                                {% endif %}
                             </nav>
                         </div>
                         {% endif %}

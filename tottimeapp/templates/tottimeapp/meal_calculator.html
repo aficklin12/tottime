@@ -1,0 +1,713 @@
+{% extends 'tottimeapp/base.html' %}
+{% load static %}
+
+{% block title %}Meal Calculator{% endblock %}
+
+{% block styles %}
+<style>
+    .meal-calculator {
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    
+    .age-group-inputs {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+    
+    .age-group-inputs h3 {
+        margin-bottom: 15px;
+        color: #272630;
+    }
+    
+    .input-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .input-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .input-group label {
+        font-weight: 500;
+        margin-bottom: 5px;
+        font-size: 14px;
+    }
+    
+    .input-group input {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+    }
+    
+.meal-type-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 0; /* Remove gap */
+    margin-left: 50px; /* Move tabs 50px to the left */
+    border-bottom: none; /* Remove grey bar */
+    max-width: 100%; /* Constrain to container */
+}
+
+    
+    .meal-tab {
+        padding: 5px 10px;
+        background: #f8f9fa;
+        border: 1px solid #ddd; /* Add border for definition */
+        border-bottom: none; /* Remove bottom border to connect with table */
+        cursor: pointer;
+        font-weight: 500;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.3s;
+    }
+    
+    .meal-tab.active {
+        background: #272630;
+        color: white;
+        border-color: #272630;
+    }
+    
+    .meal-tab:hover:not(.active) {
+        background: #e9ecef;
+        color: rgb(57, 189, 180);
+    }
+    
+    .results-section {
+        display: none;
+    }
+    
+    .results-section.active {
+        display: block;
+    }
+    
+    .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0; /* Remove gap between tabs and table */
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border: 1px solid #ddd; /* Add border to connect with tabs */
+    }
+    
+    .results-table thead {
+        background: #272630;
+        color: white;
+    }
+    
+    .results-table th,
+    .results-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .results-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .food-component {
+        font-weight: 600;
+        color: #272630;
+    }
+    
+    .sub-item {
+        padding-left: 20px;
+        font-size: 14px;
+        color: #666;
+    }
+    
+    .total-amount {
+        font-weight: 600;
+        color: rgb(57, 189, 180);
+    }
+    
+    .calculate-btn {
+        background: rgb(57, 189, 180);
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 20px;
+    }
+    
+    .calculate-btn:hover {
+        background: #007b8a;
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>CACFP Meal Calculator</h1>
+<div class="meal-calculator">
+    
+    
+    <div class="age-group-inputs">
+        <h3>Number of Children by Age Group</h3>
+        <div class="input-row">
+            <div class="input-group">
+                <label for="ages-1-2">Ages 1-2</label>
+                <input type="number" id="ages-1-2" min="0" value="0">
+            </div>
+            <div class="input-group">
+                <label for="ages-3-5">Ages 3-5</label>
+                <input type="number" id="ages-3-5" min="0" value="0">
+            </div>
+            <div class="input-group">
+                <label for="ages-6-12">Ages 6-12</label>
+                <input type="number" id="ages-6-12" min="0" value="0">
+            </div>
+            <div class="input-group">
+                <label for="ages-13-18">Ages 13-18</label>
+                <input type="number" id="ages-13-18" min="0" value="0">
+            </div>
+        </div>
+        <button class="calculate-btn" onclick="calculateMeals()">Calculate Meal Requirements</button>
+    </div>
+    
+    <div class="meal-type-tabs">
+        <button class="meal-tab active" onclick="showMeal('breakfast')">Breakfast</button>
+        <button class="meal-tab" onclick="showMeal('lunch')">Lunch/Dinner</button>
+        <button class="meal-tab" onclick="showMeal('snack')">Snack</button>
+    </div>
+    
+    <div id="breakfast-results" class="results-section active">
+  
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Food Component & Food Items</th>
+                    <th>Total Amount Needed</th>
+                </tr>
+            </thead>
+            <tbody id="breakfast-tbody">
+                <tr>
+                    <td colspan="2" class="no-results">Enter number of children and click Calculate</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="lunch-results" class="results-section">
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Food Component & Food Items</th>
+                    <th>Total Amount Needed</th>
+                </tr>
+            </thead>
+            <tbody id="lunch-tbody">
+                <tr>
+                    <td colspan="2" class="no-results">Enter number of children and click Calculate</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="snack-results" class="results-section">
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Food Component & Food Items</th>
+                    <th>Total Amount Needed</th>
+                </tr>
+            </thead>
+            <tbody id="snack-tbody">
+                <tr>
+                    <td colspan="2" class="no-results">Enter number of children and click Calculate</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// CACFP Meal Pattern Data
+const mealPatterns = {
+    breakfast: {
+        'Fluid Milk': {
+            '1-2': '4 fl oz',
+            '3-5': '6 fl oz',
+            '6-12': '8 fl oz',
+            '13-18': '8 fl oz',
+            unit: 'fl oz'
+        },
+        'Vegetables, fruits, or portions of both': {
+            '1-2': '1/4 cup',
+            '3-5': '1/2 cup',
+            '6-12': '1/2 cup',
+            '13-18': '1/2 cup',
+            unit: 'cup'
+        },
+        'Grains (oz eq)': {
+            subItems: {
+                'Whole grain-rich or enriched bread': {
+                    '1-2': '1/2 slice',
+                    '3-5': '1/2 slice',
+                    '6-12': '1 slice',
+                    '13-18': '1 slice',
+                    unit: 'slice'
+                },
+                'Whole grain-rich or enriched bread product (biscuit, roll, muffin)': {
+                    '1-2': '1/2 serving',
+                    '3-5': '1/2 serving',
+                    '6-12': '1 serving',
+                    '13-18': '1 serving',
+                    unit: 'serving'
+                },
+                'Whole grain-rich, enriched or fortified cooked breakfast cereal, cereal grain, and/or pasta': {
+                    '1-2': '1/4 cup',
+                    '3-5': '1/4 cup',
+                    '6-12': '1/2 cup',
+                    '13-18': '1/2 cup',
+                    unit: 'cup'
+                },
+                'Whole grain-rich, enriched or fortified ready-to-eat breakfast cereal (dry, cold)': {
+                    subItems: {
+                        'Flakes or rounds': {
+                            '1-2': '1/2 cup',
+                            '3-5': '1/2 cup',
+                            '6-12': '1 cup',
+                            '13-18': '1 cup',
+                            unit: 'cup'
+                        },
+                        'Puffed cereal': {
+                            '1-2': '3/4 cup',
+                            '3-5': '3/4 cup',
+                            '6-12': '1 1/4 cup',
+                            '13-18': '1 1/4 cup',
+                            unit: 'cup'
+                        },
+                        'Granola': {
+                            '1-2': '1/8 cup',
+                            '3-5': '1/8 cup',
+                            '6-12': '1/4 cup',
+                            '13-18': '1/4 cup',
+                            unit: 'cup'
+                        }
+                    }
+                }
+            }
+        }
+    },
+    lunch: {
+        'Fluid Milk': {
+            '1-2': '4 fl oz',
+            '3-5': '6 fl oz',
+            '6-12': '8 fl oz',
+            '13-18': '8 fl oz',
+            unit: 'fl oz'
+        },
+        'Meat/meat alternates': {
+            subItems: {
+                'Lean meat, poultry, or fish': {
+                    '1-2': '1 oz',
+                    '3-5': '1 1/2 oz',
+                    '6-12': '2 oz',
+                    '13-18': '2 oz',
+                    unit: 'oz'
+                },
+                'Tofu, soy product, or alternate protein products': {
+                    '1-2': '1 oz',
+                    '3-5': '1 1/2 oz',
+                    '6-12': '2 oz',
+                    '13-18': '2 oz',
+                    unit: 'oz'
+                },
+                'Cheese': {
+                    '1-2': '1 oz',
+                    '3-5': '1 1/2 oz',
+                    '6-12': '2 oz',
+                    '13-18': '2 oz',
+                    unit: 'oz'
+                },
+                'Large egg': {
+                    '1-2': '1/2',
+                    '3-5': '3/4',
+                    '6-12': '1',
+                    '13-18': '1',
+                    unit: 'egg'
+                },
+                'Cooked dry beans or peas': {
+                    '1-2': '2 tbsp',
+                    '3-5': '3 tbsp',
+                    '6-12': '4 tbsp',
+                    '13-18': '4 tbsp',
+                    unit: 'tbsp'
+                },
+                'Peanut butter or soy nut butter or other nut or seed butters': {
+                    '1-2': '4 oz or 1/2 cup',
+                    '3-5': '6 oz or 3/4 cup',
+                    '6-12': '8 oz or 1 cup',
+                    '13-18': '8 oz or 1 cup',
+                    unit: 'oz or cup'
+                },
+                'Yogurt, plain or flavored unsweetened or sweetened': {
+                    '1-2': '1/2 oz = 50%',
+                    '3-5': '3/4 oz = 50%',
+                    '6-12': '1 oz = 50%',
+                    '13-18': '1 oz = 50%',
+                    unit: 'oz'
+                }
+            }
+        },
+        'Vegetables': {
+            '1-2': '1/8 cup',
+            '3-5': '1/4 cup',
+            '6-12': '1/2 cup',
+            '13-18': '1/2 cup',
+            unit: 'cup'
+        },
+        'Fruits': {
+            '1-2': '1/8 cup',
+            '3-5': '1/4 cup',
+            '6-12': '1/4 cup',
+            '13-18': '1/4 cup',
+            unit: 'cup'
+        },
+        'Grains (oz eq)': {
+            subItems: {
+                'Whole grain-rich or enriched bread': {
+                    '1-2': '1/2 slice',
+                    '3-5': '1/2 slice',
+                    '6-12': '1 slice',
+                    '13-18': '1 slice',
+                    unit: 'slice'
+                },
+                'Whole grain-rich or enriched bread product (biscuit, roll, muffin)': {
+                    '1-2': '1/2 serving',
+                    '3-5': '1/2 serving',
+                    '6-12': '1 serving',
+                    '13-18': '1 serving',
+                    unit: 'serving'
+                },
+                'Whole grain-rich, enriched or fortified cooked breakfast cereal, cereal grain, and/or pasta': {
+                    '1-2': '1/4 cup',
+                    '3-5': '1/4 cup',
+                    '6-12': '1/2 cup',
+                    '13-18': '1/2 cup',
+                    unit: 'cup'
+                }
+            }
+        }
+    },
+    snack: {
+        'Fluid Milk': {
+            '1-2': '4 fl oz',
+            '3-5': '4 fl oz',
+            '6-12': '8 fl oz',
+            '13-18': '8 fl oz',
+            unit: 'fl oz'
+        },
+        'Meat/meat alternates': {
+            subItems: {
+                'Lean meat, poultry, or fish': {
+                    '1-2': '1/2 oz',
+                    '3-5': '1/2 oz',
+                    '6-12': '1 oz',
+                    '13-18': '1 oz',
+                    unit: 'oz'
+                },
+                'Tofu, soy product, or alternate protein products': {
+                    '1-2': '1/2 oz',
+                    '3-5': '1/2 oz',
+                    '6-12': '1 oz',
+                    '13-18': '1 oz',
+                    unit: 'oz'
+                },
+                'Cheese': {
+                    '1-2': '1/2 oz',
+                    '3-5': '1/2 oz',
+                    '6-12': '1 oz',
+                    '13-18': '1 oz',
+                    unit: 'oz'
+                },
+                'Large egg': {
+                    '1-2': '1/2',
+                    '3-5': '1/2',
+                    '6-12': '1/2',
+                    '13-18': '1/2',
+                    unit: 'egg'
+                },
+                'Cooked dry beans or peas': {
+                    '1-2': '1/8 cup',
+                    '3-5': '1/8 cup',
+                    '6-12': '1/4 cup',
+                    '13-18': '1/4 cup',
+                    unit: 'cup'
+                },
+                'Peanut butter or soy nut butter or other nut or seed butters': {
+                    '1-2': '1 tbsp',
+                    '3-5': '1 tbsp',
+                    '6-12': '2 tbsp',
+                    '13-18': '2 tbsp',
+                    unit: 'tbsp'
+                },
+                'Yogurt, plain or flavored unsweetened or sweetened': {
+                    '1-2': '2 oz or 1/4 cup',
+                    '3-5': '2 oz or 1/4 cup',
+                    '6-12': '4 oz or 1/2 cup',
+                    '13-18': '4 oz or 1/2 cup',
+                    unit: 'oz or cup'
+                },
+                'Peanuts, soy nuts, tree nuts, or seeds': {
+                    '1-2': '1/2 oz',
+                    '3-5': '1/2 oz',
+                    '6-12': '1 oz',
+                    '13-18': '1 oz',
+                    unit: 'oz'
+                }
+            }
+        },
+        'Vegetables': {
+            '1-2': '1/2 cup',
+            '3-5': '1/2 cup',
+            '6-12': '3/4 cup',
+            '13-18': '3/4 cup',
+            unit: 'cup'
+        },
+        'Fruits': {
+            '1-2': '1/2 cup',
+            '3-5': '1/2 cup',
+            '6-12': '3/4 cup',
+            '13-18': '3/4 cup',
+            unit: 'cup'
+        },
+        'Grains (oz eq)': {
+            subItems: {
+                'Whole grain-rich or enriched bread': {
+                    '1-2': '1/2 slice',
+                    '3-5': '1/2 slice',
+                    '6-12': '1 slice',
+                    '13-18': '1 slice',
+                    unit: 'slice'
+                },
+                'Whole grain-rich or enriched bread product (biscuit, roll, muffin)': {
+                    '1-2': '1/2 serving',
+                    '3-5': '1/2 serving',
+                    '6-12': '1 serving',
+                    '13-18': '1 serving',
+                    unit: 'serving'
+                },
+                'Whole grain-rich, enriched or fortified cooked breakfast cereal, cereal grain, and/or pasta': {
+                    '1-2': '1/4 cup',
+                    '3-5': '1/4 cup',
+                    '6-12': '1/2 cup',
+                    '13-18': '1/2 cup',
+                    unit: 'cup'
+                },
+                'Whole grain-rich, enriched or fortified ready-to-eat breakfast cereal (dry, cold)': {
+                    subItems: {
+                        'Flakes or rounds': {
+                            '1-2': '1/2 cup',
+                            '3-5': '1/2 cup',
+                            '6-12': '1 cup',
+                            '13-18': '1 cup',
+                            unit: 'cup'
+                        },
+                        'Puffed cereal': {
+                            '1-2': '3/4 cup',
+                            '3-5': '3/4 cup',
+                            '6-12': '1 1/4 cup',
+                            '13-18': '1 1/4 cup',
+                            unit: 'cup'
+                        },
+                        'Granola': {
+                            '1-2': '1/4 cup',
+                            '3-5': '1/4 cup',
+                            '6-12': '1/4 cup',
+                            '13-18': '1/4 cup',
+                            unit: 'cup'
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+function showMeal(mealType) {
+    // Update tabs
+    document.querySelectorAll('.meal-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Show corresponding results
+    document.querySelectorAll('.results-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    document.getElementById(mealType + '-results').classList.add('active');
+}
+
+function parseFraction(fractionStr) {
+    if (!fractionStr || fractionStr === '') return 0;
+    
+    // Handle mixed numbers like "1 1/4"
+    const parts = fractionStr.trim().split(' ');
+    let total = 0;
+    
+    for (let part of parts) {
+        if (part.includes('/')) {
+            const [num, denom] = part.split('/').map(Number);
+            total += num / denom;
+        } else if (!isNaN(part)) {
+            total += Number(part);
+        }
+    }
+    
+    return total;
+}
+
+function formatAmount(amount, unit) {
+    if (amount === 0) return '0';
+    
+    // Round to 2 decimal places
+    const rounded = Math.round(amount * 100) / 100;
+    
+    // For whole numbers
+    if (rounded % 1 === 0) {
+        return `${rounded} ${unit}`;
+    }
+    
+    // For fractions
+    const whole = Math.floor(rounded);
+    const decimal = rounded - whole;
+    
+    // Common fractions
+    const fractions = {
+        0.125: '1/8',
+        0.25: '1/4',
+        0.33: '1/3',
+        0.5: '1/2',
+        0.67: '2/3',
+        0.75: '3/4'
+    };
+    
+    for (let [dec, frac] of Object.entries(fractions)) {
+        if (Math.abs(decimal - dec) < 0.02) {
+            return whole > 0 ? `${whole} ${frac} ${unit}` : `${frac} ${unit}`;
+        }
+    }
+    
+    return `${rounded} ${unit}`;
+}
+
+function calculateMeals() {
+    const counts = {
+        '1-2': parseInt(document.getElementById('ages-1-2').value) || 0,
+        '3-5': parseInt(document.getElementById('ages-3-5').value) || 0,
+        '6-12': parseInt(document.getElementById('ages-6-12').value) || 0,
+        '13-18': parseInt(document.getElementById('ages-13-18').value) || 0
+    };
+    
+    const totalChildren = Object.values(counts).reduce((a, b) => a + b, 0);
+    
+    if (totalChildren === 0) {
+        alert('Please enter at least one child in any age group');
+        return;
+    }
+    
+    // Calculate for each meal type
+    ['breakfast', 'lunch', 'snack'].forEach(mealType => {
+        const tbody = document.getElementById(mealType + '-tbody');
+        tbody.innerHTML = '';
+        
+        const pattern = mealPatterns[mealType];
+        
+        for (let [component, data] of Object.entries(pattern)) {
+            if (data.subItems) {
+                // Component with sub-items
+                const componentRow = document.createElement('tr');
+                componentRow.innerHTML = `<td class="food-component" colspan="2">${component}</td>`;
+                tbody.appendChild(componentRow);
+                
+                processSubItems(data.subItems, counts, tbody, 1);
+            } else {
+                // Simple component
+                const total = calculateTotal(data, counts);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="food-component">${component}</td>
+                    <td class="total-amount">${formatAmount(total, data.unit)}</td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+    });
+}
+
+function processSubItems(subItems, counts, tbody, level) {
+    for (let [itemName, itemData] of Object.entries(subItems)) {
+        if (itemData.subItems) {
+            // Nested sub-item
+            const row = document.createElement('tr');
+            row.innerHTML = `<td class="sub-item" style="padding-left: ${level * 20}px" colspan="2">${itemName}</td>`;
+            tbody.appendChild(row);
+            
+            processSubItems(itemData.subItems, counts, tbody, level + 1);
+        } else {
+            // Regular sub-item
+            const total = calculateTotal(itemData, counts);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="sub-item" style="padding-left: ${level * 20}px">${itemName}</td>
+                <td class="total-amount">${formatAmount(total, itemData.unit)}</td>
+            `;
+            tbody.appendChild(row);
+        }
+    }
+}
+
+function calculateTotal(data, counts) {
+    let total = 0;
+    
+    for (let [ageGroup, count] of Object.entries(counts)) {
+        if (count > 0 && data[ageGroup]) {
+            const amountStr = data[ageGroup].split(' ')[0]; // Get just the number part
+            const amount = parseFraction(amountStr);
+            total += amount * count;
+        }
+    }
+    
+    return total;
+}
+
+// Save to localStorage on input change
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = ['ages-1-2', 'ages-3-5', 'ages-6-12', 'ages-13-18'];
+    
+    // Load from localStorage
+    inputs.forEach(id => {
+        const saved = localStorage.getItem(id);
+        if (saved) {
+            document.getElementById(id).value = saved;
+        }
+        
+        // Save on change
+        document.getElementById(id).addEventListener('input', function() {
+            localStorage.setItem(id, this.value);
+        });
+    });
+});
+</script>
+{% endblock %}
