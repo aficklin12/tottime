@@ -1703,7 +1703,7 @@ def inventory_list(request):
 @login_required
 def infant_menu(request):
     # Check permissions for the specific page
-    required_permission_id = 272  # Permission ID for accessing infant menu view
+    required_permission_id = 414  # Permission ID for accessing infant menu view
     permissions_context = check_permissions(request, required_permission_id)
     # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
@@ -2771,6 +2771,10 @@ def attendance_record(request):
     # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
+    
+    # Get the appropriate main user for filtering
+    main_user = get_user_for_view(request)
+    
     # Get the selected date from the request, default to the current day
     selected_date = request.GET.get('date')
     if selected_date:
@@ -2780,14 +2784,44 @@ def attendance_record(request):
             selected_date = now().date()
     else:
         selected_date = now().date()
+    
     # Get the selected classroom from the request
     selected_classroom = request.GET.get('classroom')
+    
     # Filter attendance records by date and classroom
     attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=selected_date)
     if selected_classroom:
         attendance_records = attendance_records.filter(classroom_id=selected_classroom)
-    # Get all classrooms for the dropdown
-    classrooms = Classroom.objects.all()
+    
+    # Filter classrooms by main user - try common FK field names
+    classrooms = None
+    attempts = [
+        ('user', False),
+        ('main_user', False),
+        ('mainuser', False),
+        ('owner', False),
+        ('user_id', True),
+        ('main_user_id', True),
+        ('mainuser_id', True),
+        ('owner_id', True),
+    ]
+    for field_name, is_id in attempts:
+        try:
+            if is_id:
+                kwargs = {field_name: main_user.id}
+            else:
+                kwargs = {field_name: main_user}
+            classrooms = Classroom.objects.filter(**kwargs)
+            break
+        except FieldError:
+            classrooms = None
+            continue
+    
+    # If no matching field found, return empty queryset
+    if classrooms is None:
+        logger.warning("No matching FK field found on Classroom; returning empty queryset.")
+        classrooms = Classroom.objects.none()
+    
     # Determine which columns have data
     column_visibility = {
         'classroom_override_1': attendance_records.filter(classroom_override_1__isnull=False).exists(),
@@ -2807,17 +2841,19 @@ def attendance_record(request):
         'meal_3': attendance_records.filter(meal_3__isnull=False).exists(),
         'meal_4': attendance_records.filter(meal_4__isnull=False).exists(),
         'incident_report': attendance_records.filter(incident_report__isnull=False).exists(),
-         'diaper_changes': DiaperChangeRecord.objects.filter(
-        student__in=attendance_records.values_list('student', flat=True),
-        timestamp__date=selected_date
-    ).exists(),
+        'diaper_changes': DiaperChangeRecord.objects.filter(
+            student__in=attendance_records.values_list('student', flat=True),
+            timestamp__date=selected_date
+        ).exists(),
     }
+    
     diaper_change_students = set(
-    DiaperChangeRecord.objects.filter(
-        student__in=attendance_records.values_list('student', flat=True),
-        timestamp__date=selected_date
-    ).values_list('student_id', flat=True)
-)
+        DiaperChangeRecord.objects.filter(
+            student__in=attendance_records.values_list('student', flat=True),
+            timestamp__date=selected_date
+        ).values_list('student_id', flat=True)
+    )
+    
     # Render the attendance record page
     return render(request, 'attendance_record.html', {
         'attendance_records': attendance_records,
@@ -2825,8 +2861,8 @@ def attendance_record(request):
         'selected_date': selected_date,
         'selected_classroom': selected_classroom,
         'column_visibility': column_visibility,
-        'diaper_change_students': diaper_change_students,  # <-- add this
-        **permissions_context,  # Include permission flags dynamically
+        'diaper_change_students': diaper_change_students,
+        **permissions_context,
     })
 
 @login_required
@@ -8731,3 +8767,4 @@ def meal_calculator(request):
     }
 
     return render(request, 'tottimeapp/meal_calculator.html', context)
+
