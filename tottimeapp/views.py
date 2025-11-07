@@ -2788,10 +2788,25 @@ def attendance_record(request):
     # Get the selected classroom from the request
     selected_classroom = request.GET.get('classroom')
     
-    # Filter attendance records by date and classroom
+    # Filter attendance records by date
     attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=selected_date)
+    
+    # If a classroom is selected, filter by original classroom OR any classroom override
     if selected_classroom:
-        attendance_records = attendance_records.filter(classroom_id=selected_classroom)
+        try:
+            classroom_obj = Classroom.objects.get(id=selected_classroom)
+            classroom_name = classroom_obj.name
+            
+            attendance_records = attendance_records.filter(
+                Q(classroom_id=selected_classroom) |
+                Q(classroom_override_1=classroom_name) |
+                Q(classroom_override_2=classroom_name) |
+                Q(classroom_override_3=classroom_name) |
+                Q(classroom_override_4=classroom_name)
+            )
+        except Classroom.DoesNotExist:
+            # If classroom doesn't exist, just filter by classroom_id
+            attendance_records = attendance_records.filter(classroom_id=selected_classroom)
     
     # Filter classrooms by main user - try common FK field names
     classrooms = None
