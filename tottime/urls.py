@@ -168,6 +168,7 @@ urlpatterns = [
     path('update_classroom_attendance/', login_required(views.update_classroom_attendance), name='update_classroom_attendance'),
     path('edit-student/<int:student_id>/', login_required(views.edit_student_info), name='edit_student'),
     path('attendance_record/', login_required(views.attendance_record), name='attendance_record'),
+    path('update_attendance_times/', login_required(views.update_attendance_times), name='update_attendance_times'),
     path('inbox_perms/', login_required(views.inbox_perms), name='inbox_perms'),
     path('get-allowed-receivers/', login_required(views.get_allowed_receivers), name='get_allowed_receivers'),
     path('add-announcement/', login_required(views.add_announcement), name='add_announcement'),

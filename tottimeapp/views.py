@@ -2881,6 +2881,40 @@ def attendance_record(request):
     })
 
 @login_required
+@require_POST
+def update_attendance_times(request):
+    try:
+        data = json.loads(request.body)
+        updates = data.get('updates', [])
+        
+        for update in updates:
+            record_id = update.get('record_id')
+            field = update.get('field')
+            value = update.get('value')
+            
+            try:
+                record = AttendanceRecord.objects.get(id=record_id, user=request.user)
+                
+                # Convert empty string to None
+                if value == '':
+                    value = None
+                elif value:
+                    # Parse datetime string
+                    value = datetime.fromisoformat(value)
+                
+                # Update the field
+                setattr(record, field, value)
+                record.save()
+                
+            except AttendanceRecord.DoesNotExist:
+                return JsonResponse({'success': False, 'error': f'Record {record_id} not found'})
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
 def daily_attendance(request):
     # Check permissions for the specific page
     required_permission_id = 274  # Permission ID for daily_attendance view

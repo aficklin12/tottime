@@ -35,6 +35,12 @@ th {
     color: rgb(57, 189, 180);
     text-decoration: underline; /* Add underline on hover */
 }
+.time-input {
+    min-width: 150px;
+}
+.editable-time {
+    cursor: default;
+}
     </style>
 {% endblock %}
 
@@ -55,6 +61,9 @@ th {
                         </select>
                         
                         <button type="submit" class="btn btn-primary">Go</button>
+                        <button type="button" id="editModeBtn" class="btn btn-warning ms-2">Edit</button>
+                        <button type="button" id="saveModeBtn" class="btn btn-success ms-2" style="display:none;">Save All</button>
+                        <button type="button" id="cancelModeBtn" class="btn btn-secondary ms-2" style="display:none;">Cancel</button>
                     </form>
                 </div>
                 
@@ -92,66 +101,62 @@ th {
                         {% for record in attendance_records %}
                         <tr>
                             <td>{{ record.student }}</td>
-                            <td>{{ record.sign_in_time|date:"h:i A" }}</td>
-                            <td>{{ record.sign_out_time|date:"h:i A" }}</td>
+                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="sign_in_time" data-value="{{ record.sign_in_time|date:'Y-m-d\TH:i' }}">
+                                {{ record.sign_in_time|date:"h:i A" }}
+                            </td>
+                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="sign_out_time" data-value="{% if record.sign_out_time %}{{ record.sign_out_time|date:'Y-m-d\TH:i' }}{% endif %}">
+                                {{ record.sign_out_time|date:"h:i A" }}
+                            </td>
                             {% if column_visibility.classroom_override_1 or column_visibility.timestamp_override_1 %}
                             <td>
                                 {% if record.classroom_override_1 %}{{ record.classroom_override_1 }}{% endif %}
-                                {% if record.timestamp_override_1 %}<br>{{ record.timestamp_override_1|date:"h:i A" }}{% endif %}
+                                {% if record.timestamp_override_1 %}
+                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_1" data-value="{{ record.timestamp_override_1|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_1|date:"h:i A" }}</span>
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.classroom_override_2 or column_visibility.timestamp_override_2 %}
                             <td>
                                 {% if record.classroom_override_2 %}{{ record.classroom_override_2 }}{% endif %}
-                                {% if record.timestamp_override_2 %}<br>{{ record.timestamp_override_2|date:"h:i A" }}{% endif %}
+                                {% if record.timestamp_override_2 %}
+                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_2" data-value="{{ record.timestamp_override_2|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_2|date:"h:i A" }}</span>
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.classroom_override_3 or column_visibility.timestamp_override_3 %}
                             <td>
                                 {% if record.classroom_override_3 %}{{ record.classroom_override_3 }}{% endif %}
-                                {% if record.timestamp_override_3 %}<br>{{ record.timestamp_override_3|date:"h:i A" }}{% endif %}
+                                {% if record.timestamp_override_3 %}
+                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_3" data-value="{{ record.timestamp_override_3|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_3|date:"h:i A" }}</span>
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.classroom_override_4 or column_visibility.timestamp_override_4 %}
                             <td>
                                 {% if record.classroom_override_4 %}{{ record.classroom_override_4 }}{% endif %}
-                                {% if record.timestamp_override_4 %}<br>{{ record.timestamp_override_4|date:"h:i A" }}{% endif %}
+                                {% if record.timestamp_override_4 %}
+                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_4" data-value="{{ record.timestamp_override_4|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_4|date:"h:i A" }}</span>
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_out_1 %}
-                            <td>
-                                {% if record.outside_time_out_1 %}
-                                    {{ record.outside_time_out_1|date:"h:i A" }}
-                                {% else %}
-                                    <!-- Display blank -->
-                                {% endif %}
+                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_out_1" data-value="{% if record.outside_time_out_1 %}{{ record.outside_time_out_1|date:'Y-m-d\TH:i' }}{% endif %}">
+                                {% if record.outside_time_out_1 %}{{ record.outside_time_out_1|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_in_1 %}
-                            <td>
-                                {% if record.outside_time_in_1 %}
-                                    {{ record.outside_time_in_1|date:"h:i A" }}
-                                {% else %}
-                                    <!-- Display blank -->
-                                {% endif %}
+                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_in_1" data-value="{% if record.outside_time_in_1 %}{{ record.outside_time_in_1|date:'Y-m-d\TH:i' }}{% endif %}">
+                                {% if record.outside_time_in_1 %}{{ record.outside_time_in_1|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_out_2 %}
-                            <td>
-                                {% if record.outside_time_out_2 %}
-                                    {{ record.outside_time_out_2|date:"h:i A" }}
-                                {% else %}
-                                    <!-- Display blank -->
-                                {% endif %}
+                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_out_2" data-value="{% if record.outside_time_out_2 %}{{ record.outside_time_out_2|date:'Y-m-d\TH:i' }}{% endif %}">
+                                {% if record.outside_time_out_2 %}{{ record.outside_time_out_2|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_in_2 %}
-                            <td>
-                                {% if record.outside_time_in_2 %}
-                                    {{ record.outside_time_in_2|date:"h:i A" }}
-                                {% else %}
-                                    <!-- Display blank -->
-                                {% endif %}
+                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_in_2" data-value="{% if record.outside_time_in_2 %}{{ record.outside_time_in_2|date:'Y-m-d\TH:i' }}{% endif %}">
+                                {% if record.outside_time_in_2 %}{{ record.outside_time_in_2|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.incident_report %}
@@ -224,6 +229,84 @@ th {
 {% block scripts %}
 <script>
 $(document).ready(function() {
+    let editMode = false;
+    let originalValues = {};
+
+    // Edit mode toggle
+    $('#editModeBtn').on('click', function() {
+        editMode = true;
+        $(this).hide();
+        $('#saveModeBtn, #cancelModeBtn').show();
+        
+        // Convert all editable cells to inputs
+        $('.editable-time').each(function() {
+            const $cell = $(this);
+            const value = $cell.data('value');
+            const recordId = $cell.data('record-id');
+            const field = $cell.data('field');
+            const key = `${recordId}-${field}`;
+            
+            originalValues[key] = value;
+            
+            const $input = $('<input>', {
+                type: 'datetime-local',
+                class: 'form-control form-control-sm time-input',
+                value: value,
+                'data-record-id': recordId,
+                'data-field': field
+            });
+            
+            $cell.html($input);
+        });
+    });
+
+    // Cancel edit mode
+    $('#cancelModeBtn').on('click', function() {
+        location.reload();
+    });
+
+    // Save all changes
+    $('#saveModeBtn').on('click', function() {
+        const updates = [];
+        
+        $('.time-input').each(function() {
+            const $input = $(this);
+            const recordId = $input.data('record-id');
+            const field = $input.data('field');
+            const value = $input.val();
+            
+            updates.push({
+                record_id: recordId,
+                field: field,
+                value: value
+            });
+        });
+
+        $.ajax({
+            url: "{% url 'update_attendance_times' %}",
+            type: "POST",
+            headers: {
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() || '{{ csrf_token }}'
+            },
+            contentType: 'application/json',
+            data: JSON.stringify({ updates: updates }),
+            success: function(response) {
+                if (response.success) {
+                    toastr.success('Changes saved successfully!');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    toastr.error('Error saving changes: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function(xhr) {
+                toastr.error('Error saving changes. Please try again.');
+                console.error(xhr);
+            }
+        });
+    });
+
     // Incident report click handler
     $('.clickable-name').on('click', function() {
         const incidentId = $(this).data('incident-id');
