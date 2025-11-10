@@ -35,12 +35,6 @@ th {
     color: rgb(57, 189, 180);
     text-decoration: underline; /* Add underline on hover */
 }
-.time-input {
-    min-width: 150px;
-}
-.editable-time {
-    cursor: default;
-}
     </style>
 {% endblock %}
 
@@ -95,6 +89,7 @@ th {
                             {% if column_visibility.meal_4 %}<th>Meal 4</th>{% endif %}
                             {% if column_visibility.incident_report %}<th>Incident Report</th>{% endif %}
                             {% if column_visibility.diaper_changes %}<th>Diaper Changes</th>{% endif %}
+                            {% if column_visibility.feeds %}<th>Feeds</th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -110,53 +105,61 @@ th {
                             {% if column_visibility.classroom_override_1 or column_visibility.timestamp_override_1 %}
                             <td>
                                 {% if record.classroom_override_1 %}{{ record.classroom_override_1 }}{% endif %}
-                                {% if record.timestamp_override_1 %}
-                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_1" data-value="{{ record.timestamp_override_1|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_1|date:"h:i A" }}</span>
-                                {% endif %}
+                                {% if record.timestamp_override_1 %}<br>{{ record.timestamp_override_1|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.classroom_override_2 or column_visibility.timestamp_override_2 %}
                             <td>
                                 {% if record.classroom_override_2 %}{{ record.classroom_override_2 }}{% endif %}
-                                {% if record.timestamp_override_2 %}
-                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_2" data-value="{{ record.timestamp_override_2|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_2|date:"h:i A" }}</span>
-                                {% endif %}
+                                {% if record.timestamp_override_2 %}<br>{{ record.timestamp_override_2|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.classroom_override_3 or column_visibility.timestamp_override_3 %}
                             <td>
                                 {% if record.classroom_override_3 %}{{ record.classroom_override_3 }}{% endif %}
-                                {% if record.timestamp_override_3 %}
-                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_3" data-value="{{ record.timestamp_override_3|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_3|date:"h:i A" }}</span>
-                                {% endif %}
+                                {% if record.timestamp_override_3 %}<br>{{ record.timestamp_override_3|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.classroom_override_4 or column_visibility.timestamp_override_4 %}
                             <td>
                                 {% if record.classroom_override_4 %}{{ record.classroom_override_4 }}{% endif %}
-                                {% if record.timestamp_override_4 %}
-                                <br><span class="editable-time" data-record-id="{{ record.id }}" data-field="timestamp_override_4" data-value="{{ record.timestamp_override_4|date:'Y-m-d\TH:i' }}">{{ record.timestamp_override_4|date:"h:i A" }}</span>
-                                {% endif %}
+                                {% if record.timestamp_override_4 %}<br>{{ record.timestamp_override_4|date:"h:i A" }}{% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_out_1 %}
-                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_out_1" data-value="{% if record.outside_time_out_1 %}{{ record.outside_time_out_1|date:'Y-m-d\TH:i' }}{% endif %}">
-                                {% if record.outside_time_out_1 %}{{ record.outside_time_out_1|date:"h:i A" }}{% endif %}
+                            <td>
+                                {% if record.outside_time_out_1 %}
+                                    {{ record.outside_time_out_1|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_in_1 %}
-                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_in_1" data-value="{% if record.outside_time_in_1 %}{{ record.outside_time_in_1|date:'Y-m-d\TH:i' }}{% endif %}">
-                                {% if record.outside_time_in_1 %}{{ record.outside_time_in_1|date:"h:i A" }}{% endif %}
+                            <td>
+                                {% if record.outside_time_in_1 %}
+                                    {{ record.outside_time_in_1|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_out_2 %}
-                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_out_2" data-value="{% if record.outside_time_out_2 %}{{ record.outside_time_out_2|date:'Y-m-d\TH:i' }}{% endif %}">
-                                {% if record.outside_time_out_2 %}{{ record.outside_time_out_2|date:"h:i A" }}{% endif %}
+                            <td>
+                                {% if record.outside_time_out_2 %}
+                                    {{ record.outside_time_out_2|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.outside_time_in_2 %}
-                            <td class="editable-time" data-record-id="{{ record.id }}" data-field="outside_time_in_2" data-value="{% if record.outside_time_in_2 %}{{ record.outside_time_in_2|date:'Y-m-d\TH:i' }}{% endif %}">
-                                {% if record.outside_time_in_2 %}{{ record.outside_time_in_2|date:"h:i A" }}{% endif %}
+                            <td>
+                                {% if record.outside_time_in_2 %}
+                                    {{ record.outside_time_in_2|date:"h:i A" }}
+                                {% else %}
+                                    <!-- Display blank -->
+                                {% endif %}
                             </td>
                             {% endif %}
                             {% if column_visibility.incident_report %}
@@ -181,7 +184,16 @@ th {
                                 {% endif %}
                             </td>
                             {% endif %}
-                            {% if column_visibility.meal_1 %}
+                            {% if column_visibility.feeds %}
+                            <td>
+                                {% if record.student.id in feed_students %}
+                                    <span class="clickable-name feed-link"
+                                          data-student-id="{{ record.student.id }}"
+                                          data-date="{{ selected_date|date:'Y-m-d' }}">
+                                        Feeds
+                                    </span>
+                                {% endif %}
+                            </td>
                             {% endif %}
                         </tr>
                         {% empty %}
@@ -193,120 +205,59 @@ th {
                 </table>
                 <!-- Diaper Changes Modal -->
                 <div class="modal fade" id="diaperChangesModal" tabindex="-1" aria-labelledby="diaperChangesModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="diaperChangesModalLabel">Diaper Changes</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body" id="diaperChangesModalBody">
-                        <!-- Content loaded by JS -->
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="diaperChangesModalLabel">Diaper Changes</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="diaperChangesModalBody">
+                            <!-- Content loaded by JS -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                        </div>
                     </div>
                 </div>
+                <!-- Feeds Modal -->
+                <div class="modal fade" id="feedsModal" tabindex="-1" aria-labelledby="feedsModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="feedsModalLabel">Feeds Summary</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="feedsModalBody">
+                            <!-- Content loaded by JS -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                        </div>
+                    </div>
                 </div>
                 <!-- Incident Report Modal -->
                 <div class="modal fade" id="incidentReportViewModal" tabindex="-1" aria-labelledby="incidentReportViewModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="incidentReportViewModalLabel">Incident Report</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="incidentReportViewModalLabel">Incident Report</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="incidentReportModalBody">
+                            <!-- Content will be loaded by JS -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                        </div>
                     </div>
-                    <div class="modal-body" id="incidentReportModalBody">
-                        <!-- Content will be loaded by JS -->
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                    </div>
-                </div>
                 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    let editMode = false;
-    let originalValues = {};
-
-    // Edit mode toggle
-    $('#editModeBtn').on('click', function() {
-        editMode = true;
-        $(this).hide();
-        $('#saveModeBtn, #cancelModeBtn').show();
-        
-        // Convert all editable cells to inputs
-        $('.editable-time').each(function() {
-            const $cell = $(this);
-            const value = $cell.data('value');
-            const recordId = $cell.data('record-id');
-            const field = $cell.data('field');
-            const key = `${recordId}-${field}`;
-            
-            originalValues[key] = value;
-            
-            const $input = $('<input>', {
-                type: 'datetime-local',
-                class: 'form-control form-control-sm time-input',
-                value: value,
-                'data-record-id': recordId,
-                'data-field': field
-            });
-            
-            $cell.html($input);
-        });
-    });
-
-    // Cancel edit mode
-    $('#cancelModeBtn').on('click', function() {
-        location.reload();
-    });
-
-    // Save all changes
-    $('#saveModeBtn').on('click', function() {
-        const updates = [];
-        
-        $('.time-input').each(function() {
-            const $input = $(this);
-            const recordId = $input.data('record-id');
-            const field = $input.data('field');
-            const value = $input.val();
-            
-            updates.push({
-                record_id: recordId,
-                field: field,
-                value: value
-            });
-        });
-
-        $.ajax({
-            url: "{% url 'update_attendance_times' %}",
-            type: "POST",
-            headers: {
-                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() || '{{ csrf_token }}'
-            },
-            contentType: 'application/json',
-            data: JSON.stringify({ updates: updates }),
-            success: function(response) {
-                if (response.success) {
-                    toastr.success('Changes saved successfully!');
-                    setTimeout(function() {
-                        location.reload();
-                    }, 1000);
-                } else {
-                    toastr.error('Error saving changes: ' + (response.error || 'Unknown error'));
-                }
-            },
-            error: function(xhr) {
-                toastr.error('Error saving changes. Please try again.');
-                console.error(xhr);
-            }
-        });
-    });
-
     // Incident report click handler
     $('.clickable-name').on('click', function() {
         const incidentId = $(this).data('incident-id');
@@ -364,6 +315,113 @@ $(document).ready(function() {
             error: function() {
                 $('#diaperChangesModalBody').html('<span class="text-danger">Could not load diaper changes.</span>');
                 $('#diaperChangesModal').modal('show');
+            }
+        });
+    });
+
+    // Feeds click handler
+    $('.feed-link').on('click', function() {
+        const studentId = $(this).data('student-id');
+        const date = $(this).data('date');
+        $.ajax({
+            url: "{% url 'feeds_for_student' %}",
+            type: "GET",
+            data: { student_id: studentId, date: date },
+            success: function(data) {
+                if (data.feeds.length > 0) {
+                    let html = '<ul class="list-group">';
+                    data.feeds.forEach(function(feed) {
+                        html += `<li class="list-group-item">
+                        <strong>Time:</strong> ${feed.time}<br>
+                        ${feed.formula_breast_milk ? `<strong>Formula/Breast Milk:</strong> ${feed.formula_breast_milk}<br>` : ''}
+                        ${feed.meal_snack_cereal ? `<strong>Meal/Snack/Cereal:</strong> ${feed.meal_snack_cereal}<br>` : ''}
+                        ${feed.fruit_vegetable ? `<strong>Fruit/Vegetable:</strong> ${feed.fruit_vegetable}<br>` : ''}
+                        ${feed.breakfast ? `<strong>Breakfast</strong><br>` : ''}
+                        ${feed.lunch ? `<strong>Lunch</strong><br>` : ''}
+                        ${feed.snack ? `<strong>Snack</strong><br>` : ''}
+                        <strong>Notes:</strong> ${feed.notes || '<em>No notes</em>'}
+                    </li>`;
+                    });
+                    html += '</ul>';
+                    $('#feedsModalBody').html(html);
+                } else {
+                    $('#feedsModalBody').html('<em>No feeds recorded for this date.</em>');
+                }
+                $('#feedsModal').modal('show');
+            },
+            error: function() {
+                $('#feedsModalBody').html('<span class="text-danger">Could not load feeds.</span>');
+                $('#feedsModal').modal('show');
+            }
+        });
+    });
+
+    let editMode = false;
+    let originalValues = {};
+
+    $('#editModeBtn').on('click', function() {
+        editMode = true;
+        $(this).hide();
+        $('#saveModeBtn, #cancelModeBtn').show();
+
+        $('.editable-time').each(function() {
+            const $cell = $(this);
+            const value = $cell.data('value');
+            const recordId = $cell.data('record-id');
+            const field = $cell.data('field');
+            const key = `${recordId}-${field}`;
+            originalValues[key] = value;
+
+            const $input = $('<input>', {
+                type: 'datetime-local',
+                class: 'form-control form-control-sm time-input',
+                value: value,
+                'data-record-id': recordId,
+                'data-field': field
+            });
+            $cell.html($input);
+        });
+    });
+
+    $('#cancelModeBtn').on('click', function() {
+        location.reload();
+    });
+
+    $('#saveModeBtn').on('click', function() {
+        const updates = [];
+        $('.time-input').each(function() {
+            const $input = $(this);
+            const recordId = $input.data('record-id');
+            const field = $input.data('field');
+            const value = $input.val();
+            updates.push({
+                record_id: recordId,
+                field: field,
+                value: value
+            });
+        });
+
+        $.ajax({
+            url: "{% url 'update_attendance_times' %}",
+            type: "POST",
+            headers: {
+                'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() || '{{ csrf_token }}'
+            },
+            contentType: 'application/json',
+            data: JSON.stringify({ updates: updates }),
+            success: function(response) {
+                if (response.success) {
+                    toastr.success('Changes saved successfully!');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    toastr.error('Error saving changes: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function(xhr) {
+                toastr.error('Error saving changes. Please try again.');
+                console.error(xhr);
             }
         });
     });

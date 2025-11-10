@@ -21,7 +21,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, TemporaryAccess, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, TemporaryAccess, FeedRecord, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -2860,15 +2860,24 @@ def attendance_record(request):
             student__in=attendance_records.values_list('student', flat=True),
             timestamp__date=selected_date
         ).exists(),
+        'feeds': FeedRecord.objects.filter(
+            student__in=attendance_records.values_list('student', flat=True),
+            timestamp__date=selected_date
+        ).exists(),
     }
-    
+        
     diaper_change_students = set(
         DiaperChangeRecord.objects.filter(
             student__in=attendance_records.values_list('student', flat=True),
             timestamp__date=selected_date
         ).values_list('student_id', flat=True)
     )
-    
+    feed_students = set(
+        FeedRecord.objects.filter(
+            student__in=attendance_records.values_list('student', flat=True),
+            timestamp__date=selected_date
+        ).values_list('student_id', flat=True)
+    )
     # Render the attendance record page
     return render(request, 'attendance_record.html', {
         'attendance_records': attendance_records,
@@ -2877,6 +2886,7 @@ def attendance_record(request):
         'selected_classroom': selected_classroom,
         'column_visibility': column_visibility,
         'diaper_change_students': diaper_change_students,
+        'feed_students': feed_students,
         **permissions_context,
     })
 
@@ -2899,8 +2909,9 @@ def update_attendance_times(request):
                 if value == '':
                     value = None
                 elif value:
-                    # Parse datetime string
-                    value = datetime.fromisoformat(value)
+                    # Parse datetime string and make it aware
+                    dt = datetime.fromisoformat(value)
+                    value = timezone.make_aware(dt)
                 
                 # Update the field
                 setattr(record, field, value)
@@ -3133,6 +3144,17 @@ def classroom(request):
             all_students = assigned_students.union(override_students)
 
         all_students = all_students.order_by('-is_signed_in', 'last_name', 'first_name')
+   
+        inventory_items = Inventory.objects.filter(
+            category='Infants',
+            user=main_user
+        ).exclude(
+            Q(item__icontains='oatmeal') |
+            Q(item__icontains='formula') |
+            Q(item__icontains='snack')
+        )
+
+        permissions_context['inventory_items'] = inventory_items
 
     except MainUser.DoesNotExist:
         all_students = Student.objects.none()
@@ -3206,7 +3228,7 @@ def sign_incident_report(request, report_id):
         return JsonResponse({'success': True})
     except IncidentReport.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Report not found'}, status=404)
-
+    
 @login_required
 def add_diaper_change(request):
     if request.method == 'POST':
@@ -3253,6 +3275,67 @@ def diaper_changes_for_student(request):
     except Exception as e:
         return JsonResponse({'changes': [], 'error': str(e)}, status=400)
 
+@login_required
+def add_feed(request):
+    if request.method == 'POST':
+        student_id = request.POST.get('student_id')
+        timestamp = request.POST.get('timestamp')
+        formula_breast_milk = request.POST.get('formula_breast_milk')
+        meal_snack_cereal = request.POST.get('meal_snack_cereal')
+        fruit_vegetable = request.POST.get('fruit_vegetable')
+        breakfast = bool(request.POST.get('breakfast'))
+        lunch = bool(request.POST.get('lunch'))
+        snack = bool(request.POST.get('snack'))
+        notes = request.POST.get('notes')
+        try:
+            student = Student.objects.get(id=student_id)
+            # Accept both "YYYY-MM-DDTHH:MM" and "YYYY-MM-DD HH:MM"
+            if timestamp and "T" in timestamp:
+                ts = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M")
+            else:
+                ts = datetime.strptime(timestamp, "%Y-%m-%d %H:%M")
+            # Make datetime aware
+            ts = timezone.make_aware(ts)
+            FeedRecord.objects.create(
+                student=student,
+                fed_by=request.user,
+                timestamp=ts,
+                formula_breast_milk=formula_breast_milk,
+                meal_snack_cereal=meal_snack_cereal,
+                fruit_vegetable=fruit_vegetable,
+                breakfast=breakfast,
+                lunch=lunch,
+                snack=snack,
+                notes=notes
+            )
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+@login_required
+def feeds_for_student(request):
+    student_id = request.GET.get('student_id')
+    date = request.GET.get('date')
+    try:
+        feeds = FeedRecord.objects.filter(
+            student_id=student_id,
+            timestamp__date=date
+        ).order_by('timestamp')
+        data = [{
+            'time': feed.timestamp.strftime('%I:%M %p'),
+            'formula_breast_milk': feed.formula_breast_milk,
+            'meal_snack_cereal': feed.meal_snack_cereal,
+            'fruit_vegetable': feed.fruit_vegetable,
+            'breakfast': feed.breakfast,
+            'lunch': feed.lunch,
+            'snack': feed.snack,
+            'notes': feed.notes
+        } for feed in feeds]
+        return JsonResponse({'feeds': data})
+    except Exception as e:
+        return JsonResponse({'feeds': [], 'error': str(e)}, status=400)
+    
 @login_required
 def get_attendance_record(request, student_id):
     student = get_object_or_404(Student, id=student_id)

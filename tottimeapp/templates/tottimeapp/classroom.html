@@ -390,6 +390,9 @@ body {
                                         <li>
                                             <a class="dropdown-item" href="#" id="addDiaperChangeDropdownItem">Record Diaper Change</a>
                                         </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" id="addFeedDropdownItem">Record Feed</a>
+                                        </li>
                                     </ul>
                                 </div>
                                 <!-- Hidden trigger buttons for modals -->
@@ -406,6 +409,70 @@ body {
                                 </div>
                              </div>
                         </div>
+                    </div>
+                </div>
+                <!-- Feed Modal -->
+                <div class="modal fade" id="feedModal" tabindex="-1" aria-labelledby="feedModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <form id="feedForm">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="feedModalLabel">Record Feed</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="student_id" id="feedStudentId">
+                                <div class="mb-2">
+                                    <label>Time</label>
+                                    <input type="datetime-local" name="timestamp" class="form-control" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label>Formula or Breast Milk</label>
+                                    <select name="formula_breast_milk_select" id="formulaSelect" class="form-select">
+                                        <option value="">None</option>
+                                        <option value="5oz IFIF Formula">5oz IFIF Formula</option>
+                                        <option value="5oz Breast Milk">5oz. Breast Milk</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <input type="text" name="formula_breast_milk" id="formulaCustom" class="form-control mt-2" style="display:none;" placeholder="Enter custom formula">
+                                </div>
+                                <div class="mb-2">
+                                    <label>Meal/Snack/Infant Cereal</label>
+                                    <select name="meal_snack_cereal_select" id="mealSelect" class="form-select">
+                                        <option value="">None</option>
+                                        <option value="3tbs IFIC Oatmeal">3tbs IFIC Oatmeal</option>
+                                        <option value="Infant Cereal">Infant Cereal</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <input type="text" name="meal_snack_cereal" id="mealCustom" class="form-control mt-2" style="display:none;" placeholder="Enter custom meal/snack/cereal">
+                                </div>
+                                <div class="mb-2">
+                                    <label>Fruit / Vegetable</label>
+                                    <select name="fruit_vegetable" class="form-select">
+                                        <option value="">None</option>
+                                        {% for item in inventory_items %}
+                                        <option value="{{ item.item }}">{{ item.item }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                               <div class="mb-2">
+                                    <label>Meal Type <span class="text-danger">*</span></label><br>
+                                    <input type="checkbox" name="breakfast" value="1" class="meal-type-checkbox"> Breakfast
+                                    <input type="checkbox" name="lunch" value="1" class="meal-type-checkbox ms-2"> Lunch
+                                    <input type="checkbox" name="snack" value="1" class="meal-type-checkbox ms-2"> Snack
+                                    <div id="mealTypeError" class="text-danger" style="display:none;">Please select at least one meal type.</div>
+                                </div>
+                                <div class="mb-2">
+                                    <label>Notes</label>
+                                    <textarea name="notes" class="form-control"></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-success">Save Feed</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                        </div>
+                        </form>
                     </div>
                 </div>
                 <!-- Diaper Change Modal -->
@@ -746,6 +813,49 @@ document.getElementById('classroomFilter').addEventListener('change', function()
 });
             </script>
             <script>
+            $(document).ready(function() {
+    // Formula dropdown logic
+    $('#formulaSelect').on('change', function() {
+        if ($(this).val() === 'Other') {
+            $('#formulaCustom').show().val('');
+        } else {
+            $('#formulaCustom').hide().val('');
+        }
+    });
+    // Meal dropdown logic
+    $('#mealSelect').on('change', function() {
+        if ($(this).val() === 'Other') {
+            $('#mealCustom').show().val('');
+        } else {
+            $('#mealCustom').hide().val('');
+        }
+    });
+    // On submit, copy selected value or custom value to actual input
+    $('#feedForm').on('submit', function(e) {
+        // Set formula_breast_milk value
+        if ($('#formulaSelect').val() === 'Other') {
+            $('#formulaCustom').attr('name', 'formula_breast_milk');
+        } else {
+            $('#formulaCustom').attr('name', '');
+            $('#formulaCustom').val($('#formulaSelect').val());
+        }
+        // Set meal_snack_cereal value
+        if ($('#mealSelect').val() === 'Other') {
+            $('#mealCustom').attr('name', 'meal_snack_cereal');
+        } else {
+            $('#mealCustom').attr('name', '');
+            $('#mealCustom').val($('#mealSelect').val());
+        }
+    });
+
+    // Hide custom inputs on modal open/reset
+    $('#feedModal').on('show.bs.modal', function () {
+        $('#formulaCustom').hide().val('');
+        $('#mealCustom').hide().val('');
+        $('#formulaSelect').val('');
+        $('#mealSelect').val('');
+    });
+});
                 document.getElementById('classroomFilter').addEventListener('change', function() {
                     const selectedClassroomId = this.value;
                     const url = new URL(window.location.href);
@@ -932,6 +1042,57 @@ $(document).ready(function() {
     // Hide move classroom controls when modal is closed
     $('#studentModal').on('hidden.bs.modal', function () {
         $('#moveClassroomControls').hide();
+    });
+});
+$(document).ready(function() {
+    // Open Feed modal when dropdown item is clicked
+    $('#addFeedDropdownItem').on('click', function(e) {
+        e.preventDefault();
+        $('#moveClassroomControls').hide();
+        const studentId = $('#toggleAttendance').data('student-id');
+        $('#feedStudentId').val(studentId);
+        $('#feedForm')[0].reset();
+
+        // Set current datetime in YYYY-MM-DDTHH:MM format
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const currentDatetime = `${year}-${month}-${day}T${hours}:${minutes}`;
+        $('#feedForm input[name="timestamp"]').val(currentDatetime);
+
+        $('#feedModal').modal('show');
+    });
+
+    // Handle Feed form submission
+    $('#feedForm').on('submit', function(e) {
+        // Validate at least one meal type is checked
+    if ($('.meal-type-checkbox:checked').length === 0) {
+        $('#mealTypeError').show();
+        e.preventDefault();
+        return false;
+    } else {
+        $('#mealTypeError').hide();
+    }
+        e.preventDefault();
+        $.ajax({
+            url: "{% url 'add_feed' %}",
+            type: "POST",
+            data: $(this).serialize() + '&csrfmiddlewaretoken={{ csrf_token }}',
+            success: function(response) {
+                if (response.status === 'success') {
+                    toastr.success('Feed recorded!');
+                    $('#feedModal').modal('hide');
+                } else {
+                    toastr.error('Failed to record feed.');
+                }
+            },
+            error: function() {
+                toastr.error('An error occurred.');
+            }
+        });
     });
 });
 </script>
