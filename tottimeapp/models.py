@@ -806,19 +806,20 @@ class DiaperChangeRecord(models.Model):
             return f"Diaper change for {self.student} at {self.timestamp}"
 
 class FeedRecord(models.Model):
+    MEAL_CHOICES = [
+        ('breakfast', 'Breakfast'),
+        ('lunch', 'Lunch'),
+        ('snack', 'Snack'),
+    ]
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='feeds')
     fed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     timestamp = models.DateTimeField(default=timezone.now)
-    formula_breast_milk = models.CharField(max_length=100, null=True, blank=True)  # e.g. "5 oz. IFIF" or custom
-    meal_snack_cereal = models.CharField(max_length=100, null=True, blank=True)    # e.g. "3tbs IFIC Oatmeal" or custom
-    fruit_vegetable = models.CharField(max_length=100, null=True, blank=True)
-    breakfast = models.BooleanField(default=False)
-    lunch = models.BooleanField(default=False)
-    snack = models.BooleanField(default=False)
+    meal_type = models.CharField(max_length=10, choices=MEAL_CHOICES)
+    meal_description = models.TextField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f"Feed for {self.student} at {self.timestamp}"
+        return f"{self.meal_type.title()} for {self.student} at {self.timestamp}"
 
 class UserMessagingPermission(models.Model):
     main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name="user_messaging_permissions")

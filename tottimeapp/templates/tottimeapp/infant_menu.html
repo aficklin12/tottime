@@ -221,6 +221,18 @@ input[type="number"]:focus {
 
 {% block content %}
 <div class="form-container">
+    <form method="get" style="margin-bottom: 20px;">
+        <label for="student">Student:</label>
+        <select name="student" id="student">
+            {% for student in students %}
+                <option value="{{ student.id }}" {% if student.id == selected_student_id %}selected{% endif %}>{{ student }}</option>
+            {% endfor %}
+        </select>
+        <label for="week">Week (Monday):</label>
+        <input type="date" name="week" id="week" value="{{ selected_week }}">
+        <button type="submit">Filter</button>
+    </form>
+
     <div class="header-text">
         <h3>South Carolina Department of Social Services</h3>
         <h3>Child and Adult Care Food Program</h3>
@@ -299,459 +311,57 @@ input[type="number"]:focus {
             <tr>
                 <th></th>
                 <th>Date</th>
-                <th class="day-column">Monday:</th>
-                <th class="day-column">Tuesday:</th>
-                <th class="day-column">Wednesday:</th>
-                <th class="day-column">Thursday:</th>
-                <th class="day-column">Friday:</th>
-                <th>Meal Count</th>
+                {% for day in week_dates %}
+                    <th class="day-column">{{ day|date:"D, M d" }}</th>
+                {% endfor %}
             </tr>
         </thead>
         <tbody>
+            {% for meal in meal_types %}
             <tr>
-                <td rowspan="3" class="meal-section">BREAKFAST</td>
+                <td rowspan="3" class="meal-section">{{ meal|upper }}</td>
                 <td>Formula or Breast Milk</td>
+                {% for day in week_dates %}
                 <td class="dropdown-cell">
-                    <select name="breakfast_formula_monday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="breakfast_formula_monday_check">
-                    </div>
+                    {% with cell=menu_data|get_item:day|get_item:meal %}
+                        {% if cell.formula %}
+                            {% for entry in cell.formula %}
+                                {{ entry }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
                 </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_formula_tuesday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="breakfast_formula_tuesday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_formula_wednesday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="breakfast_formula_wednesday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_formula_thursday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="breakfast_formula_thursday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_formula_friday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="breakfast_formula_friday_check">
-                    </div>
-                </td>
-                <td><input type="number" name="breakfast_formula_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
+                {% endfor %}
             </tr>
             <tr>
                 <td>Infant Cereal / Meat / Meat Alternate</td>
+                {% for day in week_dates %}
                 <td class="dropdown-cell">
-                    <select name="breakfast_cereal_monday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
+                    {% with cell=menu_data|get_item:day|get_item:meal %}
+                        {% if cell.cereal %}
+                            {% for entry in cell.cereal %}
+                                {{ entry }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
                 </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_cereal_tuesday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_cereal_wednesday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_cereal_thursday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_cereal_friday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="number" name="breakfast_cereal_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
+                {% endfor %}
             </tr>
             <tr>
                 <td>Fruit / Vegetable</td>
+                {% for day in week_dates %}
                 <td class="dropdown-cell">
-                    <select name="breakfast_fruit_monday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
+                    {% with cell=menu_data|get_item:day|get_item:meal %}
+                        {% if cell.fruit %}
+                            {% for entry in cell.fruit %}
+                                {{ entry }}<br>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
                 </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_fruit_tuesday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_fruit_wednesday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_fruit_thursday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="breakfast_fruit_friday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="number" name="breakfast_fruit_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
+                {% endfor %}
             </tr>
-            <tr>
-                <td rowspan="3" class="meal-section">LUNCH</td>
-                <td>Formula or Breast Milk</td>
-                <td class="dropdown-cell">
-                    <select name="lunch_formula_monday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="lunch_formula_monday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_formula_tuesday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="lunch_formula_tuesday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_formula_wednesday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="lunch_formula_wednesday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_formula_thursday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="lunch_formula_thursday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_formula_friday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="lunch_formula_friday_check">
-                    </div>
-                </td>
-                <td><input type="number" name="lunch_formula_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
-            </tr>
-            <tr>
-                <td>Infant Cereal / Meat / Meat Alternate</td>
-                <td class="dropdown-cell">
-                    <select name="lunch_cereal_monday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_cereal_tuesday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_cereal_wednesday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_cereal_thursday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_cereal_friday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="number" name="lunch_cereal_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
-            </tr>
-            <tr>
-                <td>Fruit / Vegetables</td>
-                <td class="dropdown-cell">
-                    <select name="lunch_vegetables_monday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_vegetables_tuesday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_vegetables_wednesday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_vegetables_thursday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="lunch_vegetables_friday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="number" name="lunch_vegetables_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
-            </tr>
-            <tr>
-                <td rowspan="3" class="meal-section">SNACK</td>
-                <td>Formula or Breast Milk</td>
-                <td class="dropdown-cell">
-                    <select name="snack_formula_monday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="snack_formula_monday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_formula_tuesday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="snack_formula_tuesday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_formula_wednesday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="snack_formula_wednesday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_formula_thursday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="snack_formula_thursday_check">
-                    </div>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_formula_friday">
-                        <option value="5 oz. IFIF" selected>5 oz. IFIF</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="checkbox-overlay">
-                        <input type="checkbox" name="snack_formula_friday_check">
-                    </div>
-                </td>
-                <td><input type="number" name="snack_formula_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
-            </tr>
-            <tr>
-                <td>Sliced Bread / Crackers / Infant Cereal</td>
-                <td class="dropdown-cell">
-                    <select name="snack_juice_monday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_juice_tuesday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_juice_wednesday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_juice_thursday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_juice_friday">
-                        <option value="3tbs IFIC Oatmeal" selected>3tbs IFIC Oatmeal</option>
-                        {% for item in inventory_items %}
-                        <option value="{{ item.item }}">{{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="number" name="snack_juice_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
-            </tr>
-            <tr>
-                <td>Fruit / Vegetables</td>
-                <td class="dropdown-cell">
-                    <select name="snack_bread_monday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_bread_tuesday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_bread_wednesday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_bread_thursday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td class="dropdown-cell">
-                    <select name="snack_bread_friday" required>
-                        <option value="">Select Item</option>
-                        {% for item in inventory_items %}
-                        <option value="3tbs {{ item.item }}">3tbs {{ item.item }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-                <td><input type="number" name="snack_bread_count" min="0" step="1" style="width: 60px; text-align: center;"></td>
-            </tr>
+            {% endfor %}
         </tbody>
     </table>
 

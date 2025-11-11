@@ -333,12 +333,8 @@ $(document).ready(function() {
                     data.feeds.forEach(function(feed) {
                         html += `<li class="list-group-item">
                         <strong>Time:</strong> ${feed.time}<br>
-                        ${feed.formula_breast_milk ? `<strong>Formula/Breast Milk:</strong> ${feed.formula_breast_milk}<br>` : ''}
-                        ${feed.meal_snack_cereal ? `<strong>Meal/Snack/Cereal:</strong> ${feed.meal_snack_cereal}<br>` : ''}
-                        ${feed.fruit_vegetable ? `<strong>Fruit/Vegetable:</strong> ${feed.fruit_vegetable}<br>` : ''}
-                        ${feed.breakfast ? `<strong>Breakfast</strong><br>` : ''}
-                        ${feed.lunch ? `<strong>Lunch</strong><br>` : ''}
-                        ${feed.snack ? `<strong>Snack</strong><br>` : ''}
+                        <strong>Meal Type:</strong> ${feed.meal_type ? feed.meal_type.charAt(0).toUpperCase() + feed.meal_type.slice(1) : ''}<br>
+                        <strong>Description:</strong> ${feed.meal_description || '<em>No description</em>'}<br>
                         <strong>Notes:</strong> ${feed.notes || '<em>No notes</em>'}
                     </li>`;
                     });

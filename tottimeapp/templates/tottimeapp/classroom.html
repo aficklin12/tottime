@@ -427,40 +427,28 @@ body {
                                     <input type="datetime-local" name="timestamp" class="form-control" required>
                                 </div>
                                 <div class="mb-2">
-                                    <label>Formula or Breast Milk</label>
-                                    <select name="formula_breast_milk_select" id="formulaSelect" class="form-select">
-                                        <option value="">None</option>
+                                    <label>Meal Type <span class="text-danger">*</span></label>
+                                    <select name="meal_type" class="form-select" required>
+                                        <option value="">Select Meal Type</option>
+                                        <option value="breakfast">Breakfast</option>
+                                        <option value="lunch">Lunch</option>
+                                        <option value="snack">Snack</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label>Meal Description <span class="text-danger">*</span></label>
+                                    <select name="meal_description_select" id="mealDescriptionSelect" class="form-select" required>
+                                        <option value="">Select Description</option>
                                         <option value="5oz IFIF Formula">5oz IFIF Formula</option>
-                                        <option value="5oz Breast Milk">5oz. Breast Milk</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                    <input type="text" name="formula_breast_milk" id="formulaCustom" class="form-control mt-2" style="display:none;" placeholder="Enter custom formula">
-                                </div>
-                                <div class="mb-2">
-                                    <label>Meal/Snack/Infant Cereal</label>
-                                    <select name="meal_snack_cereal_select" id="mealSelect" class="form-select">
-                                        <option value="">None</option>
-                                        <option value="3tbs IFIC Oatmeal">3tbs IFIC Oatmeal</option>
+                                        <option value="5oz of Breast Milk">5oz of Breast Milk</option>
+                                        <option value="3Tbs of Oatmeal">3Tbs of IFIC Oatmeal</option>
                                         <option value="Infant Cereal">Infant Cereal</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                    <input type="text" name="meal_snack_cereal" id="mealCustom" class="form-control mt-2" style="display:none;" placeholder="Enter custom meal/snack/cereal">
-                                </div>
-                                <div class="mb-2">
-                                    <label>Fruit / Vegetable</label>
-                                    <select name="fruit_vegetable" class="form-select">
-                                        <option value="">None</option>
                                         {% for item in inventory_items %}
                                         <option value="{{ item.item }}">{{ item.item }}</option>
                                         {% endfor %}
+                                        <option value="Other">Other</option>
                                     </select>
-                                </div>
-                               <div class="mb-2">
-                                    <label>Meal Type <span class="text-danger">*</span></label><br>
-                                    <input type="checkbox" name="breakfast" value="1" class="meal-type-checkbox"> Breakfast
-                                    <input type="checkbox" name="lunch" value="1" class="meal-type-checkbox ms-2"> Lunch
-                                    <input type="checkbox" name="snack" value="1" class="meal-type-checkbox ms-2"> Snack
-                                    <div id="mealTypeError" class="text-danger" style="display:none;">Please select at least one meal type.</div>
+                                    <input type="text" name="meal_description" id="mealDescriptionCustom" class="form-control mt-2" style="display:none;" placeholder="Enter custom meal description">
                                 </div>
                                 <div class="mb-2">
                                     <label>Notes</label>
@@ -1066,21 +1054,41 @@ $(document).ready(function() {
         $('#feedModal').modal('show');
     });
 
-    // Handle Feed form submission
+    // Show/hide custom meal description input
+    $('#mealDescriptionSelect').on('change', function() {
+        if ($(this).val() === 'Other') {
+            $('#mealDescriptionCustom').show().val('');
+        } else {
+            $('#mealDescriptionCustom').hide().val('');
+        }
+    });
+
+    // On submit, set meal_description value correctly
     $('#feedForm').on('submit', function(e) {
-        // Validate at least one meal type is checked
-    if ($('.meal-type-checkbox:checked').length === 0) {
-        $('#mealTypeError').show();
         e.preventDefault();
-        return false;
-    } else {
-        $('#mealTypeError').hide();
-    }
-        e.preventDefault();
+
+        // Set meal_description value
+        let mealDesc;
+        if ($('#mealDescriptionSelect').val() === 'Other') {
+            mealDesc = $('#mealDescriptionCustom').val();
+        } else {
+            mealDesc = $('#mealDescriptionSelect').val();
+        }
+
+        // Build form data manually to ensure correct value is sent
+        const formData = {
+            student_id: $('#feedStudentId').val(),
+            timestamp: $('#feedForm input[name="timestamp"]').val(),
+            meal_type: $('#feedForm select[name="meal_type"]').val(),
+            meal_description: mealDesc,
+            notes: $('#feedForm textarea[name="notes"]').val(),
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        };
+
         $.ajax({
             url: "{% url 'add_feed' %}",
             type: "POST",
-            data: $(this).serialize() + '&csrfmiddlewaretoken={{ csrf_token }}',
+            data: formData,
             success: function(response) {
                 if (response.status === 'success') {
                     toastr.success('Feed recorded!');
@@ -1093,6 +1101,12 @@ $(document).ready(function() {
                 toastr.error('An error occurred.');
             }
         });
+    });
+
+    // Reset modal on open
+    $('#feedModal').on('show.bs.modal', function () {
+        $('#mealDescriptionCustom').hide().val('');
+        $('#mealDescriptionSelect').val('');
     });
 });
 </script>

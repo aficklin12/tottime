@@ -1702,21 +1702,76 @@ def inventory_list(request):
 
 @login_required
 def infant_menu(request):
-    # Check permissions for the specific page
-    required_permission_id = 414  # Permission ID for accessing infant menu view
+    required_permission_id = 414
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    
-    # Get the user (MainUser) for filtering
+
     user = get_user_for_view(request)
-    
-    # Get all inventory items with category 'Infants' for dropdowns, filtered by user
     inventory_items = Inventory.objects.filter(category='Infants', user=user)
     permissions_context['inventory_items'] = inventory_items
-    
-    # If access is allowed, render the infant menu page
+
+    students = Student.objects.filter(main_user=user)
+    permissions_context['students'] = students
+
+    selected_student_id = request.GET.get('student')
+    selected_week = request.GET.get('week')  # Format: 'YYYY-MM-DD' (Monday)
+
+    if not selected_student_id and students.exists():
+        selected_student_id = students.first().id
+    if not selected_week:
+        today = datetime.today()
+        monday = today - timedelta(days=today.weekday())
+        selected_week = monday.strftime('%Y-%m-%d')
+
+    permissions_context['selected_student_id'] = int(selected_student_id) if selected_student_id else None
+    permissions_context['selected_week'] = selected_week
+    permissions_context['meal_types'] = ['breakfast', 'lunch', 'snack']
+
+    week_start = datetime.strptime(selected_week, '%Y-%m-%d')
+    week_start = week_start - timedelta(days=week_start.weekday())  # force to Monday
+    week_dates = [(week_start + timedelta(days=i)).date() for i in range(5)]  # Mon-Fri
+    permissions_context['week_dates'] = week_dates
+
+    feed_records = FeedRecord.objects.filter(
+        student_id=selected_student_id,
+        timestamp__date__gte=week_dates[0],
+        timestamp__date__lte=week_dates[-1]
+    ).order_by('timestamp')
+
+    # Prepare inventory item names for fruit/vegetable matching
+    inventory_names = set(item.item for item in inventory_items)
+
+    menu_data = {day: {meal: {'formula': [], 'cereal': [], 'fruit': []} for meal in permissions_context['meal_types']} for day in week_dates}
+
+    menu_data = {day: {meal: {'formula': [], 'cereal': [], 'fruit': []} for meal in permissions_context['meal_types']} for day in week_dates}
+
+    for record in feed_records:
+        day = record.timestamp.date()
+        if day in menu_data:
+            meal = record.meal_type
+            desc = (record.meal_description or '').strip()
+            # Formula or Breast Milk
+            if desc in ["5oz IFIF Formula", "5oz of Breast Milk"]:
+                menu_data[day][meal]['formula'].append(desc)
+            # Infant Cereal / Meat / Meat Alternate
+            elif (
+                desc.lower().startswith("infant cereal")
+                or desc.lower() == "infant cereal"
+                or desc == "Other"
+                or "other" in desc.lower()
+                or desc == "3Tbs of IFIC Oatmeal"
+            ):
+                menu_data[day][meal]['cereal'].append(desc)
+            # Fruit / Vegetable (inventory match)
+            elif desc in inventory_names:
+                menu_data[day][meal]['fruit'].append(desc)
+            # Other custom entries (not formula, not inventory, not infant cereal)
+            else:
+                menu_data[day][meal]['cereal'].append(desc)
+
+    permissions_context['menu_data'] = menu_data
+
     return render(request, 'tottimeapp/infant_menu.html', permissions_context)
 
 @login_required
@@ -3280,12 +3335,8 @@ def add_feed(request):
     if request.method == 'POST':
         student_id = request.POST.get('student_id')
         timestamp = request.POST.get('timestamp')
-        formula_breast_milk = request.POST.get('formula_breast_milk')
-        meal_snack_cereal = request.POST.get('meal_snack_cereal')
-        fruit_vegetable = request.POST.get('fruit_vegetable')
-        breakfast = bool(request.POST.get('breakfast'))
-        lunch = bool(request.POST.get('lunch'))
-        snack = bool(request.POST.get('snack'))
+        meal_type = request.POST.get('meal_type')
+        meal_description = request.POST.get('meal_description')
         notes = request.POST.get('notes')
         try:
             student = Student.objects.get(id=student_id)
@@ -3294,18 +3345,13 @@ def add_feed(request):
                 ts = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M")
             else:
                 ts = datetime.strptime(timestamp, "%Y-%m-%d %H:%M")
-            # Make datetime aware
             ts = timezone.make_aware(ts)
             FeedRecord.objects.create(
                 student=student,
                 fed_by=request.user,
                 timestamp=ts,
-                formula_breast_milk=formula_breast_milk,
-                meal_snack_cereal=meal_snack_cereal,
-                fruit_vegetable=fruit_vegetable,
-                breakfast=breakfast,
-                lunch=lunch,
-                snack=snack,
+                meal_type=meal_type,
+                meal_description=meal_description,
                 notes=notes
             )
             return JsonResponse({'status': 'success'})
@@ -3324,12 +3370,8 @@ def feeds_for_student(request):
         ).order_by('timestamp')
         data = [{
             'time': feed.timestamp.strftime('%I:%M %p'),
-            'formula_breast_milk': feed.formula_breast_milk,
-            'meal_snack_cereal': feed.meal_snack_cereal,
-            'fruit_vegetable': feed.fruit_vegetable,
-            'breakfast': feed.breakfast,
-            'lunch': feed.lunch,
-            'snack': feed.snack,
+            'meal_type': feed.meal_type,
+            'meal_description': feed.meal_description,
             'notes': feed.notes
         } for feed in feeds]
         return JsonResponse({'feeds': data})
