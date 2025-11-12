@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup, Comment
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 stripe.api_key = settings.STRIPE_SECRET_KEY
+from django.db.models.functions import TruncDate
 from django.utils.timezone import now
 from decimal import Decimal
 from django.db import transaction, models
@@ -1700,6 +1701,7 @@ def inventory_list(request):
         **permissions_context,
     })
 
+
 @login_required
 def infant_menu(request):
     required_permission_id = 414
@@ -1707,7 +1709,45 @@ def infant_menu(request):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
+    # Get the main user for this view
     user = get_user_for_view(request)
+    logger.info(f"get_user_for_view returned user: {user} (id={getattr(user, 'id', None)})")
+
+    # --- Ensure CompanyAccountOwner exists for this user ---
+    from .models import Company, CompanyAccountOwner, MainUser
+    try:
+        main_user = MainUser.objects.get(id=user.id)
+    except MainUser.DoesNotExist:
+        logger.error(f"MainUser with id {user.id} does not exist.")
+        return HttpResponseBadRequest("Main user not found.")
+
+    owner = CompanyAccountOwner.objects.filter(main_account_owner=main_user, is_primary=True).first()
+    if not owner:
+        company = Company.objects.first()
+        if not company:
+            logger.error("No Company found in the database.")
+            return HttpResponseBadRequest("No company found.")
+        # Try to get any existing CompanyAccountOwner for this company/main_user
+        owner = CompanyAccountOwner.objects.filter(company=company, main_account_owner=main_user).first()
+        if not owner:
+            owner = CompanyAccountOwner.objects.create(
+                company=company,
+                main_account_owner=main_user,
+                location_name="Main Location",
+                is_primary=True
+            )
+            logger.info(f"Created CompanyAccountOwner for user {main_user.id} and company {company.name}")
+        else:
+            # If found, update is_primary if needed
+            if not owner.is_primary:
+                owner.is_primary = True
+                owner.save()
+
+    company_name = owner.company.name
+    location_name = owner.location_name or ""
+    permissions_context['company_name'] = company_name
+    permissions_context['location_name'] = location_name
+
     inventory_items = Inventory.objects.filter(category='Infants', user=user)
     permissions_context['inventory_items'] = inventory_items
 
@@ -1717,8 +1757,6 @@ def infant_menu(request):
     selected_student_id = request.GET.get('student')
     selected_week = request.GET.get('week')  # Format: 'YYYY-MM-DD' (Monday)
 
-    if not selected_student_id and students.exists():
-        selected_student_id = students.first().id
     if not selected_week:
         today = datetime.today()
         monday = today - timedelta(days=today.weekday())
@@ -1728,21 +1766,58 @@ def infant_menu(request):
     permissions_context['selected_week'] = selected_week
     permissions_context['meal_types'] = ['breakfast', 'lunch', 'snack']
 
+    selected_student = None
+    if selected_student_id:
+        try:
+            selected_student = students.get(id=selected_student_id)
+        except Student.DoesNotExist:
+            selected_student = None
+
+    permissions_context['selected_student'] = selected_student
+
+    # Get month and year from selected week
     week_start = datetime.strptime(selected_week, '%Y-%m-%d')
+    permissions_context['month'] = week_start.strftime('%B')
+    permissions_context['year'] = week_start.year
     week_start = week_start - timedelta(days=week_start.weekday())  # force to Monday
+
     week_dates = [(week_start + timedelta(days=i)).date() for i in range(5)]  # Mon-Fri
     permissions_context['week_dates'] = week_dates
+
+    # --- All available weeks for dropdown ---
+    all_dates_qs = FeedRecord.objects.annotate(
+        date_only=TruncDate('timestamp')
+    ).values_list('date_only', flat=True).distinct()
+    all_mondays = sorted(set(
+        (d - timedelta(days=d.weekday())) for d in all_dates_qs if d is not None
+    ), reverse=True)
+    permissions_context['all_weeks'] = [
+        {
+            'value': monday.strftime('%Y-%m-%d'),
+            'label': f"{monday.strftime('%b %d')} - {(monday + timedelta(days=4)).strftime('%b %d')}"
+        }
+        for monday in all_mondays
+    ]
 
     feed_records = FeedRecord.objects.filter(
         student_id=selected_student_id,
         timestamp__date__gte=week_dates[0],
         timestamp__date__lte=week_dates[-1]
-    ).order_by('timestamp')
+    ).order_by('timestamp') if selected_student_id else FeedRecord.objects.none()
+
+    # Find the first formula entry for the week and strip "5oz" or similar
+    formula_name = ""
+    for record in feed_records:
+        desc = (record.meal_description or "").strip()
+        if "IFIF Formula" in desc or "Breast Milk" in desc:
+            import re
+            formula_name = re.sub(r"^\s*\d+\s*(oz\.?|oz|tbs\.?|tbs)?\s*", "", desc, flags=re.IGNORECASE)
+            formula_name = formula_name.strip()
+            break
+    permissions_context['formula_name'] = formula_name
 
     # Prepare inventory item names for fruit/vegetable matching
     inventory_names = set(item.item for item in inventory_items)
-
-    menu_data = {day: {meal: {'formula': [], 'cereal': [], 'fruit': []} for meal in permissions_context['meal_types']} for day in week_dates}
 
     menu_data = {day: {meal: {'formula': [], 'cereal': [], 'fruit': []} for meal in permissions_context['meal_types']} for day in week_dates}
 

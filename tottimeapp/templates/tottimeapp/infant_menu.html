@@ -220,17 +220,22 @@ input[type="number"]:focus {
 {% endblock %}
 
 {% block content %}
+<h1>Infant Menus</h1> 
 <div class="form-container">
     <form method="get" style="margin-bottom: 20px;">
-        <label for="student">Student:</label>
-        <select name="student" id="student">
+        <select name="student" id="student" style="padding: 7px 10px; border: 1px solid #007b8a; border-radius: 5px; font-size: 14px; background: #fff; color: #222; margin-right: 10px;">
+            <option value="" disabled {% if not selected_student_id %}selected{% endif %}>Select Student</option>
             {% for student in students %}
                 <option value="{{ student.id }}" {% if student.id == selected_student_id %}selected{% endif %}>{{ student }}</option>
             {% endfor %}
         </select>
-        <label for="week">Week (Monday):</label>
-        <input type="date" name="week" id="week" value="{{ selected_week }}">
-        <button type="submit">Filter</button>
+        <select name="week" id="week" style="padding: 7px 10px; border: 1px solid #007b8a; border-radius: 5px; font-size: 14px; background: #fff; color: #222;">
+            {% for week in all_weeks %}
+                <option value="{{ week.value }}" {% if week.value == selected_week %}selected{% endif %}>
+                    {{ week.label }}
+                </option>
+            {% endfor %}
+        </select>
     </form>
 
     <div class="header-text">
@@ -240,23 +245,59 @@ input[type="number"]:focus {
     </div>
 
     <div class="info-section">
-        <div class="info-row">
-            <label>Center/Provider: _________________________</label>
-            <label>Formula: _________________________</label>
-            <label>Month: _________</label>
-            <label>Year: _________</label>
+    <div class="info-row">
+        <label>
+            <strong>Center/Provider:</strong>
+            {{ company_name }}{% if location_name %} - {{ location_name }}{% endif %}
+        </label>
+        <label>
+            <strong>Formula:</strong>
+            {% if formula_name %}
+                {{ formula_name }}
+            {% else %}
+                _________________________
+            {% endif %}
+        </label>
+        <label>
+            <strong>Month:</strong> {{ month }}
+        </label>
+        <label>
+            <strong>Year:</strong> {{ year }}
+        </label>
+    </div>
+    <div class="info-row">
+        <label>
+            <strong>Infant Name:</strong>
+            {% if selected_student %}
+                {{ selected_student.first_name }} {{ selected_student.last_name }}
+            {% else %}
+                _________________________
+            {% endif %}
+        </label>
+        <label>
+            <strong>Birthdate:</strong>
+            {% if selected_student %}
+                {{ selected_student.date_of_birth|date:"m/d/Y" }}
+            {% else %}
+                _________
+            {% endif %}
+        </label>
+        <div class="checkbox-group">
+            <label>
+                <strong>Medical Statement on File:</strong>
+                <input type="radio" name="medical_statement" checked> Yes
+                <input type="radio" name="medical_statement"> No
+            </label>
         </div>
-        <div class="info-row">
-            <label>Infant Name: _________________________</label>
-            <label>Birthdate: _________</label>
-            <div class="checkbox-group">
-                <label>Medical Statement on File: ☐ Yes ☐ No</label>
-            </div>
-            <div class="checkbox-group">
-                <label>Infant Statement on File: ☐ Yes ☐ No</label>
-            </div>
+        <div class="checkbox-group">
+            <label>
+                <strong>Infant Statement on File:</strong>
+                <input type="radio" name="infant_statement" checked> Yes
+                <input type="radio" name="infant_statement"> No
+            </label>
         </div>
     </div>
+</div>
 
     <table class="requirements-table">
         <thead>
@@ -372,5 +413,15 @@ input[type="number"]:focus {
 {% endblock %}
 
 {% block scripts %}
-
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.form-container form');
+    document.getElementById('student').addEventListener('change', function() {
+        form.submit();
+    });
+    document.getElementById('week').addEventListener('change', function() {
+        form.submit();
+    });
+});
+</script>
 {% endblock %}

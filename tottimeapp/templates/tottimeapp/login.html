@@ -104,6 +104,17 @@
     overflow: visible; /* Ensure no clipping occurs */
 }
 
+html, body {
+    height: 100%;
+}
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+footer {
+    margin-top: auto;
+}
     </style>
 </head>
 <body class="sb-nav-fixed">
@@ -161,9 +172,10 @@
             </div>
         </form>
     </div>
-</body>
 
-<footer class="py-4 bg-light mt-auto">
+
+
+    <footer class="py-4 bg-light mt-auto">
         <div class="container-fluid px-4">
             <div class="d-flex align-items-center justify-content-between small">
                 <div class="text-muted">Copyright &copy; Tot-Time 2025</div>
@@ -179,7 +191,7 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="{% static 'js/toastr-settings.js' %}"></script>
-   
+
 
 
     <script>
