@@ -1701,7 +1701,6 @@ def inventory_list(request):
         **permissions_context,
     })
 
-
 @login_required
 def infant_menu(request):
     required_permission_id = 414
@@ -1711,22 +1710,18 @@ def infant_menu(request):
 
     # Get the main user for this view
     user = get_user_for_view(request)
-    logger.info(f"get_user_for_view returned user: {user} (id={getattr(user, 'id', None)})")
-
     # --- Ensure CompanyAccountOwner exists for this user ---
     from .models import Company, CompanyAccountOwner, MainUser
     try:
         main_user = MainUser.objects.get(id=user.id)
     except MainUser.DoesNotExist:
-        logger.error(f"MainUser with id {user.id} does not exist.")
         return HttpResponseBadRequest("Main user not found.")
 
     owner = CompanyAccountOwner.objects.filter(main_account_owner=main_user, is_primary=True).first()
     if not owner:
         company = Company.objects.first()
         if not company:
-            logger.error("No Company found in the database.")
-            return HttpResponseBadRequest("No company found.")
+             return HttpResponseBadRequest("No company found.")
         # Try to get any existing CompanyAccountOwner for this company/main_user
         owner = CompanyAccountOwner.objects.filter(company=company, main_account_owner=main_user).first()
         if not owner:
@@ -1736,7 +1731,6 @@ def infant_menu(request):
                 location_name="Main Location",
                 is_primary=True
             )
-            logger.info(f"Created CompanyAccountOwner for user {main_user.id} and company {company.name}")
         else:
             # If found, update is_primary if needed
             if not owner.is_primary:
@@ -1846,6 +1840,18 @@ def infant_menu(request):
                 menu_data[day][meal]['cereal'].append(desc)
 
     permissions_context['menu_data'] = menu_data
+
+    # --- MOVE meal_counts calculation here, after menu_data is filled ---
+    meal_counts = {}
+    for meal in permissions_context['meal_types']:
+        meal_counts[meal] = {}
+        for category in ['formula', 'cereal', 'fruit']:
+            count = 0
+            for day in week_dates:
+                count += len(menu_data[day][meal][category])
+            meal_counts[meal][category] = count
+
+    permissions_context['meal_counts'] = meal_counts
 
     return render(request, 'tottimeapp/infant_menu.html', permissions_context)
 
