@@ -303,51 +303,75 @@ body {
                        
                     </form>
                 </div>
-
+                
                 <div class="container mt-4">
-                    <div class="card-container"> <!-- Flexbox container -->
-                        {% for student in assigned_students %}
-                        <div 
-                            class="card shadow-sm text-center student-card {% if not student.is_signed_in %}faded{% endif %}" 
-                            style="width: 140px; height: 160px; display: flex; flex-direction: column; justify-content: space-between; padding-top: 5px;" 
-                            data-student-id="{{ student.id }}"
-                            data-is-signed-in="{{ student.is_signed_in }}"
-                        >
-                            <!-- Add Checkbox for Selection -->
-                            <input type="checkbox" class="student-checkbox" style="margin: 5px auto;" data-student-id="{{ student.id }}" {% if student.is_signed_in %}disabled{% endif %}>
-                            
-                            <!-- Profile Picture with Checkmark Overlay -->
-                            <div class="profile-picture-container" style="position: relative;">
-                                {% if student.profile_picture %}
-                                <img 
-                                    src="{{ student.profile_picture.url }}" 
-                                    class="card-img-top rounded-circle" 
-                                    alt="{{ student.first_name }} {{ student.last_name }}" 
-                                    style="width: 100px; height: 100px; object-fit: cover; margin: auto; margin-top: 5px;">
-                                {% else %}
-                                <div 
-                                    class="card-img-top rounded-circle" 
-                                    style="width: 100px; height: 100px; background-color: black; display: flex; align-items: center; justify-content: center; color: white; margin: auto; margin-top: 5px;">
-                                    <span>No Image</span>
-                                </div>
-                                {% endif %}
-                                <!-- Checkmark Overlay -->
-                                <div class="checkmark-overlay" style="display: none;">
-                                    <div class="checkmark-rectangle">
-                                        <i class="fas fa-user-check"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body p-2" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
-                                <h6 class="card-title text-center" style="font-size: 0.9rem; margin: 0; word-wrap: break-word;">{{ student.first_name }} {{ student.last_name }}</h6>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-center">No students signed in.</p>
-                        {% endfor %}
+    <div class="card-container"> <!-- Flexbox container -->
+        {% for student in assigned_students %}
+        <div 
+            class="card shadow-sm text-center student-card {% if not student.is_signed_in %}faded{% endif %}" 
+            style="width: 140px; height: 160px; display: flex; flex-direction: column; justify-content: space-between; padding-top: 5px;" 
+            data-student-id="{{ student.id }}"
+            data-is-signed-in="{{ student.is_signed_in }}"
+        >
+            <!-- Add Checkbox for Selection -->
+            <input type="checkbox" class="student-checkbox" style="margin: 5px auto;" data-student-id="{{ student.id }}" {% if student.is_signed_in %}disabled{% endif %}>
+
+            <!-- Profile Picture with Overlays -->
+            <div class="profile-picture-container" style="position: relative;">
+                {% if student.profile_picture %}
+                <img 
+                    src="{{ student.profile_picture.url }}" 
+                    class="card-img-top rounded-circle" 
+                    alt="{{ student.first_name }} {{ student.last_name }}" 
+                    style="width: 100px; height: 100px; object-fit: cover; margin: auto; margin-top: 5px;">
+                {% else %}
+                <div 
+                    class="card-img-top rounded-circle" 
+                    style="width: 100px; height: 100px; background-color: black; display: flex; align-items: center; justify-content: center; color: white; margin: auto; margin-top: 5px;">
+                    <span>No Image</span>
+                </div>
+                {% endif %}
+
+                <!-- Checkmark Overlay -->
+                <div class="checkmark-overlay" style="display: none;">
+                    <div class="checkmark-rectangle">
+                        <i class="fas fa-user-check"></i>
                     </div>
                 </div>
-                
+
+                <!-- Not Signed Out Banner Overlay -->
+                {% if student.not_signed_out_yesterday %}
+                <div style="
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 100%;
+                    height: 32px;
+                    background: rgba(211, 47, 47, 0.92);
+                    color: white;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 8px;
+                    z-index: 2;
+                    font-size: 0.75rem;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+                ">
+                    ⚠️ Not signed out ⚠️
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body p-2" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+                <h6 class="card-title text-center" style="font-size: 0.9rem; margin: 0; word-wrap: break-word;">{{ student.first_name }} {{ student.last_name }}</h6>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-center">No students signed in.</p>
+        {% endfor %}
+    </div>
+</div>
                 <!-- Modal Structure -->
                 <div class="modal fade" id="studentModal" tabindex="-1" aria-labelledby="studentModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered modal-sm"> <!-- Add modal-sm for a smaller modal -->

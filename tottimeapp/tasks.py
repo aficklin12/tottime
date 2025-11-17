@@ -1,9 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 from django_q.tasks import async_task
-from .models import SubUser, WeeklyTuition, TuitionPlan, AttendanceRecord
-from django.utils import timezone
-from datetime import datetime, time
+from .models import SubUser, WeeklyTuition, TuitionPlan
 
 def process_weekly_tuition():
     today = date.today()
@@ -62,21 +60,3 @@ def process_weekly_tuition():
 def schedule_weekly_tuition():
     async_task('tottimeapp.tasks.process_weekly_tuition')
 
-
-def auto_signout_students():
-    now = timezone.localtime()
-    yesterday = now.date() - timedelta(days=1)
-    signout_time = timezone.make_aware(datetime.combine(yesterday, time(23, 59, 59)))
-    records = AttendanceRecord.objects.filter(
-        sign_in_time__date=yesterday,
-        sign_out_time__isnull=True
-    )
-    count = records.update(sign_out_time=signout_time)
-    return f'Signed out {count} students for {yesterday}'
-
-# To run the task with Django Q
-def schedule_weekly_tuition():
-    async_task('tottimeapp.tasks.process_weekly_tuition')
-
-def schedule_auto_signout_students():
-    async_task('tottimeapp.tasks.auto_signout_students')

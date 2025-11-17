@@ -3143,16 +3143,13 @@ def daily_attendance(request):
 
 @login_required
 def classroom(request):
-    required_permission_id = 274  # Permission ID for daily_attendance view
+    required_permission_id = 274
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
     try:
-        # Get the appropriate main user for filtering
         main_user = get_user_for_view(request)
-        
-        # Filter classrooms by main user - try common FK field names
         classrooms = None
         attempts = [
             ('user', False),
@@ -3175,16 +3172,14 @@ def classroom(request):
             except FieldError:
                 classrooms = None
                 continue
-        
-        # If no matching field found, return empty queryset
+
         if classrooms is None:
             logger.warning("No matching FK field found on Classroom; returning empty queryset.")
             classrooms = Classroom.objects.none()
-        
-        selected_classroom_id = request.GET.get('classroom_id')
-        status_filter = request.GET.get('status', 'signed_in')  # Default to 'signed_in'
 
-        # If no classroom is selected, default to the first assigned classroom
+        selected_classroom_id = request.GET.get('classroom_id')
+        status_filter = request.GET.get('status', 'signed_in')
+
         if not selected_classroom_id:
             assigned_classroom = ClassroomAssignment.objects.filter(mainuser=main_user).first()
             if assigned_classroom:
@@ -3192,12 +3187,22 @@ def classroom(request):
 
         selected_classroom = None
         if selected_classroom_id:
-            # Also filter selected classroom by main user
             selected_classroom = classrooms.filter(id=selected_classroom_id).first()
 
-        # Build the base queryset for students
+        # Find all attendance records where sign_out_time is null and sign_in_time is not today
+        today = timezone.localdate()
+        unsigned_records = AttendanceRecord.objects.filter(
+            sign_out_time__isnull=True
+        ).exclude(
+            sign_in_time__date=today
+        )
+
+        # Get student IDs who have any such unsigned record
+        students_not_signed_out = set(unsigned_records.values_list('student_id', flat=True))
+
+        # Build all_students as a list
         if selected_classroom_id:
-            students_in_classroom = Student.objects.filter(
+            students_in_classroom = list(Student.objects.filter(
                 classroom_id=selected_classroom_id
             ).annotate(
                 is_signed_in=Exists(
@@ -3214,8 +3219,8 @@ def classroom(request):
                         sign_out_time__isnull=True
                     )
                 )
-            )
-            students_with_override = Student.objects.filter(
+            ))
+            students_with_override = list(Student.objects.filter(
                 attendancerecord__classroom_override=Classroom.objects.get(id=selected_classroom_id).name,
                 attendancerecord__sign_out_time__isnull=True
             ).annotate(
@@ -3225,20 +3230,10 @@ def classroom(request):
                         sign_out_time__isnull=True
                     )
                 )
-            )
-
-            # Apply status filter BEFORE union
-            if status_filter == 'signed_in':
-                students_in_classroom = students_in_classroom.filter(is_signed_in=True)
-                students_with_override = students_with_override.filter(is_signed_in=True)
-            elif status_filter == 'signed_out':
-                students_in_classroom = students_in_classroom.filter(is_signed_in=False)
-                students_with_override = students_with_override.filter(is_signed_in=False)
-            # else 'all': do not filter
-
-            all_students = students_in_classroom.union(students_with_override)
+            ))
+            all_students = students_in_classroom + students_with_override
         else:
-            assigned_students = Student.objects.filter(
+            assigned_students = list(Student.objects.filter(
                 classroom__assignments__mainuser=main_user
             ).annotate(
                 is_signed_in=Exists(
@@ -3255,9 +3250,9 @@ def classroom(request):
                         sign_out_time__isnull=True
                     )
                 )
-            )
-            override_students = Student.objects.filter(
-                attendancerecord__classroom_override__in=assigned_students.values_list('classroom__name', flat=True),
+            ))
+            override_students = list(Student.objects.filter(
+                attendancerecord__classroom_override__in=[s.classroom.name for s in assigned_students],
                 attendancerecord__sign_out_time__isnull=True
             ).annotate(
                 is_signed_in=Exists(
@@ -3266,21 +3261,16 @@ def classroom(request):
                         sign_out_time__isnull=True
                     )
                 )
-            )
+            ))
+            all_students = assigned_students + override_students
 
-            # Apply status filter BEFORE union
-            if status_filter == 'signed_in':
-                assigned_students = assigned_students.filter(is_signed_in=True)
-                override_students = override_students.filter(is_signed_in=True)
-            elif status_filter == 'signed_out':
-                assigned_students = assigned_students.filter(is_signed_in=False)
-                override_students = override_students.filter(is_signed_in=False)
-            # else 'all': do not filter
+        # Set the flag on each student object
+        for student in all_students:
+            student.not_signed_out_yesterday = student.id in students_not_signed_out
 
-            all_students = assigned_students.union(override_students)
+        # Sort students
+        all_students.sort(key=lambda s: (-s.is_signed_in, s.last_name, s.first_name))
 
-        all_students = all_students.order_by('-is_signed_in', 'last_name', 'first_name')
-   
         inventory_items = Inventory.objects.filter(
             category='Infants',
             user=main_user
@@ -3292,17 +3282,21 @@ def classroom(request):
 
         permissions_context['inventory_items'] = inventory_items
 
+        show_red_flag = any(s.not_signed_out_yesterday for s in all_students)
+
     except MainUser.DoesNotExist:
-        all_students = Student.objects.none()
+        all_students = []
         classrooms = Classroom.objects.none()
         selected_classroom = None
         status_filter = 'signed_in'
+        show_red_flag = False
 
     return render(request, 'classroom.html', {
         'assigned_students': all_students,
         'classrooms': classrooms,
         'classroom': selected_classroom,
         'status_filter': status_filter,
+        'show_red_flag': show_red_flag,
         **permissions_context,
     })
 
