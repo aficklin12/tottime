@@ -3413,6 +3413,7 @@ def add_feed(request):
         meal_type = request.POST.get('meal_type')
         meal_description = request.POST.get('meal_description')
         notes = request.POST.get('notes')
+        ounces = request.POST.get('ounces') or None
         try:
             student = Student.objects.get(id=student_id)
             # Accept both "YYYY-MM-DDTHH:MM" and "YYYY-MM-DD HH:MM"
@@ -3427,7 +3428,8 @@ def add_feed(request):
                 timestamp=ts,
                 meal_type=meal_type,
                 meal_description=meal_description,
-                notes=notes
+                notes=notes,
+                ounces=ounces if ounces else None
             )
             return JsonResponse({'status': 'success'})
         except Exception as e:

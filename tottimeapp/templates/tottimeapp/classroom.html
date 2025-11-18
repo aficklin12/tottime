@@ -195,7 +195,7 @@ body {
         flex-direction: row !important;
         justify-content: flex-start !important;
         align-items: center !important;
-        text-align: left !important;
+        text-align: left !
         gap: 8px !important; /* Optional: add spacing between items */
     }
     /* Prevent all .d-flex from being column on mobile */
@@ -463,20 +463,39 @@ body {
                                     <label>Meal Description <span class="text-danger">*</span></label>
                                     <select name="meal_description_select" id="mealDescriptionSelect" class="form-select" required>
                                         <option value="">Select Description</option>
-                                        <option value="5oz IFIF Formula">5oz IFIF Formula</option>
-                                        <option value="5oz of Breast Milk">5oz of Breast Milk</option>
+                                        <option value="IFIF Formula">IFIF Formula</option>
+                                        <option value="Breast Milk">Breast Milk</option>
                                         <option value="3Tbs of Oatmeal">3Tbs of IFIC Oatmeal</option>
                                         <option value="Infant Cereal">Infant Cereal</option>
                                         {% for item in inventory_items %}
                                         <option value="{{ item.item }}">{{ item.item }}</option>
                                         {% endfor %}
-                                        <option value="Other">Other</option>
+                                        <option value="Other">Table Foods - Select Items</option>
                                     </select>
-                                    <input type="text" name="meal_description" id="mealDescriptionCustom" class="form-control mt-2" style="display:none;" placeholder="Enter custom meal description">
+                                    <input type="number" min="1" max="12" step="1" name="ounces" id="ouncesInput" class="form-control mt-2" style="display:none;" placeholder="Enter ounces (oz)">
+                                    <div id="mealDescriptionCustom" class="mt-2" style="display:none;">
+                                        <div><strong>Input Infant Menu Substitutes</strong></div>
+                                        <div>
+                                            <input type="checkbox" name="meal_formula" value="IFIF Formula" class="meal-formula"> IFIF Formula
+                                            <input type="checkbox" name="meal_formula" value="Breast Milk" class="meal-formula"> Breast Milk
+                                        </div>
+                                        <div>
+                                            <input type="checkbox" name="meal_cereal" value="3Tbs of IFIC Oatmeal" class="meal-cereal"> 3Tbs of IFIC Oatmeal
+                                            <input type="checkbox" name="meal_cereal" value="Infant Cereal" class="meal-cereal"> Infant Cereal
+                                        </div>
+                                        <div>
+                                            <select name="meal_inventory" id="mealInventoryDropdown" class="form-select mt-1">
+                                                <option value="">Select Fruit/Vegetable</option>
+                                                {% for item in inventory_items %}
+                                                <option value="{{ item.item }}">{{ item.item }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="mb-2">
-                                    <label>Notes</label>
-                                    <textarea name="notes" class="form-control"></textarea>
+                                <div class="mb-2" id="notesSection" style="display:none;">
+                                    <label>Parent's Description</label>
+                                    <textarea name="notes" class="form-control" placeholder="Enter custom meal description to be sent to parents."></textarea>
                                 </div>
                             </div>
                             <div class="modal-footer">
@@ -559,139 +578,127 @@ document.getElementById('classroomFilter').addEventListener('change', function()
     document.getElementById('filterForm').submit();
 });
 </script>
-            <script>
-    $(document).ready(function() {
-        let isSelectMode = false; // Track the toggle state of the "Select" button
+<script>
+$(document).ready(function() {
+    let isSelectMode = false;
 
-        // Toggle checkboxes and "Select All" when "Select" button is clicked
-        $('#selectButton').on('click', function() {
-            isSelectMode = !isSelectMode; // Toggle the state
-            if (isSelectMode) {
-                $('.student-checkbox').show(); // Show individual checkboxes
-                $('#selectAllContainer').show(); // Show "Select All" checkbox
-                $('#actionsContainer').show(); // Show Actions dropdown
-                $(this).text('Cancel'); // Change button text to "Cancel"
+    // Toggle checkboxes and "Select All" when "Select" button is clicked
+    $('#selectButton').on('click', function() {
+        isSelectMode = !isSelectMode;
+        if (isSelectMode) {
+            $('.student-checkbox').show();
+            $('#selectAllContainer').show();
+            $('#actionsContainer').show();
+            $(this).text('Cancel');
+        } else {
+            $('.student-checkbox').hide();
+            $('#selectAllContainer').hide();
+            $('#actionsContainer').hide();
+            $('.student-checkbox').prop('checked', false);
+            $('.checkmark-overlay').hide();
+            $('#selectAllCheckbox').prop('checked', false);
+            $(this).text('Select');
+        }
+    });
+
+    // Handle card click to toggle checkbox in Select mode
+    $('.student-card').on('click', function(event) {
+        if (isSelectMode) {
+            event.stopPropagation();
+            const checkbox = $(this).find('.student-checkbox');
+            const isChecked = checkbox.prop('checked');
+            checkbox.prop('checked', !isChecked);
+
+            const checkmarkOverlay = $(this).find('.checkmark-overlay');
+            if (!isChecked) {
+                checkmarkOverlay.show();
             } else {
-                $('.student-checkbox').hide(); // Hide individual checkboxes
-                $('#selectAllContainer').hide(); // Hide "Select All" checkbox
-                $('#actionsContainer').hide(); // Hide Actions dropdown
-                $('.student-checkbox').prop('checked', false); // Uncheck all checkboxes
-                $('.checkmark-overlay').hide(); // Hide all checkmarks
-                $('#selectAllCheckbox').prop('checked', false); // Uncheck "Select All"
-                $(this).text('Select'); // Change button text back to "Select"
+                checkmarkOverlay.hide();
             }
-        });
 
-        // Handle card click to toggle checkbox in Select mode
-        $('.student-card').on('click', function(event) {
-            if (isSelectMode) {
-                event.stopPropagation(); // Prevent modal from opening
-                const checkbox = $(this).find('.student-checkbox');
-                const isChecked = checkbox.prop('checked');
-                checkbox.prop('checked', !isChecked); // Toggle checkbox state
-
-                const checkmarkOverlay = $(this).find('.checkmark-overlay');
-                if (!isChecked) {
-                    checkmarkOverlay.show(); // Show the checkmark
-                } else {
-                    checkmarkOverlay.hide(); // Hide the checkmark
-                }
-
-                // Update "Select All" checkbox state
-                const allChecked = $('.student-checkbox:visible').length === $('.student-checkbox:visible:checked').length;
-                $('#selectAllCheckbox').prop('checked', allChecked);
-            }
-        });
-
-        // Handle "Select All" functionality
-        $('#selectAllCheckbox').on('change', function() {
-            const isChecked = $(this).is(':checked');
-            $('.student-checkbox').each(function() {
-                if ($(this).is(':visible')) {
-                    $(this).prop('checked', isChecked); // Check/uncheck the checkbox
-                    const card = $(this).closest('.student-card');
-                    const checkmarkOverlay = card.find('.checkmark-overlay');
-                    if (isChecked) {
-                        checkmarkOverlay.show(); // Show the checkmark
-                    } else {
-                        checkmarkOverlay.hide(); // Hide the checkmark
-                    }
-                }
-            });
-        });
-
-        // Update "Select All" checkbox state based on individual checkbox selection
-        $('.student-checkbox').on('change', function() {
             const allChecked = $('.student-checkbox:visible').length === $('.student-checkbox:visible:checked').length;
             $('#selectAllCheckbox').prop('checked', allChecked);
+        }
+    });
 
-            const card = $(this).closest('.student-card');
-            const checkmarkOverlay = card.find('.checkmark-overlay');
-            if ($(this).is(':checked')) {
-                checkmarkOverlay.show(); // Show the checkmark
-            } else {
-                checkmarkOverlay.hide(); // Hide the checkmark
-            }
-        });
-
-        // Allow modal to open when not in Select mode
-        $('.student-card').on('click', function() {
-            if (!isSelectMode) {
-                // Modal opening logic remains unchanged
-                var studentId = $(this).data('student-id');
-                var classroomId = $(this).data('classroom-id');
-                var studentName = $(this).find('.card-title').text().trim();
-
-                // Fetch student attendance data using AJAX
-                $.ajax({
-                    url: "{% url 'get_attendance_record' student_id=0 %}".replace('0', studentId),
-                    type: "GET",
-                    success: function(data) {
-                        // Populate the modal with the fetched data
-                        $('#studentProfilePicture').attr('src', data.profile_picture || '{% static "student_pictures/default.jpg" %}');
-                        $('#studentName').text(data.first_name + ' ' + data.last_name);
-                        $('#toggleAttendance').data('student-id', studentId);
-                        $('#toggleAttendance').data('classroom-id', classroomId);
-                        $('#editStudentLink').attr('href', "{% url 'edit_student' student_id=0 %}".replace('0', studentId));
-
-                        // Update button text based on attendance status
-                        if (data.has_active_record) {
-                            $('#toggleAttendance').text('Sign Out');
-                        } else {
-                            $('#toggleAttendance').text('Sign In');
-                        }
-
-                        // Set the current classroom override in the dropdown
-                        if (data.classroom_override_id) {
-                            $('#classroomOverrideDropdown').val(data.classroom_override_id);
-                        } else {
-                            $('#classroomOverrideDropdown').val(data.classroom_id); // Default to the home classroom
-                        }
-
-                        // Show the modal
-                        $('#studentModal').modal('show');
-                    },
-                    error: function(xhr, status, error) {
-                        console.error("Error fetching student data:", error);
-                    }
-                });
+    // Handle "Select All" functionality
+    $('#selectAllCheckbox').on('change', function() {
+        const isChecked = $(this).is(':checked');
+        $('.student-checkbox').each(function() {
+            if ($(this).is(':visible')) {
+                $(this).prop('checked', isChecked);
+                const card = $(this).closest('.student-card');
+                const checkmarkOverlay = card.find('.checkmark-overlay');
+                if (isChecked) {
+                    checkmarkOverlay.show();
+                } else {
+                    checkmarkOverlay.hide();
+                }
             }
         });
     });
-</script>
-            <script>
-                $(document).ready(function() {
-    // Event listener for the toggle button
+
+    // Update "Select All" checkbox state based on individual checkbox selection
+    $('.student-checkbox').on('change', function() {
+        const allChecked = $('.student-checkbox:visible').length === $('.student-checkbox:visible:checked').length;
+        $('#selectAllCheckbox').prop('checked', allChecked);
+
+        const card = $(this).closest('.student-card');
+        const checkmarkOverlay = card.find('.checkmark-overlay');
+        if ($(this).is(':checked')) {
+            checkmarkOverlay.show();
+        } else {
+            checkmarkOverlay.hide();
+        }
+    });
+
+    // Allow modal to open when not in Select mode
+    $('.student-card').on('click', function() {
+        if (!isSelectMode) {
+            var studentId = $(this).data('student-id');
+            var classroomId = $(this).data('classroom-id');
+            var studentName = $(this).find('.card-title').text().trim();
+
+            $.ajax({
+                url: "{% url 'get_attendance_record' student_id=0 %}".replace('0', studentId),
+                type: "GET",
+                success: function(data) {
+                    $('#studentProfilePicture').attr('src', data.profile_picture || '{% static "student_pictures/default.jpg" %}');
+                    $('#studentName').text(data.first_name + ' ' + data.last_name);
+                    $('#toggleAttendance').data('student-id', studentId);
+                    $('#toggleAttendance').data('classroom-id', classroomId);
+                    $('#editStudentLink').attr('href', "{% url 'edit_student' student_id=0 %}".replace('0', studentId));
+
+                    if (data.has_active_record) {
+                        $('#toggleAttendance').text('Sign Out');
+                    } else {
+                        $('#toggleAttendance').text('Sign In');
+                    }
+
+                    if (data.classroom_override_id) {
+                        $('#classroomOverrideDropdown').val(data.classroom_override_id);
+                    } else {
+                        $('#classroomOverrideDropdown').val(data.classroom_id);
+                    }
+
+                    $('#studentModal').modal('show');
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error fetching student data:", error);
+                }
+            });
+        }
+    });
+
+    // Attendance toggle
     $('#toggleAttendance').on('click', function() {
-        var $this = $(this); // Cache the button element
+        var $this = $(this);
         var studentId = $this.data('student-id');
         var classroomId = $this.data('classroom-id');
         var action = $this.text() === 'Sign In' ? 'sign_in' : 'sign_out';
 
-        // Disable the button to prevent multiple clicks
         $this.prop('disabled', true);
 
-        // Send AJAX request to update attendance
         $.ajax({
             url: "{% url 'update_classroom_attendance' %}",
             type: "POST",
@@ -702,10 +709,9 @@ document.getElementById('classroomFilter').addEventListener('change', function()
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
             success: function(response) {
-                console.log(response); // Debugging: Log the response
                 if (response.status === 'success') {
                     toastr.success(response.message, "Success");
-                    window.location.reload(); // Force a full page reload
+                    window.location.reload();
                 } else {
                     toastr.error(response.message, "Error");
                 }
@@ -714,21 +720,16 @@ document.getElementById('classroomFilter').addEventListener('change', function()
                 toastr.error('An error occurred. Please try again.', "Error");
             },
             complete: function() {
-                // Re-enable the button after the request completes
                 $this.prop('disabled', false);
             }
         });
     });
-});
-            </script>
-            <script>
-                $(document).ready(function() {
-    // Event listener for the "Move" button
-    $('#moveClassroomButton').on('click', function() {
-        var studentId = $('#toggleAttendance').data('student-id'); // Get the student ID from the modal
-        var newClassroomId = $('#classroomOverrideDropdown').val(); // Get the selected classroom ID
 
-        // Send AJAX request to update the classroom override
+    // Move classroom
+    $('#moveClassroomButton').on('click', function() {
+        var studentId = $('#toggleAttendance').data('student-id');
+        var newClassroomId = $('#classroomOverrideDropdown').val();
+
         $.ajax({
             url: "{% url 'update_classroom_attendance' %}",
             type: "POST",
@@ -741,7 +742,7 @@ document.getElementById('classroomFilter').addEventListener('change', function()
             success: function(response) {
                 if (response.status === 'success') {
                     toastr.success(response.message, "Success");
-                    window.location.reload(); // Reload the page to reflect changes
+                    window.location.reload();
                 } else {
                     toastr.error(response.message, "Error");
                 }
@@ -751,229 +752,53 @@ document.getElementById('classroomFilter').addEventListener('change', function()
             }
         });
     });
-});
-            </script>
-            <script>
-                $(document).ready(function() {
-        let isSelectMode = false; // Track the toggle state of the "Select" button
 
-        // Toggle checkboxes and "Select All" when "Select" button is clicked
-        $('#selectButton').on('click', function() {
-            isSelectMode = !isSelectMode; // Toggle the state
-            if (isSelectMode) {
-                $('.student-checkbox').show(); // Show individual checkboxes
-                $('#selectAllContainer').show(); // Show "Select All" checkbox
-                $('#actionsContainer').show(); // Show "Actions" button
-                $(this).text('Cancel'); // Change button text to "Cancel"
-            } else {
-                $('.student-checkbox').hide(); // Hide individual checkboxes
-                $('#selectAllContainer').hide(); // Hide "Select All" checkbox
-                $('#actionsContainer').hide(); // Hide "Actions" button
-                $('.student-checkbox').prop('checked', false); // Uncheck all checkboxes
-                $('.checkmark-overlay').hide(); // Hide all checkmarks
-                $('#selectAllCheckbox').prop('checked', false); // Uncheck "Select All"
-                $(this).text('Select'); // Change button text back to "Select"
-            }
+    // Actions dropdown
+    function handleAttendanceAction(action) {
+        const selectedStudents = [];
+        $('.student-checkbox:checked').each(function() {
+            selectedStudents.push($(this).data('student-id'));
         });
-
-        // Handle "Select All" functionality
-        $('#selectAllCheckbox').on('change', function() {
-            const isChecked = $(this).is(':checked');
-            $('.student-checkbox').each(function() {
-                if ($(this).is(':visible')) {
-                    $(this).prop('checked', isChecked); // Check/uncheck the checkbox
-                    const card = $(this).closest('.student-card');
-                    const checkmarkOverlay = card.find('.checkmark-overlay');
-                    if (isChecked) {
-                        checkmarkOverlay.show(); // Show the checkmark
+        if (selectedStudents.length === 0) {
+            alert('No students selected.');
+            return;
+        }
+        selectedStudents.forEach(studentId => {
+            $.ajax({
+                url: "{% url 'update_classroom_attendance' %}",
+                type: "POST",
+                data: {
+                    student_id: studentId,
+                    action: action,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        toastr.success(response.message, "Success");
+                        window.location.reload();
                     } else {
-                        checkmarkOverlay.hide(); // Hide the checkmark
+                        toastr.error(response.message, "Error");
                     }
+                },
+                error: function(xhr, status, error) {
+                    toastr.error('An error occurred. Please try again.', "Error");
                 }
             });
         });
+    }
+    $('#markOutside').on('click', function() { handleAttendanceAction('mark_outside'); });
+    $('#markInside').on('click', function() { handleAttendanceAction('mark_inside'); });
+    $('#signIn').on('click', function() { handleAttendanceAction('sign_in'); });
+    $('#signOut').on('click', function() { handleAttendanceAction('sign_out'); });
 
-        // Update "Select All" checkbox state based on individual checkbox selection
-        $('.student-checkbox').on('change', function() {
-            const allChecked = $('.student-checkbox:visible').length === $('.student-checkbox:visible:checked').length;
-            $('#selectAllCheckbox').prop('checked', allChecked);
-
-            const card = $(this).closest('.student-card');
-            const checkmarkOverlay = card.find('.checkmark-overlay');
-            if ($(this).is(':checked')) {
-                checkmarkOverlay.show(); // Show the checkmark
-            } else {
-                checkmarkOverlay.hide(); // Hide the checkmark
-            }
-        });
-    });
-            </script>
-            <script>
-                $(document).ready(function() {
-    // Toggle checkmark overlay on checkbox change
-    $('.student-checkbox').on('change', function() {
-        const isChecked = $(this).is(':checked');
-        const card = $(this).closest('.student-card');
-        const checkmarkOverlay = card.find('.checkmark-overlay');
-
-        if (isChecked) {
-            checkmarkOverlay.show(); // Show the checkmark
-        } else {
-            checkmarkOverlay.hide(); // Hide the checkmark
-        }
-    });
-});
-            </script>
-            <script>
-            $(document).ready(function() {
-    // Formula dropdown logic
-    $('#formulaSelect').on('change', function() {
-        if ($(this).val() === 'Other') {
-            $('#formulaCustom').show().val('');
-        } else {
-            $('#formulaCustom').hide().val('');
-        }
-    });
-    // Meal dropdown logic
-    $('#mealSelect').on('change', function() {
-        if ($(this).val() === 'Other') {
-            $('#mealCustom').show().val('');
-        } else {
-            $('#mealCustom').hide().val('');
-        }
-    });
-    // On submit, copy selected value or custom value to actual input
-    $('#feedForm').on('submit', function(e) {
-        // Set formula_breast_milk value
-        if ($('#formulaSelect').val() === 'Other') {
-            $('#formulaCustom').attr('name', 'formula_breast_milk');
-        } else {
-            $('#formulaCustom').attr('name', '');
-            $('#formulaCustom').val($('#formulaSelect').val());
-        }
-        // Set meal_snack_cereal value
-        if ($('#mealSelect').val() === 'Other') {
-            $('#mealCustom').attr('name', 'meal_snack_cereal');
-        } else {
-            $('#mealCustom').attr('name', '');
-            $('#mealCustom').val($('#mealSelect').val());
-        }
-    });
-
-    // Hide custom inputs on modal open/reset
-    $('#feedModal').on('show.bs.modal', function () {
-        $('#formulaCustom').hide().val('');
-        $('#mealCustom').hide().val('');
-        $('#formulaSelect').val('');
-        $('#mealSelect').val('');
-    });
-});
-                document.getElementById('classroomFilter').addEventListener('change', function() {
-                    const selectedClassroomId = this.value;
-                    const url = new URL(window.location.href);
-                    if (selectedClassroomId) {
-                        url.searchParams.set('classroom_id', selectedClassroomId);
-                    } else {
-                        url.searchParams.delete('classroom_id');
-                    }
-                    window.location.href = url.toString();
-                });
-            </script>
-            <script>
-    $(document).ready(function() {
-        let isSelectMode = false; // Track the toggle state of the "Select" button
-
-        // Toggle checkboxes, "Select All", and "Actions" when "Select" button is clicked
-        $('#selectButton').on('click', function() {
-            isSelectMode = !isSelectMode; // Toggle the state
-            if (isSelectMode) {
-                $('.student-checkbox').show(); // Show individual checkboxes
-                $('#selectAllContainer').show(); // Show "Select All" checkbox
-                $('#actionsContainer').show(); // Show "Actions" button
-                $(this).text('Cancel'); // Change button text to "Cancel"
-            } else {
-                $('.student-checkbox').hide(); // Hide individual checkboxes
-                $('#selectAllContainer').hide(); // Hide "Select All" checkbox
-                $('#actionsContainer').hide(); // Hide "Actions" button
-                $('.student-checkbox').prop('checked', false); // Uncheck all checkboxes
-                $('.checkmark-overlay').hide(); // Hide all checkmarks
-                $('#selectAllCheckbox').prop('checked', false); // Uncheck "Select All"
-                $(this).text('Select'); // Change button text back to "Select"
-            }
-        });
-
-        // Handle "Actions" dropdown options
-        $('#markOutside').on('click', function() {
-            handleAttendanceAction('mark_outside');
-        });
-
-        $('#markInside').on('click', function() {
-            handleAttendanceAction('mark_inside');
-        });
-
-        $('#signIn').on('click', function() { // New handler for Sign In
-            handleAttendanceAction('sign_in');
-        });
-
-        $('#signOut').on('click', function() {
-            handleAttendanceAction('sign_out');
-        });
-
-        // Function to handle attendance actions
-        function handleAttendanceAction(action) {
-            const selectedStudents = getSelectedStudents();
-            if (selectedStudents.length === 0) {
-                alert('No students selected.');
-                return;
-            }
-
-            selectedStudents.forEach(studentId => {
-                $.ajax({
-                    url: "{% url 'update_classroom_attendance' %}",
-                    type: "POST",
-                    data: {
-                        student_id: studentId,
-                        action: action,
-                        csrfmiddlewaretoken: '{{ csrf_token }}'
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            toastr.success(response.message, "Success");
-                            window.location.reload(); // Reload the page to reflect changes
-                        } else {
-                            toastr.error(response.message, "Error");
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        toastr.error('An error occurred. Please try again.', "Error");
-                    }
-                });
-            });
-        }
-
-        // Helper function to get selected student IDs
-        function getSelectedStudents() {
-            const selectedStudents = [];
-            $('.student-checkbox:checked').each(function() {
-                selectedStudents.push($(this).data('student-id'));
-            });
-            return selectedStudents;
-        }
-    });
-    $(document).ready(function() {
-    // Open the incident report modal and set the student ID
+    // Incident report modal
     $('#addIncidentReportButton').on('click', function() {
         const studentId = $('#toggleAttendance').data('student-id');
         $('#incidentStudentId').val(studentId);
-
-        // Set the date input to today by default
         const today = new Date().toISOString().split('T')[0];
         $('#dateOfIncident').val(today);
-
         $('#incidentReportModal').modal('show');
     });
-
-    // Handle incident report form submission
     $('#incidentReportForm').on('submit', function(e) {
         e.preventDefault();
         $.ajax({
@@ -993,23 +818,18 @@ document.getElementById('classroomFilter').addEventListener('change', function()
             }
         });
     });
-});
-// ...existing code...
-$(document).ready(function() {
-    // Open diaper change modal
+
+    // Diaper change modal
     $('#addDiaperChangeButton').on('click', function() {
         const studentId = $('#toggleAttendance').data('student-id');
         $('#diaperChangeStudentId').val(studentId);
         $('#diaperChangeNotes').val('');
-        // Set current time in HH:MM format
         const now = new Date();
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
         $('#diaperChangeTimestamp').val(`${hours}:${minutes}`);
         $('#diaperChangeModal').modal('show');
     });
-
-    // Handle diaper change form submission
     $('#diaperChangeForm').on('submit', function(e) {
         e.preventDefault();
         $.ajax({
@@ -1029,18 +849,13 @@ $(document).ready(function() {
             }
         });
     });
-});
-$(document).ready(function() {
-    // Hide move classroom controls initially
-    $('#moveClassroomControls').hide();
 
-    // Show move classroom controls when "Move Classroom" is selected
+    // Move classroom controls
+    $('#moveClassroomControls').hide();
     $('#moveClassroomDropdownItem').on('click', function(e) {
         e.preventDefault();
         $('#moveClassroomControls').show();
     });
-
-    // Hide move classroom controls when modal is closed or another action is selected
     $('#addIncidentReportDropdownItem, #addDiaperChangeDropdownItem').on('click', function(e) {
         e.preventDefault();
         $('#moveClassroomControls').hide();
@@ -1050,22 +865,17 @@ $(document).ready(function() {
             $('#addDiaperChangeButton').trigger('click');
         }
     });
-
-    // Hide move classroom controls when modal is closed
     $('#studentModal').on('hidden.bs.modal', function () {
         $('#moveClassroomControls').hide();
     });
-});
-$(document).ready(function() {
-    // Open Feed modal when dropdown item is clicked
+
+    // Feed modal logic
     $('#addFeedDropdownItem').on('click', function(e) {
         e.preventDefault();
         $('#moveClassroomControls').hide();
         const studentId = $('#toggleAttendance').data('student-id');
         $('#feedStudentId').val(studentId);
         $('#feedForm')[0].reset();
-
-        // Set current datetime in YYYY-MM-DDTHH:MM format
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -1074,65 +884,172 @@ $(document).ready(function() {
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const currentDatetime = `${year}-${month}-${day}T${hours}:${minutes}`;
         $('#feedForm input[name="timestamp"]').val(currentDatetime);
-
         $('#feedModal').modal('show');
     });
 
     // Show/hide custom meal description input
     $('#mealDescriptionSelect').on('change', function() {
-        if ($(this).val() === 'Other') {
-            $('#mealDescriptionCustom').show().val('');
-        } else {
+        if ($(this).val() === 'IFIF Formula' || $(this).val() === 'Breast Milk') {
+            $('#ouncesInput').show().val('');
             $('#mealDescriptionCustom').hide().val('');
+            $('#notesSection').hide();
+        } else if ($(this).val() === 'Other') {
+            $('#ouncesInput').hide().val('');
+            $('#mealDescriptionCustom').show().val([]);
+            $('#notesSection').show();
+        } else {
+            $('#ouncesInput').hide().val('');
+            $('#mealDescriptionCustom').hide().val('');
+            $('#notesSection').hide();
         }
     });
 
-    // On submit, set meal_description value correctly
+    // Feed form submit: create separate entries for each selection when "Other" is chosen
     $('#feedForm').on('submit', function(e) {
         e.preventDefault();
 
-        // Set meal_description value
-        let mealDesc;
         if ($('#mealDescriptionSelect').val() === 'Other') {
-            mealDesc = $('#mealDescriptionCustom').val();
-        } else {
-            mealDesc = $('#mealDescriptionSelect').val();
-        }
+            let selectedFormula = $('.meal-formula:checked').val();
+            let selectedCereal = $('.meal-cereal:checked').val();
+            let selectedInventory = $('#mealInventoryDropdown').val();
+            let notes = $('#feedForm textarea[name="notes"]').val();
 
-        // Build form data manually to ensure correct value is sent
-        const formData = {
-            student_id: $('#feedStudentId').val(),
-            timestamp: $('#feedForm input[name="timestamp"]').val(),
-            meal_type: $('#feedForm select[name="meal_type"]').val(),
-            meal_description: mealDesc,
-            notes: $('#feedForm textarea[name="notes"]').val(),
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        };
-
-        $.ajax({
-            url: "{% url 'add_feed' %}",
-            type: "POST",
-            data: formData,
-            success: function(response) {
-                if (response.status === 'success') {
-                    toastr.success('Feed recorded!');
-                    $('#feedModal').modal('hide');
-                } else {
-                    toastr.error('Failed to record feed.');
-                }
-            },
-            error: function() {
-                toastr.error('An error occurred.');
+            let entries = [];
+            if (selectedFormula) {
+                entries.push({ meal_description: selectedFormula, notes: '' });
             }
-        });
+            if (selectedCereal) {
+                entries.push({ meal_description: selectedCereal, notes: notes });
+            }
+            if (selectedInventory) {
+                entries.push({ meal_description: selectedInventory, notes: '' });
+            }
+
+            let commonData = {
+                student_id: $('#feedStudentId').val(),
+                timestamp: $('#feedForm input[name="timestamp"]').val(),
+                meal_type: $('#feedForm select[name="meal_type"]').val(),
+                ounces: '',
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            };
+
+            let requests = entries.map(entry => {
+                let formData = { ...commonData, ...entry };
+                return $.ajax({
+                    url: "{% url 'add_feed' %}",
+                    type: "POST",
+                    data: formData
+                });
+            });
+
+            $.when.apply($, requests).done(function() {
+                toastr.success('Feed(s) recorded!');
+                $('#feedModal').modal('hide');
+            }).fail(function() {
+                toastr.error('Failed to record feed.');
+            });
+
+        } else {
+            let mealDesc;
+            if ($('#mealDescriptionSelect').val() === 'IFIF Formula') {
+                const oz = $('#ouncesInput').val();
+                mealDesc = `IFIF Formula - ${oz}oz`;
+            } else if ($('#mealDescriptionSelect').val() === 'Breast Milk') {
+                const oz = $('#ouncesInput').val();
+                mealDesc = `Breast Milk - ${oz}oz`;
+            } else {
+                mealDesc = $('#mealDescriptionSelect').val();
+            }
+
+            const formData = {
+                student_id: $('#feedStudentId').val(),
+                timestamp: $('#feedForm input[name="timestamp"]').val(),
+                meal_type: $('#feedForm select[name="meal_type"]').val(),
+                meal_description: mealDesc,
+                ounces: ($('#ouncesInput').is(':visible') ? $('#ouncesInput').val() : ''),
+                notes: $('#feedForm textarea[name="notes"]').val(),
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            };
+
+            $.ajax({
+                url: "{% url 'add_feed' %}",
+                type: "POST",
+                data: formData,
+                success: function(response) {
+                    if (response.status === 'success') {
+                        toastr.success('Feed recorded!');
+                        $('#feedModal').modal('hide');
+                    } else {
+                        toastr.error('Failed to record feed.');
+                    }
+                },
+                error: function() {
+                    toastr.error('An error occurred.');
+                }
+            });
+        }
     });
 
     // Reset modal on open
     $('#feedModal').on('show.bs.modal', function () {
+        $('#ouncesInput').hide().val('');
         $('#mealDescriptionCustom').hide().val('');
         $('#mealDescriptionSelect').val('');
     });
+
+    // Only allow one selection per group in custom meal section
+    $(document).on('change', '.meal-formula', function() {
+        $('.meal-formula').not(this).prop('checked', false);
+    });
+    $(document).on('change', '.meal-cereal', function() {
+        $('.meal-cereal').not(this).prop('checked', false);
+    });
+    $(document).on('change', '.meal-inventory', function() {
+        if ($('.meal-inventory:checked').length > 1) {
+            this.checked = false;
+            toastr.warning('Select only one inventory item.');
+        }
+    });
+
+    // Toggle required attributes for custom meal section
+    $('#mealDescriptionSelect').on('change', function() {
+        if ($(this).val() === 'Other') {
+            $('#mealDescriptionCustom').show();
+            $('#notesSection').show();
+    
+        } else {
+            $('#mealDescriptionCustom').hide();
+            $('#notesSection').hide();
+            $('.meal-formula').prop('required', false);
+            $('.meal-cereal').prop('required', false);
+            $('#mealInventoryDropdown').prop('required', false);
+        }
+    });
+    $('#feedForm').on('submit', function(e) {
+    if ($('#mealDescriptionSelect').val() === 'Other') {
+        // Custom validation for Table Foods
+        let formulaChecked = $('.meal-formula:checked').length;
+        let cerealChecked = $('.meal-cereal:checked').length; 
+        let inventorySelected = $('#mealInventoryDropdown').val() && $('#mealInventoryDropdown').val() !== '';
+
+        if (!formulaChecked) {
+            toastr.error('Please select one formula.');
+            e.preventDefault();
+            return false;
+        }
+        if (!cerealChecked) {
+            toastr.error('Please select one cereal.');
+            e.preventDefault();
+            return false;
+        }
+        if (!inventorySelected) {
+            toastr.error('Please select one inventory item.');
+            e.preventDefault();
+            return false;
+        }
+    }
+    // Allow normal submission if not "Other"
+});
 });
 </script>
-
 {% endblock %}

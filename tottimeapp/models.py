@@ -812,6 +812,7 @@ class FeedRecord(models.Model):
         ('snack', 'Snack'),
     ]
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='feeds')
+    ounces = models.PositiveIntegerField(null=True, blank=True) 
     fed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     timestamp = models.DateTimeField(default=timezone.now)
     meal_type = models.CharField(max_length=10, choices=MEAL_CHOICES)
