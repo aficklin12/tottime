@@ -474,13 +474,20 @@ body {
                                     </select>
                                     <input type="number" min="1" max="12" step="1" name="ounces" id="ouncesInput" class="form-control mt-2" style="display:none;" placeholder="Enter ounces (oz)">
                                     <div id="mealDescriptionCustom" class="mt-2" style="display:none;">
+                                        <div class="mb-2" id="notesSection" style="display:none;">
+                                            <label><strong>Parent's Description</strong></label>
+                                            <textarea name="notes" class="form-control" placeholder="Enter custom meal description to be sent to parents."></textarea>
+                                        </div>
+                                        
                                         <div><strong>Input Infant Menu Substitutes</strong></div>
                                         <div>
                                             <input type="checkbox" name="meal_formula" value="IFIF Formula" class="meal-formula"> IFIF Formula
+                                            <strong>OR</strong>
                                             <input type="checkbox" name="meal_formula" value="Breast Milk" class="meal-formula"> Breast Milk
                                         </div>
                                         <div>
                                             <input type="checkbox" name="meal_cereal" value="3Tbs of IFIC Oatmeal" class="meal-cereal"> 3Tbs of IFIC Oatmeal
+                                            <strong>OR</strong>
                                             <input type="checkbox" name="meal_cereal" value="Infant Cereal" class="meal-cereal"> Infant Cereal
                                         </div>
                                         <div>
@@ -493,10 +500,7 @@ body {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="mb-2" id="notesSection" style="display:none;">
-                                    <label>Parent's Description</label>
-                                    <textarea name="notes" class="form-control" placeholder="Enter custom meal description to be sent to parents."></textarea>
-                                </div>
+                                
                             </div>
                             <div class="modal-footer">
                                 <button type="submit" class="btn btn-success">Save Feed</button>
@@ -554,7 +558,7 @@ body {
                         </div>
                         <div class="mb-3">
                             <label for="injuryDescription" class="form-label">Injury Description</label>
-                            <textarea class="form-control" id="injuryDescription" name="injury_description" required></textarea>
+                            <textarea class="form-control" id="injuryDescription" name="injury
                         </div>
                         <div class="mb-3">
                             <label for="treatmentAdministered" class="form-label">Treatment Administered</label>
@@ -872,6 +876,7 @@ $(document).ready(function() {
     // Feed modal logic
     $('#addFeedDropdownItem').on('click', function(e) {
         e.preventDefault();
+        $('.modal.show').modal('hide'); // Hide any open modal
         $('#moveClassroomControls').hide();
         const studentId = $('#toggleAttendance').data('student-id');
         $('#feedStudentId').val(studentId);
