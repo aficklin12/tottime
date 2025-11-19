@@ -1721,7 +1721,7 @@ def infant_menu(request):
     if not owner:
         company = Company.objects.first()
         if not company:
-             return HttpResponseBadRequest("No company found.")
+            return HttpResponseBadRequest("No company found.")
         # Try to get any existing CompanyAccountOwner for this company/main_user
         owner = CompanyAccountOwner.objects.filter(company=company, main_account_owner=main_user).first()
         if not owner:
@@ -1799,15 +1799,19 @@ def infant_menu(request):
         timestamp__date__lte=week_dates[-1]
     ).order_by('timestamp') if selected_student_id else FeedRecord.objects.none()
 
-    # Find the first formula entry for the week and strip "5oz" or similar
+    selected_student = None
     formula_name = ""
-    for record in feed_records:
-        desc = (record.meal_description or "").strip()
-        if "IFIF Formula" in desc or "Breast Milk" in desc:
-            import re
-            formula_name = re.sub(r"^\s*\d+\s*(oz\.?|oz|tbs\.?|tbs)?\s*", "", desc, flags=re.IGNORECASE)
-            formula_name = formula_name.strip()
-            break
+    if selected_student_id:
+        try:
+            selected_student = students.get(id=selected_student_id)
+            formula_name = selected_student.formula_name or "IFIF Formula"  # <-- Pull from model, default if blank
+        except Student.DoesNotExist:
+            selected_student = None
+            formula_name = "IFIF Formula"
+    else:
+        formula_name = "IFIF Formula"
+
+    permissions_context['selected_student'] = selected_student
     permissions_context['formula_name'] = formula_name
 
     # Prepare inventory item names for fruit/vegetable matching
@@ -1820,9 +1824,20 @@ def infant_menu(request):
         if day in menu_data:
             meal = record.meal_type
             desc = (record.meal_description or '').strip()
-            # Formula or Breast Milk
-            if desc in ["5oz IFIF Formula", "5oz of Breast Milk"]:
-                menu_data[day][meal]['formula'].append(desc)
+            ounces = getattr(record, 'ounces', None)
+            # Formula or Breast Milk (catch all variations)
+            if (
+                "ifif formula" in desc.lower()
+                or "breast milk" in desc.lower()
+            ):
+                # Show -5oz if ounces < 5, otherwise show actual ounces
+                if ounces is not None:
+                    if ounces < 5:
+                        menu_data[day][meal]['formula'].append(f"{desc} -5oz")
+                    else:
+                        menu_data[day][meal]['formula'].append(f"{desc} -{ounces}oz")
+                else:
+                    menu_data[day][meal]['formula'].append(desc)
             # Infant Cereal / Meat / Meat Alternate
             elif (
                 desc.lower().startswith("infant cereal")
@@ -3414,6 +3429,15 @@ def add_feed(request):
         meal_description = request.POST.get('meal_description')
         notes = request.POST.get('notes')
         ounces = request.POST.get('ounces') or None
+
+        # Remove ounces from meal_description for formula/breast milk
+        if meal_description:
+            desc_lower = meal_description.lower()
+            if "ifif formula" in desc_lower or "breast milk" in desc_lower:
+                # Strip any trailing " - Xoz" or similar
+                import re
+                meal_description = re.sub(r"\s*-\s*\d+\s*oz$", "", meal_description, flags=re.IGNORECASE).strip()
+
         try:
             student = Student.objects.get(id=student_id)
             # Accept both "YYYY-MM-DDTHH:MM" and "YYYY-MM-DD HH:MM"
@@ -3502,6 +3526,7 @@ def edit_student_info(request, student_id):
         classroom_id = request.POST.get('classroom')
         profile_picture = request.FILES.get('profile_picture')
         status = request.POST.get('status')
+        formula_name = request.POST.get('formula_name')  # <-- Get formula name
 
         if not first_name or not last_name:
             return render(request, 'tottimeapp/edit_student.html', {
@@ -3532,6 +3557,7 @@ def edit_student_info(request, student_id):
         student.code = code
         student.classroom = classroom
         student.status = status
+        student.formula_name = formula_name  # <-- Save formula name
 
         # Only update profile_picture if a new file is uploaded
         if profile_picture:
@@ -3927,13 +3953,14 @@ def rosters(request):
     }
     return render(request, 'rosters.html', context)
 
-login_required
+@login_required
 def add_student(request):
     if request.method == 'POST':
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
         date_of_birth = request.POST.get('date_of_birth')
         classroom_id = request.POST.get('classroom_id')
+        formula_name = request.POST.get('formula_name')  # <-- Get formula name
 
         try:
             main_user = get_user_for_view(request)
@@ -3951,7 +3978,8 @@ def add_student(request):
                 date_of_birth=date_of_birth,
                 code=code,
                 classroom=classroom,
-                main_user=main_user,  # Changed from 'user' to 'main_user'
+                main_user=main_user,
+                formula_name=formula_name  # <-- Pass formula name
             )
             student.save()
 

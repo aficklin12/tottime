@@ -75,7 +75,13 @@
                 </select>
             </div>
         </div>
-
+        <!-- Add this after the Classroom/Status row -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="formulaName" class="form-label">Formula Name (optional)</label>
+                <input type="text" class="form-control" id="formulaName" name="formula_name" value="{{ student.formula_name }}">
+            </div>
+        </div>
       <!-- Profile Picture -->
     <div class="row mb-3">
         <div class="col-md-6">

@@ -229,6 +229,7 @@ class Student(models.Model):
         null=True,
         default='student_pictures/default.png'
     )
+    formula_name = models.CharField(max_length=100, blank=True, null=True) 
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('inactive', 'Inactive'),

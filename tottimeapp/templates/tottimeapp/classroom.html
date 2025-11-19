@@ -481,12 +481,12 @@ body {
                                         
                                         <div><strong>Input Infant Menu Substitutes</strong></div>
                                         <div>
-                                            <input type="checkbox" name="meal_formula" value="IFIF Formula" class="meal-formula"> IFIF Formula
+                                            <input type="checkbox" name="meal_formula" value="IFIF Formula" class="meal-formula"> Formula
                                             <strong>OR</strong>
                                             <input type="checkbox" name="meal_formula" value="Breast Milk" class="meal-formula"> Breast Milk
                                         </div>
                                         <div>
-                                            <input type="checkbox" name="meal_cereal" value="3Tbs of IFIC Oatmeal" class="meal-cereal"> 3Tbs of IFIC Oatmeal
+                                            <input type="checkbox" name="meal_cereal" value="3Tbs of IFIC Oatmeal" class="meal-cereal"> Oatmeal
                                             <strong>OR</strong>
                                             <input type="checkbox" name="meal_cereal" value="Infant Cereal" class="meal-cereal"> Infant Cereal
                                         </div>
@@ -920,22 +920,36 @@ $(document).ready(function() {
             let selectedInventory = $('#mealInventoryDropdown').val();
             let notes = $('#feedForm textarea[name="notes"]').val();
 
+            // Validation (already present in your code)
+            if (!selectedFormula) {
+                toastr.error('Please select one formula.');
+                return false;
+            }
+            if (!selectedCereal) {
+                toastr.error('Please select one cereal.');
+                return false;
+            }
+            if (!selectedInventory) {
+                toastr.error('Please select one inventory item.');
+                return false;
+            }
+
             let entries = [];
+            // Only push if checked/selected
             if (selectedFormula) {
-                entries.push({ meal_description: selectedFormula, notes: '' });
+                entries.push({ meal_description: selectedFormula, notes: '', ounces: 5 });
             }
             if (selectedCereal) {
-                entries.push({ meal_description: selectedCereal, notes: notes });
+                entries.push({ meal_description: selectedCereal, notes: notes, ounces: '' });
             }
             if (selectedInventory) {
-                entries.push({ meal_description: selectedInventory, notes: '' });
+                entries.push({ meal_description: selectedInventory, notes: '', ounces: '' });
             }
 
             let commonData = {
                 student_id: $('#feedStudentId').val(),
                 timestamp: $('#feedForm input[name="timestamp"]').val(),
                 meal_type: $('#feedForm select[name="meal_type"]').val(),
-                ounces: '',
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             };
 
@@ -955,45 +969,46 @@ $(document).ready(function() {
                 toastr.error('Failed to record feed.');
             });
 
-        } else {
-            let mealDesc;
-            if ($('#mealDescriptionSelect').val() === 'IFIF Formula') {
-                const oz = $('#ouncesInput').val();
-                mealDesc = `IFIF Formula - ${oz}oz`;
-            } else if ($('#mealDescriptionSelect').val() === 'Breast Milk') {
-                const oz = $('#ouncesInput').val();
-                mealDesc = `Breast Milk - ${oz}oz`;
-            } else {
-                mealDesc = $('#mealDescriptionSelect').val();
-            }
-
-            const formData = {
-                student_id: $('#feedStudentId').val(),
-                timestamp: $('#feedForm input[name="timestamp"]').val(),
-                meal_type: $('#feedForm select[name="meal_type"]').val(),
-                meal_description: mealDesc,
-                ounces: ($('#ouncesInput').is(':visible') ? $('#ouncesInput').val() : ''),
-                notes: $('#feedForm textarea[name="notes"]').val(),
-                csrfmiddlewaretoken: '{{ csrf_token }}'
-            };
-
-            $.ajax({
-                url: "{% url 'add_feed' %}",
-                type: "POST",
-                data: formData,
-                success: function(response) {
-                    if (response.status === 'success') {
-                        toastr.success('Feed recorded!');
-                        $('#feedModal').modal('hide');
-                    } else {
-                        toastr.error('Failed to record feed.');
-                    }
-                },
-                error: function() {
-                    toastr.error('An error occurred.');
-                }
-            });
+            return false;
         }
+
+        let mealDesc;
+        if ($('#mealDescriptionSelect').val() === 'IFIF Formula') {
+            const oz = $('#ouncesInput').val();
+            mealDesc = `IFIF Formula - ${oz}oz`;
+        } else if ($('#mealDescriptionSelect').val() === 'Breast Milk') {
+            const oz = $('#ouncesInput').val();
+            mealDesc = `Breast Milk - ${oz}oz`;
+        } else {
+            mealDesc = $('#mealDescriptionSelect').val();
+        }
+
+        const formData = {
+            student_id: $('#feedStudentId').val(),
+            timestamp: $('#feedForm input[name="timestamp"]').val(),
+            meal_type: $('#feedForm select[name="meal_type"]').val(),
+            meal_description: mealDesc,
+            ounces: ($('#ouncesInput').is(':visible') ? $('#ouncesInput').val() : ''),
+            notes: $('#feedForm textarea[name="notes"]').val(),
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        };
+
+        $.ajax({
+            url: "{% url 'add_feed' %}",
+            type: "POST",
+            data: formData,
+            success: function(response) {
+                if (response.status === 'success') {
+                    toastr.success('Feed recorded!');
+                    $('#feedModal').modal('hide');
+                } else {
+                    toastr.error('Failed to record feed.');
+                }
+            },
+            error: function() {
+                toastr.error('An error occurred.');
+            }
+        });
     });
 
     // Reset modal on open
@@ -1033,7 +1048,6 @@ $(document).ready(function() {
     });
     $('#feedForm').on('submit', function(e) {
     if ($('#mealDescriptionSelect').val() === 'Other') {
-        // Custom validation for Table Foods
         let formulaChecked = $('.meal-formula:checked').length;
         let cerealChecked = $('.meal-cereal:checked').length; 
         let inventorySelected = $('#mealInventoryDropdown').val() && $('#mealInventoryDropdown').val() !== '';
