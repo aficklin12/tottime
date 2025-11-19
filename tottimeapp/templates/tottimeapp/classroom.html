@@ -467,10 +467,10 @@ body {
                                         <option value="Breast Milk">Breast Milk</option>
                                         <option value="3Tbs of Oatmeal">3Tbs of IFIC Oatmeal</option>
                                         <option value="Infant Cereal">Infant Cereal</option>
-                                        {% for item in inventory_items %}
+                                        {% for item in inventory_items %} 
                                         <option value="{{ item.item }}">{{ item.item }}</option>
                                         {% endfor %}
-                                        <option value="Other">Table Foods - Select Items</option>
+                                        <option value="Other">Table Foods</option>
                                     </select>
                                     <input type="number" min="1" max="12" step="1" name="ounces" id="ouncesInput" class="form-control mt-2" style="display:none;" placeholder="Enter ounces (oz)">
                                     <div id="mealDescriptionCustom" class="mt-2" style="display:none;">
