@@ -5,7 +5,16 @@
 
 {% block styles %}
 <style>
-
+@media (max-width: 999px) {
+    #profilePictureInput {
+        display: none !important;
+    }
+}
+@media (min-width: 999px) {
+    #profilePictureHelp {
+        display: none !important;
+    }
+}
 </style>
 {% endblock %}
 
@@ -23,25 +32,26 @@
             <input type="email" class="form-control w-100" style="max-width: 100%;" id="email" name="email" value="{{ user.email }}">
             <label for="phoneNumber" class="form-label mt-2">Phone Number</label>
             <input type="text" class="form-control w-100" style="max-width: 100%;" id="phoneNumber" name="phone_number" value="{{ user.phone_number }}">
-            <label for="address" class="form-label mt-2">Address</label>
+            <!--<label for="address" class="form-label mt-2">Address</label>
             <input type="text" class="form-control w-100" style="max-width: 100%;" id="address" name="address" value="{{ user.address }}">
             <label for="code" class="form-label mt-2">Code</label>
-            <input type="number" class="form-control w-100" style="max-width: 100%;" id="code" name="code" value="{{ user.code }}" min="0" step="1" pattern="\d*">
+            <input type="number" class="form-control w-100" style="max-width: 100%;" id="code" name="code" value="{{ user.code }}" min="0" step="1" pattern="\d*">-->
             {% if user.profile_picture %}
             <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 75px; height: 75px;">
             {% else %}
             <img src="{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 75px; height: 75px;">
             {% endif %}
-        <input 
+                    <input 
                 type="file" 
                 class="form-control mt-2 w-100"
                 style="max-width: 100%;"
                 id="profilePictureInput" 
                 name="profile_picture"
                 accept="image/*"
-            >
-            <div class="form-text text-muted mt-1">
-            Take photo functionality currently unavailable. Upload a saved photo from your device.
+            />
+            <div class="form-text text-muted mt-1" id="profilePictureHelp">
+                Photo uploads disabled within the app. This function is only available on the website directly.
+                <a href="https://tot-time.com" target="_blank" rel="noopener">Tot-time.com</a>.
             </div>
             <button type="submit" class="btn btn-primary mt-2" style="height: 38px;">Save Changes</button>
         </div>

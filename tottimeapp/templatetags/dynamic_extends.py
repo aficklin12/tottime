@@ -4,16 +4,12 @@ register = template.Library()
 
 @register.simple_tag(takes_context=True)
 def get_base_template(context):
-    """
-    Determine which base template to use based on the context.
-    If is_public_view is True, returns the public base template.
-    Otherwise returns the standard base template.
     
-    Usage in templates:
-        {% load dynamic_extends %}
-        {% extends get_base_template %}
     """
+    Returns the correct base template based on context.
+    """
+    if context.get('use_minimal_base'):
+        return 'tottimeapp/base_minimal.html'
     if context.get('is_public_view'):
         return 'tottimeapp/base_public.html'
-    else:
-        return 'tottimeapp/base.html'
+    return 'tottimeapp/base.html'

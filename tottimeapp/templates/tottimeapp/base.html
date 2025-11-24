@@ -395,7 +395,7 @@
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                       
                         {% if user.is_authenticated %}
-                            <li>
+                            <!--<li>
                                 <a class="dropdown-item" href="{% url 'message_inbox' %}">
                                     Messaging
                                     {% if unread_message_count|add:0 > 0 %}
@@ -404,7 +404,7 @@
                                     </span>
                                     {% endif %}
                                 </a>
-                            </li>
+                            </li>-->
                             <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
                         {% else %}
                             <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
@@ -622,33 +622,7 @@
         <div id="layoutSidenav_content">
             <main>
                 {% block content %}
-                <!-- Example table with upload button column -->
-<table>
-    <thead>
-        <tr>
-            <!-- Existing header columns -->
-            <th>Column 1</th>
-            <th>Column 2</th>
-            <!-- New upload column header -->
-            <th class="upload-col">Upload</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <!-- Existing data columns -->
-            <td>Data 1</td>
-            <td>Data 2</td>
-            <!-- New upload button column -->
-            <td class="upload-col">
-                <button class="btn-upload" onclick="triggerFileUpload(this)" data-id="1">
-                    <i class="fas fa-upload"></i> Upload
-                </button>
-                <input type="file" style="display: none;" class="file-upload-input" onchange="handleFileUpload(this)">
-            </td>
-        </tr>
-        <!-- More rows as needed -->
-    </tbody>
-</table>
+             
                 {% endblock %}
             </main>
         </div>
@@ -657,7 +631,7 @@
 <footer class="py-4 bg-light mt-auto" style="margin-top: 80px;">
     <div class="container-fluid px-4">
         <div class="d-flex align-items-center justify-content-between small">
-            <div class="text-muted">Copyright &copy; Tot-Time 2025</div>
+            <div class="text-muted">Copyright &copy; 2025 Tot-Time - AP Data Solutions</div>
             <div>
                 <a href="{% url 'privacy-policy' %}">Privacy Policy</a>
                 &middot;

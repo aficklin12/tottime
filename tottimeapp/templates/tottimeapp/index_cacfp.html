@@ -1,0 +1,121 @@
+{% extends base_template %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Dashboard{% endblock %}
+
+{% block styles %}
+    <style>
+        /* dashboard summary + basic helpers (unchanged) */
+        .dashboard-summary {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        .upgrade-btn {
+            margin-top: 24px;
+        }
+
+        /* Grid & compact square button styles (no transparency, higher contrast text) */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 16px;
+            width: 100%;
+            max-width: 720px;
+            margin: 12px auto;
+            align-items: center;
+            justify-items: center;
+            padding: 8px;
+        }
+
+        .btn-square {
+            /* make compact, perfectly square tiles while remaining responsive */
+            width: 100%;
+            max-width: 140px;
+            aspect-ratio: 1 / 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border-radius: 12px;
+            color: #ffffff;
+            font-weight: 700;
+            text-align: center;
+            text-decoration: none;
+            transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+            background: rgb(57, 189, 180); /* requested color, no transparency */
+            border: 0;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-square:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 18px 36px rgba(0,0,0,0.12);
+        }
+
+        /* ensure any injected icons are hidden so label is clear */
+        .btn-square i, .btn-square svg, .btn-square .icon, .btn i, .btn svg, .btn .icon {
+            display: none !important;
+        }
+
+        /* Label readability */
+        .btn-square .label {
+            display: block;
+            padding: 0 8px;
+            line-height: 1;
+            font-size: 1.15rem; /* increased text size */
+            color: #ffffff;
+            font-weight: 700;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.06);
+        }
+
+        /* keep spacing tidy on large screens */
+        @media (min-width: 1200px) {
+            .dashboard-grid {
+                gap: 20px;
+            }
+            .btn-square .label {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+   <h1 class="mt-4">CACFP User Dashboard</h1>
+   <div class="container-fluid px-4">
+        {% if base_template == 'tottimeapp/base_minimal.html' %}
+        <div class="dashboard-grid" style="min-height: 40vh;">
+               <a href="{% url 'inventory_list' %}" class="btn btn-primary btn-square"><span class="label">Inventory</span></a>
+               <a href="{% url 'menu' %}" class="btn btn-primary btn-square"><span class="label">Weekly Menu</span></a>
+               <a href="{% url 'recipes' %}" class="btn btn-primary btn-square"><span class="label">Recipes</span></a>
+               <a href="{% url 'meal_calculator' %}" class="btn btn-primary btn-square"><span class="label">Meal Calculator</span></a>
+        </div>
+        {% endif %}
+   </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+if (window.innerWidth < 1000 && !window.location.search.includes('minimal=1')) {
+    window.location.search += (window.location.search ? '&' : '?') + 'minimal=1';
+}
+</script>
+{% endblock %}

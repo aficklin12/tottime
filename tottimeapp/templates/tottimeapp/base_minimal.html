@@ -27,23 +27,171 @@
             border-radius: 0;
             overflow: visible;
         }
+        @media (min-width: 1000px) {
+        h1 {
+            margin-top: 20px;
+            margin-bottom:10px;
+            margin-left: 20px;
+            font-weight: bold;
+            line-height: 1.2;
+            font-size: 40px;
+            color: #212529;
+        }
+        }
+        @media (max-width: 1000px) {
+        
+            h1 {
+            background-color: rgba(57, 189, 180, 0.15);
+            padding: 10px 15px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            margin-left: 17px;
+            border-left: 5px solid rgb(57, 189, 180);
+            font-size: 1.2em;
+        }
+        .h1-multiloc {
+        margin-top: 80px !important;
+    }
+            }
+       
+        /* For mobile devices, center the logo */
+        @media (max-width: 1000px) {
+        .navbar-brand {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                margin: 0;
+            }
+            
+            /* Ensure navbar has enough height for the centered logo */
+            .sb-topnav {
+                min-height: 56px;
+                display: flex;
+                justify-content: center;
+            }
+        }
+ /* Location in navbar (hidden by default, shown for >=1000px) */
+  .navbar-location {
+      display: none;
+      color: #ffffff;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: 1.1rem;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 400px; /* limit width so it doesn't collide with controls */
+      pointer-events: none; /* not interactive */
+      margin-left: 12px; /* space to right of logo */
+  }
+
+  @media (min-width: 1000px) {
+      .navbar-location {
+          display: block;
+      }
+  }
+
+  /* Small-screen location bar (hidden on desktop) */
+  .navbar-location-bar {
+      display: none;
+      background-color: #212529; /* match dark navbar background */
+      color: #ffffff;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      text-align: center;
+      padding: 8px 12px;
+      box-sizing: border-box;
+      width: 100%;
+      z-index: 1040;
+  }
+
+  /* Make the location bar fixed directly under the (fixed) navbar on small screens
+     and push page content down so it is visible (override earlier rules). */
+  @media (max-width: 999px) {
+      .navbar-location-bar {
+          display: block;
+          position: fixed;
+          top: calc(56px + env(safe-area-inset-top)); /* below the top navbar */
+          left: 0;
+          right: 0;
+          height: 44px; /* adjust if you want a taller/shorter bar */
+          line-height: 28px;
+          padding-top: 8px;
+          padding-bottom: 8px;
+          box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+          z-index: 1040;
+      }
+
+
+      /* keep inline desktop location hidden on small screens */
+      .navbar-location { display: none !important; }
+  }
     </style>
     {% block styles %}{% endblock %}
 </head>
-<body class="sb-nav-fixed">
+<body class="sb-nav-fixed d-flex flex-column min-vh-100">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <!-- Navbar Brand-->
         <a class="navbar-brand" href="{% url 'index' %}">
             <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
         </a>
     </nav>
-    <div class="container">
-        {% block content %}{% endblock %}
+
+<div class="navbar-location-bar" role="region" aria-label="Current location">
+    {% if user.is_authenticated and available_account_owners %}
+        <div class="d-flex flex-column align-items-center">
+            {% if user.can_switch %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle"
+                            type="button"
+                            id="accountSwitcher"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            style="color: #fff; background: transparent; border: none; font-weight: 600;">
+                        {% for account_owner in available_account_owners %}
+                            {% if user.main_account_owner_id == account_owner.main_account_owner.id %}
+                                {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
+                            {% endif %}
+                        {% endfor %}
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="accountSwitcher">
+                        {% for account_owner in available_account_owners %}
+                        <li>
+                            <a class="dropdown-item switch-account-btn {% if user.main_account_owner_id == account_owner.main_account_owner.id %}active{% endif %}" 
+                               href="#" 
+                               data-account-id="{{ account_owner.main_account_owner.id }}">
+                                {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
+                            </a>
+                        </li>
+                        {% empty %}
+                        <li><span class="dropdown-item-text text-muted">No accounts available</span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <span>
+                    {% for account_owner in available_account_owners %}
+                        {% if user.main_account_owner_id == account_owner.main_account_owner.id %}
+                            {{ account_owner.location_name|default:account_owner.main_account_owner.company_name|default:"Location" }}
+                        {% endif %}
+                    {% endfor %}
+                </span>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+    <div id="layoutSidenav_content" class="flex-grow-1">
+        <main style="padding-top: 56px;{% if available_account_owners|length > 1 %} padding-top: 100px;{% endif %}">
+            {% block content %}
+            {% endblock %}
+        </main>
     </div>
     <footer class="py-4 bg-light mt-auto">
         <div class="container-fluid px-4">
             <div class="d-flex align-items-center justify-content-between small">
-                <div class="text-muted">Copyright &copy; Tot-Time 2025</div>
+                <div class="text-muted">Copyright &copy; 2025 Tot-Time - AP Data Solutions</div>
                 <div>
                     <a href="{% url 'privacy-policy' %}">Privacy Policy</a>
                     &middot;
@@ -56,6 +204,133 @@
     <script src="{% static 'js/scripts.js' %}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="{% static 'js/toastr-settings.js' %}"></script>
+    <script>
+    // Add event listeners when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        const switchButtons = document.querySelectorAll('.switch-account-btn');
+        switchButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const accountId = this.getAttribute('data-account-id');
+                switchAccount(accountId);
+            });
+        });
+    });
+
+    function switchAccount(accountOwnerId) {
+        // Get CSRF token from a meta tag or cookie instead of template tag
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                         document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ||
+                         getCookie('csrftoken');
+        
+        fetch('/switch-account/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                'account_owner_id': accountOwnerId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.success('Account switched successfully');
+                }
+                window.location.reload();
+            } else {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(data.error || 'Failed to switch account');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            if (typeof toastr !== 'undefined') {
+                toastr.error('An error occurred while switching accounts');
+            }
+        });
+    }
+
+    // Helper function to get cookie value
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function triggerFileUpload(button) {
+        const input = button.nextElementSibling;
+        if (input) {
+            input.click();
+        }
+    }
+
+    function handleFileUpload(input) {
+        const files = input.files;
+        if (files.length > 0) {
+            const fileName = files[0].name;
+            const button = input.parentElement.querySelector('.btn-upload');
+            if (button) {
+                button.innerHTML = '<i class="fas fa-check"></i> Uploaded';
+                button.classList.add('btn-success');
+                button.classList.remove('btn-upload');
+                // Optionally, disable the button after upload
+                button.setAttribute('disabled', 'true');
+            }
+        }
+    }
+
+document.addEventListener('click', function(e){
+    const el = e.target.closest('.switch-account-btn');
+    if (!el) return;
+    e.preventDefault();
+    const accountId = el.dataset.accountId;
+    const csrftoken = (function(){ /* small helper to read csrf cookie */ 
+        function getCookie(name){ let v = null; if (document.cookie && document.cookie !== ''){ const cookies = document.cookie.split(';'); for (let i=0;i<cookies.length;i++){ const c = cookies[i].trim(); if (c.startsWith(name + '=')){ v = decodeURIComponent(c.substring(name.length+1)); break; } } } return v; } return getCookie('csrftoken'); 
+    })();
+
+    fetch("{% url 'switch_account' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            account_owner_id: accountId,
+            current_path: window.location.pathname
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (data.redirect_url) {
+                window.location.href = data.redirect_url;
+            } else {
+                // current page is valid for the new main_user — refresh to pick up context
+                window.location.reload();
+            }
+        } else {
+            alert('Could not switch location: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error switching location');
+    });
+});
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

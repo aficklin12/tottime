@@ -237,6 +237,8 @@ def index(request):
             return redirect('index_teacher_parent')
         elif group_id == 6:
             return redirect('index_free_user')
+        elif group_id == 9:
+            return redirect('index_cacfp')
     except SubUser.DoesNotExist:
         pass
 
@@ -626,6 +628,24 @@ def index_free_user(request):
         return permissions_context
     # Render the index_free_user page with the permissions context
     return render(request, 'index_free_user.html', permissions_context)
+
+@login_required(login_url='/login/')
+def index_cacfp(request):
+    required_permission_id = None  # No specific permission required for this page
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    # Detect if minimal base should be used (via query param set by JS)
+    use_minimal_base = request.GET.get('minimal') == '1'
+    if use_minimal_base:
+        base_template = 'tottimeapp/base_minimal.html'
+    else:
+        base_template = 'tottimeapp/base.html'
+
+    permissions_context['base_template'] = base_template
+
+    return render(request, 'tottimeapp/index_cacfp.html', permissions_context)
 
 @require_POST
 @login_required(login_url='/login/')
@@ -1469,12 +1489,7 @@ def recipes(request):
 
 @login_required
 def menu(request):
-    # Detect if the request is from a mobile device
-    is_mobile = any(device in request.META.get('HTTP_USER_AGENT', '').lower() for device in [
-        'iphone', 'android', 'mobile', 'cordova', 'tablet', 'ipod', 'windows phone'
-    ])
-    if is_mobile:
-        return HttpResponseRedirect(reverse('app_redirect'))
+    
 
     required_permission_id = 271  # Permission ID for menu view
     permissions_context = check_permissions(request, required_permission_id)

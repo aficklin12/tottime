@@ -415,7 +415,7 @@ class RolePermission(models.Model):
     role = models.ForeignKey(Group, on_delete=models.CASCADE, related_name="role_permissions")  # Linking to Group
     permission = models.ForeignKey(Permission, on_delete=models.CASCADE, related_name="role_permissions")  # Linking to Permission
     yes_no_permission = models.BooleanField(default=False)  # Added yes/no field for permission control
-    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='role_permissions', null=True, blank=True)  # <-- Add this line
+    main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='role_permissions', null=True, blank=True) 
 
     class Meta:
         unique_together = ('role', 'permission')  # Ensure unique combination of role and permission
