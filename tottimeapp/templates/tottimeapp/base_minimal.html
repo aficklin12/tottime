@@ -130,20 +130,160 @@
           box-shadow: 0 1px 0 rgba(0,0,0,0.15);
           z-index: 1040;
       }
-
-
-      /* keep inline desktop location hidden on small screens */
-      .navbar-location { display: none !important; }
   }
+
+  /* Ensure navbar dropdowns sit above the location bar on small screens */
+  .sb-topnav {
+      z-index: 1100; /* put the whole top navbar above the location bar */
+  }
+
+  .sb-topnav .dropdown-menu {
+      z-index: 1200 !important; /* ensure dropdown itself is higher */
+  }
+  /* Force dropdown to top of stacking order (covers any fixed bars) */
+  .sb-topnav,
+  .sb-topnav .nav-item,
+  .sb-topnav .dropdown {
+      z-index: 2147483646 !important;
+      position: relative; /* ensure dropdown's stacking context is the navbar */
+  }
+
+  .sb-topnav .dropdown-menu,
+  .dropdown.show > .dropdown-menu {
+      z-index: 2147483647 !important;
+      position: absolute !important;
+  }
+   table {
+      margin-top: 0; /* Remove top margin */
+      border-top: none;
+      border-collapse: collapse;
+      margin-left: 27px;
+      margin-right: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 10px; /* Add this for rounded corners */
+      overflow: hidden;
+  }
+  
+  th, td {
+      border: 1px solid #dddddd;
+      padding: 8px;
+      text-align: left;
+  }
+  
+  th {
+      background-color: #272630;
+      color: #ffffff;
+      text-align: left;
+      font-weight: bold;
+  } 
+ .mobile-home-btn {
+            display: none;
+        }
+        @media (max-width: 999px) {
+            .mobile-home-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                position: absolute;
+                left: 8px;
+                top: 8px;
+                width: 40px;
+                height: 40px;
+                border-radius: 6px;
+                background: transparent;
+                color: #ffffff; /* white icon */
+                font-size: 1.1rem;
+                z-index: 2147483647; /* make sure it sits above other fixed bars */
+                text-decoration: none;
+                border: 0;
+                padding: 0;
+                transition: background-color .12s ease, color .12s ease;
+            }
+            /* slightly increase hit target without changing visual size */
+            .mobile-home-btn::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: 6px;
+            }
+
+            /* hover / focus / active state: teal background (57,189,180) with white icon */
+            .mobile-home-btn:hover,
+            .mobile-home-btn:focus,
+            .mobile-home-btn:active {
+                background: rgb(57, 189, 180);
+                color: #ffffff;
+                outline: none;
+            }
+        }
     </style>
     {% block styles %}{% endblock %}
 </head>
-<body class="sb-nav-fixed d-flex flex-column min-vh-100">
+
+<body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+    <!-- mobile home button (visible only on small screens) -->
+        <a href="{% url 'index' %}" class="mobile-home-btn" aria-label="Home">
+            <i class="fas fa-home" aria-hidden="true"></i>
+        </a>
+
+     <!-- Back Button (only in app) -->
+        {% if is_app and show_back_button %}
+        <button onclick="window.history.back();" class="btn btn-outline-light me-2" style="font-size:1.2rem;">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        {% endif %}
+        {% if is_app %}
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="fas fa-bars"></i>
+        </button>
+        {% endif %}
+       
+       
         <!-- Navbar Brand-->
         <a class="navbar-brand" href="{% url 'index' %}">
             <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
         </a>
+    <!-- Navbar-->
+        <div class="ms-auto">
+            <ul class="navbar-nav me-lg-4">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div style="position: relative; display: inline-block;">
+                            <img 
+                                src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
+                                alt="Profile Picture" 
+                                style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                            {% if unread_message_count|add:0 > 0 %}
+                            <span class="notification-badge">
+                                {{ unread_message_count }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                      
+                        {% if user.is_authenticated %}
+                            <!--<li>
+                                <a class="dropdown-item" href="{% url 'message_inbox' %}">
+                                    Messaging
+                                    {% if unread_message_count|add:0 > 0 %}
+                                    <span style="background-color: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 5px;">
+                                        {{ unread_message_count }}
+                                    </span>
+                                    {% endif %}
+                                </a>
+                            </li>-->
+                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                        {% else %}
+                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
     </nav>
 
 <div class="navbar-location-bar" role="region" aria-label="Current location">
@@ -189,6 +329,7 @@
         </div>
     {% endif %}
 </div>
+
     <div id="layoutSidenav_content" class="flex-grow-1">
         <main style="padding-top: 56px;{% if available_account_owners|length > 1 %} padding-top: 100px;{% endif %}">
             {% block content %}

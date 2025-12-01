@@ -1,4 +1,4 @@
-{% extends base_template %}
+{% extends 'tottimeapp/base_dynamic.html' %}
 {% load static %} 
 {% load custom_filters %}
 {% load dict_extras %}
@@ -73,17 +73,23 @@
         /* Icon styling (unchanged) */
         .btn-square .sb-nav-link-icon {
             display: block;
-            font-size: 1.6rem;
+            font-size: 1.6rem; /* keep layout size so grid doesn't reflow */
             line-height: 1;
             margin-bottom: 6px;
+            /* ensure transform doesn't create a new stacking context that affects layout */
+            transform-origin: center;
         }
         .btn-square .sb-nav-link-icon i {
             color: #ffffff;
-            font-size: 1.9rem;
+            font-size: 1.9rem;    /* base font-size used for layout */
             width: 1.9em;
             height: 1.9em;
             display: inline-block;
             text-align: center;
+            transform-origin: center;
+            transform: translateY(16px) scale(1.6); /* moved down a bit more */
+            will-change: transform;
+            margin-bottom: -0.06em;
         }
 
         /* Label readability: larger, less heavy */
@@ -141,9 +147,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-if (window.innerWidth < 1000 && !window.location.search.includes('minimal=1')) {
-    window.location.search += (window.location.search ? '&' : '?') + 'minimal=1';
-}
-</script>
+
 {% endblock %}

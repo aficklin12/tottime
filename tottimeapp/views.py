@@ -636,8 +636,37 @@ def index_cacfp(request):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    # Detect if minimal base should be used (via query param set by JS)
-    use_minimal_base = request.GET.get('minimal') == '1'
+    # prefer cookie first, then query param
+    cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
+    param_minimal = request.GET.get('minimal') == '1'
+    use_minimal_base = param_minimal or cookie_minimal
+
+    # If we don't yet know the client's viewport, return a tiny sniffing page that
+    # sets the cookie and redirects immediately (prevents flashing the full base).
+    if not (cookie_minimal or param_minimal):
+        sniff_html = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <script>
+        (function(){
+            var w = window.innerWidth || document.documentElement.clientWidth || screen.width;
+            var url = window.location.href;
+            if (w < 1000) {
+                // set cookie for future server-side decisions
+                document.cookie = "use_minimal_base=1; path=/; max-age=" + (60*60*24*365) + ";";
+                if (url.indexOf('minimal=1') === -1) {
+                    url += (url.indexOf('?') === -1 ? '?' : '&') + 'minimal=1';
+                }
+                window.location.replace(url);
+            } else {
+                // ensure no minimal param and reload so server will serve full base
+                url = url.replace(/([?&])minimal=1(&|$)/g, '$1').replace(/[?&]$/, '');
+                window.location.replace(url);
+            }
+        })();
+        </script>
+        <style>html,body{height:100%;margin:0;background:#fff}</style>
+        </head><body></body></html>"""
+        return HttpResponse(sniff_html)
+
     if use_minimal_base:
         base_template = 'tottimeapp/base_minimal.html'
     else:
@@ -645,7 +674,13 @@ def index_cacfp(request):
 
     permissions_context['base_template'] = base_template
 
-    return render(request, 'tottimeapp/index_cacfp.html', permissions_context)
+    response = render(request, 'tottimeapp/index_cacfp.html', permissions_context)
+
+    # if query param present, persist preference for future requests
+    if param_minimal:
+        response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
+
+    return response
 
 @require_POST
 @login_required(login_url='/login/')
@@ -1484,13 +1519,50 @@ def recipes(request):
     # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
-    # If access is allowed, render the recipes page
-    return render(request, 'recipes.html', permissions_context)
+
+    # prefer cookie first, then query param
+    cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
+    param_minimal = request.GET.get('minimal') == '1'
+    use_minimal_base = param_minimal or cookie_minimal
+
+    # If we don't yet know the client's viewport, return a tiny sniffing page that
+    # sets the cookie and redirects immediately (prevents flashing the full base).
+    if not (cookie_minimal or param_minimal):
+        sniff_html = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <script>
+        (function(){
+            var w = window.innerWidth || document.documentElement.clientWidth || screen.width;
+            var url = window.location.href;
+            if (w < 1000) {
+                document.cookie = "use_minimal_base=1; path=/; max-age=" + (60*60*24*365) + ";";
+                if (url.indexOf('minimal=1') === -1) {
+                    url += (url.indexOf('?') === -1 ? '?' : '&') + 'minimal=1';
+                }
+                window.location.replace(url);
+            } else {
+                url = url.replace(/([?&])minimal=1(&|$)/g, '$1').replace(/[?&]$/, '');
+                window.location.replace(url);
+            }
+        })();
+        </script>
+        <style>html,body{height:100%;margin:0;background:#fff}</style>
+        </head><body></body></html>"""
+        return HttpResponse(sniff_html)
+
+    # Choose base template
+    base_template = 'tottimeapp/base_minimal.html' if use_minimal_base else 'tottimeapp/base.html'
+    permissions_context['base_template'] = base_template
+
+    response = render(request, 'tottimeapp/recipes.html', permissions_context)
+
+    # persist preference when query param present
+    if param_minimal:
+        response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
+
+    return response
 
 @login_required
 def menu(request):
-    
-
     required_permission_id = 271  # Permission ID for menu view
     permissions_context = check_permissions(request, required_permission_id)
     if isinstance(permissions_context, HttpResponseRedirect):
@@ -1523,7 +1595,42 @@ def menu(request):
         'sponsor_name': sponsor_name,
     })
 
-    return render(request, 'tottimeapp/weekly-menu.html', permissions_context)
+    # --- minimal/base sniffing (same pattern as other views) ---
+    cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
+    param_minimal = request.GET.get('minimal') == '1'
+    use_minimal_base = param_minimal or cookie_minimal
+
+    if not (cookie_minimal or param_minimal):
+        sniff_html = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <script>
+        (function(){
+            var w = window.innerWidth || document.documentElement.clientWidth || screen.width;
+            var url = window.location.href;
+            if (w < 1000) {
+                document.cookie = "use_minimal_base=1; path=/; max-age=" + (60*60*24*365) + ";";
+                if (url.indexOf('minimal=1') === -1) {
+                    url += (url.indexOf('?') === -1 ? '?' : '&') + 'minimal=1';
+                }
+                window.location.replace(url);
+            } else {
+                url = url.replace(/([?&])minimal=1(&|$)/g, '$1').replace(/[?&]$/, '');
+                window.location.replace(url);
+            }
+        })();
+        </script>
+        <style>html,body{height:100%;margin:0;background:#fff}</style>
+        </head><body></body></html>"""
+        return HttpResponse(sniff_html)
+
+    base_template = 'tottimeapp/base_minimal.html' if use_minimal_base else 'tottimeapp/base.html'
+    permissions_context['base_template'] = base_template
+
+    response = render(request, 'tottimeapp/weekly-menu.html', permissions_context)
+
+    if param_minimal:
+        response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
+
+    return response
 
 @login_required
 def account_settings(request):
@@ -1673,7 +1780,6 @@ def inventory_list(request):
     # Check permissions for the specific page
     required_permission_id = 272  # Permission ID for inventory_list view
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
@@ -1688,7 +1794,7 @@ def inventory_list(request):
     # Get order items for shopping list and ordered items tabs
     order_items = OrderList.objects.filter(user=user)
 
-    # Handle AJAX request for category filtering
+    # Handle AJAX request for category filtering early (no sniffing for XHR)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         category_filter = request.GET.get('category')
         if category_filter:
@@ -1696,17 +1802,46 @@ def inventory_list(request):
         inventory_data = list(inventory_items.values('id', 'item', 'quantity', 'units', 'category'))
         return JsonResponse({'inventory_items': inventory_data})
 
-    # Determine which base template to use and whether to hide controls
+    # prefer cookie first, then query param
+    cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
+    param_minimal = request.GET.get('minimal') == '1'
+    use_minimal_base = param_minimal or cookie_minimal
+
+    # If we don't yet know the client's viewport, return a tiny sniffing page
+    if not (cookie_minimal or param_minimal):
+        sniff_html = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <script>
+        (function(){
+            var w = window.innerWidth || document.documentElement.clientWidth || screen.width;
+            var url = window.location.href;
+            if (w < 1000) {
+                document.cookie = "use_minimal_base=1; path=/; max-age=" + (60*60*24*365) + ";";
+                if (url.indexOf('minimal=1') === -1) {
+                    url += (url.indexOf('?') === -1 ? '?' : '&') + 'minimal=1';
+                }
+                window.location.replace(url);
+            } else {
+                url = url.replace(/([?&])minimal=1(&|$)/g, '$1').replace(/[?&]$/, '');
+                window.location.replace(url);
+            }
+        })();
+        </script>
+        <style>html,body{height:100%;margin:0;background:#fff}</style>
+        </head><body></body></html>"""
+        return HttpResponse(sniff_html)
+
+    # Determine base template (popup overrides to public)
     popup = request.GET.get('popup')
     if popup == '1':
         base_template = 'tottimeapp/base_public.html'
         hide_inventory_controls = True
     else:
-        base_template = 'tottimeapp/base.html'
+        base_template = 'tottimeapp/base_minimal.html' if use_minimal_base else 'tottimeapp/base.html'
         hide_inventory_controls = False
 
-    # Render the inventory list page
-    return render(request, 'inventory_list.html', {
+    permissions_context['base_template'] = base_template
+
+    response = render(request, 'tottimeapp/inventory_list.html', {
         'inventory_items': inventory_items,
         'categories': categories,
         'rules': rules,
@@ -1715,6 +1850,12 @@ def inventory_list(request):
         'hide_inventory_controls': hide_inventory_controls,
         **permissions_context,
     })
+
+    # persist preference when query param present
+    if param_minimal:
+        response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
+
+    return response
 
 @login_required
 def infant_menu(request):
@@ -9055,10 +9196,45 @@ def meal_calculator(request):
 
     main_user = get_user_for_view(request)
 
-    context = {
+    # prefer cookie first, then query param
+    cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
+    param_minimal = request.GET.get('minimal') == '1'
+    use_minimal_base = param_minimal or cookie_minimal
+
+    # If we don't yet know the client's viewport, return a tiny sniffing page
+    if not (cookie_minimal or param_minimal):
+        sniff_html = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <script>
+        (function(){
+            var w = window.innerWidth || document.documentElement.clientWidth || screen.width;
+            var url = window.location.href;
+            if (w < 1000) {
+                document.cookie = "use_minimal_base=1; path=/; max-age=" + (60*60*24*365) + ";";
+                if (url.indexOf('minimal=1') === -1) {
+                    url += (url.indexOf('?') === -1 ? '?' : '&') + 'minimal=1';
+                }
+                window.location.replace(url);
+            } else {
+                url = url.replace(/([?&])minimal=1(&|$)/g, '$1').replace(/[?&]$/, '');
+                window.location.replace(url);
+            }
+        })();
+        </script>
+        <style>html,body{height:100%;margin:0;background:#fff}</style>
+        </head><body></body></html>"""
+        return HttpResponse(sniff_html)
+
+    # Choose base template
+    base_template = 'tottimeapp/base_minimal.html' if use_minimal_base else 'tottimeapp/base.html'
+    permissions_context['base_template'] = base_template
+
+    response = render(request, 'tottimeapp/meal_calculator.html', {
         **permissions_context,
         'main_user': main_user,
-    }
+    })
 
-    return render(request, 'tottimeapp/meal_calculator.html', context)
+    # persist preference when query param present
+    if param_minimal:
+        response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
 
+    return response
