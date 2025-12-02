@@ -5,6 +5,23 @@
 {% block title %}Inventory{% endblock %}
 {% block styles %} 
 <style>
+@media (max-width: 999px) {
+    /* Add a solid spacer so scrolling reaches below the fixed nav */
+    #categoryTabContent::after {
+        content: "";
+        display: block;
+        height: 100px; /* adjust as needed (64px nav + extra for decorative circle) */
+        width: 1px;
+        pointer-events: none;
+    }
+
+    /* Make sure the tab container actually scrolls to include the spacer */
+    #categoryTabContent,
+    .tab-content {
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0; /* spacer handles visual space; avoid double-padding */
+    }
+}
 
 .table-tabs {
         margin-left: 30px!important;
@@ -618,14 +635,64 @@ tbody {
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
-
-/* Mobile responsive adjustments for Out of Stock */
 @media (max-width: 999px) {
-    #category-out-of-stock th:first-child,
-    #category-out-of-stock td:first-child {
-        width: 100%; /* Item name takes full width */
-        word-wrap: break-word;
-        overflow-wrap: break-word;
+    /* make wrapper size to content so arrow sits right after the visible text */
+    th.item-header > .mobile-select-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* plain header-like select (no box) */
+    th.item-header .mobile-select-wrap .form-select {
+        display: inline-block;
+        width: auto;
+        padding: 0;
+        margin: 0;
+        height: auto;
+        line-height: 1;
+        border: none;
+        background: transparent;
+        color: #ffffff;
+        font-weight: 600;
+        box-shadow: none !important;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+
+    /* hide native IE/Edge arrow */
+    th.item-header .form-select::-ms-expand { display: none; }
+
+    /* remove focus/hover box affordances */
+    th.item-header .form-select:focus,
+    th.item-header .form-select:hover,
+    th.item-header .form-select:active {
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    /* inline white triangle right after select text */
+    th.item-header .mobile-dropdown-indicator {
+        display: inline-block;
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid #ffffff;
+        pointer-events: none;
+        margin-left: 4px;
+    }
+
+    /* keep option list contrast where supported */
+    th.item-header .form-select,
+    th.item-header .form-select option,
+    th.item-header .form-select optgroup {
+        background-color: #272630 !important;
+        color: #ffffff !important;
     }
 }
 table {
@@ -651,57 +718,6 @@ table thead th:nth-child(2) {
     border-top-right-radius: 10px;
 }
 
-table tbody tr:last-child td:nth-child(2) {
-    border-bottom-right-radius: 10px;
-}
-
-/* When delete column is visible, remove radius from quantity column and apply to delete column */
-.delete-column[style*="display: table-cell"] ~ th:nth-child(2),
-.delete-column:not([style*="display: none"]) ~ th:nth-child(2) {
-    border-top-right-radius: 0 !important;
-}
-
-.delete-column[style*="display: table-cell"] ~ td:nth-child(2),
-.delete-column:not([style*="display: none"]) ~ td:nth-child(2) {
-    border-bottom-right-radius: 0 !important;
-}
-
-/* Apply radius to delete column when visible */
-table thead th.delete-column[style*="display: table-cell"],
-table thead th.delete-column:not([style*="display: none"]) {
-    border-top-right-radius: 10px;
-}
-
-table tbody tr:last-child td.delete-column[style*="display: table-cell"],
-table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
-    border-bottom-right-radius: 10px;
-}
-
-/* Override rounded corners for special tabs (Shopping List, Order Soon, Out of Stock) */
-#category-shopping-list table thead th:nth-child(2),
-#category-order-soon table thead th:nth-child(2),
-#category-out-of-stock table thead th:nth-child(2) {
-    border-top-right-radius: 0 !important;
-}
-
-#category-shopping-list table tbody tr:last-child td:nth-child(2),
-#category-order-soon table tbody tr:last-child td:nth-child(2),
-#category-out-of-stock table tbody tr:last-child td:nth-child(2) {
-    border-bottom-right-radius: 0 !important;
-}
-
-/* Apply right corners to the actual last column in special tabs */
-#category-shopping-list table thead th:last-child,
-#category-order-soon table thead th:last-child,
-#category-out-of-stock table thead th:last-child {
-    border-top-right-radius: 10px !important;
-}
-
-#category-shopping-list table tbody tr:last-child td:last-child,
-#category-order-soon table tbody tr:last-child td:last-child,
-#category-out-of-stock table tbody tr:last-child td:last-child {
-    border-bottom-right-radius: 10px !important;
-}
 
 /* Delete column width constraint */
 .delete-item-header,
@@ -724,6 +740,25 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
     font-size: 0.9em;
 }
 
+/* New: control which column gets the right-side radius via container class */
+.delete-hidden table thead th:nth-child(2),
+.delete-hidden table tbody tr:last-child td:nth-child(2) {
+    border-top-right-radius: 10px !important;
+
+}
+
+/* When delete column is visible, ensure qty column has no right radius and delete column gets it */
+.delete-visible table thead th:nth-child(2),
+.delete-visible table tbody tr:last-child td:nth-child(2) {
+    border-top-right-radius: 0 !important;
+}
+
+.delete-visible table thead th.delete-column,
+.delete-visible table tbody tr:last-child td.delete-column {
+    border-top-right-radius: 10px !important;
+
+}
+
 </style>
 {% endblock %}
 {% block content %}
@@ -734,7 +769,7 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
 <div class="inventory-top-controls">
     <div class="d-flex justify-content-start align-items-center mt-4">
         <div class="text-center me-3">
-            <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
+            <button type="button" class="btn btn-primarytwo" style="margin-left:15px;" onclick="updateInventory()">Update Inventory</button>
         </div>
         <div class="d-flex align-items-center">
             <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addItemModal" style="font-weight: bold; font-size: 1em;">
@@ -795,19 +830,6 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
 
 <div id="updateMessage" class="alert alert-success mt-2" style="display: none;">Inventory Updated Successfully!</div>
 
-<!-- Category Dropdown for small screens -->
-<div class="d-block d-md-none mb-3 d-flex justify-content-center align-items-center" id="categoryDropdownContainer" style="width: 100%;">
-    <select class="form-select" id="categoryDropdown" aria-label="Select category">
-        {% for category in categories %}
-        <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
-        {% endfor %}
-        <option value="category-shopping-list">Shopping List</option>
-        <option value="category-order-soon">Order Soon</option>
-        <option value="category-out-of-stock">Out of Stock</option>
-    </select>
-</div>
-
-
 <!-- Tabs for categories -->
 <ul class="nav table-tabs d-none d-md-flex" id="categoryTabs" role="tablist">
     {% for category in categories %}
@@ -844,7 +866,23 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
         <table >
             <thead>
                 <tr>
-                    <th class="item-header">Item</th>
+                    <th class="item-header">
+                        <!-- Desktop: static label -->
+                        <span class="d-none d-md-inline">Item</span>
+
+                       <!-- Mobile: category dropdown becomes the header -->
+                        <div class="d-block d-md-none mobile-select-wrap">
+                            <select class="form-select form-select-sm" id="categoryDropdownHeader" aria-label="Select category (mobile header)">
+                                {% for category in categories %}
+                                <option value="category-{{ category|slugify }}" {% if forloop.first %}selected{% endif %}>{{ category }}</option>
+                                {% endfor %}
+                                <option value="category-shopping-list">Shopping List</option>
+                                <option value="category-order-soon">Order Soon</option>
+                                <option value="category-out-of-stock">Out of Stock</option>
+                            </select>
+                            <span class="mobile-dropdown-indicator" aria-hidden="true"></span>
+                        </div>
+                    </th>
                     <th class="quantity-header">Qty</th>
                     <th class="delete-item-header delete-column" id="deleteColumnHeader"><i class="fas fa-trash-alt" style="color: white;"></i></th>
                 </tr>
@@ -858,17 +896,17 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
                         {% if item.units %}
                         <span style="color: grey; font-size: smaller;"> ({{ item.units }})</span>
                         {% endif %}
-                        {% if "Milk" in item.item %}
+                     <!--   {% if "Milk" in item.item %}
                         <div style="color: red; font-size: smaller;">Total received this week:</div>
-                        {% endif %}
+                        {% endif %} -->
                     </td>
                     <td style="width: 100px;">
                         <form id="updateForm_{{ item.id }}" method="post" action="{% url 'edit_quantity' item.id %}" onsubmit="updateQuantity(event, item.id)">
                             {% csrf_token %}
                             <input type="number" step="1" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity }}" required style="width: 85px;" data-original-value="{{ item.quantity }}">
-                            {% if "Milk" in item.item %}
+                        <!--    {% if "Milk" in item.item %}
                             <input type="number" step="1" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 85px;">
-                            {% endif %}
+                            {% endif %}  -->
                         </form>
                     </td>
                     <td class="delete-item-column delete-column" style="display: table-cell;">
@@ -1167,23 +1205,140 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
         // Before the user leaves the page, show a confirmation dialog if there are unsaved changes
-        window.addEventListener('beforeunload', function(event) {
-            if (isFormChanged) {
-                event.preventDefault();
-                event.returnValue = 'You have unsaved changes. Are you sure you want to leave without saving?';
-            }
+    // Enhanced unsaved-change handling:
+    // - Show a toastr confirm for in-page link clicks and form submits when there are unsaved changes.
+    // - Keep native beforeunload fallback for browser-level navigation (close / address bar / back).
+    (function() {
+    let unsavedToastVisible = false;
+    let suppressBeforeUnload = false; // flag to avoid native dialog when user confirmed leave
+
+    function showUnsavedToastr(onProceed) {
+        if (unsavedToastVisible) return;
+        unsavedToastVisible = true;
+
+        // remove any existing toasts first (clean slate)
+        try { toastr.remove(); toastr.clear(); } catch (e) {}
+
+        const toastHtml =
+            '<div>You have unsaved changes.</div><br>' +
+            '<button id="ts-stay" class="btn btn-sm btn-secondary me-2">Stay</button>' +
+            '<button id="ts-leave" class="btn btn-sm btn-danger">Leave without saving</button>';
+
+        toastr.warning(toastHtml, 'Unsaved Changes', {
+            allowHtml: true,
+            timeOut: 0,
+            extendedTimeOut: 0,
+            closeButton: false,
+            tapToDismiss: false,
+            onHidden: function() { unsavedToastVisible = false; }
         });
+
+        // Use document-level click handler (works for DOM-inserted buttons)
+        function onToastButtonClick(e) {
+            const id = e.target && e.target.id;
+            if (id !== 'ts-stay' && id !== 'ts-leave') return;
+
+            // prevent other handlers
+            e.stopPropagation();
+            e.preventDefault();
+
+            // Always remove the toast DOM immediately
+            try { toastr.remove(); toastr.clear(); } catch (err) {}
+
+            if (id === 'ts-stay') {
+                // user chose to stay: just close toast and keep isFormChanged true
+                unsavedToastVisible = false;
+                // remove handler
+                document.removeEventListener('click', onToastButtonClick, true);
+                return;
+            }
+
+            if (id === 'ts-leave') {
+                // user chose to leave: suppress native beforeunload and proceed
+                suppressBeforeUnload = true;
+                isFormChanged = false;
+
+                // small delay to ensure beforeunload handler sees suppression
+                setTimeout(function() {
+                    if (typeof onProceed === 'function') onProceed();
+                    // restore suppression briefly after navigation attempt
+                    setTimeout(function(){ suppressBeforeUnload = false; }, 500);
+                }, 10);
+
+                unsavedToastVisible = false;
+                document.removeEventListener('click', onToastButtonClick, true);
+                return;
+            }
+        }
+
+        // listen in capture phase so we catch clicks inside the toast quickly
+        document.addEventListener('click', onToastButtonClick, true);
+    }
+
+    // Intercept same-origin anchor clicks
+    document.addEventListener('click', function(e) {
+        if (!isFormChanged) return;
+        const a = e.target.closest('a[href]');
+        if (!a) return;
+        const href = a.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:') || a.target === '_blank' || a.hasAttribute('data-no-confirm')) return;
+        const linkUrl = new URL(href, location.href);
+        if (linkUrl.origin !== location.origin) return; // external links proceed
+        e.preventDefault();
+        showUnsavedToastr(function() { location.href = linkUrl.href; });
+    }, true);
+
+    // Intercept form submissions (except the update forms and forms that opt-out)
+    document.addEventListener('submit', function(e) {
+        if (!isFormChanged) return;
+        const form = e.target;
+        if (!form || !(form.tagName === 'FORM')) return;
+        if (form.matches('form[id^="updateForm_"]') || form.hasAttribute('data-no-confirm')) return;
+        e.preventDefault();
+        showUnsavedToastr(function() {
+            // mark suppressed and clear flag before submitting to avoid native dialog
+            suppressBeforeUnload = true;
+            isFormChanged = false;
+            form.submit();
+            setTimeout(function(){ suppressBeforeUnload = false; }, 500);
+        });
+    }, true);
+
+    // Native fallback for browser-level navigation (can't be replaced by custom UI)
+    window.addEventListener('beforeunload', function(e) {
+        if (isFormChanged && !suppressBeforeUnload) {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        }
+    });
+})();
     
         // Toggle visibility of delete columns
         function toggleDeleteColumn() {
             var deleteColumnElements = document.querySelectorAll('.delete-column');
+            var container = document.getElementById('categoryTabContent') || document.querySelector('.tab-content') || document.body;
+            var anyVisible = false;
+
             deleteColumnElements.forEach(function(element) {
-                if (element.style.display === 'none') {
-                    element.style.display = 'table-cell';
-                } else {
+                // Use computed style to determine current visibility
+                var isVisible = window.getComputedStyle(element).display !== 'none';
+                if (isVisible) {
                     element.style.display = 'none';
+                } else {
+                    // Make sure table cells show correctly
+                    element.style.display = 'table-cell';
+                    anyVisible = true;
                 }
             });
+
+            if (anyVisible) {
+                container.classList.add('delete-visible');
+                container.classList.remove('delete-hidden');
+            } else {
+                container.classList.add('delete-hidden');
+                container.classList.remove('delete-visible');
+            }
         }
     
         // Function to run when the page loads
@@ -1557,21 +1712,46 @@ function startWebBarcodeScanner(onDetectedCallback) {
 </script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const dropdown = document.getElementById('categoryDropdown');
-    if (dropdown) {
-        dropdown.addEventListener('change', function () {
-            const tabId = this.value;
-            // Hide all tab panes
-            document.querySelectorAll('.tab-pane').forEach(function (pane) {
-                pane.classList.remove('show', 'active');
-            });
-            // Show selected tab pane
-            const selectedPane = document.getElementById(tabId);
-            if (selectedPane) {
-                selectedPane.classList.add('show', 'active');
-            }
+    // central activation routine (keeps tabs, tab-buttons and all dropdowns in sync)
+    function activateCategory(tabId) {
+        // show selected pane
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show','active'));
+        const pane = document.getElementById(tabId);
+        if (pane) pane.classList.add('show','active');
+
+        // update tab buttons (bootstrap .table-link)
+        document.querySelectorAll('.table-link').forEach(btn => btn.classList.remove('active'));
+        const tabBtn = document.querySelector(`button[data-bs-target="#${tabId}"]`);
+        if (tabBtn) tabBtn.classList.add('active');
+
+        // sync all selects (central + any header selects)
+        document.querySelectorAll('#categoryDropdown, #categoryDropdownHeader').forEach(sel => {
+            if (sel) sel.value = tabId;
         });
     }
+
+    // unified change handler for selects
+    function onCategorySelectChange(e) {
+        const val = e.target.value;
+        if (!val) return;
+        activateCategory(val);
+    }
+
+    // wire central mobile dropdown
+    const central = document.getElementById('categoryDropdown');
+    if (central) central.addEventListener('change', onCategorySelectChange);
+
+    // wire any header-selects (there may be one or multiple)
+    document.querySelectorAll('#categoryDropdownHeader').forEach(sel => {
+        sel.addEventListener('change', onCategorySelectChange);
+    });
+
+    // If you initialize page with a selected dropdown value, ensure UI is in sync
+    // prefer central dropdown value, fallback to first header select
+    const initial = (central && central.value) ? central.value :
+                    (document.querySelector('#categoryDropdownHeader') && document.querySelector('#categoryDropdownHeader').value)
+                    || null;
+    if (initial) activateCategory(initial);
 });
 </script>
 <script>
@@ -2035,6 +2215,7 @@ $(document).ready(function() {
     });
     
     // Also load when dropdown changes (for mobile)
+   
     $('#categoryDropdown').on('change', function() {
         var selectedValue = $(this).val();
         if (selectedValue === 'category-order-soon') {
@@ -2121,4 +2302,5 @@ $(document).ready(function() {
     });
 });
 </script>
+
 {% endblock %}

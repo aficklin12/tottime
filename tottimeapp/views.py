@@ -1794,7 +1794,7 @@ def inventory_list(request):
     # Get order items for shopping list and ordered items tabs
     order_items = OrderList.objects.filter(user=user)
 
-    # Handle AJAX request for category filtering early (no sniffing for XHR)
+    # --- Handle AJAX request for category filtering early (no sniffing) ---
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         category_filter = request.GET.get('category')
         if category_filter:
@@ -1802,7 +1802,7 @@ def inventory_list(request):
         inventory_data = list(inventory_items.values('id', 'item', 'quantity', 'units', 'category'))
         return JsonResponse({'inventory_items': inventory_data})
 
-    # prefer cookie first, then query param
+    # --- minimal-base preference sniffing ---
     cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
     param_minimal = request.GET.get('minimal') == '1'
     use_minimal_base = param_minimal or cookie_minimal
@@ -1839,8 +1839,10 @@ def inventory_list(request):
         base_template = 'tottimeapp/base_minimal.html' if use_minimal_base else 'tottimeapp/base.html'
         hide_inventory_controls = False
 
+    # expose base_template for other context consumers
     permissions_context['base_template'] = base_template
 
+    # Render the inventory list page
     response = render(request, 'tottimeapp/inventory_list.html', {
         'inventory_items': inventory_items,
         'categories': categories,
