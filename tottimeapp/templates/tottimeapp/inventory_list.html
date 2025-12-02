@@ -117,6 +117,45 @@
     #categoryDropdownContainer {
         display: block !important;
     }
+    
+    body {
+        padding-bottom: 80px; /* space for fixed bottom nav */
+    }
+
+    /* hide the top controls on mobile (we'll show mobile nav instead) */
+    .inventory-top-controls {
+        display: none !important;
+    }
+
+    /* mobile fixed bottom nav */
+    #mobileBottomNav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 64px;
+        background: #ffffff;
+        border-top: 1px solid #dee2e6;
+        z-index: 1200;
+        justify-content: space-around;
+        align-items: center;
+        padding: 6px 10px;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    }
+
+    #mobileBottomNav .btn {
+        flex: 0 0 auto;
+        font-size: 0.95rem;
+        padding: 6px 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #mobileBottomNav .btn i {
+        font-size: 1.15rem;
+    }
 }
 
 @media (min-width: 1000px) {
@@ -646,26 +685,48 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
 {% if not hide_inventory_controls %}
 <h1 class="mt-4">Inventory</h1>
 
-<div class="d-flex justify-content-start align-items-center mt-4">
-    <div class="text-center me-3">
-        <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
+<!-- WRAPPED existing top controls so they can be hidden on mobile -->
+<div class="inventory-top-controls">
+    <div class="d-flex justify-content-start align-items-center mt-4">
+        <div class="text-center me-3">
+            <button type="button" class="btn btn-primary" onclick="updateInventory()">Update Inventory</button>
+        </div>
+        <div class="d-flex align-items-center">
+            <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addItemModal" style="font-weight: bold; font-size: 1em;">
+                <span>+Add</span>
+            </button>
+            <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm" style="text-decoration: none; font-weight: bold; font-size: 1.2em;">
+                <i class="fas fa-trash-alt" style="color: red;"></i>
+            </button>
+        </div>
     </div>
-    <div class="d-flex align-items-center">
-        <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addItemModal" style="font-weight: bold; font-size: 1em;">
-            <span>+Add</span>
-        </button>
-        <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm" style="text-decoration: none; font-weight: bold; font-size: 1.2em;">
-            <i class="fas fa-trash-alt" style="color: red;"></i>
-        </button>
+
+    <div class="d-flex justify-content-start align-items-center mt-3" style="margin-left: 50px;">
+        <div id="shoppingListButtons" class="shopping-list-buttons">
+            <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
+                <i class="fas fa-plus"></i> Add to Shopping List
+            </button>
+        </div>
     </div>
 </div>
 
-<div class="d-flex justify-content-start align-items-center mt-3" style="margin-left: 50px;">
-    <div id="shoppingListButtons" class="shopping-list-buttons">
-        <button type="button" class="btn btn-primary btn-sm me-2" onclick="toggleOrderForm()">
-            <i class="fas fa-plus"></i> Add to Shopping List
-        </button>
-    </div>
+<!-- MOBILE: fixed bottom navigation (visible only on small screens via CSS) -->
+<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Mobile actions" style="display:none;">
+    <button type="button" class="btn btn-primary" onclick="updateInventory()" title="Update Inventory">
+        <i class="fas fa-sync"></i>
+    </button>
+
+    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addItemModal" title="Add Item">
+        <i class="fas fa-plus"></i>
+    </button>
+
+    <button type="button" class="btn btn-link text-danger" onclick="toggleDeleteColumn()" title="Toggle Delete Column">
+        <i class="fas fa-trash-alt"></i>
+    </button>
+
+    <button type="button" class="btn btn-primary" onclick="toggleOrderForm()" title="Shopping List">
+        <i class="fas fa-shopping-cart"></i>
+    </button>
 </div>
 {% endif %}
 
@@ -875,7 +936,7 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
                             {% endfor %}
                         </select>
                     </div>
-                 <!--  <div class="mb-3">
+                 <!--  <div class="mb-3>
                         <label for="barcode" class="form-label">Barcode</label>
                         <div class="d-flex align-items-center">
                             <input type="text" 

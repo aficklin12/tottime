@@ -110,62 +110,64 @@
                 justify-content: center;
             }
         }
- /* Location in navbar (hidden by default, shown for >=1000px) */
-  .navbar-location {
-      display: none;
-      color: #ffffff;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 600;
-      font-size: 1.1rem;
-      text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 400px; /* limit width so it doesn't collide with controls */
-      pointer-events: none; /* not interactive */
-      margin-left: 12px; /* space to right of logo */
-  }
+        {% if user.can_switch %}
+        /* Location in navbar (hidden by default, shown for >=1000px) */
+        .navbar-location {
+            display: none;
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 400px;
+            pointer-events: none;
+            margin-left: 12px;
+        }
 
-  @media (min-width: 1000px) {
-      .navbar-location {
-          display: block;
-      }
-  }
+        @media (min-width: 1000px) {
+            .navbar-location { display: block; }
+        }
 
-  /* Small-screen location bar (hidden on desktop) */
-  .navbar-location-bar {
-      display: none;
-      background-color: #212529; /* match dark navbar background */
-      color: #ffffff;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 600;
-      font-size: 1rem;
-      text-align: center;
-      padding: 8px 12px;
-      box-sizing: border-box;
-      width: 100%;
-      z-index: 1040;
-  }
+        /* Small-screen location bar (hidden on desktop) */
+        .navbar-location-bar {
+            display: none;
+            background-color: #212529;
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            text-align: center;
+            padding: 8px 12px;
+            box-sizing: border-box;
+            width: 100%;
+            z-index: 1040;
+        }
 
-  /* Make the location bar fixed directly under the (fixed) navbar on small screens
-     and push page content down so it is visible (override earlier rules). */
-  @media (max-width: 999px) {
-      .navbar-location-bar {
-          display: block;
-          position: fixed;
-          top: calc(56px + env(safe-area-inset-top)); /* below the top navbar */
-          left: 0;
-          right: 0;
-          height: 44px; /* adjust if you want a taller/shorter bar */
-          line-height: 28px;
-          padding-top: 8px;
-          padding-bottom: 8px;
-          box-shadow: 0 1px 0 rgba(0,0,0,0.15);
-          z-index: 1040;
-      }
-  }
+        @media (max-width: 999px) {
+            .navbar-location-bar {
+                display: block;
+                position: fixed;
+                top: calc(56px + env(safe-area-inset-top));
+                left: 0;
+                right: 0;
+                height: 44px;
+                line-height: 28px;
+                padding-top: 8px;
+                padding-bottom: 8px;
+                box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+                z-index: 1040;
+            }
+        }
+        {% else %}
+        /* Ensure location elements are hidden when user cannot switch */
+        .navbar-location,
+        .navbar-location-bar { display: none !important; visibility: hidden !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
+        {% endif %}
 
-  /* Ensure navbar dropdowns sit above the location bar on small screens */
+        /* Ensure navbar dropdowns sit above the location bar on small screens */
   .sb-topnav {
       z-index: 1100; /* put the whole top navbar above the location bar */
   }
@@ -249,6 +251,23 @@
                 outline: none;
             }
         }
+
+        @media (max-width: 999px) {
+    footer {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* remove any extra bottom spacing on the content area */
+    #layoutSidenav_content,
+    #layoutSidenav_content main {
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+}
     </style>
     {% block styles %}{% endblock %}
 </head>
