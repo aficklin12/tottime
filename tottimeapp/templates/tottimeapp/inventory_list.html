@@ -135,13 +135,19 @@
         left: 0;
         right: 0;
         height: 64px;
-        background: #ffffff;
+        background-color: #212529;
         border-top: 1px solid #dee2e6;
         z-index: 1200;
         justify-content: space-around;
         align-items: center;
         padding: 6px 10px;
         box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* ensure icons/text are visible on dark background */
+    #mobileBottomNav .btn,
+    #mobileBottomNav .btn i {
+        color: #ffffff;
     }
 
     #mobileBottomNav .btn {
@@ -151,10 +157,49 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        background: transparent;
+        border: none;
     }
 
     #mobileBottomNav .btn i {
-        font-size: 1.15rem;
+        font-size: 1.15rem; /* default icon size */
+    }
+
+    /* Make the update icon larger than the other buttons */
+    #mobileBottomNav .btn.update-btn i {
+        font-size: 2.3rem; /* larger sync icon */
+        color: rgb(57, 189, 180) !important;
+        margin-bottom: 10px;
+        margin-left: 4px;
+
+    }
+
+    /* ensure update button sits above its decorative circle */
+    #mobileBottomNav .update-btn {
+        position: relative;
+        z-index: 2;
+    }
+
+    /* decorative circle behind the update button (same color as bar) */
+    #mobileBottomNav .update-btn::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 94px;
+        height: 94px;
+        border-radius: 50%;
+        background-color: #212529; /* same as bottom bar */
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.11);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* ensure the icon sits above the circle */
+    #mobileBottomNav .update-btn i {
+        position: relative;
+        z-index: 3;
     }
 }
 
@@ -711,8 +756,12 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
 </div>
 
 <!-- MOBILE: fixed bottom navigation (visible only on small screens via CSS) -->
-<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Mobile actions" style="display:none;">
-    <button type="button" class="btn btn-primary" onclick="updateInventory()" title="Update Inventory">
+<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Mobile actions">
+    <button type="button" class="btn btn-link text-danger" onclick="toggleDeleteColumn()" title="Toggle Delete Column">
+        <i class="fas fa-trash-alt"></i>
+    </button>
+    
+    <button type="button" class="btn btn-secondary update-btn" onclick="updateInventory()" title="Update Inventory">
         <i class="fas fa-sync"></i>
     </button>
 
@@ -720,13 +769,9 @@ table tbody tr:last-child td.delete-column:not([style*="display: none"]) {
         <i class="fas fa-plus"></i>
     </button>
 
-    <button type="button" class="btn btn-link text-danger" onclick="toggleDeleteColumn()" title="Toggle Delete Column">
-        <i class="fas fa-trash-alt"></i>
-    </button>
+   
 
-    <button type="button" class="btn btn-primary" onclick="toggleOrderForm()" title="Shopping List">
-        <i class="fas fa-shopping-cart"></i>
-    </button>
+   
 </div>
 {% endif %}
 
