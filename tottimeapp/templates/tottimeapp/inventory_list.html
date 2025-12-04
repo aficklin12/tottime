@@ -884,7 +884,7 @@ table thead {
 }
 #addItemModal .modal-content { font-size: 0.9rem !important; }
 #addItemModal .form-control { font-size: 0.9rem !important; }
-}
+
 /* Tighten spacing inside Add Item modal (mobile) */
 #addItemModal .modal-header {
     padding: 0.5rem 0.9rem;      /* slightly smaller header padding */
@@ -930,6 +930,16 @@ table thead {
     margin-top: 0.15rem;
     margin-bottom: 0.15rem;
     font-size: 0.75rem;
+}
+}
+/* Hide delete column by default; show when container has .delete-visible */
+.delete-column {
+    display: none;
+}
+
+/* When container is in "visible" mode, show delete columns as table cells */
+.delete-visible .delete-column {
+    display: table-cell;
 }
 </style>
 {% endblock %}
@@ -1032,7 +1042,7 @@ table thead {
 </ul>
 
 <!-- Single table with dynamic content -->
-<div class="tab-content" id="categoryTabContent">
+<div class="tab-content delete-hidden" id="categoryTabContent">
     {% for category in categories %}
     <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="category-{{ category|slugify }}" role="tabpanel" aria-labelledby="tab-{{ category }}">
         <table >
@@ -1081,8 +1091,8 @@ table thead {
                             {% endif %}  -->
                         </form>
                     </td>
-                    <td class="delete-item-column delete-column" style="display: table-cell;">
-                        <form method="post" action="{% url 'remove_item' item.id %}" onsubmit="handleDeleteItem(event)">
+                    <td class="delete-item-column delete-column">
+                    <form method="post" action="{% url 'remove_item' item.id %}" onsubmit="handleDeleteItem(event)">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-danger">
                                 <i class="fas fa-trash-alt"></i>
@@ -1208,7 +1218,7 @@ table thead {
                             </button>
                         </div>
                     </div>--> 
-                    <button type="submit" class="btn btn-primary">Add Item</button>
+                    <button type="submit" class="btn btn-primarytwo">Add Item</button>
                 </form>
             </div>
         </div>
@@ -1486,38 +1496,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 })();
     
-        // Toggle visibility of delete columns
-        function toggleDeleteColumn() {
-            var deleteColumnElements = document.querySelectorAll('.delete-column');
-            var container = document.getElementById('categoryTabContent') || document.querySelector('.tab-content') || document.body;
-            var anyVisible = false;
+       // Toggle visibility of delete columns by toggling container classes
+function toggleDeleteColumn() {
+    var container = document.getElementById('categoryTabContent') || document.querySelector('.tab-content') || document.body;
 
-            deleteColumnElements.forEach(function(element) {
-                // Use computed style to determine current visibility
-                var isVisible = window.getComputedStyle(element).display !== 'none';
-                if (isVisible) {
-                    element.style.display = 'none';
-                } else {
-                    // Make sure table cells show correctly
-                    element.style.display = 'table-cell';
-                    anyVisible = true;
-                }
-            });
-
-            if (anyVisible) {
-                container.classList.add('delete-visible');
-                container.classList.remove('delete-hidden');
-            } else {
-                container.classList.add('delete-hidden');
-                container.classList.remove('delete-visible');
-            }
-        }
-    
-        // Function to run when the page loads
-        window.onload = function() {
-            // Toggle the visibility of the delete items column
-            toggleDeleteColumn();
-        };
+    // Toggle both classes — default start state is `delete-hidden`
+    container.classList.toggle('delete-visible');
+    container.classList.toggle('delete-hidden');
+}
 
         let isSubmitting = false; // Flag to prevent duplicate submissions
 
