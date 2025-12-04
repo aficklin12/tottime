@@ -638,7 +638,7 @@ table thead th:nth-child(2) {
         border-right: 6px solid transparent;
         border-top: 6px solid #ffffff;
         pointer-events: none;
-        margin-left: 4px;
+        margin-left: -15px;
     }
     
     th.item-header .form-select,
@@ -761,7 +761,7 @@ table thead th:nth-child(2) {
     }
     /* Ensure table body rows start 30px lower while leaving the header intact */
 table tbody tr:first-child td {
-    padding-top: 62px !important;
+    padding-top: 70px !important;
 }
 table tbody td:nth-child(2),
 #category-shopping-list td:nth-child(2),
@@ -779,6 +779,48 @@ table tbody td:nth-child(2) input[type="number"],
     text-align: center; /* keep digits centered inside the control */
 }
 
+    th.item-header .mobile-select-wrap .form-select,
+    #categoryDropdownHeader {
+        padding: 10px 14px;
+        font-size: 1.05rem;
+        line-height: .8;
+        border-radius: 6px;
+        background-color: rgba(34, 37, 41, 0.95) !important;
+        color: #fff !important;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+table tbody {
+    background-color: #e8e8e8bd !important;
+}
+table tbody tr td {
+    background-color: transparent !important;
+}
+/* Ensure digits inside quantity inputs are centered */
+input[type="number"][id^="new_quantity_"],
+input[type="number"][id^="extra_milk_quantity_"],
+table tbody td:nth-child(2) input[type="number"],
+#category-shopping-list td:nth-child(2) input[type="number"],
+#category-order-soon td:nth-child(2) input[type="number"] {
+    text-align: center !important;
+    -moz-appearance: textfield; /* avoid browser-specific number centering oddities */
+}
+
+/* Remove spinner padding that can shift digits in some browsers */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+ table, table th, table td {
+        font-size: 1.2rem !important;
+    }
+ th.quantity-header,
+    table th:nth-child(2) {
+        padding-right: 45px !important;
+    }
 }
 </style>
 {% endblock %}
@@ -2323,5 +2365,32 @@ $(document).ready(function() {
     });
 });
 </script>
+<script>
 
-{% endblock %}
+// Forward clicks in the extended hit area to the mobile select so the native picker opens.
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.mobile-select-wrap').forEach(function (wrapper) {
+        const select = wrapper.querySelector('select');
+        if (!select) return;
+
+        wrapper.addEventListener('click', function (e) {
+            const rect = select.getBoundingClientRect();
+            const extendedRight = rect.right + 50; // extend 50px to the right
+
+            // support mouse and touch
+            const x = (typeof e.clientX === 'number') ? e.clientX : (e.touches && e.touches[0] && e.touches[0].clientX) || -Infinity;
+
+            if (x > rect.right && x <= extendedRight) {
+                try {
+                    select.focus();
+                    select.click(); // usually opens native picker
+                } catch (err) {
+                    select.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                }
+            }
+        });
+    });
+});
+
+</script>
+{% endblock %}   
