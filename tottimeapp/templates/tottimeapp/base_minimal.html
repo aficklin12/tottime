@@ -24,259 +24,329 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
     <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <style>
-    .btn-primarytwo {
-            background-color: rgb(57, 189, 180); 
-            border-color: rgb(57, 189, 180);
-            color: rgb(33, 31, 39);
-            font-weight: bold;
-        }
-    
+/* =========================
+   BUTTONS & FORMS
+   ========================= */
+.btn-primarytwo {
+    background-color: rgb(57, 189, 180); 
+    border-color: rgb(57, 189, 180);
+    color: rgb(33, 31, 39);
+    font-weight: bold;
+}
+
 .btn-primarytwo:hover {
-            background-color: #007b8a;
-            border-color: #007b8a;
-            color: #fff;
-        }   
-        /* new: hide sidebar / hamburger toggles in minimal base */
-        .sb-topnav .sidebar-toggle,
-        .sb-topnav .sidenav-toggler,
-        .sb-topnav .sb-sidenav-toggle,
-        .sb-topnav .btn-sidebar-toggle,
-        .sb-topnav .nav-toggle,
-        .sb-topnav .fa-bars,
-        .sb-topnav .navbar-toggler.icon-only {
-            display: none !important;
-        }
+    background-color: #007b8a;
+    border-color: #007b8a;
+    color: #fff;
+}
 
-        /* new: make layout stretch so footer sticks to bottom */
-        html, body {
-            height: 100%;
-        }
-        body.sb-nav-fixed {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        /* content area should grow to fill available space */
-        #layoutSidenav_content {
-            display: flex;
-            flex-direction: column;
-            flex: 1 0 auto;
-        }
-        #layoutSidenav_content main {
-            flex: 1 0 auto;
-        }
-        footer {
-            flex-shrink: 0;
-        }
+.btn-primary { 
+    background: rgb(57,189,180); 
+    border-color: rgb(57,189,180); 
+    color: rgb(33,31,39); 
+    font-weight: 555;
+}
 
-        body { background: #f8f9fa; }
-        .login-container { display: flex; justify-content: center; align-items: flex-start; padding-top: 10vh; }
-        .login-form { width: 100%; max-width: 400px; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);}
-        .login-title { background: rgb(37,37,48); color: #fff; text-align: center; padding: 15px 0; border-radius: 8px 8px 0 0; font-size: 1.5rem; margin-bottom: 15px;}
-        .btn-primary { background: rgb(57,189,180); border-color: rgb(57,189,180); color: rgb(33,31,39); font-weight: 555;}
-        .btn-primary:hover { background: #007b8a; border-color: #007b8a; }
-        .custom-alert { width: 100%; max-width: 400px; max-height: 45px; margin-bottom: 10px; margin-top: 10px; text-align: center; padding: 10px; font-size: 1rem; border-radius: 8px; background: #f8d7da; color: #721c24;}
-        .navbar-brand img {
-            width: 100%;
-            max-width: 200px;
-            height: auto;
-            object-fit: contain;
-            margin-left: 0;
-            border-radius: 0;
-            overflow: visible;
-        }
-        @media (min-width: 1000px) {
-        h1 {
-            margin-top: 20px;
-            margin-bottom:10px;
-            margin-left: 20px;
-            font-weight: bold;
-            line-height: 1.2;
-            font-size: 40px;
-            color: #212529;
-        }
-        }
-        @media (max-width: 1000px) {
-        
-            h1 {
-            background-color: rgba(57, 189, 180, 0.15);
-            padding: 10px 15px;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            margin-left: 17px;
-            border-left: 5px solid rgb(57, 189, 180);
-            font-size: 1.2em;
-        }
-        .h1-multiloc {
+.btn-primary:hover { 
+    background: #007b8a; 
+    border-color: #007b8a; 
+}
+
+/* =========================
+   LAYOUT & BASE STRUCTURE
+   ========================= */
+html, body {
+    height: 100%;
+}
+
+body { 
+    background: #f8f9fa; 
+}
+
+body.sb-nav-fixed {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#layoutSidenav_content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+}
+
+#layoutSidenav_content main {
+    flex: 1 0 auto;
+}
+
+footer {
+    flex-shrink: 0;
+}
+
+/* =========================
+   NAVIGATION
+   ========================= */
+.sb-topnav .sidebar-toggle,
+.sb-topnav .sidenav-toggler,
+.sb-topnav .sb-sidenav-toggle,
+.sb-topnav .btn-sidebar-toggle,
+.sb-topnav .nav-toggle,
+.sb-topnav .fa-bars,
+.sb-topnav .navbar-toggler.icon-only {
+    display: none !important;
+}
+
+.navbar-brand img {
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    object-fit: contain;
+    margin-left: 0;
+    border-radius: 0;
+    overflow: visible;
+}
+
+.sb-topnav {
+    z-index: 1100;
+}
+
+.sb-topnav .dropdown-menu {
+    z-index: 1200 !important;
+}
+
+.sb-topnav,
+.sb-topnav .nav-item,
+.sb-topnav .dropdown {
+    z-index: 2147483646 !important;
+    position: relative;
+}
+
+.sb-topnav .dropdown-menu,
+.dropdown.show > .dropdown-menu {
+    z-index: 2147483647 !important;
+    position: absolute !important;
+}
+
+.mobile-home-btn {
+    display: none;
+}
+
+/* =========================
+   LOCATION BAR
+   ========================= */
+{% if user.can_switch %}
+.navbar-location {
+    display: none;
+    color: #ffffff;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 400px;
+    pointer-events: none;
+    margin-left: 12px;
+}
+
+.navbar-location-bar {
+    display: none;
+    background-color: #212529;
+    color: #ffffff;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    text-align: center;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    width: 100%;
+    z-index: 1040;
+}
+
+@media (min-width: 1000px) {
+    .navbar-location { display: block; }
+}
+{% else %}
+.navbar-location,
+.navbar-location-bar { 
+    display: none !important; 
+    visibility: hidden !important; 
+    height: 0 !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+}
+{% endif %}
+
+/* =========================
+   LOGIN & ALERTS
+   ========================= */
+.login-container { 
+    display: flex; 
+    justify-content: center; 
+    align-items: flex-start; 
+    padding-top: 10vh; 
+}
+
+.login-form { 
+    width: 100%; 
+    max-width: 400px; 
+    padding: 20px; 
+    background: #fff; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.login-title { 
+    background: rgb(37,37,48); 
+    color: #fff; 
+    text-align: center; 
+    padding: 15px 0; 
+    border-radius: 8px 8px 0 0; 
+    font-size: 1.5rem; 
+    margin-bottom: 15px;
+}
+
+.custom-alert { 
+    width: 100%; 
+    max-width: 400px; 
+    max-height: 45px; 
+    margin-bottom: 10px; 
+    margin-top: 10px; 
+    text-align: center; 
+    padding: 10px; 
+    font-size: 1rem; 
+    border-radius: 8px; 
+    background: #f8d7da; 
+    color: #721c24;
+}
+
+/* =========================
+   HEADINGS
+   ========================= */
+h1 {
+    background-color: rgba(57, 189, 180, 0.15);
+    padding: 10px 15px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    margin-left: 17px;
+    border-left: 5px solid rgb(57, 189, 180);
+    font-size: 1.2em;
+}
+
+/* =========================
+   TABLES
+   ========================= */
+table {
+    margin-top: 0;
+    border-top: none;
+    border-collapse: collapse;
+    margin-left: 27px;
+    margin-right: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+th, td {
+    border: 1px solid #dddddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: rgba(34, 37, 41, 1);
+    color: #ffffff;
+    text-align: left;
+    font-weight: bold;
+}
+
+/* =========================
+   DESKTOP STYLES (1000px+)
+   ========================= */
+@media (min-width: 1000px) {
+    table {
+        border-radius: 10px;
+    }
+}
+/* =========================
+   MOBILE STYLES (<1000px)
+   ========================= */
+@media (max-width: 999px) {
+    .h1-multiloc {
         margin-top: 80px !important;
     }
-            }
-       
-        /* For mobile devices, center the logo */
-        @media (max-width: 1000px) {
-        .navbar-brand {
-                position: absolute;
-                left: 50%;
-                transform: translateX(-50%);
-                margin: 0;
-            }
-            
-            /* Ensure navbar has enough height for the centered logo */
-            .sb-topnav {
-                min-height: 56px;
-                display: flex;
-                justify-content: center;
-            }
-        }
-        {% if user.can_switch %}
-        /* Location in navbar (hidden by default, shown for >=1000px) */
-        .navbar-location {
-            display: none;
-            color: #ffffff;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-            font-size: 1.1rem;
-            text-align: left;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 400px;
-            pointer-events: none;
-            margin-left: 12px;
-        }
-
-        @media (min-width: 1000px) {
-            .navbar-location { display: block; }
-        }
-
-        /* Small-screen location bar (hidden on desktop) */
-        .navbar-location-bar {
-            display: none;
-            background-color: #212529;
-            color: #ffffff;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 600;
-            font-size: 1rem;
-            text-align: center;
-            padding: 8px 12px;
-            box-sizing: border-box;
-            width: 100%;
-            z-index: 1040;
-        }
-
-        @media (max-width: 999px) {
-            .navbar-location-bar {
-                display: block;
-                position: fixed;
-                top: calc(56px + env(safe-area-inset-top));
-                left: 0;
-                right: 0;
-                height: 44px;
-                line-height: 28px;
-                padding-top: 8px;
-                padding-bottom: 8px;
-                box-shadow: 0 1px 0 rgba(0,0,0,0.15);
-                z-index: 1040;
-            }
-        }
-        {% else %}
-        /* Ensure location elements are hidden when user cannot switch */
-        .navbar-location,
-        .navbar-location-bar { display: none !important; visibility: hidden !important; height: 0 !important; margin: 0 !important; padding: 0 !important; }
-        {% endif %}
-
-        /* Ensure navbar dropdowns sit above the location bar on small screens */
-  .sb-topnav {
-      z-index: 1100; /* put the whole top navbar above the location bar */
-  }
-
-  .sb-topnav .dropdown-menu {
-      z-index: 1200 !important; /* ensure dropdown itself is higher */
-  }
-  /* Force dropdown to top of stacking order (covers any fixed bars) */
-  .sb-topnav,
-  .sb-topnav .nav-item,
-  .sb-topnav .dropdown {
-      z-index: 2147483646 !important;
-      position: relative; /* ensure dropdown's stacking context is the navbar */
-  }
-
-  .sb-topnav .dropdown-menu,
-  .dropdown.show > .dropdown-menu {
-      z-index: 2147483647 !important;
-      position: absolute !important;
-  }
-   table {
-      margin-top: 0; /* Remove top margin */
-      border-top: none;
-      border-collapse: collapse;
-      margin-left: 27px;
-      margin-right: 20px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      border-radius: 10px; /* Add this for rounded corners */
-      overflow: hidden;
-  }
-  
-  th, td {
-      border: 1px solid #dddddd;
-      padding: 8px;
-      text-align: left;
-  }
-  
-  th {
-      background-color: #272630;
-      color: #ffffff;
-      text-align: left;
-      font-weight: bold;
-  } 
- .mobile-home-btn {
-            display: none;
-        }
-        @media (max-width: 999px) {
- th, td {
-
-      padding: 12px;
-  }
-  
-
-            .mobile-home-btn {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                position: absolute;
-                left: 8px;
-                top: 8px;
-                width: 40px;
-                height: 40px;
-                border-radius: 6px;
-                background: transparent;
-                color: #ffffff; /* white icon */
-                font-size: 1.1rem;
-                z-index: 2147483647; /* make sure it sits above other fixed bars */
-                text-decoration: none;
-                border: 0;
-                padding: 0;
-                transition: background-color .12s ease, color .12s ease;
-            }
-            /* slightly increase hit target without changing visual size */
-            .mobile-home-btn::after {
-                content: '';
-                position: absolute;
-                inset: 0;
-                border-radius: 6px;
-            }
-
-            /* hover / focus / active state: teal background (57,189,180) with white icon */
-            .mobile-home-btn:hover,
-            .mobile-home-btn:focus,
-            .mobile-home-btn:active {
-                background: rgb(57, 189, 180);
-                color: #ffffff;
-                outline: none;
-            }
-        }
-
-        @media (max-width: 999px) {
+    
+    .navbar-brand {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+    }
+    
+    .sb-topnav {
+        min-height: 56px;
+        display: flex;
+        justify-content: center;
+    }
+    
+    /* REMOVE ROUNDED CORNERS ON MOBILE */
+    table {
+        border-radius: 0 !important;
+    }
+    
+    th, td {
+        padding: 12px;
+    }
+    
+    .navbar-location-bar {
+        display: block;
+        position: fixed;
+        top: calc(56px + env(safe-area-inset-top));
+        left: 0;
+        right: 0;
+        height: 44px;
+        line-height: 28px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+        z-index: 1040;
+    }
+    
+    .mobile-home-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        left: 8px;
+        top: 8px;
+        width: 40px;
+        height: 40px;
+        border-radius: 6px;
+        background: transparent;
+        color: #ffffff;
+        font-size: 1.1rem;
+        z-index: 2147483647;
+        text-decoration: none;
+        border: 0;
+        padding: 0;
+        transition: background-color .12s ease, color .12s ease;
+    }
+    
+    .mobile-home-btn::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 6px;
+    }
+    
+    .mobile-home-btn:hover,
+    .mobile-home-btn:focus,
+    .mobile-home-btn:active {
+        background: rgb(57, 189, 180);
+        color: #ffffff;
+        outline: none;
+    }
+    
     footer {
         display: none !important;
         visibility: hidden !important;
@@ -284,21 +354,20 @@
         margin: 0 !important;
         padding: 0 !important;
     }
-
-    /* remove any extra bottom spacing on the content area */
+    
     #layoutSidenav_content,
     #layoutSidenav_content main {
         padding-bottom: 0 !important;
         margin-bottom: 0 !important;
     }
+    
     .toast-top-center,
     .toast-top-right,
     .toast-top-left {
         top: calc(100px + env(safe-area-inset-top, 0px)) !important;
-      }
-
+    }
 }
-    </style>
+</style>
     {% block styles %}{% endblock %}
 </head>
 

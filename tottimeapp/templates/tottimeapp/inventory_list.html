@@ -5,92 +5,73 @@
 {% block title %}Inventory{% endblock %}
 {% block styles %} 
 <style>
-@media (max-width: 999px) {
-    /* Add a solid spacer so scrolling reaches below the fixed nav */
-    #categoryTabContent::after {
-        content: "";
-        display: block;
-        height: 100px; /* adjust as needed (64px nav + extra for decorative circle) */
-        width: 1px;
-        pointer-events: none;
-    }
+/* =========================
+   BASE STYLES (ALL SCREENS)
+   ========================= */
 
-    /* Make sure the tab container actually scrolls to include the spacer */
-    #categoryTabContent,
-    .tab-content {
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 0; /* spacer handles visual space; avoid double-padding */
-    }
+/* Tab Navigation */
+.table-tabs {
+    margin-left: 30px !important;
 }
 
-.table-tabs {
-        margin-left: 30px!important;
-    }
+.table-tabs .table-link {
+    padding: 5px 15px;
+    text-decoration: none;
+    color: #000;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    margin-right: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+    white-space: nowrap;
+    display: inline-block;
+}
 
-    /* Tab styles */
-    .table-tabs .table-link {
-        padding: 5px 15px; /* Reduce padding for smaller tabs */
-        text-decoration: none;
-        color: #000; /* Default text color */
-        background-color: #f8f9fa; /* Light gray background */
-        border: 1px solid #ddd; /* Light gray border */
-        border-bottom: none; /* Remove bottom border */
-        border-radius: 10px 10px 0 0; /* Curved corners */
-        margin-right: 5px; /* Spacing between tabs */
-        cursor: pointer; /* Pointer cursor for tabs */
-        transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
-        white-space: nowrap; /* Prevent text wrapping */
-        display: inline-block; /* Ensure proper width calculation */
-    }
+.table-tabs .table-link:hover:not(.active) {
+    background-color: #e9ecef;
+    color: rgb(57, 189, 180);
+}
 
-    /* Hover effect for inactive tabs */
-    .table-tabs .table-link:hover:not(.active) {
-        background-color: #e9ecef; /* Slightly darker gray on hover */
-        color: rgb(57, 189, 180); /* Change hover text color */
-    }
+.table-tabs .table-link.active {
+    background-color: #272630;
+    color: rgb(57, 189, 180);
+    font-weight: bold;
+    cursor: default;
+    border-radius: 10px 10px 0 0;
+    border-color: #272630;
+}
 
-    /* Active tab styles */
-    .table-tabs .table-link.active {
-        background-color: #272630; /* Dark background for active tab */
-        color: rgb(57, 189, 180) ;/* White text for active tab */
-        font-weight: bold; /* Bold text for active tab */
-        cursor: default; /* Default cursor for active tab */
-        border-radius: 10px 10px 0 0; /* Match curved corners */
-        border-color: #272630; /* Match border color with background */
-    }
+.table-tabs .table-link.active:hover {
+    color: rgb(57, 189, 180);
+}
 
-    /* Optional: Hover effect for active tab */
-    .table-tabs .table-link.active:hover {
-        color: rgb(57, 189, 180); /* Change text color on hover */
-    }
-    
-    .item-header, td:first-child {
-        width: 560px;
-    }
-    
-    .btn-primary {
-        margin-top: 25px;
-        margin-left: 25px!important;
-    }
-    
-    #scanner-container canvas {
-        display: none; /* Hide the canvas used by QuaggaJS for processing */
-    }
-    
-    .btn-warning {
-        margin-right:25px;
-    }
-    
-    /* Quantity input styling - wider for all screen sizes */
-    input[type="number"][id^="new_quantity_"], 
-    input[type="number"][id^="extra_milk_quantity_"] {
-        width: 85px !important; /* Increased width to accommodate 3+ digits */
-        padding: 2px 5px; /* Add some padding for better appearance */
-        text-align: center; /* Center the text */
-        border: 1px solid #ccc; /* Add a subtle border */
-        border-radius: 3px; /* Slight rounding */
-    }
+/* Item and Button Styles */
+.item-header, td:first-child {
+    width: 560px;
+}
 
+.btn-primary {
+    margin-top: 25px;
+    margin-left: 25px !important;
+}
+
+.btn-warning {
+    margin-right: 25px;
+}
+
+/* Quantity Input Styling */
+input[type="number"][id^="new_quantity_"], 
+input[type="number"][id^="extra_milk_quantity_"] {
+    width: 85px !important;
+    padding: 2px 5px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+/* Barcode Scanner */
 #scanner-container {
     width: 340px;
     height: 300px;
@@ -98,6 +79,10 @@
     border: 2px solid #000;
     position: relative;
     overflow: hidden;
+}
+
+#scanner-container canvas {
+    display: none;
 }
 
 #scanner-container video {
@@ -110,8 +95,8 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 300px;   /* wider for easier alignment */
-    height: 160px;  /* much taller for less dead space */
+    width: 300px;
+    height: 160px;
     transform: translate(-50%, -50%);
     border: 3px solid red;
     border-radius: 8px;
@@ -127,167 +112,14 @@
     z-index: 1079 !important;
 }
 
-@media (max-width: 999px) {
-    #categoryTabs {
-        display: none !important;
-    }
-    #categoryDropdownContainer {
-        display: block !important;
-    }
-    
-    body {
-        padding-bottom: 80px; /* space for fixed bottom nav */
-    }
-
-    /* hide the top controls on mobile (we'll show mobile nav instead) */
-    .inventory-top-controls {
-        display: none !important;
-    }
-
-    /* mobile fixed bottom nav */
-    #mobileBottomNav {
-        display: flex;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 64px;
-        background-color: #212529;
-        border-top: 1px solid #dee2e6;
-        z-index: 1200;
-        justify-content: space-around;
-        align-items: center;
-        padding: 6px 10px;
-        box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
-    }
-
-    /* ensure icons/text are visible on dark background */
-    #mobileBottomNav .btn,
-    #mobileBottomNav .btn i {
-        color: #ffffff;
-    }
-
-    #mobileBottomNav .btn {
-        flex: 0 0 auto;
-        font-size: 0.95rem;
-        padding: 6px 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-        border: none;
-    }
-
-    #mobileBottomNav .btn i {
-        font-size: 1.15rem; /* default icon size */
-    }
-
-    /* Make the update icon larger than the other buttons */
-    #mobileBottomNav .btn.update-btn i {
-        font-size: 2.3rem; /* larger sync icon */
-        color: rgb(57, 189, 180) !important;
-        margin-bottom: 10px;
-        margin-left: 4px;
-
-    }
-
-    /* ensure update button sits above its decorative circle */
-    #mobileBottomNav .update-btn {
-        position: relative;
-        z-index: 2;
-    }
-
-    /* decorative circle behind the update button (same color as bar) */
-    #mobileBottomNav .update-btn::before {
-        content: "";
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: 94px;
-        height: 94px;
-        border-radius: 50%;
-        background-color: #212529; /* same as bottom bar */
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.11);
-        pointer-events: none;
-        z-index: 1;
-    }
-
-    /* ensure the icon sits above the circle */
-    #mobileBottomNav .update-btn i {
-        position: relative;
-        z-index: 3;
-    }
-}
-
-@media (min-width: 1000px) {
-    #categoryDropdownContainer {
-        display: none !important;
-    }
-    
-    /* Make table responsive with proper margins on larger screens */
-    .tab-content table {
-        width: calc(100% - 40px); /* Full container width minus left and right margins */
-        min-width: fit-content;
-        margin-left: 15px; /* Left margin */
-        margin-right: 25px; /* Right margin */
-        table-layout: auto;
-    }
-    
-    /* Ensure the tab content container doesn't exceed viewport */
-    .tab-content {
-        overflow-x: auto;
-        width: 100%;
-        max-width: calc(100vw - 50px); /* Prevent exceeding viewport width */
-        margin: 0;
-        padding: 0;
-    }
-    
-    /* Allow tabs to scroll horizontally if needed on large screens */
-    .table-tabs {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        scrollbar-width: thin;
-        margin-left: 50px; /* Keep existing tab margin */
-    }
-    
-    .table-tabs .table-link {
-        display: inline-block;
-        flex-shrink: 0;
-    }
-    
-    .table-tabs::-webkit-scrollbar {
-        height: 6px;
-    }
-    
-    .table-tabs::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-    
-    .table-tabs::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 3px;
-    }
-    
-    .table-tabs::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
-    
-    /* Flexible container for large screens */
-    .tab-content {
-        overflow-x: auto;
-        width: 100%; /* Use full width */
-        margin-left: 0; /* No left margin */
-    }
-}
-
+/* Category Dropdown */
 #categoryDropdown {
     width: 300px;
-    margin-left: auto!important;
-    margin-right: auto!important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
+/* Status Styles */
 .status-header {
     width: 100px;
     text-align: center;
@@ -310,6 +142,7 @@
     color: #856404;
 }
 
+/* Popup Overlay */
 .popup-overlay {
     position: fixed;
     top: 0;
@@ -336,10 +169,12 @@
 .close-btn {
     margin-top: 10px;
 }
+
 .shopping-list-buttons {
-    display: none; /* Hide by default */
+    display: none;
 }
 
+/* Dropdown Styles */
 .status-dropdown {
     background: none;
     border: none;
@@ -351,15 +186,11 @@
     outline: none;
 }
 
-/* TABLE-SPECIFIC DROPDOWN STYLES - RENAMED TO AVOID CONFLICTS */
-
-/* Fix table dropdown positioning to extend beyond table */
 .table-status-dropdown {
     position: relative;
     z-index: 1000;
 }
 
-/* When table dropdown is open, bring it to front */
 .table-status-dropdown.show {
     z-index: 9998 !important;
 }
@@ -368,9 +199,8 @@
     z-index: 9999 !important;
 }
 
-/* Make sure the table dropdown menu can extend outside its parent */
 .table-dropdown-menu {
-    min-width: 120px;
+    min-width: 150px;
     z-index: 9999 !important;
     position: absolute !important;
     background-color: white !important;
@@ -379,51 +209,9 @@
     will-change: transform;
     top: 100% !important;
     left: 0 !important;
-    min-width: 150px;
     max-height: none !important;
     overflow: visible !important;
     border-radius: 0.375rem !important;
-}
-
-/* For mobile devices, ensure even higher z-index for table dropdowns */
-@media (max-width: 999px) {
-    /* Adjust table dropdown positioning for mobile */
-    .table-dropdown-menu {
-        position: fixed !important; /* Use fixed positioning for mobile */
-        z-index: 10000 !important; /* Even higher for mobile */
-        min-width: 100px;
-        max-width: 120px;
-        right: 10px !important; /* Position from right edge */
-        left: auto !important;
-        background-color: white !important;
-        border: 1px solid #dee2e6 !important;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.25) !important;
-    }
-    
-    .table-status-dropdown.show {
-        z-index: 9999 !important;
-    }
-    
-    .table-status-dropdown.show .table-dropdown-menu {
-        z-index: 10000 !important;
-    }
-}
-
-/* Allow dropdown to extend beyond table container */
-.tab-content {
-    overflow: visible !important; /* Override any overflow hidden */
-}
-
-.tab-pane {
-    overflow: visible !important; /* Override any overflow hidden */
-}
-
-table {
-    overflow: visible !important; /* Override any overflow hidden */
-}
-
-tbody {
-    overflow: visible !important; /* Override any overflow hidden */
 }
 
 .table-dropdown-item {
@@ -442,12 +230,27 @@ tbody {
     background-color: #f8f9fa;
 }
 
-/* Ensure the entire page container allows overflow for dropdowns */
+/* Allow dropdown to extend beyond table container */
+.tab-content {
+    overflow: visible !important;
+}
+
+.tab-pane {
+    overflow: visible !important;
+}
+
+table {
+    overflow: visible !important;
+}
+
+tbody {
+    overflow: visible !important;
+}
+
 #categoryTabContent {
     overflow: visible !important;
 }
 
-/* Specifically for the shopping list table */
 #category-shopping-list {
     overflow: visible !important;
 }
@@ -456,93 +259,7 @@ tbody {
     overflow: visible !important;
 }
 
-@media (max-width: 999px) {
-    #categoryTabs {
-        display: none !important;
-    }
-    #categoryDropdownContainer {
-        display: block !important;
-    }
-    
-    /* Make the shopping list table responsive */
-    #category-shopping-list table {
-        width: 100% !important;
-        table-layout: fixed;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Set specific column widths for mobile */
-    #category-shopping-list th:first-child,
-    #category-shopping-list td:first-child {
-        width: 50%; /* Item name */
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-    
-    #category-shopping-list th:nth-child(2),
-    #category-shopping-list td:nth-child(2) {
-        width: 15%; /* Quantity */
-        text-align: center;
-    }
-    
-    #category-shopping-list th:nth-child(3),
-    #category-shopping-list td:nth-child(3) {
-        width: 35%; /* Status */
-        text-align: center;
-        padding: 4px 2px;
-    }
-    
-    /* Make status badges much smaller on mobile */
-    .status-badge {
-        padding: 1px 4px;
-        border-radius: 6px;
-        font-weight: bold;
-        white-space: nowrap;
-    }
-    
-    /* Adjust table dropdown positioning for mobile */
-    .table-dropdown-menu {
-        position: absolute !important;
-        z-index: 1050;
-        min-width: 100px;
-        max-width: 120px;
-        right: 0 !important;
-        left: auto !important;
-    }
-    
-    /* Ensure table dropdown items fit on mobile */
-    .table-dropdown-item {
-        padding: 4px 8px;
-        white-space: nowrap;
-    }
-    
-    .table-dropdown-item i {
-        margin-right: 4px;
-        width: 12px;
-    }
-    
-    /* Make sure status column content fits */
-    .status-dropdown {
-        padding: 1px;
-        width: 100%;
-        border: none;
-        background: transparent;
-    }
-    
-    /* Ensure the tab content doesn't overflow */
-    .tab-content {
-        overflow-x: auto;
-        width: 100%;
-        padding: 0 10px;
-    }
-    
-    .tab-pane {
-        overflow-x: auto;
-        width: 100%;
-    }
-}
-
+/* Autocomplete */
 .autocomplete-container {
     position: relative;
 }
@@ -605,25 +322,6 @@ tbody {
     text-align: center;
 }
 
-/* Mobile responsive adjustments for Order Soon */
-@media (max-width: 999px) {
-    #category-order-soon th:first-child,
-    #category-order-soon td:first-child {
-        width: 50%; /* Item name */
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-    
-    #category-order-soon th:nth-child(2),
-    #category-order-soon td:nth-child(2),
-    #category-order-soon th:nth-child(3),
-    #category-order-soon td:nth-child(3) {
-        width: 25%; /* Current Qty and Threshold */
-        text-align: center;
-        font-size: 0.9em;
-    }
-}
-
 /* Out of Stock tab specific styling */
 #category-out-of-stock table {
     overflow: visible !important;
@@ -631,20 +329,282 @@ tbody {
 
 #category-out-of-stock th:first-child,
 #category-out-of-stock td:first-child {
-    width: 100%; /* Item name takes full width */
+    width: 100%;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
+
+/* Table Styles */
+table {
+    border-collapse: separate !important;
+    border-spacing: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+    margin-bottom: 50px;
+}
+
+table thead th:first-child {
+    border-top-left-radius: 10px;
+}
+
+table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+}
+
+table thead th:nth-child(2) {
+    border-top-right-radius: 10px;
+}
+
+/* Delete Column Styles */
+.delete-item-header,
+.delete-item-column {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    text-align: center;
+    padding: 8px 4px !important;
+}
+
+.delete-item-column .btn {
+    padding: 2px 6px;
+    font-size: 0.8em;
+}
+
+.delete-item-column .fas {
+    font-size: 0.9em;
+}
+
+
+
+.inventory-title {
+    display: none;
+}
+
+/* =========================
+   DESKTOP STYLES (1000px+)
+   ========================= */
+
+@media (min-width: 1000px) {
+    #categoryDropdownContainer {
+        display: none !important;
+    }
+    
+    .inventory-title {
+        display: block;
+    }
+    .delete-hidden table thead th:nth-child(2),
+    .delete-hidden table tbody tr:last-child td:nth-child(2) {
+        border-top-right-radius: 10px !important;
+    }
+
+    .delete-visible table thead th:nth-child(2),
+    .delete-visible table tbody tr:last-child td:nth-child(2) {
+        border-top-right-radius: 0 !important;
+    }
+
+    .delete-visible table thead th.delete-column,
+    .delete-visible table tbody tr:last-child td.delete-column {
+        border-top-right-radius: 10px !important;
+    }
+    .tab-content table {
+        width: calc(100% - 40px);
+        min-width: fit-content;
+        margin-left: 15px;
+        margin-right: 25px;
+        table-layout: auto;
+    }
+    
+    .tab-content {
+        overflow-x: auto;
+        width: 100%;
+        max-width: calc(100vw - 50px);
+        margin: 0;
+        padding: 0;
+    }
+    
+    .table-tabs {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        margin-left: 50px;
+    }
+    
+    .table-tabs .table-link {
+        display: inline-block;
+        flex-shrink: 0;
+    }
+    
+    .table-tabs::-webkit-scrollbar {
+        height: 6px;
+    }
+    
+    .table-tabs::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    .table-tabs::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    .table-tabs::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+}
+
+/* =========================
+   MOBILE STYLES (<1000px)
+   ========================= */
+
 @media (max-width: 999px) {
-    /* make wrapper size to content so arrow sits right after the visible text */
+   
+    /* Hide Desktop Elements */
+    #categoryTabs {
+        display: none !important;
+    }
+    
+    .inventory-top-controls {
+        display: none !important;
+    }
+    
+    /* Show Mobile Elements */
+    #categoryDropdownContainer {
+        display: block !important;
+    }
+    
+    /* Mobile Bottom Navigation */
+    #mobileBottomNav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 64px;
+        background-color: rgba(34, 37, 41, 1);
+        border-top: 1px solid #dee2e6;
+        z-index: 1200;
+        justify-content: space-around;
+        align-items: center;
+        padding: 6px 10px;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    }
+    
+    #mobileBottomNav .btn,
+    #mobileBottomNav .btn i {
+        color: #ffffff;
+    }
+    
+    #mobileBottomNav .btn {
+        flex: 0 0 auto;
+        font-size: 0.95rem;
+        padding: 6px 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+    }
+    
+    #mobileBottomNav .btn i {
+        font-size: 1.15rem;
+    }
+    
+    #mobileBottomNav .btn.update-btn i {
+        font-size: 2.3rem;
+        color: rgb(57, 189, 180) !important;
+        margin-bottom: 10px;
+        margin-left: 4px;
+    }
+    
+    #mobileBottomNav .update-btn {
+        position: relative;
+        z-index: 2;
+    }
+    
+    #mobileBottomNav .update-btn::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 94px;
+        height: 94px;
+        border-radius: 50%;
+        background-color: rgba(34, 37, 41, 1);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.11);
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    #mobileBottomNav .update-btn i {
+        position: relative;
+        z-index: 3;
+    }
+    
+    /* Scrolling Spacer */
+    #categoryTabContent::after {
+        content: "";
+        display: block;
+        height: 100px;
+        width: 1px;
+        pointer-events: none;
+    }
+    
+    #categoryTabContent,
+    .tab-content {
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0;
+        overflow-x: auto;
+        width: 100%;
+        padding: 0 !important;
+    }
+    
+    .tab-pane {
+        overflow-x: auto;
+        width: 100%;
+        padding: 0 !important;
+    }
+    
+    /* Remove ALL rounded corners on mobile */
+    table {
+        border-radius: 0 !important;
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border: none !important;
+    }
+    
+    table thead th:first-child,
+    table thead th:nth-child(2),
+    table thead th:last-child,
+    table tbody tr:last-child td:first-child,
+    table tbody tr:last-child td:nth-child(2),
+    table tbody tr:last-child td:last-child {
+        border-radius: 0 !important;
+    }
+    
+    /* Dark header background on mobile - remove the white border box */
+    table thead th {
+        background-color: rgba(34, 37, 41, 1) !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    
+    /* Keep cell borders visible but remove from header */
+    table td {
+        border-color: #dee2e6;
+    }
+    
+    /* Mobile Header Dropdown */
     th.item-header > .mobile-select-wrap {
         position: relative;
         display: inline-flex;
         align-items: center;
         gap: 6px;
     }
-
-    /* plain header-like select (no box) */
+    
     th.item-header .mobile-select-wrap .form-select {
         display: inline-block;
         width: auto;
@@ -661,11 +621,11 @@ tbody {
         -moz-appearance: none;
         appearance: none;
     }
-
-    /* hide native IE/Edge arrow */
-    th.item-header .form-select::-ms-expand { display: none; }
-
-    /* remove focus/hover box affordances */
+    
+    th.item-header .form-select::-ms-expand {
+        display: none;
+    }
+    
     th.item-header .form-select:focus,
     th.item-header .form-select:hover,
     th.item-header .form-select:active {
@@ -674,8 +634,7 @@ tbody {
         background: transparent !important;
         border: none !important;
     }
-
-    /* inline white triangle right after select text */
+    
     th.item-header .mobile-dropdown-indicator {
         display: inline-block;
         width: 0;
@@ -686,84 +645,124 @@ tbody {
         pointer-events: none;
         margin-left: 4px;
     }
-
-    /* keep option list contrast where supported */
+    
     th.item-header .form-select,
     th.item-header .form-select option,
     th.item-header .form-select optgroup {
-        background-color: #272630 !important;
+        background-color: rgba(34, 37, 41, 1) !important;
         color: #ffffff !important;
     }
+    
+    /* Shopping List Table Mobile */
+    #category-shopping-list table {
+        width: 100% !important;
+        table-layout: fixed;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    #category-shopping-list th:first-child,
+    #category-shopping-list td:first-child {
+        width: 50%;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    #category-shopping-list th:nth-child(2),
+    #category-shopping-list td:nth-child(2) {
+        width: 15%;
+        text-align: center;
+    }
+    
+    #category-shopping-list th:nth-child(3),
+    #category-shopping-list td:nth-child(3) {
+        width: 35%;
+        text-align: center;
+        padding: 4px 2px;
+    }
+    
+    .status-badge {
+        padding: 1px 4px;
+        border-radius: 6px;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+    
+    /* Order Soon Table Mobile */
+    #category-order-soon table {
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    #category-order-soon th:first-child,
+    #category-order-soon td:first-child {
+        width: 50%;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    #category-order-soon th:nth-child(2),
+    #category-order-soon td:nth-child(2),
+    #category-order-soon th:nth-child(3),
+    #category-order-soon td:nth-child(3) {
+        width: 25%;
+        text-align: center;
+        font-size: 0.9em;
+    }
+    
+    /* Out of Stock Table Mobile */
+    #category-out-of-stock table {
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    /* Table Dropdown Mobile */
+    .table-dropdown-menu {
+        position: fixed !important;
+        z-index: 10000 !important;
+        min-width: 100px;
+        max-width: 120px;
+        right: 10px !important;
+        left: auto !important;
+        background-color: white !important;
+        border: 1px solid #dee2e6 !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.25) !important;
+    }
+    
+    .table-status-dropdown.show {
+        z-index: 9999 !important;
+    }
+    
+    .table-status-dropdown.show .table-dropdown-menu {
+        z-index: 10000 !important;
+    }
+    
+    .table-dropdown-item {
+        padding: 4px 8px;
+        white-space: nowrap;
+    }
+    
+    .table-dropdown-item i {
+        margin-right: 4px;
+        width: 12px;
+    }
+    
+    .status-dropdown {
+        padding: 1px;
+        width: 100%;
+        border: none;
+        background: transparent;
+    }
+    
 }
-table {
-    border-collapse: separate !important;
-    border-spacing: 0;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid #dee2e6;
-    margin-bottom: 50px;
-}
-
-/* Default: Left corners always on first column */
-table thead th:first-child {
-    border-top-left-radius: 10px;
-}
-
-table tbody tr:last-child td:first-child {
-    border-bottom-left-radius: 10px;
-}
-
-/* Right corners for quantity column (2nd) on regular inventory tabs when delete is hidden */
-table thead th:nth-child(2) {
-    border-top-right-radius: 10px;
-}
-
-
-/* Delete column width constraint */
-.delete-item-header,
-.delete-item-column {
-    width: 50px !important;
-    min-width: 50px !important;
-    max-width: 50px !important;
-    text-align: center;
-    padding: 8px 4px !important;
-}
-
-/* Make sure the delete button fits in the narrow column */
-.delete-item-column .btn {
-    padding: 2px 6px;
-    font-size: 0.8em;
-}
-
-/* Ensure the trash icon fits */
-.delete-item-column .fas {
-    font-size: 0.9em;
-}
-
-/* New: control which column gets the right-side radius via container class */
-.delete-hidden table thead th:nth-child(2),
-.delete-hidden table tbody tr:last-child td:nth-child(2) {
-    border-top-right-radius: 10px !important;
-
-}
-
-/* When delete column is visible, ensure qty column has no right radius and delete column gets it */
-.delete-visible table thead th:nth-child(2),
-.delete-visible table tbody tr:last-child td:nth-child(2) {
-    border-top-right-radius: 0 !important;
-}
-
-.delete-visible table thead th.delete-column,
-.delete-visible table tbody tr:last-child td.delete-column {
-    border-top-right-radius: 10px !important;
-
-}
-
 </style>
 {% endblock %}
 {% block content %}
 {% if not hide_inventory_controls %}
-<h1 class="mt-4">Inventory</h1>
+<h1 class="mt-4 inventory-title">Inventory</h1>
 
 <!-- WRAPPED existing top controls so they can be hidden on mobile -->
 <div class="inventory-top-controls">
