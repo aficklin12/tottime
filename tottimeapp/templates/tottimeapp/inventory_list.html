@@ -761,7 +761,7 @@ table thead th:nth-child(2) {
     }
     /* Ensure table body rows start 30px lower while leaving the header intact */
 table tbody tr:first-child td {
-    padding-top: 70px !important;
+    padding-top: 77px !important;
 }
 table tbody td:nth-child(2),
 #category-shopping-list td:nth-child(2),
@@ -821,6 +821,115 @@ input[type=number]::-webkit-outer-spin-button {
     table th:nth-child(2) {
         padding-right: 45px !important;
     }
+    
+th.item-header .mobile-select-wrap .form-select,
+#categoryDropdownHeader {
+    padding: 10px 14px;
+    font-size: 1.05rem;
+    line-height: 1.25 !important; /* fixes vertical clipping without changing padding */
+    border-radius: 6px;
+    background-color: rgba(34, 37, 41, 0.95) !important;
+    color: #fff !important;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    height: auto !important;
+}
+table thead {
+    left: -15px; 
+  }
+/* Remove internal vertical grid lines but keep horizontal row dividers and outer table border */
+table th,
+table td {
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;              /* remove top cell border to avoid double lines */
+    border-bottom: 1px solid #dee2e6 !important; /* keep horizontal divider */
+    background-clip: padding-box;              /* prevent background bleed with rounded corners */
+}
+
+/* Keep a clear horizontal rule under the header */
+table thead th {
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+/* Ensure header row stays visually above body when fixed (mobile) */
+table thead {
+    z-index: 1100;
+    background-clip: padding-box;
+}
+#addItemModal .modal-dialog {
+    width: 80vw;
+    max-width: 80vw;
+    margin: 3.75rem auto; /* keep Bootstrap default vertical spacing/centering */
+}
+#addItemModal .modal-content {
+    box-sizing: border-box;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+/* Ensure Add Item modal and its backdrop appear above fixed header/nav */
+#addItemModal.modal {
+    z-index: 3000 !important;
+}
+
+#addItemModal.modal .modal-dialog {
+    z-index: 3001 !important;
+}
+
+/* Backdrop should be just below the modal but above page content */
+.modal-backdrop {
+    z-index: 2999 !important;
+}
+#addItemModal .modal-content { font-size: 0.9rem !important; }
+#addItemModal .form-control { font-size: 0.9rem !important; }
+}
+/* Tighten spacing inside Add Item modal (mobile) */
+#addItemModal .modal-header {
+    padding: 0.5rem 0.9rem;      /* slightly smaller header padding */
+}
+#addItemModal .modal-body {
+    padding: 0.6rem 0.9rem;      /* reduce body padding so controls sit closer */
+}
+
+/* Reduce vertical gap between form groups and labels */
+#addItemModal .form-group,
+#addItemModal .mb-3 {
+    margin-bottom: 0.35rem;      /* default bootstrap .mb-3 is ~1rem; lower this */
+}
+
+/* Make labels sit closer to inputs */
+#addItemModal label {
+    display: block;
+    margin-bottom: 0.15rem;      /* tighten label → input spacing */
+    font-size: 0.85rem;          /* optional: slightly smaller label */
+}
+
+/* Inputs - slightly smaller paddings to reduce overall height */
+#addItemModal .form-control,
+#addItemModal .form-select,
+#addItemModal input,
+#addItemModal textarea {
+    padding: 0.35rem 0.5rem;     /* tighten vertically */
+    font-size: 0.88rem;          /* keep text readable */
+}
+
+/* Buttons - reduce top margin so they sit nearer the last input */
+#addItemModal .modal-footer,
+#addItemModal .btn {
+    margin-top: 0.25rem;
+    padding: 0.38rem 0.6rem;
+    font-size: 0.9rem;
+}
+
+/* If there are inline help / small text elements, reduce their spacing */
+#addItemModal .form-text,
+#addItemModal small {
+    display: block;
+    margin-top: 0.15rem;
+    margin-bottom: 0.15rem;
+    font-size: 0.75rem;
 }
 </style>
 {% endblock %}
@@ -2393,4 +2502,108 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 </script>
-{% endblock %}   
+<script>
+(function() {
+    // Track whether a native select is currently open/focused
+    let selectOpen = false;
+    let lastFocusedSelect = null;
+
+    // Mark select as opened on user interaction
+    function markSelectOpen(e) {
+        lastFocusedSelect = e.target;
+        selectOpen = true;
+
+        // For PWAs / mobile browsers: push a history state so the hardware back
+        // button (browser back) can be used to close the select instead of leaving the page.
+        try {
+            history.pushState({ closeSelect: true }, '');
+        } catch (err) {}
+    }
+
+    function markSelectClosed(e) {
+        selectOpen = false;
+        lastFocusedSelect = null;
+
+        // If we pushed a state, pop it so browser back behaves normally after closing
+        try {
+            // only pop if the state is ours
+            const state = history.state;
+            if (state && state.closeSelect) history.back();
+        } catch (err) {}
+    }
+
+    // Attach handlers to all selects that might open the native picker
+    function wireSelects() {
+        const selects = document.querySelectorAll('select, .form-select'); // include class-based selects
+        selects.forEach(function(sel) {
+            // Use capture to catch touchstart / mousedown early
+            sel.addEventListener('touchstart', markSelectOpen, {passive:true, capture:true});
+            sel.addEventListener('mousedown', markSelectOpen, {capture:true});
+            sel.addEventListener('focus', markSelectOpen, {capture:true});
+            sel.addEventListener('blur', markSelectClosed);
+            sel.addEventListener('change', markSelectClosed);
+        });
+    }
+
+    // Cordova / Capacitor backbutton handling (hardware button)
+    function onCordovaReady() {
+        document.addEventListener('backbutton', function (e) {
+            if (selectOpen) {
+                e.preventDefault();
+                // Blur focused select to close native picker
+                try {
+                    if (lastFocusedSelect && typeof lastFocusedSelect.blur === 'function') {
+                        lastFocusedSelect.blur();
+                    } else if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                        document.activeElement.blur();
+                    }
+                } catch (err) {
+                    console.warn('Failed to blur select on backbutton:', err);
+                }
+                // short delay to reset flag after native UI closes
+                setTimeout(function(){ selectOpen = false; lastFocusedSelect = null; }, 200);
+                return;
+            }
+
+            // Default behavior when nothing is open:
+            // let Cordova/Capacitor handle it (navigate back / exit). If you want to
+            // treat a back press as "history back" uncomment the next line:
+            // navigator.app && navigator.app.backHistory && navigator.app.backHistory();
+        }, false);
+    }
+
+    // Browser / PWA fallback: use popstate to close the select when user presses the browser back button
+    window.addEventListener('popstate', function(e) {
+        if (selectOpen && history.state && history.state.closeSelect) {
+            // Close the select instead of navigating away
+            if (lastFocusedSelect && typeof lastFocusedSelect.blur === 'function') {
+                lastFocusedSelect.blur();
+            } else if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+            selectOpen = false;
+            lastFocusedSelect = null;
+
+            // Prevent further handling (we already popped the state)
+            // Push a neutral state to keep history stable (optional)
+            try { history.replaceState(null, ''); } catch (err) {}
+        }
+    });
+
+    // Initialize wiring on DOM ready
+    document.addEventListener('DOMContentLoaded', wireSelects);
+
+    // If app uses Cordova/Capacitor, use their deviceready event
+    document.addEventListener('deviceready', function() {
+        try { wireSelects(); } catch (err) {}
+        onCordovaReady();
+    }, false);
+
+    // Also call on load for non-Cordova pages
+    if (window.cordova === undefined) {
+        // Non-cordova: nothing to wire for hardware back, but ensures select wiring
+        document.addEventListener('DOMContentLoaded', function() { wireSelects(); });
+    }
+})();
+</script>
+{% endblock %}
