@@ -591,12 +591,7 @@ table thead th:nth-child(2) {
         color: #ffffff !important;
         border: none !important;
     }
-    
-    /* Keep cell borders visible but remove from header */
-    table td {
-        border-color: #dee2e6;
-    }
-    
+        
     /* Mobile Header Dropdown */
     th.item-header > .mobile-select-wrap {
         position: relative;
@@ -756,7 +751,34 @@ table thead th:nth-child(2) {
         border: none;
         background: transparent;
     }
-    
+    table thead {
+        position: fixed;
+    }
+    /* Keep cell borders visible but remove from header */
+    table td {
+        border-color: #dee2e6;
+   
+    }
+    /* Ensure table body rows start 30px lower while leaving the header intact */
+table tbody tr:first-child td {
+    padding-top: 62px !important;
+}
+table tbody td:nth-child(2),
+#category-shopping-list td:nth-child(2),
+#category-order-soon td:nth-child(2) {
+    text-align: right !important;
+    vertical-align: middle !important;
+}
+
+table tbody td:nth-child(2) input[type="number"],
+#category-shopping-list td:nth-child(2) input[type="number"],
+#category-order-soon td:nth-child(2) input[type="number"] {
+    display: block;
+    margin-left: auto;
+    margin-right: 12px; /* tweak spacing from right edge */
+    text-align: center; /* keep digits centered inside the control */
+}
+
 }
 </style>
 {% endblock %}
