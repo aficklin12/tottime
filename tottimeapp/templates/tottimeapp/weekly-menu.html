@@ -6,197 +6,300 @@
 
 {% block styles %}
 <style>
-/* Remove bold font weight from specific rows by targeting their IDs */
-#grainRow th,
-#meatRow th {
-    font-weight: normal;
-}
+/* =========================
+   Weekly Menu Styles (clean + organized)
+   - Mobile: <=1000px (single day view with dropdown)
+   - Desktop: >=1001px (full week view)
+   ========================= */
+
+/* --- Base / shared styles --- */
 #weeklyMenuHeader {
-    background-color: #272630;
-    color: #ffffff;
-    text-align: center;
-}
-      
-.table input[type="text"] {
-    border: 1px solid #ced4da; /* Add border */
-    border-radius: .25rem; /* Add border-radius */
-    padding: .375rem .75rem; /* Add padding */
-    width: 100%; /* Ensure the input field takes up the entire width of the cell */
+  background-color: #272630;
+  color: #fff;
+  text-align: center;
 }
 
-/* Style for editable cells */
-.input-box {
-    height: auto; /* Adjust height */
-}
-
-/* Style for the table */
 .table {
-    border-collapse: collapse; /* Collapse the borders of the table */
-    width: 100%; /* Make the table take up the entire width */
-    table-layout: auto;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px; /* Add this for rounded corners */
-    overflow: hidden;
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: auto;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-
-.button-container {
-    margin-right: 10px; /* Adjust the margin as needed */
-}
-
-
-/* Custom button styles */
-.btn-primary {
-    background-color: rgb(228, 218, 79); /* Change primary button color */
-    border-color: rgb(228, 218, 79);
-    color:rgb(33, 31, 39);
-    font-weight: 555;
-    
-}
-
-.btn-success {
-    background-color: rgb(57, 189, 180); /* Change success button color */
-    border-color: rgb(57, 189, 180);
-    color:rgb(33, 31, 39);
-    font-weight: 555;
-}
-
-/* Additional hover styles (optional) */
-.btn-primary:hover {
-    background-color: #b4ad46;
-    border-color: #b4ad46;
-}
-
-.btn-success:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-}
-
+.table-title { border: 1px solid #dee2e6; padding: .75rem; text-align: center; }
 
 th, td {
-    border: 1px solid #dee2e6; /* Add border */
-    padding: .75rem; /* Add padding */
-    word-wrap: break-word;
-    
+  border: 1px solid #dee2e6;
+  padding: .75rem;
+  word-wrap: break-word;
 }
 
-/* Style for table header and body */
-.table thead th,
-.table tbody td {
-    text-align: left; /* Align text to the left */
-    font-weight: normal;
-    
-}
-.table thead th,
-.table tbody tr:nth-child(-n+3) {
-    font-weight: bold;
-    
-    
-}
-
-/* Style for the table title */
-.table-title {
-    border: 1px solid #dee2e6; /* Add border */
-    padding: .75rem; /* Add padding */
-    text-align: center; /* Align text to the center */
-}
+.table thead th, .table tbody td { text-align: left; font-weight: normal; }
+.table thead th, .table tbody tr:nth-child(-n+3) { font-weight: bold; }
 
 .vertical-header {
-    writing-mode: vertical-rl; /* Set text to vertical writing mode */
-    transform: rotate(180deg); /* Rotate the text 180 degrees */
-    white-space: nowrap; /* Prevent text from wrapping */
-   
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
 }
 
-
-    @media print {
-    h1,
-    .sb-topnav,
-    .sb-sidenav-footer,
-    .button-container,
-    #generateMenuBtn,
-    #saveMenuBtn {
-        display: none;
-    }
-    .vertical-header {
-        writing-mode: horizontal-tb; /* Set text to horizontal writing mode when printing */
-        transform: none; /* Remove rotation for horizontal text */
-    }
-    .table thead th,
-    .table tbody td {
-            word-wrap: break-word !important;
-            white-space: normal !important;
-            border: 1px solid #dee2e6; /* Add border */
-            padding: .5rem; /* Adjust padding for printing */
-            font-size: 0.8rem; /* Adjust font size for printing */
-        }
-    .table {
-        table-layout: fixed;
-        width: 200%;
-    }
-    .table tbody td:first-child {
-        width: 20px; /* Replace 100px with the width of your first column */
-    }
-    @page {
-        margin-top: -90px;
-    }
-    body {
-        margin: 0;
-        width: fit-content;
-    }
-}
-.btn-rec {
-background-color: rgb(153, 158, 158); /* Change success button color */
-border-color: rgb(153, 158, 158);
-color: rgb(33, 31, 39);
-font-size: 17px;
-font-weight: 550;
-padding: 4px 6px !important; /* Add padding for more space */
-
+/* Inputs in table */
+.table input[type="text"] {
+  border: 1px solid #ced4da;
+  border-radius: .25rem;
+  padding: .375rem .75rem;
+  width: 100%;
 }
 
-/* Additional hover styles (optional) */
-.btn-rec:hover {
-color: rgb(255, 255, 255);
-background-color: rgb(54, 56, 56);
-border-color: rgb(54, 56, 56);
-}
-.btn-primaryoff {
-            background-color: rgb(57, 189, 180); /* Change success button color */
-            border-color: rgb(57, 189, 180);
-            color: rgb(33, 31, 39);
-            font-weight: bold;
-            margin-left: 20px;
-            margin-right:15px!important;
-        }
-    
-.btn-primaryoff:hover {
-            background-color: #007b8a;
-            border-color: #007b8a;
-            color: #fff;
-        }
-        .btn-secondary {
-    background-color: rgb(228, 218, 79); /* Change primary button color */
-    border-color: rgb(228, 218, 79);
-    color:rgb(33, 31, 39);
-    font-weight: 555;
-    
-}
+/* Button color tokens (shared) */
+.btn-primaryoff { background: rgb(57,189,180); border-color: rgb(57,189,180); color: #21201f; font-weight: 700; }
+.btn-primaryoff:hover { background: #007b8a; border-color: #007b8a; color: #fff; }
+
+.btn-secondary { background: rgb(228,218,79); border-color: rgb(228,218,79); color: #21201f; }
+.btn-secondary:hover { background: #b4ad46; border-color: #b4ad46; }
+
+.btn-rec { background: rgb(153,158,158); border-color: rgb(153,158,158); color: #21201f; padding: 4px 6px !important; font-weight: 550; }
+.btn-rec:hover { background: rgb(54,56,56); color: #fff; border-color: rgb(54,56,56); }
 
 .btn-outline-primary.link-switch {
-    background-color: transparent !important;
-    color: rgb(57, 189, 180) !important;
-    border-color: rgb(57, 189, 180) !important;
+  background: transparent !important;
+  color: rgb(57,189,180) !important;
+  border-color: rgb(57,189,180) !important;
 }
-.btn-outline-primary.link-switch:hover {
-    background-color: rgb(57, 189, 180) !important;
-    color: #fff !important;
-    border-color: rgb(57, 189, 180) !important;
+.btn-outline-primary.link-switch:hover { background: rgb(57,189,180) !important; color: #fff !important; }
+
+/* keep specific rows non-bold */
+#grainRow th, #meatRow th { font-weight: normal; }
+
+/* accessibility helper */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
 }
-/* Additional hover styles (optional) */
-.btn-secondary:hover {
-    background-color: #b4ad46;
-    border-color: #b4ad46;
+
+/* Mobile day selector dropdown */
+#mobileDaySelector {
+  display: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+#mobileDaySelector .mobile-day-dropdown {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 1.05rem;
+  line-height: 1.25 !important;
+  border-radius: 6px;
+  background-color: rgba(34, 37, 41, 1) !important;
+  color: #fff !important;
+  border: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffffff' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  padding-right: 35px;
+}
+
+#mobileDaySelector .mobile-day-dropdown:focus,
+#mobileDaySelector .mobile-day-dropdown:hover {
+  outline: none;
+  background-color: rgba(34, 37, 41, 1) !important;
+}
+
+#mobileDaySelector .mobile-day-dropdown option {
+  background-color: #272630;
+  color: #fff;
+  padding: 10px;
+}
+
+/* --- Print rules --- */
+@media print {
+  h1, .sb-topnav, .sb-sidenav-footer, .button-container, #generateMenuBtn, #saveMenuBtn, #mobileDaySelector { display: none; }
+  .vertical-header { writing-mode: horizontal-tb; transform: none; }
+  .table thead th, .table tbody td { word-wrap: break-word !important; white-space: normal !important; padding: .5rem; font-size: .8rem; }
+  .table { table-layout: fixed; width: 200%; }
+  .table tbody td:first-child { width: 20px; }
+  @page { margin-top: -90px; }
+  body { margin: 0; width: fit-content; }
+  
+  /* Show all columns when printing */
+  .table thead tr th:not(:first-child):not(:nth-child(2)),
+  .table tbody tr td:not(:first-child):not(:nth-child(2)) {
+    display: table-cell !important;
+  }
+}
+
+/* =========================
+   MOBILE (<=1000px)
+   - hide H1 and top buttons
+   - show day selector dropdown
+   - show only selected day column
+   ========================= */
+@media (max-width: 1000px) {
+  /* hide header + top button area */
+  h1.mt-4,
+  .top-button-row,
+  #printableTable > form .mb-3 {
+    display: none !important;
+  }
+
+  /* Prevent horizontal scrolling and hide scrollbars */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  /* Hide vertical scrollbar but allow scrolling */
+  body {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Hide entire table header (thead) on mobile */
+  .table thead {
+    display: none !important;
+  }
+
+  /* Remove container margins on mobile */
+  .container {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+  }
+#printableTable {
+    margin: 0 !important;
+    margin-left: -25px !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+table tbody {
+    background-color: #e8e8e8bd !important;
+}
+  /* Show mobile day selector - full width, no margins */
+#mobileDaySelector {
+  display: block !important;
+  position: sticky;
+  top: 56px; /* Adjust based on your mobile nav height */
+  z-index: 1100;
+  margin: 0 !important;
+  margin-left: 25px !important; /* Offset parent's negative margin */
+  padding: 0 !important;
+  width: 100vw !important;
+  left: 0;
+  right: 0;
+}
+/* Remove row margins */
+.row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Remove top margin from table row on mobile */
+.row.mt-3 {
+  margin-top: 0 !important;
+}
+  #mobileDaySelector .mobile-day-dropdown {
+    border-radius: 0 !important; /* Remove rounded corners for full-width look */
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Remove row margins */
+  .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Remove col padding */
+  .col {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* compact table for mobile */
+  .table { 
+    box-shadow: none; 
+    border-radius: 6px;
+    margin-top: 0 !important;
+  }
+  
+  th, td { padding: .5rem; font-size: .95rem; }
+
+  .vertical-header { font-size: .9rem; }
+
+  /* Hide ALL day columns by default in mobile - use !important to override */
+  .table thead tr th[data-day],
+  .table tbody tr td[data-day],
+  .table tbody tr th[data-day] {
+    display: none !important;
+  }
+
+  /* Show ONLY selected day - must override the above rule */
+  .table thead tr th.mobile-show-day,
+  .table tbody tr td.mobile-show-day,
+  .table tbody tr th.mobile-show-day {
+    display: table-cell !important;
+  }
+
+  /* Adjust header colspan for mobile */
+  #weeklyMenuHeader {
+    display: table-cell !important;
+  }
+
+  /* make space for fixed mobile nav from base_minimal (center circular button may overflow) */
+  body { padding-bottom: 100px !important; }
+
+  /* ensure mobile bottom nav isn't accidentally hidden by local rules */
+  #mobileBottomNav { z-index: 1200; }
+
+  /* minor button tweaks for mobile nav (base_minimal supplies main look) */
+  #mobileBottomNav .btn { background: transparent; border: none; padding: 6px 8px; color: #fff; }
+}
+
+/* =========================
+   DESKTOP (>=1001px)
+   - show H1 and top buttons
+   - show all columns
+   - hide day selector
+   ========================= */
+@media (min-width: 1001px) {
+  h1.mt-4,
+  .top-button-row,
+  #printableTable > form .mb-3 {
+    display: block !important;
+  }
+
+  #mobileDaySelector {
+    display: none !important;
+  }
+
+  body { padding-bottom: 0; }
+  .table thead th, .table tbody td { font-size: 1rem; }
+  
+  /* Ensure all columns are visible on desktop */
+  .table thead tr th,
+  .table tbody tr td,
+  .table tbody tr th {
+    display: table-cell !important;
+  }
 }
 </style>
 {% endblock %}
@@ -221,6 +324,17 @@ border-color: rgb(54, 56, 56);
                     </div>
                 </div>
 
+                <!-- Mobile Day Selector -->
+                    <div id="mobileDaySelector">
+                        <select id="daySelect" aria-label="Select day of week" class="mobile-day-dropdown">
+                            <option value="monday">Monday</option>
+                            <option value="tuesday">Tuesday</option>
+                            <option value="wednesday">Wednesday</option>
+                            <option value="thursday">Thursday</option>
+                            <option value="friday">Friday</option>
+                        </select>
+                    </div>
+
                 <div class="row mt-3">
                     <div class="col">
                         <table id="weeklyMenuTable" class="table">
@@ -230,180 +344,198 @@ border-color: rgb(54, 56, 56);
                         </tr>
                     <tr>
                         <th scope="col" colspan="2">Facility: {{ facility_name }}</th>
-                        <th scope="col" style="text-align: center;">Monday</th>
-                        <th scope="col" style="text-align: center;">Tuesday</th>
-                        <th scope="col" style="text-align: center;">Wednesday</th>
-                        <th scope="col" style="text-align: center;">Thursday</th>
-                        <th scope="col" style="text-align: center;">Friday</th>
+                        <th scope="col" style="text-align: center;" data-day="monday">Monday</th>
+                        <th scope="col" style="text-align: center;" data-day="tuesday">Tuesday</th>
+                        <th scope="col" style="text-align: center;" data-day="wednesday">Wednesday</th>
+                        <th scope="col" style="text-align: center;" data-day="thursday">Thursday</th>
+                        <th scope="col" style="text-align: center;" data-day="friday">Friday</th>
                     </tr>
                     <tr>
                         <th scope="col" colspan="2">Sponsor: {{ sponsor_name }}</th>
-                        <th scope="col" style="text-align: center;"><span class="weekday-date"></span></th>
-                        <th scope="col" style="text-align: center;"><span class="weekday-date"></span></th>
-                        <th scope="col" style="text-align: center;"><span class="weekday-date"></span></th>
-                        <th scope="col" style="text-align: center;"><span class="weekday-date"></span></th>
-                        <th scope="col" style="text-align: center;"><span class="weekday-date"></span></th>
+                        <th scope="col" style="text-align: center;" data-day="monday"><span class="weekday-date"></span></th>
+                        <th scope="col" style="text-align: center;" data-day="tuesday"><span class="weekday-date"></span></th>
+                        <th scope="col" style="text-align: center;" data-day="wednesday"><span class="weekday-date"></span></th>
+                        <th scope="col" style="text-align: center;" data-day="thursday"><span class="weekday-date"></span></th>
+                        <th scope="col" style="text-align: center;" data-day="friday"><span class="weekday-date"></span></th>
                     </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">Breakfast</td>
                             <td>Fluid Milk</td>
-                            <td id="mondayMilk"style="text-align: center;"></td>
-                            <td id="tuesdayMilk"style="text-align: center;"></td>
-                            <td id="wednesdayMilk"style="text-align: center;"></td>
-                            <td id="thursdayMilk"style="text-align: center;"></td>
-                            <td id="fridayMilk"style="text-align: center;"></td>
+                            <td id="mondayMilk" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayMilk" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayMilk" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayMilk" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayMilk" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Fruit, Vegetable, or Full Strength Juice</td>
-                            <td id="mondayfruit"style="text-align: center;"></td>
-                            <td id="tuesdayfruit"style="text-align: center;"></td>
-                            <td id="wednesdayfruit"style="text-align: center;"></td>
-                            <td id="thursdayfruit"style="text-align: center;"></td>
-                            <td id="fridayfruit"style="text-align: center;"></td>
+                            <td id="mondayfruit" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayfruit" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayfruit" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayfruit" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayfruit" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Bread or Bread Alternate(s)</td>
-                            <td id="mondaybread"style="text-align: center;"></td>
-                            <td id="tuesdaybread"style="text-align: center;"></td>
-                            <td id="wednesdaybread"style="text-align: center;"></td>
-                            <td id="thursdaybread"style="text-align: center;"></td>
-                            <td id="fridaybread"style="text-align: center;"></td>
+                            <td id="mondaybread" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdaybread" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdaybread" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdaybread" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridaybread" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Additional Food (Optional)</td>
-                            <td id="mondayadd1"style="text-align: center;"></td>
-                            <td id="tuesdayadd1"style="text-align: center;"></td>
-                            <td id="wednesdayadd1"style="text-align: center;"></td>
-                            <td id="thursdayadd1"style="text-align: center;"></td>
-                            <td id="fridayadd1"style="text-align: center;"></td>
+                            <td id="mondayadd1" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayadd1" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayadd1" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayadd1" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayadd1" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">AM Snack</td>
                             <td>Choose 2 of these 5: Fluid Milk</td>
-                            <td id="mondaychoose1"style="text-align: center;"></td>
-                            <td id="tuesdaychoose1"style="text-align: center;"></td>
-                            <td id="wednesdaychoose1"style="text-align: center;"></td>
-                            <td id="thursdaychoose1"style="text-align: center;"></td>
-                            <td id="fridaychoose1"style="text-align: center;"></td>
+                            <td id="mondaychoose1" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdaychoose1" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdaychoose1" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdaychoose1" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridaychoose1" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Fruit, Vegetable, or Full Strength Juice</td>
-                            <td id="mondayfruit2"style="text-align: center;"></td>
-                            <td id="tuesdayfruit2"style="text-align: center;"></td>
-                            <td id="wednesdayfruit2"style="text-align: center;"></td>
-                            <td id="thursdayfruit2"style="text-align: center;"></td>
-                            <td id="fridayfruit2"style="text-align: center;"></td>
+                            <td id="mondayfruit2" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayfruit2" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayfruit2" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayfruit2" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayfruit2" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Bread or Bread Alternate(s)</td>
-                            <td id="mondaybread2"style="text-align: center;"></td>
-                            <td id="tuesdaybread2"style="text-align: center;"></td>
-                            <td id="wednesdaybread2"style="text-align: center;"></td>
-                            <td id="thursdaybread2"style="text-align: center;"></td>
-                            <td id="fridaybread2"style="text-align: center;"></td>
+                            <td id="mondaybread2" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdaybread2" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdaybread2" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdaybread2" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridaybread2" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Meat or Meat Alternate</td>
-                            <td id="mondaymeat1"style="text-align: center;"></td>
-                            <td id="tuesdaymeat1"style="text-align: center;"></td>
-                            <td id="wednesdaymeat1"style="text-align: center;"></td>
-                            <td id="thursdaymeat1"style="text-align: center;"></td>
-                            <td id="fridaymeat1"style="text-align: center;"></td>
+                            <td id="mondaymeat1" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdaymeat1" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdaymeat1" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdaymeat1" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridaymeat1" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td class="vertical-header" rowspan="7" style="font-weight: bold; text-align: center;">Lunch</td>
                             <td>Main Dish</td>
-                            <td id="mondayMeals"style="text-align: center;"></td>
-                            <td id="tuesdayMeals"style="text-align: center;"></td>
-                            <td id="wednesdayMeals"style="text-align: center;"></td>
-                            <td id="thursdayMeals"style="text-align: center;"></td>
-                            <td id="fridayMeals"style="text-align: center;"></td>
+                            <td id="mondayMeals" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayMeals" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayMeals" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayMeals" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayMeals" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Fluid Milk</td>
-                            <td id="mondayLunchMilk"style="text-align: center;"></td>
-                            <td id="tuesdayLunchMilk"style="text-align: center;"></td>
-                            <td id="wednesdayLunchMilk"style="text-align: center;"></td>
-                            <td id="thursdayLunchMilk"style="text-align: center;"></td>
-                            <td id="fridayLunchMilk"style="text-align: center;"></td>
+                            <td id="mondayLunchMilk" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayLunchMilk" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayLunchMilk" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayLunchMilk" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayLunchMilk" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Vegetable</td>
-                            <td id="mondayvege"style="text-align: center;"></td>
-                            <td id="tuesdayvege"style="text-align: center;"></td>
-                            <td id="wednesdayvege"style="text-align: center;"></td>
-                            <td id="thursdayvege"style="text-align: center;"></td>
-                            <td id="fridayvege"style="text-align: center;"></td>
+                            <td id="mondayvege" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayvege" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayvege" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayvege" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayvege" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Fruit</td>
-                            <td id="mondayfruit3"style="text-align: center;"></td>
-                            <td id="tuesdayfruit3"style="text-align: center;"></td>
-                            <td id="wednesdayfruit3"style="text-align: center;"></td>
-                            <td id="thursdayfruit3"style="text-align: center;"></td>
-                            <td id="fridayfruit3"style="text-align: center;"></td>
+                            <td id="mondayfruit3" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayfruit3" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayfruit3" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayfruit3" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayfruit3" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr id="grainRow">
                             <th scope="col">Grain</th>
-                            <th id="mondayGrain"style="text-align: center;"></th>
-                            <th id="tuesdayGrain"style="text-align: center;"></th>
-                            <th id="wednesdayGrain"style="text-align: center;"></th>
-                            <th id="thursdayGrain"style="text-align: center;"></th>
-                            <th id="fridayGrain"style="text-align: center;"></th>
+                            <th id="mondayGrain" style="text-align: center;" data-day="monday"></th>
+                            <th id="tuesdayGrain" style="text-align: center;" data-day="tuesday"></th>
+                            <th id="wednesdayGrain" style="text-align: center;" data-day="wednesday"></th>
+                            <th id="thursdayGrain" style="text-align: center;" data-day="thursday"></th>
+                            <th id="fridayGrain" style="text-align: center;" data-day="friday"></th>
                         </tr>
                         <tr id="meatRow">
                             <th scope="col">Meat or Meat Alternate</th>
-                            <th id="mondayMeatAlternate"style="text-align: center;"></th>
-                            <th id="tuesdayMeatAlternate"style="text-align: center;"></th>
-                            <th id="wednesdayMeatAlternate"style="text-align: center;"></th>
-                            <th id="thursdayMeatAlternate"style="text-align: center;"></th>
-                            <th id="fridayMeatAlternate"style="text-align: center;"></th>
+                            <th id="mondayMeatAlternate" style="text-align: center;" data-day="monday"></th>
+                            <th id="tuesdayMeatAlternate" style="text-align: center;" data-day="tuesday"></th>
+                            <th id="wednesdayMeatAlternate" style="text-align: center;" data-day="wednesday"></th>
+                            <th id="thursdayMeatAlternate" style="text-align: center;" data-day="thursday"></th>
+                            <th id="fridayMeatAlternate" style="text-align: center;" data-day="friday"></th>
                         </tr>
                         <tr>
                             <td>Additional Food (Optional)</td>
-                            <td id="mondayadd2"style="text-align: center;"></td>
-                            <td id="tuesdayadd2"style="text-align: center;"></td>
-                            <td id="wednesdayadd2"style="text-align: center;"></td>
-                            <td id="thursdayadd2"style="text-align: center;"></td>
-                            <td id="fridayadd2"style="text-align: center;"></td>
+                            <td id="mondayadd2" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayadd2" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayadd2" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayadd2" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayadd2" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr> 
                             <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">PM Snack</td>
                             <td>Choose 2 of these 5: Fluid Milk</td>
-                            <td id="mondaychoose2"style="text-align: center;"></td>
-                            <td id="tuesdaychoose2"style="text-align: center;"></td>
-                            <td id="wednesdaychoose2"style="text-align: center;"></td>
-                            <td id="thursdaychoose2"style="text-align: center;"></td>
-                            <td id="fridaychoose2"style="text-align: center;"></td>
+                            <td id="mondaychoose2" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdaychoose2" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdaychoose2" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdaychoose2" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridaychoose2" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Fruit, Vegetable, or Full Strength Juice</td>
-                            <td id="mondayfruit4"style="text-align: center;"></td>
-                            <td id="tuesdayfruit4"style="text-align: center;"></td>
-                            <td id="wednesdayfruit4"style="text-align: center;"></td>
-                            <td id="thursdayfruit4"style="text-align: center;"></td>
-                            <td id="fridayfruit4"style="text-align: center;"></td>
+                            <td id="mondayfruit4" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayfruit4" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayfruit4" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayfruit4" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayfruit4" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Bread or Bread Alternate(s)</td>
-                            <td id="mondaybread3"style="text-align: center;"></td>
-                            <td id="tuesdaybread3"style="text-align: center;"></td>
-                            <td id="wednesdaybread3"style="text-align: center;"></td>
-                            <td id="thursdaybread3"style="text-align: center;"></td>
-                            <td id="fridaybread3"style="text-align: center;"></td>
+                            <td id="mondaybread3" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdaybread3" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdaybread3" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdaybread3" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridaybread3" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Meat or Meat Alternate</td>
-                            <td id="mondaymeat3"style="text-align: center;"></td>
-                            <td id="tuesdaymeat3"style="text-align: center;"></td>
-                            <td id="wednesdaymeat3"style="text-align: center;"></td>
-                            <td id="thursdaymeat3"style="text-align: center;"></td>
-                            <td id="fridaymeat3"style="text-align: center;"></td>
+                            <td id="mondaymeat3" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdaymeat3" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdaymeat3" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdaymeat3" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridaymeat3" style="text-align: center;" data-day="friday"></td>
                         </tr>
                     </tbody>
                 </table>
+                <!-- MOBILE: fixed bottom navigation (visible only on small screens via CSS) -->
+                <div id="mobileBottomNav" role="navigation" aria-label="Mobile actions">
+                    <button type="button" class="btn btn-primaryoff" onclick="document.getElementById('generateMenuBtn').click();" title="Generate Menu">
+                        <i class="fas fa-magic" aria-hidden="true"></i>
+                        <span class="sr-only">Generate Menu</span>
+                    </button>
+
+                    <!-- Center circular update/save button (uses base_minimal .update-btn styles) -->
+                    <button type="button" class="btn update-btn" onclick="document.getElementById('saveMenuBtn').click();" title="Save Menu">
+                        <i class="fas fa-save" aria-hidden="true"></i>
+                        <span class="sr-only">Save Menu</span>
+                    </button>
+
+                    <a href="{% url 'past_menus' %}" class="btn btn-rec" title="Saved Menus" role="button">
+                        <i class="fas fa-folder-open" aria-hidden="true"></i>
+                        <span class="sr-only">Saved Menus</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -414,6 +546,7 @@ border-color: rgb(54, 56, 56);
 
 /* Local storage key */
 const MENU_PROGRESS_KEY = "weeklyMenuProgress_v1";
+const SELECTED_DAY_KEY = "selectedDay_v1";
 
 /* Save/restore helpers */
 function saveMenuProgressToLocalStorage() {
@@ -478,6 +611,47 @@ function restoreMenuProgressFromLocalStorage() {
 
 function clearMenuProgressFromLocalStorage() {
     localStorage.removeItem(MENU_PROGRESS_KEY);
+}
+
+/* Mobile day selector functionality */
+function showSelectedDay(selectedDay) {
+    // Remove mobile-show-day class from all cells
+    document.querySelectorAll('[data-day]').forEach(el => {
+        el.classList.remove('mobile-show-day');
+    });
+    
+    // Add mobile-show-day class to selected day's cells
+    document.querySelectorAll(`[data-day="${selectedDay}"]`).forEach(el => {
+        el.classList.add('mobile-show-day');
+    });
+    
+    // Save selection to localStorage
+    try {
+        localStorage.setItem(SELECTED_DAY_KEY, selectedDay);
+    } catch (err) {
+        console.warn('Failed to save selected day', err);
+    }
+}
+
+function initializeDaySelector() {
+    const daySelect = document.getElementById('daySelect');
+    if (!daySelect) return;
+    
+    // Restore previously selected day or default to monday
+    let savedDay = 'monday';
+    try {
+        savedDay = localStorage.getItem(SELECTED_DAY_KEY) || 'monday';
+    } catch (err) {
+        console.warn('Failed to restore selected day', err);
+    }
+    
+    daySelect.value = savedDay;
+    showSelectedDay(savedDay);
+    
+    // Add change event listener
+    daySelect.addEventListener('change', function() {
+        showSelectedDay(this.value);
+    });
 }
 
 /* Generic safe setter */
@@ -621,12 +795,35 @@ function updateDates() {
         $(this).text(formattedDate);
     });
     window.nextMondayDate = nextMonday;
+    
+    // Update dropdown with dates after they're calculated
+    updateDropdownWithDates();
+}
+
+/* Update dropdown options with dates */
+function updateDropdownWithDates() {
+    const daySelect = document.getElementById('daySelect');
+    if (!daySelect) return;
+    
+    const dates = Array.from(document.querySelectorAll('.weekday-date')).map(e => e.innerText.trim());
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    
+    // Update each option with the corresponding date
+    days.forEach((day, index) => {
+        const option = daySelect.querySelector(`option[value="${day}"]`);
+        if (option && dates[index]) {
+            option.textContent = `${dayNames[index]} (${dates[index]})`;
+        }
+    });
 }
 
 /* Document ready: restore, attach handlers */
 $(document).ready(function() {
     restoreMenuProgressFromLocalStorage();
     enableEditablesForAllCells();
+    initializeDaySelector(); // Initialize mobile day selector
+    updateDropdownWithDates(); // Update dropdown with dates on load
 
     $('#generateMenuBtn').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ e.preventDefault(); return false; }});
     $('#menuForm').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ if (!$(e.target).is('#saveMenuBtn') && !$(e.target).hasClass('input-box')){ e.preventDefault(); return false; } }});
