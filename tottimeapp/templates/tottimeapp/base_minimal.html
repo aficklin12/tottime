@@ -267,6 +267,16 @@ th {
     table {
         border-radius: 10px;
     }
+       #toast-container > div {
+    opacity: 1 !important;
+    box-shadow: 0 0 12px rgba(0,0,0,0.3);
+}
+
+    .toast-top-center,
+    .toast-top-right,
+    .toast-top-left {
+        top: calc(170px + env(safe-area-inset-top, 0px)) !important;
+    }
 }
 /* =========================
    MOBILE STYLES (<1000px)
@@ -360,11 +370,15 @@ th {
         padding-bottom: 0 !important;
         margin-bottom: 0 !important;
     }
-    
+    #toast-container > div {
+    opacity: 1 !important;
+    box-shadow: 0 0 12px rgba(0,0,0,0.3);
+}
+
     .toast-top-center,
     .toast-top-right,
     .toast-top-left {
-        top: calc(100px + env(safe-area-inset-top, 0px)) !important;
+        top: calc(170px + env(safe-area-inset-top, 0px)) !important;
     }
     /* Mobile Bottom Navigation */
     #mobileBottomNav {
@@ -566,37 +580,41 @@ th {
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.6/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script>
-    (function(){
-        function applyToastrPosition(){
-            var pos = (window.innerWidth < 1000) ? 'toast-top-center' : (toastr && toastr.options && toastr.options.positionClass) ? toastr.options.positionClass : 'toast-top-right';
-            if (typeof toastr !== 'undefined') {
-                toastr.options = toastr.options || {};
-                toastr.options.positionClass = pos;
-            } else {
-                // If toastr not yet loaded, stash desired position for later
-                window._desiredToastrPosition = pos;
-            }
+  <script>
+(function(){
+    function applyToastrPosition(){
+        var pos = (window.innerWidth < 1000) ? 'toast-top-center' : (toastr && toastr.options && toastr.options.positionClass) ? toastr.options.positionClass : 'toast-top-right';
+        if (typeof toastr !== 'undefined') {
+            toastr.options = toastr.options || {};
+            toastr.options.positionClass = pos;
+            // ADD THESE OPTIONS:
+            toastr.options.preventDuplicates = true;
+            toastr.options.newestOnTop = true;
+            toastr.options.progressBar = true;
+        } else {
+            window._desiredToastrPosition = pos;
         }
+    }
 
-        // Apply now and on resize (debounced)
-        applyToastrPosition();
-        var _resizeTimer = null;
-        window.addEventListener('resize', function(){
-            clearTimeout(_resizeTimer);
-            _resizeTimer = setTimeout(applyToastrPosition, 150);
-        });
+    applyToastrPosition();
+    var _resizeTimer = null;
+    window.addEventListener('resize', function(){
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(applyToastrPosition, 150);
+    });
 
-        // If toastr loads later and we stashed a value, apply it
-        document.addEventListener('DOMContentLoaded', function(){
-            if (typeof toastr !== 'undefined' && window._desiredToastrPosition) {
-                toastr.options = toastr.options || {};
-                toastr.options.positionClass = window._desiredToastrPosition;
-                delete window._desiredToastrPosition;
-            }
-        });
-    })();
-    </script>
+    document.addEventListener('DOMContentLoaded', function(){
+        if (typeof toastr !== 'undefined' && window._desiredToastrPosition) {
+            toastr.options = toastr.options || {};
+            toastr.options.positionClass = window._desiredToastrPosition;
+            toastr.options.preventDuplicates = true;
+            toastr.options.newestOnTop = true;
+            toastr.options.progressBar = true;
+            delete window._desiredToastrPosition;
+        }
+    });
+})();
+</script>
     <script>
     // Add event listeners when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {

@@ -163,12 +163,12 @@ th, td {
 
   /* Hide vertical scrollbar but allow scrolling */
   body {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
   body::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
   }
 
   /* Hide entire table header (thead) on mobile */
@@ -184,48 +184,157 @@ th, td {
     margin-right: 0 !important;
     max-width: 100% !important;
   }
-#printableTable {
+
+  #printableTable {
     margin: 0 !important;
     margin-left: -25px !important;
     padding: 0 !important;
     width: 100% !important;
   }
-table tbody {
-    background-color: #e8e8e8bd !important;
-}
-  /* Show mobile day selector - full width, no margins */
-#mobileDaySelector {
-  display: block !important;
-  position: sticky;
-  top: 56px; /* Adjust based on your mobile nav height */
-  z-index: 1100;
-  margin: 0 !important;
-  margin-left: 25px !important; /* Offset parent's negative margin */
-  padding: 0 !important;
-  width: 100vw !important;
-  left: 0;
-  right: 0;
-}
-/* Remove row margins */
-.row {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
 
-/* Remove top margin from table row on mobile */
-.row.mt-3 {
-  margin-top: 0 !important;
-}
-  #mobileDaySelector .mobile-day-dropdown {
-    border-radius: 0 !important; /* Remove rounded corners for full-width look */
+  table tbody {
+    background-color: #e8e8e8bd !important;
+  }
+
+  /* Show mobile day selector - full width, no margins */
+  #mobileDaySelector {
+    display: block !important;
+    position: sticky;
+    top: 56px;
+    z-index: 1100;
     margin: 0 !important;
-    width: 100% !important;
+    margin-left: 25px !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    left: 0;
+    right: 0;
   }
 
   /* Remove row margins */
   .row {
     margin-left: 0 !important;
     margin-right: 0 !important;
+  }
+
+  /* COMPLETELY REMOVE the vertical section header cells from layout */
+  .table tbody tr td.vertical-header {
+    display: none !important;
+  }
+
+  /* Force table to use 2-column layout on mobile by targeting the rows */
+  .table tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+    margin-left: -4px !important;
+  }
+
+  /* Make sure all visible cells take up their grid space */
+  .table tbody tr td:not(.vertical-header) {
+    display: block !important;
+  }
+
+  /* Create horizontal section headers using ::before */
+  .table tbody tr:nth-child(1)::before {
+    content: 'Breakfast';
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    z-index: 1;
+    grid-column: 1 / -1;
+  }
+
+  .table tbody tr:nth-child(1) {
+    position: relative;
+    margin-top: 2.5rem;
+  }
+
+  /* AM Snack section */
+  .table tbody tr:nth-child(5)::before {
+    content: 'AM Snack';
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    z-index: 1;
+    grid-column: 1 / -1;
+  }
+
+  .table tbody tr:nth-child(5) {
+    position: relative;
+    margin-top: 2.5rem;
+  }
+
+  /* Lunch section */
+  .table tbody tr:nth-child(9)::before {
+    content: 'Lunch';
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    z-index: 1;
+    grid-column: 1 / -1;
+  }
+
+  .table tbody tr:nth-child(9) {
+    position: relative;
+    margin-top: 2.5rem;
+  }
+
+  /* PM Snack section */
+  .table tbody tr:nth-child(16)::before {
+    content: 'PM Snack';
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -2.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    z-index: 1;
+    grid-column: 1 / -1;
+  }
+
+  .table tbody tr:nth-child(16) {
+    position: relative;
+    margin-top: 2.5rem;
+  }
+
+  /* Remove top margin from table row on mobile */
+  .row.mt-3 {
+    margin-top: 0 !important;
+  }
+
+  #mobileDaySelector .mobile-day-dropdown {
+    border-radius: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
 
   /* Remove col padding */
@@ -241,22 +350,23 @@ table tbody {
     margin-top: 0 !important;
   }
   
-  th, td { padding: .5rem; font-size: .95rem; }
+  th, td { 
+    padding: .5rem; 
+    font-size: .95rem;
+  }
 
-  .vertical-header { font-size: .9rem; }
-
-  /* Hide ALL day columns by default in mobile - use !important to override */
+  /* Hide ALL day columns by default in mobile */
   .table thead tr th[data-day],
   .table tbody tr td[data-day],
   .table tbody tr th[data-day] {
     display: none !important;
   }
 
-  /* Show ONLY selected day - must override the above rule */
+  /* Show ONLY selected day */
   .table thead tr th.mobile-show-day,
   .table tbody tr td.mobile-show-day,
   .table tbody tr th.mobile-show-day {
-    display: table-cell !important;
+    display: block !important;
   }
 
   /* Adjust header colspan for mobile */
@@ -264,16 +374,15 @@ table tbody {
     display: table-cell !important;
   }
 
-  /* make space for fixed mobile nav from base_minimal (center circular button may overflow) */
+  /* make space for fixed mobile nav */
   body { padding-bottom: 100px !important; }
 
-  /* ensure mobile bottom nav isn't accidentally hidden by local rules */
+  /* ensure mobile bottom nav isn't accidentally hidden */
   #mobileBottomNav { z-index: 1200; }
 
-  /* minor button tweaks for mobile nav (base_minimal supplies main look) */
+  /* minor button tweaks for mobile nav */
   #mobileBottomNav .btn { background: transparent; border: none; padding: 6px 8px; color: #fff; }
 }
-
 /* =========================
    DESKTOP (>=1001px)
    - show H1 and top buttons
@@ -545,7 +654,7 @@ table tbody {
         </div>
     </div>
     {% endblock %}
-    {% block scripts %}
+{% block scripts %}
 <script>
 /* Persist-in-progress weekly menu, robust generate handlers, and full mapping to all table cells */
 
@@ -602,6 +711,26 @@ function restoreMenuProgressFromLocalStorage() {
             if (k === 'weeklyMenuHeader') {
                 const h = document.getElementById('weeklyMenuHeader');
                 if (h) h.innerText = v;
+                
+                // Extract and restore nextMondayDate from header text
+                // Format: "Weekly Menu: MM/DD - MM/DD"
+                const match = v.match(/Weekly Menu: (\d{2})\/(\d{2})/);
+                if (match) {
+                    const month = parseInt(match[1]) - 1; // JS months are 0-indexed
+                    const day = parseInt(match[2]);
+                    const year = new Date().getFullYear();
+                    
+                    // Create date and ensure it's a Monday in the future
+                    const restoredDate = new Date(year, month, day);
+                    
+                    // If the date is in the past, add a year
+                    if (restoredDate < new Date()) {
+                        restoredDate.setFullYear(year + 1);
+                    }
+                    
+                    window.nextMondayDate = restoredDate;
+                    console.log('Restored nextMondayDate:', window.nextMondayDate);
+                }
             } else if (k === 'weekdayDates' && Array.isArray(v)) {
                 document.querySelectorAll('.weekday-date').forEach((el, i) => { if (v[i]) el.innerText = v[i]; });
             } else {
@@ -620,17 +749,14 @@ function clearMenuProgressFromLocalStorage() {
 
 /* Mobile day selector functionality */
 function showSelectedDay(selectedDay) {
-    // Remove mobile-show-day class from all cells
     document.querySelectorAll('[data-day]').forEach(el => {
         el.classList.remove('mobile-show-day');
     });
     
-    // Add mobile-show-day class to selected day's cells
     document.querySelectorAll(`[data-day="${selectedDay}"]`).forEach(el => {
         el.classList.add('mobile-show-day');
     });
     
-    // Save selection to localStorage
     try {
         localStorage.setItem(SELECTED_DAY_KEY, selectedDay);
     } catch (err) {
@@ -642,7 +768,6 @@ function initializeDaySelector() {
     const daySelect = document.getElementById('daySelect');
     if (!daySelect) return;
     
-    // Restore previously selected day or default to monday
     let savedDay = 'monday';
     try {
         savedDay = localStorage.getItem(SELECTED_DAY_KEY) || 'monday';
@@ -653,7 +778,6 @@ function initializeDaySelector() {
     daySelect.value = savedDay;
     showSelectedDay(savedDay);
     
-    // Add change event listener
     daySelect.addEventListener('change', function() {
         showSelectedDay(this.value);
     });
@@ -716,30 +840,43 @@ function populateFromResponse(response) {
     });
 }
 
-/* The table updaters used by AJAX success handlers.
-   Ensure milk cells and dates get populated even if server doesn't return milk keys. */
+/* The table updaters used by AJAX success handlers */
 function updateTable(response){
     populateFromResponse(response);
-    // ensure breakfast and lunch milk defaults set
     ['monday','tuesday','wednesday','thursday','friday'].forEach(day => {
         safeSetText(day + 'Milk', '1% w.milk (unflavored)');
         safeSetText(day + 'LunchMilk', '1% w.milk (unflavored)');
     });
-    // make editable for changed cells
     enableEditablesForAllCells();
 }
-function updateAMTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
-function updatePMTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+
+function updateAMTable(response){ 
+    populateFromResponse(response); 
+    enableEditablesForAllCells(); 
+}
+
+function updatePMTable(response){ 
+    populateFromResponse(response); 
+    enableEditablesForAllCells(); 
+}
+
 function updateBreakfastTable(response){
     populateFromResponse(response);
-    // breakfast always shows fluid milk as in backup
     ['monday','tuesday','wednesday','thursday','friday'].forEach(day => {
         safeSetText(day + 'Milk', '1% w.milk (unflavored)');
     });
     enableEditablesForAllCells();
 }
-function updateFruitTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
-function updateVegetableTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+
+function updateFruitTable(response){ 
+    populateFromResponse(response); 
+    enableEditablesForAllCells(); 
+}
+
+function updateVegetableTable(response){ 
+    populateFromResponse(response); 
+    enableEditablesForAllCells(); 
+}
 
 /* CSRF helper */
 function getCookie(name) {
@@ -781,7 +918,7 @@ function enableEditablesForAllCells() {
     });
 }
 
-/* Date helper copied from backup behavior */
+/* Date helper */
 function updateDates() {
     var today = new Date();
     var currentDayIndex = today.getDay();
@@ -800,8 +937,6 @@ function updateDates() {
         $(this).text(formattedDate);
     });
     window.nextMondayDate = nextMonday;
-    
-    // Update dropdown with dates after they're calculated
     updateDropdownWithDates();
 }
 
@@ -814,7 +949,6 @@ function updateDropdownWithDates() {
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     
-    // Update each option with the corresponding date
     days.forEach((day, index) => {
         const option = daySelect.querySelector(`option[value="${day}"]`);
         if (option && dates[index]) {
@@ -823,12 +957,234 @@ function updateDropdownWithDates() {
     });
 }
 
+/* Check if menu exists before saving */
+async function checkMenuExistsAndSave() {
+    const datesToCheck = [];
+    const nextMonday = window.nextMondayDate;
+
+    if (!nextMonday) {
+        toastr.error('Please generate menu first to set dates');
+        return;
+    }
+
+    for (let i = 0; i < 5; i++) {
+        const date = new Date(nextMonday);
+        date.setDate(nextMonday.getDate() + i);
+        const formattedDate = date.toISOString().split('T')[0];
+        datesToCheck.push(formattedDate);
+    }
+
+    try {
+        const response = await fetch('/api/check_menu/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ dates: datesToCheck })
+        });
+
+        const result = await response.json();
+
+        if (result.exists) {
+            // Add timestamp to make each message unique and bypass preventDuplicates
+            const uniqueId = Date.now();
+            
+            const warningToast = toastr.warning(
+                `<div style="margin-bottom: 15px;">There is already a menu saved for these dates. Saving will override previous entries.</div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button type="button" class="btn btn-info warning-proceed-btn" style="padding: 8px 20px;">Proceed</button>
+            <button type="button" class="btn btn-secondary warning-cancel-btn" style="padding: 8px 20px;">Cancel</button>
+        </div>
+        <span style="display:none;" data-unique="${uniqueId}"></span>`,
+                'Warning',
+                {
+                    closeButton: false,
+                    timeOut: 0,
+                    extendedTimeOut: 0,
+                    tapToDismiss: false,
+                    positionClass: 'toast-top-center',
+                    toastClass: 'toastr-warning-custom',
+                    escapeHtml: false,
+                    preventDuplicates: false,
+                    onShown: function() {
+                        // Keep the styling simple - width is already set in toast container
+                        $('.warning-proceed-btn').off('click').on('click', function() {
+                            $('.toastr-warning-custom').fadeOut(200, function() {
+                                $(this).remove();
+                                saveMenu();
+                            });
+                        });
+                        
+                        $('.warning-cancel-btn').off('click').on('click', function() {
+                            $('.toastr-warning-custom').fadeOut(200, function() {
+                                $(this).remove();
+                            });
+                        });
+                    }
+                }
+            );
+        } else {
+            saveMenu();
+        }
+    } catch (error) {
+        console.error('Error in checkMenuExistsAndSave:', error);
+        toastr.error('Error checking existing menu. Please try again.');
+    }
+}
+
+/* Save menu to database */
+function saveMenu() {
+    toastr.info('Saving menu...', '', {
+        timeOut: 0,
+        extendedTimeOut: 0,
+        closeButton: false,
+        tapToDismiss: false
+    });
+
+    const facilityName = document.querySelector('th[colspan="2"]')?.textContent.replace('Facility: ', '').trim() || '{{ facility_name }}';
+    const sponsorName = document.querySelectorAll('th[colspan="2"]')[1]?.textContent.replace('Sponsor: ', '').trim() || '{{ sponsor_name }}';
+    
+    let menuData = {
+        facility_name: facilityName,
+        sponsor_name: sponsorName,
+        monday: {
+            am_fluid_milk: document.getElementById('mondayMilk')?.innerText || '',
+            am_fruit_veg: document.getElementById('mondayfruit')?.innerText || '',
+            am_bread: document.getElementById('mondaybread')?.innerText || '',
+            am_additional: document.getElementById('mondayadd1')?.innerText || '',
+            ams_fluid_milk: document.getElementById('mondaychoose1')?.innerText || '',
+            ams_fruit_veg: document.getElementById('mondayfruit2')?.innerText || '',
+            ams_bread: document.getElementById('mondaybread2')?.innerText || '',
+            ams_meat: document.getElementById('mondaymeat1')?.innerText || '',
+            lunch_main_dish: document.getElementById('mondayMeals')?.innerText || '',
+            lunch_fluid_milk: document.getElementById('mondayLunchMilk')?.innerText || '',
+            lunch_vegetable: document.getElementById('mondayvege')?.innerText || '',
+            lunch_fruit: document.getElementById('mondayfruit3')?.innerText || '',
+            lunch_grain: document.getElementById('mondayGrain')?.innerText || '',
+            lunch_meat: document.getElementById('mondayMeatAlternate')?.innerText || '',
+            lunch_additional: document.getElementById('mondayadd2')?.innerText || '',
+            pm_fluid_milk: document.getElementById('mondaychoose2')?.innerText || '',
+            pm_fruit_veg: document.getElementById('mondayfruit4')?.innerText || '',
+            pm_bread: document.getElementById('mondaybread3')?.innerText || '',
+            pm_meat: document.getElementById('mondaymeat3')?.innerText || ''
+        },
+        tuesday: {
+            am_fluid_milk: document.getElementById('tuesdayMilk')?.innerText || '',
+            am_fruit_veg: document.getElementById('tuesdayfruit')?.innerText || '',
+            am_bread: document.getElementById('tuesdaybread')?.innerText || '',
+            am_additional: document.getElementById('tuesdayadd1')?.innerText || '',
+            ams_fluid_milk: document.getElementById('tuesdaychoose1')?.innerText || '',
+            ams_fruit_veg: document.getElementById('tuesdayfruit2')?.innerText || '',
+            ams_bread: document.getElementById('tuesdaybread2')?.innerText || '',
+            ams_meat: document.getElementById('tuesdaymeat1')?.innerText || '',
+            lunch_main_dish: document.getElementById('tuesdayMeals')?.innerText || '',
+            lunch_fluid_milk: document.getElementById('tuesdayLunchMilk')?.innerText || '',
+            lunch_vegetable: document.getElementById('tuesdayvege')?.innerText || '',
+            lunch_fruit: document.getElementById('tuesdayfruit3')?.innerText || '',
+            lunch_grain: document.getElementById('tuesdayGrain')?.innerText || '',
+            lunch_meat: document.getElementById('tuesdayMeatAlternate')?.innerText || '',
+            lunch_additional: document.getElementById('tuesdayadd2')?.innerText || '',
+            pm_fluid_milk: document.getElementById('tuesdaychoose2')?.innerText || '',
+            pm_fruit_veg: document.getElementById('tuesdayfruit4')?.innerText || '',
+            pm_bread: document.getElementById('tuesdaybread3')?.innerText || '',
+            pm_meat: document.getElementById('tuesdaymeat3')?.innerText || ''
+        },
+        wednesday: {
+            am_fluid_milk: document.getElementById('wednesdayMilk')?.innerText || '',
+            am_fruit_veg: document.getElementById('wednesdayfruit')?.innerText || '',
+            am_bread: document.getElementById('wednesdaybread')?.innerText || '',
+            am_additional: document.getElementById('wednesdayadd1')?.innerText || '',
+            ams_fluid_milk: document.getElementById('wednesdaychoose1')?.innerText || '',
+            ams_fruit_veg: document.getElementById('wednesdayfruit2')?.innerText || '',
+            ams_bread: document.getElementById('wednesdaybread2')?.innerText || '',
+            ams_meat: document.getElementById('wednesdaymeat1')?.innerText || '',
+            lunch_main_dish: document.getElementById('wednesdayMeals')?.innerText || '',
+            lunch_fluid_milk: document.getElementById('wednesdayLunchMilk')?.innerText || '',
+            lunch_vegetable: document.getElementById('wednesdayvege')?.innerText || '',
+            lunch_fruit: document.getElementById('wednesdayfruit3')?.innerText || '',
+            lunch_grain: document.getElementById('wednesdayGrain')?.innerText || '',
+            lunch_meat: document.getElementById('wednesdayMeatAlternate')?.innerText || '',
+            lunch_additional: document.getElementById('wednesdayadd2')?.innerText || '',
+            pm_fluid_milk: document.getElementById('wednesdaychoose2')?.innerText || '',
+            pm_fruit_veg: document.getElementById('wednesdayfruit4')?.innerText || '',
+            pm_bread: document.getElementById('wednesdaybread3')?.innerText || '',
+            pm_meat: document.getElementById('wednesdaymeat3')?.innerText || ''
+        },
+        thursday: {
+            am_fluid_milk: document.getElementById('thursdayMilk')?.innerText || '',
+            am_fruit_veg: document.getElementById('thursdayfruit')?.innerText || '',
+            am_bread: document.getElementById('thursdaybread')?.innerText || '',
+            am_additional: document.getElementById('thursdayadd1')?.innerText || '',
+            ams_fluid_milk: document.getElementById('thursdaychoose1')?.innerText || '',
+            ams_fruit_veg: document.getElementById('thursdayfruit2')?.innerText || '',
+            ams_bread: document.getElementById('thursdaybread2')?.innerText || '',
+            ams_meat: document.getElementById('thursdaymeat1')?.innerText || '',
+            lunch_main_dish: document.getElementById('thursdayMeals')?.innerText || '',
+            lunch_fluid_milk: document.getElementById('thursdayLunchMilk')?.innerText || '',
+            lunch_vegetable: document.getElementById('thursdayvege')?.innerText || '',
+            lunch_fruit: document.getElementById('thursdayfruit3')?.innerText || '',
+            lunch_grain: document.getElementById('thursdayGrain')?.innerText || '',
+            lunch_meat: document.getElementById('thursdayMeatAlternate')?.innerText || '',
+            lunch_additional: document.getElementById('thursdayadd2')?.innerText || '',
+            pm_fluid_milk: document.getElementById('thursdaychoose2')?.innerText || '',
+            pm_fruit_veg: document.getElementById('thursdayfruit4')?.innerText || '',
+            pm_bread: document.getElementById('thursdaybread3')?.innerText || '',
+            pm_meat: document.getElementById('thursdaymeat3')?.innerText || ''
+        },
+        friday: {
+            am_fluid_milk: document.getElementById('fridayMilk')?.innerText || '',
+            am_fruit_veg: document.getElementById('fridayfruit')?.innerText || '',
+            am_bread: document.getElementById('fridaybread')?.innerText || '',
+            am_additional: document.getElementById('fridayadd1')?.innerText || '',
+            ams_fluid_milk: document.getElementById('fridaychoose1')?.innerText || '',
+            ams_fruit_veg: document.getElementById('fridayfruit2')?.innerText || '',
+            ams_bread: document.getElementById('fridaybread2')?.innerText || '',
+            ams_meat: document.getElementById('fridaymeat1')?.innerText || '',
+            lunch_main_dish: document.getElementById('fridayMeals')?.innerText || '',
+            lunch_fluid_milk: document.getElementById('fridayLunchMilk')?.innerText || '',
+            lunch_vegetable: document.getElementById('fridayvege')?.innerText || '',
+            lunch_fruit: document.getElementById('fridayfruit3')?.innerText || '',
+            lunch_grain: document.getElementById('fridayGrain')?.innerText || '',
+            lunch_meat: document.getElementById('fridayMeatAlternate')?.innerText || '',
+            lunch_additional: document.getElementById('fridayadd2')?.innerText || '',
+            pm_fluid_milk: document.getElementById('fridaychoose2')?.innerText || '',
+            pm_fruit_veg: document.getElementById('fridayfruit4')?.innerText || '',
+            pm_bread: document.getElementById('fridaybread3')?.innerText || '',
+            pm_meat: document.getElementById('fridaymeat3')?.innerText || ''
+        }
+    };
+
+    console.log('Sending menu data:', menuData);
+
+    $.ajax({
+        url: '/api/save_menu/',
+        type: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        data: JSON.stringify(menuData),
+        success: function (response) {
+            console.log('Save response:', response);
+            toastr.clear();
+            toastr.success('Menu saved successfully!');
+            clearMenuProgressFromLocalStorage();
+        },
+        error: function (xhr, status, error) {
+            console.error('Save error:', xhr.responseText);
+            toastr.clear();
+            toastr.error('Error saving menu: ' + (xhr.responseJSON?.error || error));
+        }
+    });
+}
+
 /* Document ready: restore, attach handlers */
 $(document).ready(function() {
     restoreMenuProgressFromLocalStorage();
     enableEditablesForAllCells();
-    initializeDaySelector(); // Initialize mobile day selector
-    updateDropdownWithDates(); // Update dropdown with dates on load
+    initializeDaySelector();
+    updateDropdownWithDates();
 
     $('#generateMenuBtn').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ e.preventDefault(); return false; }});
     $('#menuForm').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ if (!$(e.target).is('#saveMenuBtn') && !$(e.target).hasClass('input-box')){ e.preventDefault(); return false; } }});
@@ -853,7 +1209,6 @@ $(document).ready(function() {
         ];
 
         $.when.apply($, calls).always(function() {
-            // ensure dates and milk defaults show like backup
             updateDates();
             ['monday','tuesday','wednesday','thursday','friday'].forEach(day => {
                 safeSetText(day + 'Milk', document.getElementById(day + 'Milk')?.innerText || '1% w.milk (unflavored)');
@@ -882,6 +1237,8 @@ window.updateFruitTable = updateFruitTable;
 window.updateVegetableTable = updateVegetableTable;
 window.saveMenuProgressToLocalStorage = saveMenuProgressToLocalStorage;
 window.restoreMenuProgressFromLocalStorage = restoreMenuProgressFromLocalStorage;
+window.checkMenuExistsAndSave = checkMenuExistsAndSave;
+window.saveMenu = saveMenu;
 </script>
 <script>
 function openInventoryWindow() {

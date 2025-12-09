@@ -61,7 +61,17 @@
       text-align: left;
       font-weight: bold;
   } 
-  
+   #toast-container > div {
+    opacity: 1 !important;
+    box-shadow: 0 0 12px rgba(0,0,0,0.3);
+}
+
+    .toast-top-center,
+    .toast-top-right,
+    .toast-top-left {
+        top: calc(170px + env(safe-area-inset-top, 0px)) !important;
+    }
+
   /* Upload button styling */
   .btn-upload {
       background-color: rgb(57, 189, 180);
