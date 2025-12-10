@@ -91,7 +91,7 @@ th, td {
 }
 
 #mobileDaySelector .mobile-day-dropdown {
-  width: 100%;
+  width: 43%;
   padding: 10px 14px;
   font-size: 1.05rem;
   line-height: 1.25 !important;
@@ -103,13 +103,14 @@ th, td {
   -moz-appearance: none;
   appearance: none;
   font-weight: 600;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ffffff' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
-  background-size: 12px;
+  background-size: 18px;
   padding-right: 35px;
+  padding-left: 10px;
 }
 
 #mobileDaySelector .mobile-day-dropdown:focus,
@@ -122,6 +123,67 @@ th, td {
   background-color: #272630;
   color: #fff;
   padding: 10px;
+}
+
+/* 3-dot menu button styling */
+.mobile-menu-btn {
+  background-color: rgba(34, 37, 41, 1) !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mobile-menu-btn:hover {
+  background-color: rgba(44, 47, 51, 1) !important;
+}
+
+/* Dropdown menu styling */
+.mobile-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 5px;
+  background-color: rgba(34, 37, 41, 1);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 180px;
+  z-index: 1150;
+  display: none;
+  overflow: hidden;
+}
+
+.mobile-menu-dropdown.show {
+  display: block;
+}
+
+.mobile-menu-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  text-align: left;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.mobile-menu-dropdown button:hover {
+  background-color: rgba(57, 189, 180, 0.2);
+}
+
+.mobile-menu-dropdown button i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
 }
 
 /* --- Print rules --- */
@@ -334,7 +396,7 @@ th, td {
   #mobileDaySelector .mobile-day-dropdown {
     border-radius: 0 !important;
     margin: 0 !important;
-    width: 100% !important;
+    width: 43% !important;
   }
 
   /* Remove col padding */
@@ -438,16 +500,28 @@ th, td {
                     </div>
                 </div>
 
-                <!-- Mobile Day Selector -->
-                    <div id="mobileDaySelector">
-                        <select id="daySelect" aria-label="Select day of week" class="mobile-day-dropdown">
-                            <option value="monday">Monday</option>
-                            <option value="tuesday">Tuesday</option>
-                            <option value="wednesday">Wednesday</option>
-                            <option value="thursday">Thursday</option>
-                            <option value="friday">Friday</option>
-                        </select>
-                    </div>
+               <!-- Mobile Day Selector -->
+<div id="mobileDaySelector">
+    <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(34, 37, 41, 1); padding: 10px;">
+        <select id="daySelect" aria-label="Select day of week" class="mobile-day-dropdown">
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+        </select>
+        <div style="position: relative;">
+            <button type="button" id="mobileMenuBtn" class="mobile-menu-btn" title="Menu" aria-label="Menu Options">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
+            <div id="mobileMenuDropdown" class="mobile-menu-dropdown">
+                <button type="button" id="generatePDFBtn">
+                    <i class="fas fa-file-pdf"></i>Generate PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
                 <div class="row mt-3">
                     <div class="col">
@@ -1248,5 +1322,26 @@ function openInventoryWindow() {
         "width=1100,height=700,scrollbars=yes,resizable=yes"
     );
 }
+
+// Mobile menu dropdown toggle
+$('#mobileMenuBtn').on('click', function(e) {
+    e.stopPropagation();
+    $('#mobileMenuDropdown').toggleClass('show');
+});
+
+// Close dropdown when clicking outside
+$(document).on('click', function(e) {
+    if (!$(e.target).closest('#mobileMenuBtn, #mobileMenuDropdown').length) {
+        $('#mobileMenuDropdown').removeClass('show');
+    }
+});
+
+// Generate PDF button (placeholder)
+$('#generatePDFBtn').on('click', function(e) {
+    e.preventDefault();
+    $('#mobileMenuDropdown').removeClass('show');
+    // PDF generation logic will go here
+    console.log('Generate PDF clicked');
+});
 </script>
 {% endblock %}
