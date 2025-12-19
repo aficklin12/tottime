@@ -7,6 +7,7 @@ from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonRespo
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
 from square.client import Client
 from django.conf import settings
+import re
 from django.http import Http404
 from functools import wraps
 from django.core.exceptions import FieldError
@@ -2913,7 +2914,6 @@ def order_list(request):
         order_items = OrderList.objects.filter(user=user, main_user=main_user)
         return render(request, 'index.html', {'order_items': order_items})
     
-# views.py
 @login_required
 def shopping_list_api(request):
     if request.method == 'GET':
@@ -4884,29 +4884,52 @@ def meal_count(request):
     })
 
 def select_meals_for_days(recipes, user):
-    """Select available meals for each day from the given recipes, accounting for inventory usage."""
+    """Select available lunch recipes per day, prioritizing daily Whole Grain, and accounting for inventory usage."""
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     menu_data = {}
-    # Get a copy of the user's inventory to simulate inventory changes
+
+    # Cache inventory snapshot by Inventory.id
     inventory = {item.id: item for item in Inventory.objects.filter(user=user)}
+
+    # Identify the Whole Grain rule for this user (used for prioritization only)
+    wg_rule = Rule.objects.filter(user=user, rule__iexact="Whole Grain").first()
+    wg_is_daily = bool(wg_rule and wg_rule.daily)
+
     for day in days_of_week:
-        # For Monday and Tuesday, exclude meals if any ingredient has quantity = 0
+        # Apply stricter availability on Monday/Tuesday (exclude ingredients with quantity == 0)
         if day in ["Monday", "Tuesday"]:
-            available_meals = [r for r in recipes if check_ingredients_availability(r, user, inventory, exclude_zero_quantity=True)]
+            available_meals = [
+                r for r in recipes
+                if check_ingredients_availability(r, user, inventory, exclude_zero_quantity=True)
+            ]
         else:
-            available_meals = [r for r in recipes if check_ingredients_availability(r, user, inventory)]
+            available_meals = [
+                r for r in recipes
+                if check_ingredients_availability(r, user, inventory)
+            ]
+
+        selected_meal = None
         if available_meals:
-            selected_meal = random.choice(available_meals)
+            # Prefer Whole Grain-tagged recipes when rule is daily
+            if wg_is_daily:
+                wg_candidates = [r for r in available_meals if r.rule_id == (wg_rule.id if wg_rule else None)]
+                if wg_candidates:
+                    selected_meal = random.choice(wg_candidates)
+                else:
+                    selected_meal = random.choice(available_meals)
+            else:
+                selected_meal = random.choice(available_meals)
+
+            # Remove chosen recipe from the pool and subtract inventory usage
             recipes = [r for r in recipes if r != selected_meal]
-            # Subtract used ingredients from inventory
             subtract_ingredients_from_inventory(selected_meal, inventory)
-        else:
-            selected_meal = None
+
         if selected_meal:
             menu_data[day] = {
                 'meal_name': selected_meal.name,
-                'grain': selected_meal.grain,
-                'meat_alternate': selected_meal.meat_alternate
+                # IMPORTANT: do not override grain; keep what the recipe defines
+                'grain': selected_meal.grain or "",
+                'meat_alternate': selected_meal.meat_alternate or ""
             }
         else:
             menu_data[day] = {
@@ -4914,13 +4937,12 @@ def select_meals_for_days(recipes, user):
                 'grain': "",
                 'meat_alternate': ""
             }
+
     return menu_data
 
+
 def check_ingredients_availability(recipe, user, inventory, exclude_zero_quantity=False):
-    """Check if the ingredients for a recipe are available in the inventory.
-    Args:
-        exclude_zero_quantity (bool): If True, exclude ingredients with quantity = 0.
-    """
+    """Check if the ingredients for a recipe are available in the inventory."""
     required_ingredients = [
         (recipe.ingredient1, recipe.qty1),
         (recipe.ingredient2, recipe.qty2),
@@ -4934,9 +4956,10 @@ def check_ingredients_availability(recipe, user, inventory, exclude_zero_quantit
             if item:
                 if exclude_zero_quantity and item.quantity == 0:
                     return False
-                if item.total_quantity < qty:
+                if item.total_quantity < (qty or 0):
                     return False
     return True
+
 
 def subtract_ingredients_from_inventory(recipe, inventory):
     """Subtract the ingredients used in a recipe from the inventory."""
@@ -4951,8 +4974,9 @@ def subtract_ingredients_from_inventory(recipe, inventory):
         if ingredient:
             item = inventory.get(ingredient.id, None)
             if item:
-                item.total_quantity -= qty
+                item.total_quantity -= (qty or 0)
                 item.save()
+
 
 def get_filtered_recipes(user, model, recent_days=14):
     """Filter recipes not used in the last `recent_days` days."""
@@ -4961,18 +4985,21 @@ def get_filtered_recipes(user, model, recent_days=14):
     recent_recipes = model.objects.filter(user=user, last_used__gte=cutoff_date)
     return [recipe for recipe in all_recipes if recipe not in recent_recipes]
 
+
 def generate_menu(request):
     user = get_user_for_view(request)  # Get the correct user context
     recipes = get_filtered_recipes(user, Recipe)
+    # Rule-aware selection (prefers daily Whole Grain without overriding grain/meat fields)
     menu_data = select_meals_for_days(recipes, user)
     return JsonResponse(menu_data)
 
+
 @login_required
 def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_key):
-    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
+    user = get_user_for_view(request)  # main user or subuser's main user
     snack_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    recipes = list(model.objects.filter(user=user))  # Fetch recipes for the determined user
+    recipes = list(model.objects.filter(user=user))
     for day in days_of_week:
         if recipes:
             selected_recipe = random.choice(recipes)
@@ -4990,20 +5017,23 @@ def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_ke
                 bread_key: "",
                 meat_key: ""
             }
-    return JsonResponse(snack_data)  # Return the snack data as a JSON response
+    return JsonResponse(snack_data)
+
 
 def generate_am_menu(request):
     return generate_snack_menu(request, AMRecipe, 'choose1', 'fruit2', 'bread2', 'meat1')
 
+
 def generate_pm_menu(request):
     return generate_snack_menu(request, PMRecipe, 'choose2', 'fruit4', 'bread3', 'meat3')
 
+
 @login_required
 def generate_breakfast_menu(request):
-    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
+    user = get_user_for_view(request)
     breakfast_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    recipes = list(BreakfastRecipe.objects.filter(user=user))  # Fetch recipes for the determined user
+    recipes = list(BreakfastRecipe.objects.filter(user=user))
     for day in days_of_week:
         if recipes:
             selected_recipe = random.choice(recipes)
@@ -5013,125 +5043,302 @@ def generate_breakfast_menu(request):
                 'add1': selected_recipe.addfood
             }
         else:
-            breakfast_data[day] = {
-                'bread': "No available breakfast option",
-                'add1': ""
-            }
-    return JsonResponse(breakfast_data)  # Return the breakfast data as a JSON response
+            breakfast_data[day] = {'bread': "No available breakfast option", 'add1': ""}
+    return JsonResponse(breakfast_data)
+
 
 @login_required
 def generate_fruit_menu(request):
-    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
+    """One Berry at breakfast per week; lunch fruit excludes Juice/Raisins and never uses Berry."""
+    user = get_user_for_view(request)
     fruit_menu_data = {}
-    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    # Retrieve available fruits for the entire week
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
     all_fruits = list(
-        Inventory.objects.filter(
-            user=user,  # Use the retrieved user
-            category="Fruits",
-            total_quantity__gt=0
-        ).values_list('item', flat=True)
+        Inventory.objects.filter(user=user, category="Fruits", total_quantity__gt=0)
+        .values_list('item', flat=True)
     )
-    # Retrieve available fruits with quantity > 0
-    fruits_with_quantity = list(
-        Inventory.objects.filter(
-            user=user,  # Use the retrieved user
-            category="Fruits",
-            quantity__gt=0
-        ).values_list('item', flat=True)
+    fruits_with_qty = list(
+        Inventory.objects.filter(user=user, category="Fruits", quantity__gt=0)
+        .values_list('item', flat=True)
     )
-    # Separate fruits for Monday and Tuesday
-    fruits_for_monday_tuesday = [
-        fruit for fruit in fruits_with_quantity
-        if fruit in all_fruits
-    ]
-    # Track used fruits to avoid repetition
-    used_fruits = set()
-    # Helper function to select a fruit and update the used_fruits set
-    def select_fruit(fruit_list):
-        available_fruits = [fruit for fruit in fruit_list if fruit not in used_fruits]
-        if available_fruits:
-            selected_fruit = random.choice(available_fruits)
-            used_fruits.add(selected_fruit)
-            return selected_fruit
-        return "NO FRUIT AVAILABLE"
-    # Generate fruit menu for Monday and Tuesday
-    for day in ["Monday", "Tuesday"]:
-        fruit_snack_data = {}
-        selected_fruit = select_fruit(fruits_for_monday_tuesday)
-        fruit_snack_data['fruit'] = selected_fruit
-        # Filter out "Juice" and "Raisins" for the 'fruit3' selection
-        available_for_fruit3 = [
-            fruit for fruit in fruits_for_monday_tuesday
-            if "Juice" not in fruit and "Raisins" not in fruit
+
+    berry_rule = Rule.objects.filter(user=user, rule__iexact="Berry").first()
+    berry_candidates = []
+    if berry_rule:
+        berry_candidates = list(
+            Inventory.objects.filter(user=user, category="Fruits", rule=berry_rule, total_quantity__gt=0)
+            .values_list('item', flat=True)
+        )
+
+    used = set()
+    def pick(candidates):
+        pool = [n for n in candidates if n not in used]
+        if not pool:
+            return "NO FRUIT AVAILABLE" if not candidates else random.choice(candidates)
+        choice = random.choice(pool)
+        used.add(choice)
+        return choice
+
+    # Choose a single day to apply Berry at breakfast
+    berry_day = None
+    if berry_candidates:
+        shuffled = days[:]
+        random.shuffle(shuffled)
+        for d in shuffled:
+            if d in ["Monday", "Tuesday"]:
+                if any(b in fruits_with_qty for b in berry_candidates):
+                    berry_day = d
+                    break
+            else:
+                berry_day = d
+                break
+
+    for day in days:
+        day_data = {}
+        breakfast_pool = fruits_with_qty if day in ["Monday", "Tuesday"] else all_fruits
+
+        if berry_day == day:
+            berry_pool = [b for b in berry_candidates if b in breakfast_pool] or berry_candidates
+            breakfast = pick(berry_pool) if berry_pool else "NO FRUIT AVAILABLE"
+        else:
+            non_berry_pool = [f for f in breakfast_pool if f not in berry_candidates]
+            breakfast = pick(non_berry_pool) if non_berry_pool else pick(breakfast_pool)
+
+        day_data['fruit'] = breakfast
+
+        lunch_base = all_fruits if day not in ["Monday", "Tuesday"] else fruits_with_qty
+        lunch_pool = [
+            f for f in lunch_base
+            if "Juice" not in f and "Raisins" not in f and f not in berry_candidates
         ]
-        selected_fruit_for_fruit3 = select_fruit(available_for_fruit3)
-        fruit_snack_data['fruit3'] = selected_fruit_for_fruit3
-        fruit_menu_data[day] = fruit_snack_data
-    # Generate fruit menu for the remaining days
-    for day in ["Wednesday", "Thursday", "Friday"]:
-        fruit_snack_data = {}
-        selected_fruit = select_fruit(all_fruits)
-        fruit_snack_data['fruit'] = selected_fruit
-        # Filter out "Juice" and "Raisins" for the 'fruit3' selection
-        available_for_fruit3 = [
-            fruit for fruit in all_fruits
-            if "Juice" not in fruit and "Raisins" not in fruit
-        ]
-        selected_fruit_for_fruit3 = select_fruit(available_for_fruit3)
-        fruit_snack_data['fruit3'] = selected_fruit_for_fruit3
-        fruit_menu_data[day] = fruit_snack_data
+        day_data['fruit3'] = pick(lunch_pool) if lunch_pool else pick(lunch_base)
+
+        fruit_menu_data[day] = day_data
+
     return JsonResponse(fruit_menu_data)
+
 
 def get_fruits(request):
     fruits = Inventory.objects.filter(category='Fruits').values_list('item', flat=True)
     return JsonResponse(list(fruits), safe=False)
 
+
 @login_required
 def generate_vegetable_menu(request):
-    user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
+    """Schedule exactly one Yellow Vegetable, one Leafy Green, and one Bean across lunch; fill other days normally."""
+    user = get_user_for_view(request)
     vegetable_menu_data = {}
-    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    # Retrieve available vegetables based on total_quantity
-    all_vegetables = list(Inventory.objects.filter(
-        user=user,  # Use the retrieved user
-        category="Vegetables",
-        total_quantity__gt=0
-    ).values_list('item', flat=True))
-    # Retrieve vegetables with quantity > 0
-    vegetables_with_quantity = list(Inventory.objects.filter(
-        user=user,  # Use the retrieved user
-        category="Vegetables",
-        quantity__gt=0
-    ).values_list('item', flat=True))
-    # Separate vegetables for Monday and Tuesday
-    vegetables_for_monday_tuesday = [
-        veg for veg in vegetables_with_quantity
-        if veg in all_vegetables
-    ]
-    # Track used vegetables to avoid repetition
-    used_vegetables = set()
-    # Helper function to select a vegetable and update the used_vegetables set
-    def select_vegetable(vegetable_list):
-        available_vegetables = [veg for veg in vegetable_list if veg not in used_vegetables]
-        if available_vegetables:
-            selected_vegetable = random.choice(available_vegetables)
-            used_vegetables.add(selected_vegetable)
-            return selected_vegetable
-        return "NO VEGETABLE AVAILABLE"
-    # Generate vegetable menu for Monday and Tuesday
-    for day in ["Monday", "Tuesday"]:
-        vegetable_data = {}
-        selected_vegetable = select_vegetable(vegetables_for_monday_tuesday)
-        vegetable_data['vegetable'] = selected_vegetable
-        vegetable_menu_data[day] = vegetable_data
-    # Generate vegetable menu for the remaining days
-    for day in ["Wednesday", "Thursday", "Friday"]:
-        vegetable_data = {}  
-        selected_vegetable = select_vegetable(all_vegetables)
-        vegetable_data['vegetable'] = selected_vegetable  
-        vegetable_menu_data[day] = vegetable_data
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+    all_veg = list(
+        Inventory.objects.filter(user=user, category="Vegetables", total_quantity__gt=0)
+        .values_list('item', flat=True)
+    )
+    veg_with_qty = list(
+        Inventory.objects.filter(user=user, category="Vegetables", quantity__gt=0)
+        .values_list('item', flat=True)
+    )
+
+    subgroup_names = ["Yellow Vegetable", "Leafy Green", "Bean"]
+    subgroup_items = {}
+    for rn in subgroup_names:
+        r = Rule.objects.filter(user=user, rule__iexact=rn).first()
+        if r:
+            subgroup_items[rn] = list(
+                Inventory.objects.filter(user=user, category="Vegetables", rule=r, total_quantity__gt=0)
+                .values_list('item', flat=True)
+            )
+        else:
+            subgroup_items[rn] = []
+
+    used = set()
+    def pick(candidates):
+        pool = [n for n in candidates if n not in used]
+        if not pool:
+            return "NO VEGETABLE AVAILABLE" if not candidates else random.choice(candidates)
+        choice = random.choice(pool)
+        used.add(choice)
+        return choice
+
+    available_days = days[:]
+    random.shuffle(available_days)
+    subgroup_day_map = {}
+    for rn, items in subgroup_items.items():
+        if not items:
+            continue
+        chosen_day = None
+        for d in available_days:
+            if d in ["Monday", "Tuesday"]:
+                if any(v in veg_with_qty for v in items):
+                    chosen_day = d
+                    break
+            else:
+                chosen_day = d
+                break
+        if chosen_day:
+            subgroup_day_map[chosen_day] = rn
+            available_days.remove(chosen_day)
+
+    for day in days:
+        pool = veg_with_qty if day in ["Monday", "Tuesday"] else all_veg
+        if day in subgroup_day_map and subgroup_items.get(subgroup_day_map[day]):
+            rn = subgroup_day_map[day]
+            subgroup_pool = [v for v in subgroup_items[rn] if v in pool] or subgroup_items[rn]
+            vegetable = pick(subgroup_pool) if subgroup_pool else "NO VEGETABLE AVAILABLE"
+        else:
+            non_used_pool = [v for v in pool if v not in used]
+            vegetable = pick(non_used_pool) if non_used_pool else pick(pool)
+        vegetable_menu_data[day] = {'vegetable': vegetable}
+
     return JsonResponse(vegetable_menu_data)
+
+@login_required
+def fetch_inventory_rules(request):
+    user = get_user_for_view(request)
+
+    def _normalize(s: str) -> str:
+        return re.sub(r'\s+', ' ', re.sub(r'[^\w%+ ]+', ' ', (s or '').lower())).strip()
+
+    def _tokens(s: str):
+        return {t for t in _normalize(s).split() if t and t not in {'the','a','an','of'}}
+
+    def loosely_same(a: str, b: str) -> bool:
+        na, nb = _normalize(a), _normalize(b)
+        if not na or not nb:
+            return False
+        if na == nb or na in nb or nb in na:
+            return True
+        ta, tb = _tokens(a), _tokens(b)
+        if not ta or not tb:
+            return False
+        overlap = len(ta & tb)
+        jaccard = overlap / len(ta | tb)
+        return overlap >= 2 or jaccard >= 0.6
+
+    inv_qs = (Inventory.objects
+              .filter(user=user, rule__isnull=False)
+              .select_related('rule')
+              .values('item','rule__gradient_start','rule__gradient_end','rule__text_color','rule__rule'))
+    item_rule_map = {}
+    for inv in inv_qs:
+        item_rule_map[inv['item']] = {
+            'gradient_start': inv['rule__gradient_start'],
+            'gradient_end': inv['rule__gradient_end'],
+            'text_color': inv['rule__text_color'],
+            'rule_label': inv['rule__rule'],
+        }
+
+    def add_recipe_styles(model, slot):
+        qs = (model.objects
+              .filter(user=user)
+              .select_related('ingredient1__rule','ingredient2__rule','ingredient3__rule',
+                              'ingredient4__rule','ingredient5__rule','rule'))
+        for recipe in qs:
+            ingrs = (recipe.ingredient1, recipe.ingredient2, recipe.ingredient3,
+                     recipe.ingredient4, recipe.ingredient5)
+            ruled_ingrs = [inv for inv in ingrs if inv and inv.rule]
+
+            # Always map ingredient names
+            for inv in ruled_ingrs:
+                item_rule_map.setdefault(inv.item, {
+                    'gradient_start': inv.rule.gradient_start,
+                    'gradient_end': inv.rule.gradient_end,
+                    'text_color': inv.rule.text_color,
+                    'rule_label': inv.rule.rule,
+                })
+
+            # Only color recipe name on loose match
+            name_matched = False
+            if recipe.name:
+                for inv in ruled_ingrs:
+                    if loosely_same(recipe.name, inv.item):
+                        item_rule_map.setdefault(recipe.name, {
+                            'gradient_start': inv.rule.gradient_start,
+                            'gradient_end': inv.rule.gradient_end,
+                            'text_color': inv.rule.text_color,
+                            'rule_label': inv.rule.rule,
+                        })
+                        name_matched = True
+                        break
+
+            # Override via recipe.rule to correct columns (breakfast → addfood)
+            if recipe.rule:
+                override_style = {
+                    'gradient_start': recipe.rule.gradient_start,
+                    'gradient_end': recipe.rule.gradient_end,
+                    'text_color': recipe.rule.text_color,
+                    'rule_label': recipe.rule.rule,
+                }
+                if slot == 'breakfast' and not name_matched and getattr(recipe, 'addfood', None):
+                    item_rule_map.setdefault(recipe.addfood, override_style)
+                elif slot in ('am', 'pm') and recipe.name:
+                    item_rule_map.setdefault(recipe.name, override_style)
+
+    add_recipe_styles(BreakfastRecipe, 'breakfast')
+    add_recipe_styles(AMRecipe, 'am')
+    add_recipe_styles(PMRecipe, 'pm')
+
+    # Lunch: color Grain based on match or recipe.rule override; main dish stays uncolored
+    lunch_qs = (Recipe.objects
+                .filter(user=user)
+                .select_related('ingredient1__rule','ingredient2__rule','ingredient3__rule',
+                                'ingredient4__rule','ingredient5__rule','rule'))
+    for r in lunch_qs:
+        if not r.grain:
+            continue
+        ruled_ingrs = [inv for inv in (r.ingredient1, r.ingredient2, r.ingredient3, r.ingredient4, r.ingredient5)
+                       if inv and inv.rule]
+        style = None
+        for inv in ruled_ingrs:
+            if loosely_same(r.grain, inv.item):
+                style = {
+                    'gradient_start': inv.rule.gradient_start,
+                    'gradient_end': inv.rule.gradient_end,
+                    'text_color': inv.rule.text_color,
+                    'rule_label': inv.rule.rule,
+                }
+                break
+        if not style and r.rule:
+            style = {
+                'gradient_start': r.rule.gradient_start,
+                'gradient_end': r.rule.gradient_end,
+                'text_color': r.rule.text_color,
+                'rule_label': r.rule.rule,
+            }
+        if style:
+            item_rule_map.setdefault(r.grain, style)
+
+    return JsonResponse({'item_rules': item_rule_map})
+
+# NEW: WG candidates for fill-in
+@login_required
+def get_wg_candidates(request):
+    user = get_user_for_view(request)
+    wg_rule = Rule.objects.filter(user=user, rule__iexact="Whole Grain").first()
+    if not wg_rule:
+        return JsonResponse({'weekly_qty': 0, 'candidates': []})
+
+    qs = (WgRecipe.objects
+          .filter(user=user, rule=wg_rule)
+          .select_related('ingredient1','rule'))
+    out = []
+    for w in qs:
+        style = {
+            'gradient_start': wg_rule.gradient_start,
+            'gradient_end': wg_rule.gradient_end,
+            'text_color': wg_rule.text_color,
+            'rule_label': wg_rule.rule,
+        }
+        out.append({
+            'name': w.name,
+            'break_only': bool(w.break_only),
+            'am_only': bool(w.am_only),
+            'lunch_only': bool(w.lunch_only),
+            'pm_only': bool(w.pm_only),
+            'style': style,
+        })
+    return JsonResponse({'weekly_qty': wg_rule.weekly_qty, 'candidates': out})
 
 @login_required
 def past_menus(request):
@@ -9187,7 +9394,6 @@ def add_activity(request, theme_id):
         messages.error(request, 'Missing required fields!')
     
     return redirect('theme_activities', theme_id=theme.id, view_type='weeks')
-
 
 @login_required
 def meal_calculator(request):

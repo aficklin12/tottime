@@ -552,12 +552,110 @@ th, td {
   .table tbody tr th {
     display: table-cell !important;
   }
+
+    /* Show legend only on desktop */
+    .rules-legend { display: flex !important; }
+}
+
+/* =========================
+     Loading Overlay
+     - Full-screen dark cover with spinner
+     - Prevents interaction and hides in-progress changes
+     ========================= */
+#loadingOverlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(4px) saturate(0.9);
+    z-index: 1400;
+    display: none; /* toggled to flex when visible */
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================
+   Rules Legend Styles
+   - Hidden by default; shown on desktop (>1000px)
+   ========================= */
+.rules-legend {
+    display: none; /* default hidden, shown via media query */
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: center;
+    margin: 12px 0 8px 0;
+}
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.04);
+}
+.legend-swatch {
+    width: 28px;
+    height: 14px;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+}
+.legend-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+@media print {
+    .rules-legend { display: none !important; }
+}
+
+.loading-dialog {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 28px;
+    border-radius: 10px;
+    background: rgba(34, 37, 41, 0.9);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+
+.loading-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid rgba(255,255,255,0.25);
+    border-top-color: #39bdb4; /* accent */
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    margin-bottom: 12px;
+}
+
+.loading-text {
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Dim and slightly blur the background content while loading */
+.loading-active #printableTable,
+.loading-active .container {
+    filter: blur(2px) brightness(0.6) saturate(0.9);
+    transition: filter 160ms ease;
 }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1 class="mt-4">Weekly Menu</h1>
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" aria-hidden="true">
+            <div class="loading-dialog" role="alert" aria-live="assertive">
+                <div class="loading-spinner" aria-hidden="true"></div>
+                <div class="loading-text" id="loadingOverlayText">Generating menu…</div>
+            </div>
+        </div>
         <div class="container mt-5" id="printableTable">
             <form onsubmit="event.preventDefault(); checkMenuExistsAndSave();" id="menuForm"> <!-- Start of the form -->
                 <div class="row">
@@ -575,6 +673,9 @@ th, td {
                         
                     </div>
                 </div>
+
+                <!-- Desktop-only Rule Legend (color gradients → rule labels) -->
+                <div id="rulesLegend" class="rules-legend" aria-label="Rule legend" role="list"></div>
 
                <!-- Mobile Day Selector -->
 <div id="mobileDaySelector">
@@ -818,11 +919,142 @@ th, td {
     {% endblock %}
 {% block scripts %}
 <script>
-/* Persist-in-progress weekly menu, robust generate handlers, and full mapping to all table cells */
+/* Persist-in-progress weekly menu, robust generate handlers, WG filler (idempotent + dedupe), and full mapping to all table cells */
 
 /* Local storage key */
 const MENU_PROGRESS_KEY = "weeklyMenuProgress_v1";
 const SELECTED_DAY_KEY = "selectedDay_v1";
+
+/* Global cache for inventory rules (name → {gradient_start, gradient_end, text_color, rule_label?}) */
+let inventoryRulesCache = null;
+
+/* Default WG style if no server style is found */
+const WG_DEFAULT_STYLE = {
+    gradient_start: "rgba(153,158,158,0.25)",
+    gradient_end: "rgba(57,189,180,0.18)",
+    text_color: "#21201f",
+    rule_label: "Whole Grain"
+};
+
+/* IDs of cells to color */
+function getColorableCellIds() {
+    return [
+        'mondayMilk','tuesdayMilk','wednesdayMilk','thursdayMilk','fridayMilk',
+        'mondayfruit','tuesdayfruit','wednesdayfruit','thursdayfruit','fridayfruit',
+        'mondaybread','tuesdaybread','wednesdaybread','thursdaybread','fridaybread',
+        'mondayadd1','tuesdayadd1','wednesdayadd1','thursdayadd1','fridayadd1',
+        'mondaychoose1','tuesdaychoose1','wednesdaychoose1','thursdaychoose1','fridaychoose1',
+        'mondayfruit2','tuesdayfruit2','wednesdayfruit2','thursdayfruit2','fridayfruit2',
+        'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',
+        'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1',
+        'mondayMeals','tuesdayMeals','wednesdayMeals','thursdayMeals','fridayMeals',
+        'mondayLunchMilk','tuesdayLunchMilk','wednesdayLunchMilk','thursdayLunchMilk','fridayLunchMilk',
+        'mondayvege','tuesdayvege','wednesdayvege','thursdayvege','fridayvege',
+        'mondayfruit3','tuesdayfruit3','wednesdayfruit3','thursdayfruit3','fridayfruit3',
+        'mondayGrain','tuesdayGrain','wednesdayGrain','thursdayGrain','fridayGrain',
+        'mondayMeatAlternate','tuesdayMeatAlternate','wednesdayMeatAlternate','thursdayMeatAlternate','fridayMeatAlternate',
+        'mondayadd2','tuesdayadd2','wednesdayadd2','thursdayadd2','fridayadd2',
+        'mondaychoose2','tuesdaychoose2','wednesdaychoose2','thursdaychoose2','fridaychoose2',
+        'mondayfruit4','tuesdayfruit4','wednesdayfruit4','thursdayfruit4','fridayfruit4',
+        'mondaybread3','tuesdaybread3','wednesdaybread3','thursdaybread3','fridaybread3',
+        'mondaymeat3','tuesdaymeat3','wednesdaymeat3','thursdaymeat3','fridaymeat3'
+    ];
+}
+
+/* Clear all previous coloring and WG markers */
+function clearAllMenuCellStyles() {
+    const ids = getColorableCellIds();
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.background = '';
+        el.style.color = '';
+        el.dataset.ruleApplied = 'false';
+        el.dataset.ruleLabel = '';
+    });
+}
+
+/* Helpers */
+const DAYS = ["monday","tuesday","wednesday","thursday","friday"];
+const DAY_FULL = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+const WG_NAME_RX = /\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i;
+const norm = s => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/* Fetch inventory rules from server */
+async function fetchInventoryRules() {
+    if (inventoryRulesCache) return inventoryRulesCache;
+    try {
+        const response = await fetch('/api/fetch_inventory_rules/', {
+            method: 'GET',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await response.json();
+        inventoryRulesCache = data.item_rules || {};
+        return inventoryRulesCache;
+    } catch (error) {
+        console.error('Error fetching inventory rules:', error);
+        return {};
+    }
+}
+
+/* Fetch WG candidates [(name, flags, style)] */
+async function fetchWGCandidates() {
+    try {
+        const res = await fetch('/api/get_wg_candidates/', {
+            method: 'GET',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await res.json();
+        const weekly_qty = data.weekly_qty || 0;
+        const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+        return { weekly_qty, candidates };
+    } catch (e) {
+        console.warn('get_wg_candidates failed', e);
+        return { weekly_qty: 0, candidates: [] };
+    }
+}
+
+/* Does text look like Whole Grain (by name) */
+function isWGText(text) { return WG_NAME_RX.test(text || ""); }
+
+/* Apply gradient styling to cells based on inventory rules (and mark WG by rule_label or name) */
+async function applyGradientsToCells() {
+    const itemRules = await fetchInventoryRules();
+
+    // Always start from a clean slate
+    clearAllMenuCellStyles();
+
+    const cellIds = getColorableCellIds();
+    let matchCount = 0;
+
+    cellIds.forEach(cellId => {
+        const cell = document.getElementById(cellId);
+        if (!cell) return;
+        const text = cell.innerText.trim();
+        if (!text) return;
+
+        const rule = itemRules[text];
+        if (rule) {
+            cell.style.background = `linear-gradient(135deg, ${rule.gradient_start}, ${rule.gradient_end})`;
+            cell.style.color = rule.text_color;
+            cell.dataset.ruleApplied = 'true';
+            if (rule.rule_label) cell.dataset.ruleLabel = rule.rule_label;
+            matchCount++;
+        } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i.test(text)) {
+            const s = WG_DEFAULT_STYLE;
+            cell.style.background = `linear-gradient(135deg, ${s.gradient_start}, ${s.gradient_end})`;
+            cell.style.color = s.text_color;
+            cell.dataset.ruleApplied = 'true';
+            cell.dataset.ruleLabel = 'Whole Grain';
+        }
+    });
+
+    // Build/rebuild legend after rules are available
+    try { await buildRulesLegendFromCache(); } catch(e) { console.warn('legend build failed', e); }
+}
+
+/* Clear inventory rules cache (useful when rules are updated) */
+function clearInventoryRulesCache() { inventoryRulesCache = null; }
 
 /* Save/restore helpers */
 function saveMenuProgressToLocalStorage() {
@@ -858,9 +1090,7 @@ function saveMenuProgressToLocalStorage() {
         const dates = Array.from(document.querySelectorAll('.weekday-date')).map(e => e.innerText);
         menu.weekdayDates = dates;
         localStorage.setItem(MENU_PROGRESS_KEY, JSON.stringify(menu));
-    } catch (err) {
-        console.warn('saveMenuProgress failed', err);
-    }
+    } catch (err) { console.warn('saveMenuProgress failed', err); }
 }
 
 function restoreMenuProgressFromLocalStorage() {
@@ -873,25 +1103,14 @@ function restoreMenuProgressFromLocalStorage() {
             if (k === 'weeklyMenuHeader') {
                 const h = document.getElementById('weeklyMenuHeader');
                 if (h) h.innerText = v;
-                
-                // Extract and restore nextMondayDate from header text
-                // Format: "Weekly Menu: MM/DD - MM/DD"
                 const match = v.match(/Weekly Menu: (\d{2})\/(\d{2})/);
                 if (match) {
-                    const month = parseInt(match[1]) - 1; // JS months are 0-indexed
+                    const month = parseInt(match[1]) - 1;
                     const day = parseInt(match[2]);
                     const year = new Date().getFullYear();
-                    
-                    // Create date and ensure it's a Monday in the future
                     const restoredDate = new Date(year, month, day);
-                    
-                    // If the date is in the past, add a year
-                    if (restoredDate < new Date()) {
-                        restoredDate.setFullYear(year + 1);
-                    }
-                    
+                    if (restoredDate < new Date()) restoredDate.setFullYear(year + 1);
                     window.nextMondayDate = restoredDate;
-                    console.log('Restored nextMondayDate:', window.nextMondayDate);
                 }
             } else if (k === 'weekdayDates' && Array.isArray(v)) {
                 document.querySelectorAll('.weekday-date').forEach((el, i) => { if (v[i]) el.innerText = v[i]; });
@@ -900,57 +1119,31 @@ function restoreMenuProgressFromLocalStorage() {
                 if (el) el.innerText = v;
             }
         });
-    } catch (err) {
-        console.warn('restoreMenuProgress failed', err);
-    }
+        setTimeout(() => applyGradientsToCells(), 200);
+        setTimeout(() => ensureDailyWG(), 400);
+    } catch (err) { console.warn('restoreMenuProgress failed', err); }
 }
 
-function clearMenuProgressFromLocalStorage() {
-    localStorage.removeItem(MENU_PROGRESS_KEY);
-}
+function clearMenuProgressFromLocalStorage() { localStorage.removeItem(MENU_PROGRESS_KEY); }
 
 /* Mobile day selector functionality */
 function showSelectedDay(selectedDay) {
-    document.querySelectorAll('[data-day]').forEach(el => {
-        el.classList.remove('mobile-show-day');
-    });
-    
-    document.querySelectorAll(`[data-day="${selectedDay}"]`).forEach(el => {
-        el.classList.add('mobile-show-day');
-    });
-    
-    try {
-        localStorage.setItem(SELECTED_DAY_KEY, selectedDay);
-    } catch (err) {
-        console.warn('Failed to save selected day', err);
-    }
+    document.querySelectorAll('[data-day]').forEach(el => el.classList.remove('mobile-show-day'));
+    document.querySelectorAll(`[data-day="${selectedDay}"]`).forEach(el => el.classList.add('mobile-show-day'));
+    try { localStorage.setItem(SELECTED_DAY_KEY, selectedDay); } catch (err) {}
 }
-
 function initializeDaySelector() {
     const daySelect = document.getElementById('daySelect');
     if (!daySelect) return;
-    
     let savedDay = 'monday';
-    try {
-        savedDay = localStorage.getItem(SELECTED_DAY_KEY) || 'monday';
-    } catch (err) {
-        console.warn('Failed to restore selected day', err);
-    }
-    
+    try { savedDay = localStorage.getItem(SELECTED_DAY_KEY) || 'monday'; } catch {}
     daySelect.value = savedDay;
     showSelectedDay(savedDay);
-    
-    daySelect.addEventListener('change', function() {
-        showSelectedDay(this.value);
-    });
+    daySelect.addEventListener('change', function(){ showSelectedDay(this.value); });
 }
 
 /* Generic safe setter */
-function safeSetText(id, text) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerText = text == null ? '' : String(text);
-}
+function safeSetText(id, text) { const el = document.getElementById(id); if (!el) return; el.innerText = text == null ? '' : String(text); }
 
 /* Minimal mapping for common server keys */
 const KEY_ID_MAP = {
@@ -964,20 +1157,14 @@ const KEY_ID_MAP = {
     'fruit': '{day}fruit', 'fruit3':'{day}fruit3',
     'vegetable': '{day}vege', 'add2':'{day}add2'
 };
-
-function dayPrefix(day) { return day.toLowerCase(); }
-
+function dayPrefix(day){ return day.toLowerCase(); }
 function applyResponseToDay(day, payload) {
     if (!payload || typeof payload !== 'object') return;
     const prefix = dayPrefix(day);
     Object.entries(payload).forEach(([k, v]) => {
         if (v == null) v = '';
         let template = KEY_ID_MAP[k] || KEY_ID_MAP[k.toLowerCase()];
-        if (template) {
-            const id = template.replace('{day}', prefix);
-            safeSetText(id, v);
-            return;
-        }
+        if (template) { safeSetText(template.replace('{day}', prefix), v); return; }
         if (typeof v === 'object') {
             Object.entries(v).forEach(([subk, subv]) => {
                 let t = KEY_ID_MAP[subk] || KEY_ID_MAP[subk.toLowerCase()];
@@ -990,64 +1177,12 @@ function applyResponseToDay(day, payload) {
         else {
             const fallback2 = prefix + k.toLowerCase();
             if (document.getElementById(fallback2)) safeSetText(fallback2, v);
-            else console.debug('No mapping for', k, '-> tried', fallbackId, fallback2);
         }
     });
 }
-
 function populateFromResponse(response) {
     if (!response) return;
-    ['Monday','Tuesday','Wednesday','Thursday','Friday'].forEach(day => {
-        if (response[day]) applyResponseToDay(day, response[day]);
-    });
-}
-
-/* The table updaters used by AJAX success handlers */
-function updateTable(response){
-    populateFromResponse(response);
-    ['monday','tuesday','wednesday','thursday','friday'].forEach(day => {
-        safeSetText(day + 'Milk', '1% w.milk (unflavored)');
-        safeSetText(day + 'LunchMilk', '1% w.milk (unflavored)');
-    });
-    enableEditablesForAllCells();
-}
-
-function updateAMTable(response){ 
-    populateFromResponse(response); 
-    enableEditablesForAllCells(); 
-}
-
-function updatePMTable(response){ 
-    populateFromResponse(response); 
-    enableEditablesForAllCells(); 
-}
-
-function updateBreakfastTable(response){
-    populateFromResponse(response);
-    ['monday','tuesday','wednesday','thursday','friday'].forEach(day => {
-        safeSetText(day + 'Milk', '1% w.milk (unflavored)');
-    });
-    enableEditablesForAllCells();
-}
-
-function updateFruitTable(response){ 
-    populateFromResponse(response); 
-    enableEditablesForAllCells(); 
-}
-
-function updateVegetableTable(response){ 
-    populateFromResponse(response); 
-    enableEditablesForAllCells(); 
-}
-
-/* CSRF helper */
-function getCookie(name) {
-    try {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-    } catch (e) { console.warn('getCookie error', e); }
-    return '';
+    ['Monday','Tuesday','Wednesday','Thursday','Friday'].forEach(day => { if (response[day]) applyResponseToDay(day, response[day]); });
 }
 
 /* Editable support */
@@ -1066,36 +1201,33 @@ function makeEditable(el) {
         input.addEventListener('blur', function () {
             el.innerText = input.value.trim();
             saveMenuProgressToLocalStorage();
+            applyGradientsToCells();
+            ensureDailyWG(); // WG check after manual edits
         });
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { input.blur(); }
-        });
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') input.blur(); });
     });
 }
-
 function enableEditablesForAllCells() {
     const els = Array.from(document.querySelectorAll('#weeklyMenuTable td, #weeklyMenuTable th'));
-    els.forEach(el => {
-        if (el.id && el.id !== 'weeklyMenuHeader') makeEditable(el);
-    });
+    els.forEach(el => { if (el.id && el.id !== 'weeklyMenuHeader') makeEditable(el); });
 }
 
 /* Date helper */
 function updateDates() {
-    var today = new Date();
-    var currentDayIndex = today.getDay();
-    var daysUntilNextMonday = (currentDayIndex === 0) ? 1 : (8 - currentDayIndex);
-    var nextMonday = new Date(today);
+    const today = new Date();
+    const currentDayIndex = today.getDay();
+    const daysUntilNextMonday = (currentDayIndex === 0) ? 1 : (8 - currentDayIndex);
+    const nextMonday = new Date(today);
     nextMonday.setDate(today.getDate() + daysUntilNextMonday);
-    var nextFriday = new Date(nextMonday);
+    const nextFriday = new Date(nextMonday);
     nextFriday.setDate(nextMonday.getDate() + 4);
-    var startDateString = ('0' + (nextMonday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextMonday.getDate()).slice(-2);
-    var endDateString = ('0' + (nextFriday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextFriday.getDate()).slice(-2);
+    const startDateString = ('0' + (nextMonday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextMonday.getDate()).slice(-2);
+    const endDateString = ('0' + (nextFriday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextFriday.getDate()).slice(-2);
     $('#weeklyMenuHeader').text('Weekly Menu: ' + startDateString + ' - ' + endDateString);
     $('.weekday-date').each(function(index) {
-        var date = new Date(nextMonday);
+        const date = new Date(nextMonday);
         date.setDate(nextMonday.getDate() + index);
-        var formattedDate = ('0' + (date.getMonth() + 1)).slice(-2) + '/' + ('0' + date.getDate()).slice(-2);
+        const formattedDate = ('0' + (date.getMonth() + 1)).slice(-2) + '/' + ('0' + date.getDate()).slice(-2);
         $(this).text(formattedDate);
     });
     window.nextMondayDate = nextMonday;
@@ -1106,84 +1238,275 @@ function updateDates() {
 function updateDropdownWithDates() {
     const daySelect = document.getElementById('daySelect');
     if (!daySelect) return;
-    
     const dates = Array.from(document.querySelectorAll('.weekday-date')).map(e => e.innerText.trim());
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    
-    days.forEach((day, index) => {
+    DAYS.forEach((day, index) => {
         const option = daySelect.querySelector(`option[value="${day}"]`);
-        if (option && dates[index]) {
-            option.textContent = `${dayNames[index]} (${dates[index]})`;
-        }
+        if (option && dates[index]) option.textContent = `${DAY_FULL[index]} (${dates[index]})`;
     });
 }
 
-/* Check if menu exists before saving */
+/* WG filler: ensure each day has at least one WG somewhere; place in allowed slots, dedupe, keep colors */
+async function ensureDailyWG() {
+    const { weekly_qty, candidates } = await fetchWGCandidates();
+    if (!weekly_qty || !Array.isArray(candidates) || candidates.length === 0) return;
+
+    const candidateNameSet = new Set(candidates.map(c => norm(c.name)));
+
+    // Check if a day already has WG anywhere (by rule_label or name markers)
+    function dayHasWG(day) {
+        const cells = Array.from(document.querySelectorAll(`[data-day="${day}"]`));
+        if (cells.some(el => el.dataset.ruleLabel === 'Whole Grain')) return true;
+        return cells.some(el => {
+            const parts = (el.innerText || '').split(';').map(p => norm(p));
+            return parts.some(p => candidateNameSet.has(p) || isWGText(p));
+        });
+    }
+
+    function pickCandidateFor(slot) {
+        const pool = candidates.filter(c =>
+            (slot === 'breakfast' && c.break_only) ||
+            (slot === 'am' && c.am_only) ||
+            (slot === 'lunch' && c.lunch_only) ||
+            (slot === 'pm' && c.pm_only)
+        );
+        if (pool.length === 0) return null;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    let alreadyWG = DAYS.reduce((acc, d) => acc + (dayHasWG(d) ? 1 : 0), 0);
+    let remaining = Math.max(0, weekly_qty - alreadyWG);
+    if (remaining <= 0) return;
+
+    for (const day of DAYS) {
+        if (remaining <= 0) break;
+        if (dayHasWG(day)) continue;
+
+        // Preferred order: breakfast add1 → lunch add2 → am bread2 → pm bread3
+        let cand = pickCandidateFor('breakfast'), targetId = cand ? `${day}add1` : null;
+        if (!cand) { cand = pickCandidateFor('lunch'); if (cand) targetId = `${day}add2`; }
+        if (!cand) { cand = pickCandidateFor('am');    if (cand) targetId = `${day}bread2`; }
+        if (!cand) { cand = pickCandidateFor('pm');    if (cand) targetId = `${day}bread3`; }
+        if (!cand || !targetId) continue;
+
+        const cell = document.getElementById(targetId);
+        if (!cell) continue;
+
+        // Dedupe within the cell
+        const existingParts = (cell.innerText || '').split(';').map(p => norm(p));
+        if (existingParts.includes(norm(cand.name))) {
+            // still tag/color
+            const style = cand.style || WG_DEFAULT_STYLE;
+            cell.dataset.ruleLabel = style.rule_label || 'Whole Grain';
+            cell.style.background = `linear-gradient(135deg, ${style.gradient_start}, ${style.gradient_end})`;
+            cell.style.color = style.text_color;
+            continue;
+        }
+
+        // Place text (append if needed)
+        const current = (cell.innerText || '').trim();
+        cell.innerText = current ? `${current}; ${cand.name}` : cand.name;
+
+        // Prime cache for coloring and color immediately
+        inventoryRulesCache = inventoryRulesCache || {};
+        if (cand.style) inventoryRulesCache[cand.name] = cand.style;
+
+        const style = (inventoryRulesCache && inventoryRulesCache[cand.name]) || cand.style || WG_DEFAULT_STYLE;
+        cell.style.background = `linear-gradient(135deg, ${style.gradient_start}, ${style.gradient_end})`;
+        cell.style.color = style.text_color;
+        cell.dataset.ruleApplied = 'true';
+        cell.dataset.ruleLabel = style.rule_label || 'Whole Grain';
+
+        remaining--;
+    }
+
+    // Re-apply gradients to unify appearance
+    if (remaining < Math.max(0, weekly_qty - alreadyWG)) setTimeout(() => applyGradientsToCells(), 50);
+}
+
+/* CSRF helper */
+function getCookie(name) {
+    try {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    } catch (e) {}
+    return '';
+}
+
+/* The table updaters used by AJAX success handlers */
+function updateTable(response){
+    populateFromResponse(response);
+    DAYS.forEach(day => {
+        safeSetText(day + 'Milk', '1% w.milk (unflavored)');
+        safeSetText(day + 'LunchMilk', '1% w.milk (unflavored)');
+    });
+    enableEditablesForAllCells();
+}
+function updateAMTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+function updatePMTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+function updateBreakfastTable(response){
+    populateFromResponse(response);
+    DAYS.forEach(day => { safeSetText(day + 'Milk', '1% w.milk (unflavored)'); });
+    enableEditablesForAllCells();
+}
+function updateFruitTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+function updateVegetableTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+
+/* Document ready: restore, attach handlers */
+$(document).ready(function() {
+    restoreMenuProgressFromLocalStorage();
+    enableEditablesForAllCells();
+    initializeDaySelector();
+    updateDropdownWithDates();
+    // Initial legend build (in case rules are already cached server-side)
+    setTimeout(() => { buildRulesLegendFromCache(); }, 100);
+
+    $('#generateMenuBtn').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ e.preventDefault(); return false; }});
+    $('#menuForm').on('keydown keypress', function(e){
+        if (e.key === 'Enter' || e.keyCode === 13){
+            if (!$(e.target).is('#saveMenuBtn') && !$(e.target).hasClass('input-box')){ e.preventDefault(); return false; }
+        }
+    });
+    $(document).on('blur', '.input-box', function(){ setTimeout(saveMenuProgressToLocalStorage, 80); });
+
+    function ajaxPost(url) {
+        return $.ajax({ url, type: 'POST', data: {}, beforeSend: function(xhr){ xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken')); } });
+    }
+
+    // Lightweight loading overlay controls
+    function showLoading(text = 'Generating menu…') {
+        const overlay = document.getElementById('loadingOverlay');
+        const label = document.getElementById('loadingOverlayText');
+        if (label) label.textContent = text;
+        if (overlay) overlay.style.display = 'flex';
+        document.body.setAttribute('aria-busy', 'true');
+        document.body.classList.add('loading-active');
+    }
+    function hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+        document.body.removeAttribute('aria-busy');
+        document.body.classList.remove('loading-active');
+    }
+
+    $('#generateMenuBtn').off('click.simple').on('click.simple', function(e) {
+        e.preventDefault();
+        const $btn = $(this);
+        $btn.prop('disabled', true).addClass('disabled');
+        showLoading('Generating menu…');
+
+        // Clear previous colors before regenerating
+        clearAllMenuCellStyles();
+        clearInventoryRulesCache();
+
+        const calls = [
+            ajaxPost('/generate_menu/').done(resp => updateTable(resp)).fail(() => toastr.error('Failed generating lunch menu')).always(saveMenuProgressToLocalStorage),
+            ajaxPost('/generate_am_menu/').done(resp => updateAMTable(resp)).fail(() => toastr.error('Failed generating AM snack')).always(saveMenuProgressToLocalStorage),
+            ajaxPost('/generate_fruit_menu/').done(resp => updateFruitTable(resp)).fail(() => toastr.error('Failed generating fruits')).always(saveMenuProgressToLocalStorage),
+            ajaxPost('/generate_vegetable_menu/').done(resp => updateVegetableTable(resp)).fail(() => toastr.error('Failed generating vegetables')).always(saveMenuProgressToLocalStorage),
+            ajaxPost('/generate_pm_menu/').done(resp => updatePMTable(resp)).fail(() => toastr.error('Failed generating PM snack')).always(saveMenuProgressToLocalStorage),
+            ajaxPost('/generate_breakfast_menu/').done(resp => { updateBreakfastTable(resp); }).fail(() => toastr.error('Failed generating breakfast')).always(saveMenuProgressToLocalStorage)
+        ];
+
+        $.when.apply($, calls).always(async function() {
+            try {
+                updateDates();
+                DAYS.forEach(day => {
+                    safeSetText(day + 'Milk', document.getElementById(day + 'Milk')?.innerText || '1% w.milk (unflavored)');
+                    safeSetText(day + 'LunchMilk', document.getElementById(day + 'LunchMilk')?.innerText || '1% w.milk (unflavored)');
+                });
+                saveMenuProgressToLocalStorage();
+                enableEditablesForAllCells();
+
+                // Recolor then ensure WG in sequence
+                await applyGradientsToCells();
+                await ensureDailyWG();
+                await buildRulesLegendFromCache();
+            } finally {
+                hideLoading();
+                setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 200);
+            }
+        });
+    });
+
+    $(document).on('click', '#generateMenuBtn', function (e) { console.log('delegated generate handler (fallback)'); });
+
+    $('#saveMenuBtn').off('click').on('click', function (e) {
+        e.preventDefault();
+        if (typeof checkMenuExistsAndSave === 'function') checkMenuExistsAndSave();
+    });
+});
+
+/* Build rule legend from cached inventory rules */
+async function buildRulesLegendFromCache() {
+    const container = document.getElementById('rulesLegend');
+    if (!container) return;
+    const rulesMap = await fetchInventoryRules();
+    const unique = new Map();
+    Object.values(rulesMap || {}).forEach(v => {
+        if (!v || !v.rule_label) return;
+        if (!unique.has(v.rule_label)) {
+            unique.set(v.rule_label, {
+                gradient_start: v.gradient_start,
+                gradient_end: v.gradient_end,
+                text_color: v.text_color,
+                rule_label: v.rule_label
+            });
+        }
+    });
+    // If nothing was found, clear legend
+    if (unique.size === 0) { container.innerHTML = ''; return; }
+
+    const items = Array.from(unique.values()).sort((a, b) => a.rule_label.localeCompare(b.rule_label));
+    const html = items.map(item => {
+        const swatchStyle = `background: linear-gradient(135deg, ${item.gradient_start}, ${item.gradient_end});`;
+        const labelStyle = `color: ${item.text_color};`;
+        return `<div class="legend-item" role="listitem">
+                    <span class="legend-swatch" style="${swatchStyle}" aria-hidden="true"></span>
+                    <span class="legend-label" style="${labelStyle}">${item.rule_label}</span>
+                </div>`;
+    }).join('');
+    container.innerHTML = html;
+}
+
+/* Save menu to database */
 async function checkMenuExistsAndSave() {
     const datesToCheck = [];
     const nextMonday = window.nextMondayDate;
-
-    if (!nextMonday) {
-        toastr.error('Please generate menu first to set dates');
-        return;
-    }
-
+    if (!nextMonday) { toastr.error('Please generate menu first to set dates'); return; }
     for (let i = 0; i < 5; i++) {
         const date = new Date(nextMonday);
         date.setDate(nextMonday.getDate() + i);
         const formattedDate = date.toISOString().split('T')[0];
         datesToCheck.push(formattedDate);
     }
-
     try {
         const response = await fetch('/api/check_menu/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify({ dates: datesToCheck })
         });
-
         const result = await response.json();
-
         if (result.exists) {
-            // Add timestamp to make each message unique and bypass preventDuplicates
             const uniqueId = Date.now();
-            
             const warningToast = toastr.warning(
                 `<div style="margin-bottom: 15px;">There is already a menu saved for these dates. Saving will override previous entries.</div>
-        <div style="display: flex; gap: 10px; justify-content: center;">
-            <button type="button" class="btn btn-info warning-proceed-btn" style="padding: 8px 20px;">Proceed</button>
-            <button type="button" class="btn btn-secondary warning-cancel-btn" style="padding: 8px 20px;">Cancel</button>
-        </div>
-        <span style="display:none;" data-unique="${uniqueId}"></span>`,
+                 <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button type="button" class="btn btn-info warning-proceed-btn" style="padding: 8px 20px;">Proceed</button>
+                    <button type="button" class="btn btn-secondary warning-cancel-btn" style="padding: 8px 20px;">Cancel</button>
+                 </div>
+                 <span style="display:none;" data-unique="${uniqueId}"></span>`,
                 'Warning',
-                {
-                    closeButton: false,
-                    timeOut: 0,
-                    extendedTimeOut: 0,
-                    tapToDismiss: false,
-                    positionClass: 'toast-top-center',
-                    toastClass: 'toastr-warning-custom',
-                    escapeHtml: false,
-                    preventDuplicates: false,
-                    onShown: function() {
-                        // Keep the styling simple - width is already set in toast container
-                        $('.warning-proceed-btn').off('click').on('click', function() {
-                            $('.toastr-warning-custom').fadeOut(200, function() {
-                                $(this).remove();
-                                saveMenu();
-                            });
-                        });
-                        
-                        $('.warning-cancel-btn').off('click').on('click', function() {
-                            $('.toastr-warning-custom').fadeOut(200, function() {
-                                $(this).remove();
-                            });
-                        });
-                    }
+                { closeButton: false, timeOut: 0, extendedTimeOut: 0, tapToDismiss: false, positionClass: 'toast-top-center',
+                  toastClass: 'toastr-warning-custom', escapeHtml: false, preventDuplicates: false,
+                  onShown: function() {
+                      $('.warning-proceed-btn').off('click').on('click', function() {
+                          $('.toastr-warning-custom').fadeOut(200, function(){ $(this).remove(); saveMenu(); });
+                      });
+                      $('.warning-cancel-btn').off('click').on('click', function() {
+                          $('.toastr-warning-custom').fadeOut(200, function(){ $(this).remove(); });
+                      });
+                  }
                 }
             );
         } else {
@@ -1195,14 +1518,8 @@ async function checkMenuExistsAndSave() {
     }
 }
 
-/* Save menu to database */
 function saveMenu() {
-    toastr.info('Saving menu...', '', {
-        timeOut: 0,
-        extendedTimeOut: 0,
-        closeButton: false,
-        tapToDismiss: false
-    });
+    toastr.info('Saving menu...', '', { timeOut: 0, extendedTimeOut: 0, closeButton: false, tapToDismiss: false });
 
     const facilityName = document.querySelector('th[colspan="2"]')?.textContent.replace('Facility: ', '').trim() || '{{ facility_name }}';
     const sponsorName = document.querySelectorAll('th[colspan="2"]')[1]?.textContent.replace('Sponsor: ', '').trim() || '{{ sponsor_name }}';
@@ -1317,80 +1634,24 @@ function saveMenu() {
         }
     };
 
-    console.log('Sending menu data:', menuData);
-
     $.ajax({
         url: '/api/save_menu/',
         type: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json'
-        },
+        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' },
         data: JSON.stringify(menuData),
         success: function (response) {
-            console.log('Save response:', response);
             toastr.clear();
             toastr.success('Menu saved successfully!');
             clearMenuProgressFromLocalStorage();
         },
         error: function (xhr, status, error) {
-            console.error('Save error:', xhr.responseText);
             toastr.clear();
             toastr.error('Error saving menu: ' + (xhr.responseJSON?.error || error));
         }
     });
 }
 
-/* Document ready: restore, attach handlers */
-$(document).ready(function() {
-    restoreMenuProgressFromLocalStorage();
-    enableEditablesForAllCells();
-    initializeDaySelector();
-    updateDropdownWithDates();
-
-    $('#generateMenuBtn').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ e.preventDefault(); return false; }});
-    $('#menuForm').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ if (!$(e.target).is('#saveMenuBtn') && !$(e.target).hasClass('input-box')){ e.preventDefault(); return false; } }});
-    $(document).on('blur', '.input-box', function(){ setTimeout(saveMenuProgressToLocalStorage, 80); });
-
-    function ajaxPost(url) {
-        return $.ajax({ url: url, type: 'POST', data: {}, beforeSend: function(xhr) { xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken')); } });
-    }
-
-    $('#generateMenuBtn').off('click.simple').on('click.simple', function(e) {
-        e.preventDefault();
-        const $btn = $(this);
-        $btn.prop('disabled', true).addClass('disabled');
-
-        const calls = [
-            ajaxPost('/generate_menu/').done(resp => updateTable(resp)).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_am_menu/').done(resp => updateAMTable(resp)).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_fruit_menu/').done(resp => updateFruitTable(resp)).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_vegetable_menu/').done(resp => updateVegetableTable(resp)).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_pm_menu/').done(resp => updatePMTable(resp)).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_breakfast_menu/').done(resp => { updateBreakfastTable(resp); }).always(saveMenuProgressToLocalStorage)
-        ];
-
-        $.when.apply($, calls).always(function() {
-            updateDates();
-            ['monday','tuesday','wednesday','thursday','friday'].forEach(day => {
-                safeSetText(day + 'Milk', document.getElementById(day + 'Milk')?.innerText || '1% w.milk (unflavored)');
-                safeSetText(day + 'LunchMilk', document.getElementById(day + 'LunchMilk')?.innerText || '1% w.milk (unflavored)');
-            });
-            saveMenuProgressToLocalStorage();
-            enableEditablesForAllCells();
-            setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 250);
-        });
-    });
-
-    $(document).on('click', '#generateMenuBtn', function (e) { console.log('delegated generate handler (fallback)'); });
-
-    $('#saveMenuBtn').off('click').on('click', function (e) {
-        e.preventDefault();
-        if (typeof checkMenuExistsAndSave === 'function') checkMenuExistsAndSave();
-        else console.warn('checkMenuExistsAndSave not defined');
-    });
-});
-
+/* expose helpers */
 window.updateTable = updateTable;
 window.updateAMTable = updateAMTable;
 window.updatePMTable = updatePMTable;
@@ -1401,6 +1662,9 @@ window.saveMenuProgressToLocalStorage = saveMenuProgressToLocalStorage;
 window.restoreMenuProgressFromLocalStorage = restoreMenuProgressFromLocalStorage;
 window.checkMenuExistsAndSave = checkMenuExistsAndSave;
 window.saveMenu = saveMenu;
+window.applyGradientsToCells = applyGradientsToCells;
+window.clearInventoryRulesCache = clearInventoryRulesCache;
+window.ensureDailyWG = ensureDailyWG;
 </script>
 <script>
 function openInventoryWindow() {
@@ -1429,7 +1693,6 @@ $('#generatePDFBtn').on('click', function(e) {
     e.preventDefault();
     $('#mobileMenuDropdown').removeClass('show');
     
-    // Store current state
     const isMobile = window.innerWidth <= 1000;
     const mobileShowElements = document.querySelectorAll('.mobile-show-day');
     const allDayElements = document.querySelectorAll('[data-day]');
@@ -1437,223 +1700,56 @@ $('#generatePDFBtn').on('click', function(e) {
     const tbody = document.querySelector('.table tbody');
     const thead = document.querySelector('.table thead');
     const allRows = document.querySelectorAll('.table tbody tr');
-    
-    // Store original styles
+
     const originalStyles = {
         body: tbody ? tbody.style.cssText : '',
         head: thead ? thead.style.cssText : '',
     };
     
-    // Add comprehensive print style
     const printStyle = document.createElement('style');
     printStyle.id = 'temp-print-style';
     printStyle.innerHTML = `
-        /* Force desktop table layout for printing */
-        body.printing-pdf {
-            overflow-x: visible !important;
-            max-width: none !important;
-        }
-        
-        body.printing-pdf .table {
-            table-layout: fixed !important;
-            width: 100% !important;
-        }
-        
-        body.printing-pdf .table thead {
-            display: table-header-group !important;
-        }
-        
-        body.printing-pdf .table tbody {
-            display: table-row-group !important;
-            background-color: #fff !important;
-        }
-        
-        body.printing-pdf .table tbody tr {
-            display: table-row !important;
-            grid-template-columns: none !important;
-            margin-top: 0 !important;
-            margin-left: 0 !important;
-            width: auto !important;
-            position: static !important;
-        }
-        
-        body.printing-pdf .table tbody tr::before {
-            content: none !important;
-            display: none !important;
-        }
-        
-        body.printing-pdf .table tbody tr td,
-        body.printing-pdf .table tbody tr th,
-        body.printing-pdf .table thead tr th {
-            display: table-cell !important;
-            padding: 0.2rem !important;
-            font-size: 0.65rem !important;
-            line-height: 1.1 !important;
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-        }
-        
-        body.printing-pdf .table tbody tr td.vertical-header {
-            display: table-cell !important;
-            writing-mode: vertical-rl !important;
-            transform: rotate(180deg) !important;
-            white-space: nowrap !important;
-            box-sizing: border-box;
-            width: 24px;
-            min-width: 24px;
-            max-width: 24px;
-            padding: 2px 1px;
-            text-align: center !important;
-            font-size: 0.7rem !important;
-        }
-        
-        body.printing-pdf .table thead tr th[data-day],
-        body.printing-pdf .table tbody tr td[data-day],
-        body.printing-pdf .table tbody tr th[data-day] {
-            display: table-cell !important;
-        }
-        
-        body.printing-pdf #mobileDaySelector,
-        body.printing-pdf #mobileBottomNav {
-            display: none !important;
-        }
-        
-        body.printing-pdf .container {
-            padding-left: 10px !important;
-            padding-right: 10px !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
-            max-width: 100% !important;
-        }
-        
-        body.printing-pdf #printableTable {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-        }
-        
+        body.printing-pdf { overflow-x: visible !important; max-width: none !important; }
+        body.printing-pdf .table { table-layout: fixed !important; width: 100% !important; }
+        body.printing-pdf .table thead { display: table-header-group !important; }
+        body.printing-pdf .table tbody { display: table-row-group !important; background-color: #fff !important; }
+        body.printing-pdf .table tbody tr { display: table-row !important; grid-template-columns: none !important; margin-top: 0 !important; margin-left: 0 !important; width: auto !important; position: static !important; }
+        body.printing-pdf .table tbody tr::before { content: none !important; display: none !important; }
+        body.printing-pdf .table tbody tr td, body.printing-pdf .table tbody tr th, body.printing-pdf .table thead tr th { display: table-cell !important; padding: 0.2rem !important; font-size: 0.65rem !important; line-height: 1.1 !important; word-wrap: break-word !important; overflow-wrap: break-word !important; }
+        body.printing-pdf .table tbody tr td.vertical-header { display: table-cell !important; writing-mode: vertical-rl !important; transform: rotate(180deg) !important; white-space: nowrap !important; box-sizing: border-box; width: 24px; min-width: 24px; max-width: 24px; padding: 2px 1px; text-align: center !important; font-size: 0.7rem !important; }
+        body.printing-pdf .table thead tr th[data-day], body.printing-pdf .table tbody tr td[data-day], body.printing-pdf .table tbody tr th[data-day] { display: table-cell !important; }
+        body.printing-pdf #mobileDaySelector, body.printing-pdf #mobileBottomNav { display: none !important; }
+        body.printing-pdf .container { padding-left: 10px !important; padding-right: 10px !important; margin-left: auto !important; margin-right: auto !important; max-width: 100% !important; }
+        body.printing-pdf #printableTable { margin: 0 !important; padding: 0 !important; width: 100% !important; }
         @media print {
-            h1, .sb-topnav, .sb-sidenav-footer, .button-container, #generateMenuBtn, #saveMenuBtn, #mobileDaySelector, #mobileBottomNav {
-                display: none !important;
-            }
-            
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            
-            body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-            }
-            
-            .container {
-                max-width: 100% !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            
-            .table {
-                table-layout: fixed !important;
-                width: 100% !important;
-                border-collapse: collapse !important;
-            }
-            
-            .table thead {
-                display: table-header-group !important;
-            }
-            
-            .table tbody {
-                display: table-row-group !important;
-            }
-            
-            .table tbody tr {
-                display: table-row !important;
-                grid-template-columns: none !important;
-                position: static !important;
-                margin: 0 !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .table tbody tr::before {
-                content: none !important;
-                display: none !important;
-            }
-            
-            .table tbody tr td.vertical-header {
-                display: table-cell !important;
-                writing-mode: vertical-rl !important;
-                transform: rotate(180deg) !important;
-                white-space: nowrap !important;
-                width: 24px !important;
-                min-width: 24px !important;
-                max-width: 24px !important;
-                padding: 2px 1px !important;
-                font-size: 0.7rem !important;
-            }
-            
-            .table thead tr th,
-            .table tbody tr td,
-            .table tbody tr th {
-                display: table-cell !important;
-                padding: 0.2rem 0.15rem !important;
-                font-size: 0.6rem !important;
-                line-height: 1.1 !important;
-                word-wrap: break-word !important;
-                white-space: normal !important;
-                overflow-wrap: break-word !important;
-            }
-            
-            /* First column (labels) slightly wider */
-            .table tbody tr td:nth-child(2) {
-                width: 18% !important;
-                font-size: 0.58rem !important;
-            }
-            
-            /* Day columns equal width */
-            .table tbody tr td[data-day],
-           
-            .table thead tr th[data-day] {
-                width: 13.5% !important;
-            }
-            
-            /* Header rows */
-            .table thead tr th {
-                font-size: 0.65rem !important;
-                padding: 0.25rem !important;
-            }
-
-            #weeklyMenuHeader {
-                font-size: 0.75rem !important;
-                padding: 0.3rem !important;
-            }
-
-            .vertical-header {
-                writing-mode: vertical-rl !important;
-                transform: rotate(180deg) !important;
-                white-space: nowrap !important;
-            }
-
-            @page {
-                size: landscape;
-                margin: 0.3in 0.25in;
-            }
+            h1, .sb-topnav, .sb-sidenav-footer, .button-container, #generateMenuBtn, #saveMenuBtn, #mobileDaySelector, #mobileBottomNav { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { margin: 0; padding: 0; width: 100%; }
+            .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            .table { table-layout: fixed !important; width: 100% !important; border-collapse: collapse !important; }
+            .table thead { display: table-header-group !important; }
+            .table tbody { display: table-row-group !important; }
+            .table tbody tr { display: table-row !important; grid-template-columns: none !important; position: static !important; margin: 0 !important; page-break-inside: avoid !important; }
+            .table tbody tr::before { content: none !important; display: none !important; }
+            .table tbody tr td.vertical-header { display: table-cell !important; writing-mode: vertical-rl !important; transform: rotate(180deg) !important; white-space: nowrap !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; padding: 2px 1px !important; font-size: 0.7rem !important; }
+            .table thead tr th, .table tbody tr td, .table tbody tr th { display: table-cell !important; padding: 0.2rem 0.15rem !important; font-size: 0.6rem !important; line-height: 1.1 !important; word-wrap: break-word !important; white-space: normal !important; overflow-wrap: break-word !important; }
+            .table tbody tr td:nth-child(2) { width: 18% !important; font-size: 0.58rem !important; }
+            .table tbody tr td[data-day], .table thead tr th[data-day] { width: 13.5% !important; }
+            .table thead tr th { font-size: 0.65rem !important; padding: 0.25rem !important; }
+            #weeklyMenuHeader { font-size: 0.75rem !important; padding: 0.3rem !important; }
+            .vertical-header { writing-mode: vertical-rl !important; transform: rotate(180deg) !important; white-space: nowrap !important; }
+            @page { size: landscape; margin: 0.3in 0.25in; }
         }
     `;
     document.head.appendChild(printStyle);
-
-    // Add printing class to body
     document.body.classList.add('printing-pdf');
 
     setTimeout(() => {
         window.print();
-
         setTimeout(() => {
             const tempStyle = document.getElementById('temp-print-style');
             if (tempStyle) tempStyle.remove();
             document.body.classList.remove('printing-pdf');
-
             allDayElements.forEach(el => { el.style.display = ''; });
             verticalHeaders.forEach(el => { el.style.padding = ''; });
             allRows.forEach(row => { row.style.marginTop = ''; });
@@ -1661,7 +1757,6 @@ $('#generatePDFBtn').on('click', function(e) {
             if (thead) thead.style.cssText = originalStyles.head;
 
             if (isMobile) {
-                // reapply mobile-only view if needed
                 const daySelect = document.getElementById('daySelect');
                 const selectedDay = daySelect ? daySelect.value : 'monday';
                 document.querySelectorAll('[data-day]').forEach(el => el.classList.remove('mobile-show-day'));
@@ -1669,7 +1764,7 @@ $('#generatePDFBtn').on('click', function(e) {
             }
         }, 500);
     }, 100);
-}); // <-- close PDF click handler here
+}); // close PDF click handler
 
 function exportWeeklyMenuCSV() {
     const table = document.getElementById('weeklyMenuTable');
@@ -1677,42 +1772,25 @@ function exportWeeklyMenuCSV() {
 
     const getText = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
     const rows = [];
-
-    // Title
     const headerTitle = document.getElementById('weeklyMenuHeader');
     if (headerTitle) rows.push([getText(headerTitle)]);
-
-    // THEAD
     const thead = table.querySelector('thead');
-    if (thead) {
-        thead.querySelectorAll('tr').forEach(tr => {
-            rows.push(Array.from(tr.children).map(getText));
-        });
-    }
-
-    // TBODY with standalone section header row
+    if (thead) thead.querySelectorAll('tr').forEach(tr => { rows.push(Array.from(tr.children).map(getText)); });
     const tbody = table.querySelector('tbody');
     if (tbody) {
-        const trList = Array.from(tbody.querySelectorAll('tr'));
-        trList.forEach(tr => {
+        Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
             const cells = Array.from(tr.children);
-            if (cells[0] && cells[0].classList.contains('vertical-header')) {
-                rows.push([getText(cells[0])]); // Breakfast, AM Snack, Lunch, PM Snack
-                return;
-            }
-            rows.push(cells.map(getText)); // item rows
+            if (cells[0] && cells[0].classList.contains('vertical-header')) { rows.push([getText(cells[0])]); return; }
+            rows.push(cells.map(getText));
         });
     }
-
     const toCSVLine = (arr) => arr.map(v => {
         const s = v == null ? '' : String(v);
         const escaped = s.replace(/"/g, '""');
         return /[",\n]/.test(s) ? `"${escaped}"` : escaped;
     }).join(',');
-
     const csv = rows.map(toCSVLine).join('\n');
 
-    // Filename from dates if present
     let fileName = 'weekly-menu.csv';
     const titleText = getText(headerTitle);
     const match = titleText.match(/Weekly Menu:\s*([0-9/]+)\s*-\s*([0-9/]+)/i);
@@ -1730,10 +1808,6 @@ function exportWeeklyMenuCSV() {
 
     $('#mobileMenuDropdown').removeClass('show');
 }
-
-$(document).on('click', '#exportWeeklyMenuCSV', function(e) {
-    e.preventDefault();
-    exportWeeklyMenuCSV();
-});
+$(document).on('click', '#exportWeeklyMenuCSV', function(e) { e.preventDefault(); exportWeeklyMenuCSV(); });
 </script>
 {% endblock %}

@@ -34,20 +34,37 @@ class Rule(models.Model):
     am_only = models.BooleanField(choices=YES_NO_CHOICES)
     lunch_only = models.BooleanField(choices=YES_NO_CHOICES)
     pm_only = models.BooleanField(choices=YES_NO_CHOICES)
+    gradient_start = models.CharField(max_length=50, default='rgba(200,200,200,0.3)')
+    gradient_end = models.CharField(max_length=50, default='rgba(240,240,240,0.5)')
+    text_color = models.CharField(max_length=50, default='#333')
 
     def __str__(self):
         return self.rule
 
 class Inventory(models.Model):
+    MEAL_PERIOD_CHOICES = [
+        ('all', 'All Meals'),
+        ('breakfast', 'Breakfast'),
+        ('am_snack', 'AM Snack'),
+        ('lunch', 'Lunch'),
+        ('pm_snack', 'PM Snack'),
+    ]
+    
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     item = models.CharField(max_length=100, unique=True)
     category = models.CharField(max_length=100)
     units = models.CharField(max_length=50, null=True, blank=True)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)  # Changed from IntegerField
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
-    resupply = models.DecimalField(max_digits=10, decimal_places=2)  # Also changed resupply for consistency
-    total_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Also changed total_quantity
+    resupply = models.DecimalField(max_digits=10, decimal_places=2)
+    total_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    meal_period = models.CharField(
+        max_length=20,
+        choices=MEAL_PERIOD_CHOICES,
+        default='all',
+        help_text='Specify when this item can be used in the menu'
+    )
 
     def __str__(self):
         return self.item
@@ -58,6 +75,11 @@ class VegRecipe(models.Model):
     ingredient1 = models.ForeignKey('Inventory', related_name='veg_ingredient1', on_delete=models.SET_NULL, null=True)
     qty1 = models.PositiveIntegerField(null=True)
     rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
+    YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
+    break_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    am_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
 
     def __str__(self):
         return self.name
@@ -68,6 +90,11 @@ class FruitRecipe(models.Model):
     ingredient1 = models.ForeignKey('Inventory', related_name='fruit_ingredient1', on_delete=models.SET_NULL, null=True)
     qty1 = models.PositiveIntegerField(null=True)
     rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
+    YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
+    break_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    am_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
 
     def __str__(self):
         return self.name
@@ -78,6 +105,11 @@ class WgRecipe(models.Model):
     ingredient1 = models.ForeignKey('Inventory', related_name='wg_ingredient1', on_delete=models.SET_NULL, null=True)
     qty1 = models.PositiveIntegerField(null=True)
     rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
+    YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
+    break_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    am_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
 
     def __str__(self):
         return self.name
