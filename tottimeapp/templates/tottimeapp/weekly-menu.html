@@ -1669,7 +1669,7 @@ window.ensureDailyWG = ensureDailyWG;
 <script>
 function openInventoryWindow() {
     window.open(
-        "{% url 'inventory_list' %}?popup=1",
+        "{% url 'inventory_list' %}?public=true&popup=1",
         "InventoryWindow",
         "width=1100,height=700,scrollbars=yes,resizable=yes"
     );

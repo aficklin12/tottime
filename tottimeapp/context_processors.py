@@ -45,24 +45,25 @@ def account_switcher_context(request):
         return {'available_account_owners': available_account_owners}
     return {'available_account_owners': []}
 
-# tottimeapp/context_processors.py
 
 def template_type(request):
     """
     Add template type context variables to all templates.
     """
-    is_public = request.GET.get('public') == 'true'
+    is_public = (
+        request.GET.get('public') == 'true' or
+        request.GET.get('popup') in ('1', 'true')
+    )
     return {
         'is_public_view': is_public
     }
-
-# tottimeapp/context_processors.py
 
 def template_base(request):
     """Determine which base template to use."""
     is_public = request.GET.get('public') == 'true'
     return {
-        'default_base_template': 'tottimeapp/base_public.html' if is_public else 'tottimeapp/base.html'
+        'base_template': 'tottimeapp/base_public.html' if is_public else 'tottimeapp/base.html',
+        'default_base_template': 'tottimeapp/base_public.html' if is_public else 'tottimeapp/base.html',
     }
 
 def temporary_access_context(request):
