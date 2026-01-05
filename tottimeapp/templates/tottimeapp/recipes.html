@@ -111,7 +111,15 @@
     #recipeDropdownContainer {
         display: none !important;
     }
-
+  #recipeTabs.tabs {
+    width: 70% !important;
+   
+    margin-right: 0 !important;
+    overflow-x: auto;              /* keep horizontal scroll within clipped width */
+    flex-wrap: nowrap;             /* prevent wrapping so scroll appears */
+    scrollbar-width: thin;
+  }
+  #recipeTabs .tab { flex-shrink: 0; } /* keep tab size consistent while scrolling */
 }
 
 </style>
