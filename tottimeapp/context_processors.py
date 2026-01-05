@@ -62,7 +62,7 @@ def template_base(request):
     """Determine which base template to use."""
     is_public = request.GET.get('public') == 'true'
     return {
-        'base_template': 'tottimeapp/base_public.html' if is_public else 'tottimeapp/base.html'
+        'default_base_template': 'tottimeapp/base_public.html' if is_public else 'tottimeapp/base.html'
     }
 
 def temporary_access_context(request):
