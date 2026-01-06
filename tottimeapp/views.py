@@ -3672,8 +3672,11 @@ def edit_student_info(request, student_id):
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
 
-    student = get_object_or_404(Student, id=student_id)
-    classrooms = Classroom.objects.all()
+    main_user = get_user_for_view(request)
+
+    # FIX: Student FK is `main_user`, Classroom FK is `user`
+    student = get_object_or_404(Student, id=student_id, main_user=main_user)
+    classrooms = Classroom.objects.filter(user=main_user).order_by('name')
     previous_page = request.POST.get('previous_page', request.META.get('HTTP_REFERER', '/'))
 
     if request.method == 'POST':
@@ -3684,7 +3687,7 @@ def edit_student_info(request, student_id):
         classroom_id = request.POST.get('classroom')
         profile_picture = request.FILES.get('profile_picture')
         status = request.POST.get('status')
-        formula_name = request.POST.get('formula_name')  # <-- Get formula name
+        formula_name = request.POST.get('formula_name')
 
         if not first_name or not last_name:
             return render(request, 'tottimeapp/edit_student.html', {
@@ -3695,11 +3698,11 @@ def edit_student_info(request, student_id):
                 **permissions_context,
             })
 
-        classroom = get_object_or_404(Classroom, id=classroom_id)
+        classroom = get_object_or_404(Classroom, id=classroom_id, user=main_user)
+
         student.first_name = first_name
         student.last_name = last_name
 
-        # Convert dob to date if needed
         if dob:
             try:
                 student.date_of_birth = datetime.strptime(dob, "%Y-%m-%d").date()
@@ -3715,9 +3718,8 @@ def edit_student_info(request, student_id):
         student.code = code
         student.classroom = classroom
         student.status = status
-        student.formula_name = formula_name  # <-- Save formula name
+        student.formula_name = formula_name
 
-        # Only update profile_picture if a new file is uploaded
         if profile_picture:
             student.profile_picture = profile_picture
 
@@ -4486,14 +4488,16 @@ def edit_teacher_info(request, teacher_id):
     except MainUser.DoesNotExist:
         return HttpResponseRedirect('/classroom-options-teachers/')  # Redirect if teacher not found
 
-    # Fetch all classrooms for the dropdown
-    classrooms = Classroom.objects.all()
+    # Determine current viewing main user (location/owner)
+    main_user = get_user_for_view(request)
+
+    # Fetch classrooms for this main user only
+    classrooms = Classroom.objects.filter(user=main_user).order_by('name')
 
     # Fetch all group IDs except for "Owner" (group_id=1) and exclude group_id=5 and group_id=6
     editable_groups = Group.objects.exclude(id__in=[1, 5, 6])
 
     # Determine if the teacher is the main account holder (Owner)
-    main_user = get_user_for_view(request)
     is_owner = teacher == main_user
 
     # Fetch the SubUser instance if the teacher is not the main account holder
@@ -4519,7 +4523,7 @@ def edit_teacher_info(request, teacher_id):
         group_id = request.POST.get('group')
 
         # Validate the code to ensure it is a 4-digit number
-        if not code.isdigit() or not (1000 <= int(code) <= 9999):
+        if not code or not code.isdigit() or not (1000 <= int(code) <= 9999):
             return render(request, 'tottimeapp/edit_teacher.html', {
                 'teacher': teacher,
                 'classrooms': classrooms,
@@ -4549,22 +4553,19 @@ def edit_teacher_info(request, teacher_id):
         teacher.address = address
         teacher.code = code
 
-        # Update classroom assignment
+        # Update classroom assignment (validate it belongs to current main user)
         if classroom_id:
-            try:
-                classroom = Classroom.objects.get(id=classroom_id)
-                ClassroomAssignment.objects.update_or_create(
-                    mainuser=teacher,
-                    defaults={'classroom': classroom}
-                )
-            except Classroom.DoesNotExist:
-                pass
+            classroom = get_object_or_404(Classroom, id=classroom_id, user=main_user)
+            ClassroomAssignment.objects.update_or_create(
+                mainuser=teacher,
+                defaults={'classroom': classroom}
+            )
 
         # Update group ID if not the Owner
-        if not is_owner:
+        if not is_owner and group_id:
             try:
                 group = Group.objects.get(id=group_id)
-                subuser.group_id = group  # Update the SubUser's group_id
+                subuser.group_id = group
                 subuser.save()
             except Group.DoesNotExist:
                 pass

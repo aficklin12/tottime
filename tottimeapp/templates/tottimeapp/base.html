@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+      (function () {
+        try {
+          var w = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+          var match = document.cookie.match(/(?:^|;)\s*viewport_width=(\d+)/);
+          var prev = match ? match[1] : null;
+          var thresholdChange = (prev ? (parseInt(prev, 10) < 1000) : null) !== (w < 1000);
+
+          if (!prev || prev !== String(w)) {
+            document.cookie = 'viewport_width=' + w + '; path=/; max-age=86400';
+          }
+
+          // Reload once if crossing the threshold to pick the correct base
+          if (thresholdChange && !sessionStorage.getItem('vw_set_once')) {
+            sessionStorage.setItem('vw_set_once', '1');
+            location.reload();
+          }
+        } catch (e) {
+          // no-op
+        }
+      })();
+    </script>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />

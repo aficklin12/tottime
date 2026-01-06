@@ -60,10 +60,28 @@ def template_type(request):
 
 def template_base(request):
     """Determine which base template to use."""
+    # Read viewport width from cookie and decide minimal base for < 1000px
+    vw = None
+    try:
+        vw_cookie = request.COOKIES.get('viewport_width')
+        vw = int(vw_cookie) if vw_cookie else None
+    except (TypeError, ValueError):
+        vw = None
+
+    use_minimal = vw is not None and vw < 1000
     is_public = request.GET.get('public') == 'true'
+
+    if use_minimal:
+        base = 'tottimeapp/base_minimal.html'
+    elif is_public:
+        base = 'tottimeapp/base_public.html'
+    else:
+        base = 'tottimeapp/base.html'
+
     return {
-        'base_template': 'tottimeapp/base_public.html' if is_public else 'tottimeapp/base.html',
-        'default_base_template': 'tottimeapp/base_public.html' if is_public else 'tottimeapp/base.html',
+        'base_template': base,
+        'default_base_template': base,
+        'use_minimal_base': use_minimal,
     }
 
 def temporary_access_context(request):

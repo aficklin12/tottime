@@ -798,14 +798,16 @@ table thead {
     background-clip: padding-box;
 }
 #addItemModal .modal-dialog {
-    width: 80vw;
-    max-width: 80vw;
-    margin: 3.75rem auto; /* keep Bootstrap default vertical spacing/centering */
+    /* Centered and responsive */
+    width: auto;
+    max-width: min(640px, 95vw);
+    margin: 1rem auto; /* smaller margins so it fits on short viewports */
 }
+
 #addItemModal .modal-content {
     box-sizing: border-box;
-    max-height: 85vh;
-    overflow-y: auto;
+    max-height: calc(100vh - 2rem); /* keep inside viewport height */
+    overflow-y: auto;               /* scroll inner content if needed */
 }
 /* Ensure Add Item modal and its backdrop appear above fixed header/nav */
 #addItemModal.modal {
@@ -1091,7 +1093,7 @@ table thead {
 </div>
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addItemModalLabel">Add Item</h5>
@@ -1108,10 +1110,21 @@ table thead {
                         <label for="itemCategory" class="form-label">Category</label>
                         <select class="form-control" id="itemCategory" name="category" required onchange="toggleNewCategoryInput(this)">
                             <option value="" disabled selected>Select category</option>
+                            <option value="Misc.">Misc.</option>
+                            <option value="Meat">Meat</option>
+                            <option value="Breakfast">Breakfast</option>
+                            <option value="Snacks">Snacks</option>
+                            <option value="Infants">Infants</option>
+                            <option value="Dairy">Dairy</option>
+                            <option value="Fruits">Fruits</option>
+                            <option value="Supplies">Supplies</option>
+                            <option value="Grains">Grains</option>
+                            <option value="Vegetables">Vegetables</option>
+                            <!-- <option value="" disabled selected>Select category</option>
                             {% for category in categories %}
                             <option value="{{ category }}">{{ category }}</option>
                             {% endfor %}
-                            <option value="Other">Other</option>
+                            <option value="Other">Other</option> -->    
                         </select>
                     </div>
                     <div class="mb-3" id="newCategoryInput" style="display: none;">
