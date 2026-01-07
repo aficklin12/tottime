@@ -241,10 +241,6 @@
                                 <div class="mb-3">
                                     <label for="fruitImage" class="form-label">Image</label>
                                     <input type="file" class="form-control" id="fruitImage" name="image" accept="image/*">
-                                    <div class="mt-2" id="fruitImageCurrent" style="display:none;">
-                                        <a id="fruitImageLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View current image</a>
-                                        <span class="text-muted ms-2" id="fruitImageName"></span>
-                                    </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Create Fruit Recipe</button>
                             </form>
@@ -282,10 +278,6 @@
                                 <div class="mb-3">
                                     <label for="vegImage" class="form-label">Image</label>
                                     <input type="file" class="form-control" id="vegImage" name="image" accept="image/*">
-                                    <div class="mt-2" id="vegImageCurrent" style="display:none;">
-                                        <a id="vegImageLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View current image</a>
-                                        <span class="text-muted ms-2" id="vegImageName"></span>
-                                    </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Create Veg Recipe</button>
                             </form>
@@ -323,10 +315,6 @@
                                 <div class="mb-3">
                                     <label for="wgImage" class="form-label">Image</label>
                                     <input type="file" class="form-control" id="wgImage" name="image" accept="image/*">
-                                    <div class="mt-2" id="wgImageCurrent" style="display:none;">
-                                        <a id="wgImageLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View current image</a>
-                                        <span class="text-muted ms-2" id="wgImageName"></span>
-                                    </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary">Create Wg Recipe</button>
                             </form>
@@ -448,10 +436,6 @@
                     <div class="mb-3">
                         <label for="recipeImage" class="form-label">Image</label>
                         <input type="file" class="form-control" id="recipeImage" name="image" accept="image/*">
-                        <div class="mt-2" id="recipeImageCurrent" style="display:none;">
-                            <a id="recipeImageLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View current image</a>
-                            <span class="text-muted ms-2" id="recipeImageName"></span>
-                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Create Recipe</button>
                 </form>
@@ -565,10 +549,6 @@
                     <div class="mb-3">
                         <label for="breakfastImage" class="form-label">Image</label>
                         <input type="file" class="form-control" id="breakfastImage" name="image" accept="image/*">
-                        <div class="mt-2" id="breakfastImageCurrent" style="display:none;">
-                            <a id="breakfastImageLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View current image</a>
-                            <span class="text-muted ms-2" id="breakfastImageName"></span>
-                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Create Breakfast Recipe</button>
                 </form>
@@ -675,10 +655,6 @@
                     <div class="mb-3">
                         <label for="amImage" class="form-label">Image</label>
                         <input type="file" class="form-control" id="amImage" name="image" accept="image/*">
-                        <div class="mt-2" id="amImageCurrent" style="display:none;">
-                            <a id="amImageLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View current image</a>
-                            <span class="text-muted ms-2" id="amImageName"></span>
-                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Create AM Snack Recipe</button>
                 </form>
@@ -784,10 +760,6 @@
                     <div class="mb-3">
                         <label for="pmImage" class="form-label">Image</label>
                         <input type="file" class="form-control" id="pmImage" name="image" accept="image/*">
-                        <div class="mt-2" id="pmImageCurrent" style="display:none;">
-                            <a id="pmImageLink" href="#" target="_blank" class="btn btn-sm btn-outline-primary">View current image</a>
-                            <span class="text-muted ms-2" id="pmImageName"></span>
-                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Create PM Snack Recipe</button>
                 </form>
@@ -1012,9 +984,6 @@
 
                 // Switch form to update endpoint
                 $('#createBreakfastRecipeForm').attr('action', `/update-breakfast-recipe/${id}/`);
-
-                // Update image link
-                updateImageLink('breakfast', data.image_url);
             }
 
             if (category === 'am') {
@@ -1038,9 +1007,6 @@
                 await populateRulesDropdown('amRule', data.rule_id);
                 $('#amInstructions').val(data.instructions || '');
                 $('#createAMRecipeForm').attr('action', `/update-am-recipe/${id}/`);
-
-                // Update image link
-                updateImageLink('am', data.image_url);
             }
 
             if (category === 'pm') {
@@ -1064,9 +1030,6 @@
                 await populateRulesDropdown('pmRule', data.rule_id);
                 $('#pmInstructions').val(data.instructions || '');
                 $('#createPMRecipeForm').attr('action', `/update-pm-recipe/${id}/`);
-
-                // Update image link
-                updateImageLink('pm', data.image_url);
             }
 
             if (category === 'lunch') {
@@ -1089,9 +1052,6 @@
                 await populateRulesDropdown('rule', data.rule_id);
                 $('#instructions').val(data.instructions || '');
                 $('#createRecipeForm').attr('action', `/update-recipe/${id}/`);
-
-                // Update image link
-                updateImageLink('recipe', data.image_url);
             }
 
             if (category === 'fruit') {
@@ -1101,9 +1061,6 @@
                 $('#fruitQtyMainIngredient1').val(data.qty1 || '');
                 await populateRulesDropdown('fruitRule', data.rule_id);
                 $('#createFruitRecipeForm').attr('action', `/update-fruit-recipe/${id}/`);
-
-                // Update image link
-                updateImageLink('fruit', data.image_url);
             }
 
             if (category === 'veg') {
@@ -1113,9 +1070,6 @@
                 $('#vegQtyMainIngredient1').val(data.qty1 || '');
                 await populateRulesDropdown('vegRule', data.rule_id);
                 $('#createVegRecipeForm').attr('action', `/update-veg-recipe/${id}/`);
-
-                // Update image link
-                updateImageLink('veg', data.image_url);
             }
 
             if (category === 'wg') {
@@ -1125,9 +1079,6 @@
                 $('#wgQtyMainIngredient1').val(data.qty1 || '');
                 await populateRulesDropdown('wgRule', data.rule_id);
                 $('#createWgRecipeForm').attr('action', `/update-wg-recipe/${id}/`);
-
-                // Update image link
-                updateImageLink('wg', data.image_url);
             }
         } catch (e) {
             console.error('Failed to open recipe for edit:', e);
