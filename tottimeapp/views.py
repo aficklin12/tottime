@@ -48,7 +48,8 @@ import requests
 from django.http import HttpResponse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.urls import get_resolver, reverse, NoReverseMatch
- 
+from django.views.decorators.http import require_http_methods
+
 ALLOWED_TAGS = [
     'p', 'b', 'strong', 'i', 'em', 'u', 'ul', 'ol', 'li', 'br', 'span'
 ]
@@ -4365,9 +4366,9 @@ def classroom_options_teachers(request):
     # Fetch subusers under the main account
     subusers = SubUser.objects.filter(main_user=main_user).select_related('user', 'group_id')
 
-    # Filter subusers based on the selected status and exclude group IDs 5 and 8
+    # Filter subusers based on the selected status and exclude group IDs 5 (Parent), 8 (Inactive), and 9 (CACFP Only)
     if user_status == 'active':
-        subusers = subusers.exclude(group_id__id__in=[5, 8])  # Exclude parents (group ID 5) and inactive users (group ID 8)
+        subusers = subusers.exclude(group_id__id__in=[5, 8, 9])  # Exclude parents, inactive users, and CACFP Only (group ID 9)
     elif user_status == 'inactive':
         subusers = subusers.filter(group_id__id=8)  # Include only inactive users (group ID 8)
 
@@ -4941,7 +4942,6 @@ def select_meals_for_days(recipes, user):
 
     return menu_data
 
-
 def check_ingredients_availability(recipe, user, inventory, exclude_zero_quantity=False):
     """Check if the ingredients for a recipe are available in the inventory."""
     required_ingredients = [
@@ -4961,7 +4961,6 @@ def check_ingredients_availability(recipe, user, inventory, exclude_zero_quantit
                     return False
     return True
 
-
 def subtract_ingredients_from_inventory(recipe, inventory):
     """Subtract the ingredients used in a recipe from the inventory."""
     required_ingredients = [
@@ -4978,7 +4977,6 @@ def subtract_ingredients_from_inventory(recipe, inventory):
                 item.total_quantity -= (qty or 0)
                 item.save()
 
-
 def get_filtered_recipes(user, model, recent_days=14):
     """Filter recipes not used in the last `recent_days` days."""
     all_recipes = list(model.objects.filter(user=user))
@@ -4986,14 +4984,12 @@ def get_filtered_recipes(user, model, recent_days=14):
     recent_recipes = model.objects.filter(user=user, last_used__gte=cutoff_date)
     return [recipe for recipe in all_recipes if recipe not in recent_recipes]
 
-
 def generate_menu(request):
     user = get_user_for_view(request)  # Get the correct user context
     recipes = get_filtered_recipes(user, Recipe)
     # Rule-aware selection (prefers daily Whole Grain without overriding grain/meat fields)
     menu_data = select_meals_for_days(recipes, user)
     return JsonResponse(menu_data)
-
 
 @login_required
 def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_key):
@@ -5020,14 +5016,11 @@ def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_ke
             }
     return JsonResponse(snack_data)
 
-
 def generate_am_menu(request):
     return generate_snack_menu(request, AMRecipe, 'choose1', 'fruit2', 'bread2', 'meat1')
 
-
 def generate_pm_menu(request):
     return generate_snack_menu(request, PMRecipe, 'choose2', 'fruit4', 'bread3', 'meat3')
-
 
 @login_required
 def generate_breakfast_menu(request):
@@ -5046,7 +5039,6 @@ def generate_breakfast_menu(request):
         else:
             breakfast_data[day] = {'bread': "No available breakfast option", 'add1': ""}
     return JsonResponse(breakfast_data)
-
 
 @login_required
 def generate_fruit_menu(request):
@@ -5119,11 +5111,9 @@ def generate_fruit_menu(request):
 
     return JsonResponse(fruit_menu_data)
 
-
 def get_fruits(request):
     fruits = Inventory.objects.filter(category='Fruits').values_list('item', flat=True)
     return JsonResponse(list(fruits), safe=False)
-
 
 @login_required
 def generate_vegetable_menu(request):
@@ -5312,7 +5302,6 @@ def fetch_inventory_rules(request):
 
     return JsonResponse({'item_rules': item_rule_map})
 
-# NEW: WG candidates for fill-in
 @login_required
 def get_wg_candidates(request):
     user = get_user_for_view(request)
@@ -9447,3 +9436,228 @@ def meal_calculator(request):
         response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
 
     return response
+
+@require_http_methods(["GET"])
+def breakfast_recipe_detail(request, recipe_id):
+    r = BreakfastRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r:
+        return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({
+        'id': r.id,
+        'name': r.name,
+        'ingredient1_id': r.ingredient1_id,
+        'ingredient2_id': getattr(r, 'ingredient2_id', None),
+        'ingredient3_id': getattr(r, 'ingredient3_id', None),
+        'ingredient4_id': getattr(r, 'ingredient4_id', None),
+        'ingredient5_id': getattr(r, 'ingredient5_id', None),
+        'qty1': r.qty1, 'qty2': getattr(r, 'qty2', None), 'qty3': getattr(r, 'qty3', None),
+        'qty4': getattr(r, 'qty4', None), 'qty5': getattr(r, 'qty5', None),
+        'addfood': r.addfood, 'rule_id': r.rule_id, 'instructions': r.instructions,
+        'image_url': r.image.url if r.image else None,
+    })
+
+@require_http_methods(["POST"])
+def update_breakfast_recipe(request, recipe_id):
+    r = BreakfastRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r:
+        return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    r.name = request.POST.get('breakfastMealName') or r.name
+    r.ingredient1_id = request.POST.get('breakfastMainIngredient1') or r.ingredient1_id
+    r.qty1 = request.POST.get('breakfastQtyMainIngredient1') or r.qty1
+    r.ingredient2_id = request.POST.get('breakfastMainIngredient2') or r.ingredient2_id
+    r.qty2 = request.POST.get('breakfastQtyMainIngredient2') or r.qty2
+    r.ingredient3_id = request.POST.get('breakfastMainIngredient3') or r.ingredient3_id
+    r.qty3 = request.POST.get('breakfastQtyMainIngredient3') or r.qty3
+    r.ingredient4_id = request.POST.get('breakfastMainIngredient4') or r.ingredient4_id
+    r.qty4 = request.POST.get('breakfastQtyMainIngredient4') or r.qty4
+    r.ingredient5_id = request.POST.get('breakfastMainIngredient5') or r.ingredient5_id
+    r.qty5 = request.POST.get('breakfastQtyMainIngredient5') or r.qty5
+    r.addfood = request.POST.get('additionalFood') or r.addfood
+    r.rule_id = request.POST.get('breakfastRule') or r.rule_id
+    r.instructions = request.POST.get('breakfastInstructions') or r.instructions
+    if request.FILES.get('image'):
+        r.image = request.FILES['image']  # size check happens in model save()
+    r.save()
+    return JsonResponse({'success': True})
+
+@require_http_methods(["GET"])
+def am_recipe_detail(request, recipe_id):
+    r = AMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({
+        'id': r.id, 'name': r.name,
+        'ingredient1_id': r.ingredient1_id, 'ingredient2_id': r.ingredient2_id,
+        'ingredient3_id': r.ingredient3_id, 'ingredient4_id': r.ingredient4_id,
+        'ingredient5_id': r.ingredient5_id,
+        'qty1': r.qty1, 'qty2': r.qty2, 'qty3': r.qty3, 'qty4': r.qty4, 'qty5': r.qty5,
+        'fluid': r.fluid, 'fruit_veg': r.fruit_veg, 'meat': r.meat,
+        'rule_id': r.rule_id, 'instructions': r.instructions,
+        'image_url': r.image.url if r.image else None,
+    })
+
+@require_http_methods(["POST"])
+def update_am_recipe(request, recipe_id):
+    r = AMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    r.name = request.POST.get('amRecipeName') or r.name
+    r.ingredient1_id = request.POST.get('amIngredient1') or r.ingredient1_id
+    r.qty1 = request.POST.get('amQty1') or r.qty1
+    r.ingredient2_id = request.POST.get('amIngredient2') or r.ingredient2_id
+    r.qty2 = request.POST.get('amQty2') or r.qty2
+    r.ingredient3_id = request.POST.get('amIngredient3') or r.ingredient3_id
+    r.qty3 = request.POST.get('amQty3') or r.qty3
+    r.ingredient4_id = request.POST.get('amIngredient4') or r.ingredient4_id
+    r.qty4 = request.POST.get('amQty4') or r.qty4
+    r.ingredient5_id = request.POST.get('amIngredient5') or r.ingredient5_id
+    r.qty5 = request.POST.get('amQty5') or r.qty5
+    r.fluid = request.POST.get('amFluid') or r.fluid
+    r.fruit_veg = request.POST.get('amFruitVeg') or r.fruit_veg
+    r.meat = request.POST.get('amMeat') or r.meat
+    r.rule_id = request.POST.get('amRule') or r.rule_id
+    r.instructions = request.POST.get('amInstructions') or r.instructions
+    if request.FILES.get('image'): r.image = request.FILES['image']
+    r.save()
+    return JsonResponse({'success': True})
+
+@require_http_methods(["GET"])
+def pm_recipe_detail(request, recipe_id):
+    r = PMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({
+        'id': r.id, 'name': r.name,
+        'ingredient1_id': r.ingredient1_id, 'ingredient2_id': r.ingredient2_id,
+        'ingredient3_id': r.ingredient3_id, 'ingredient4_id': r.ingredient4_id,
+        'ingredient5_id': r.ingredient5_id,
+        'qty1': r.qty1, 'qty2': r.qty2, 'qty3': r.qty3, 'qty4': r.qty4, 'qty5': r.qty5,
+        'fluid': r.fluid, 'fruit_veg': r.fruit_veg, 'meat': r.meat,
+        'rule_id': r.rule_id, 'instructions': r.instructions,
+        'image_url': r.image.url if r.image else None,
+    })
+
+@require_http_methods(["POST"])
+def update_pm_recipe(request, recipe_id):
+    r = PMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    r.name = request.POST.get('pmRecipeName') or r.name
+    r.ingredient1_id = request.POST.get('pmIngredient1') or r.ingredient1_id
+    r.qty1 = request.POST.get('pmQty1') or r.qty1
+    r.ingredient2_id = request.POST.get('pmIngredient2') or r.ingredient2_id
+    r.qty2 = request.POST.get('pmQty2') or r.qty2
+    r.ingredient3_id = request.POST.get('pmIngredient3') or r.ingredient3_id
+    r.qty3 = request.POST.get('pmQty3') or r.qty3
+    r.ingredient4_id = request.POST.get('pmIngredient4') or r.ingredient4_id
+    r.qty4 = request.POST.get('pmQty4') or r.qty4
+    r.ingredient5_id = request.POST.get('pmIngredient5') or r.ingredient5_id
+    r.qty5 = request.POST.get('pmQty5') or r.qty5
+    r.fluid = request.POST.get('pmFluid') or r.fluid
+    r.fruit_veg = request.POST.get('pmFruitVeg') or r.fruit_veg
+    r.meat = request.POST.get('pmMeat') or r.meat
+    r.rule_id = request.POST.get('pmRule') or r.rule_id
+    r.instructions = request.POST.get('pmInstructions') or r.instructions
+    if request.FILES.get('image'): r.image = request.FILES['image']
+    r.save()
+    return JsonResponse({'success': True})
+
+@require_http_methods(["GET"])
+def recipe_detail(request, recipe_id):
+    r = Recipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({
+        'id': r.id, 'name': r.name,
+        'ingredient1_id': r.ingredient1_id, 'ingredient2_id': r.ingredient2_id,
+        'ingredient3_id': r.ingredient3_id, 'ingredient4_id': r.ingredient4_id,
+        'ingredient5_id': r.ingredient5_id,
+        'qty1': r.qty1, 'qty2': r.qty2, 'qty3': r.qty3, 'qty4': r.qty4, 'qty5': r.qty5,
+        'grain': r.grain, 'meat_alternate': r.meat_alternate,
+        'rule_id': r.rule_id, 'instructions': r.instructions,
+        'image_url': r.image.url if r.image else None,
+    })
+
+@require_http_methods(["POST"])
+def update_recipe(request, recipe_id):
+    r = Recipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    r.name = request.POST.get('mealName') or r.name
+    r.ingredient1_id = request.POST.get('mainIngredient1') or r.ingredient1_id
+    r.qty1 = request.POST.get('qtyMainIngredient1') or r.qty1
+    r.ingredient2_id = request.POST.get('mainIngredient2') or r.ingredient2_id
+    r.qty2 = request.POST.get('qtyMainIngredient2') or r.qty2
+    r.ingredient3_id = request.POST.get('mainIngredient3') or r.ingredient3_id
+    r.qty3 = request.POST.get('qtyMainIngredient3') or r.qty3
+    r.ingredient4_id = request.POST.get('mainIngredient4') or r.ingredient4_id
+    r.qty4 = request.POST.get('qtyMainIngredient4') or r.qty4
+    r.ingredient5_id = request.POST.get('mainIngredient5') or r.ingredient5_id
+    r.qty5 = request.POST.get('qtyMainIngredient5') or r.qty5
+    r.grain = request.POST.get('grain') or r.grain
+    r.meat_alternate = request.POST.get('meatAlternate') or r.meat_alternate
+    r.rule_id = request.POST.get('rule') or r.rule_id
+    r.instructions = request.POST.get('instructions') or r.instructions
+    if request.FILES.get('image'): r.image = request.FILES['image']
+    r.save()
+    return JsonResponse({'success': True})
+
+@require_http_methods(["GET"])
+def fruit_recipe_detail(request, recipe_id):
+    r = FruitRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({
+        'id': r.id, 'name': r.name,
+        'ingredient1_id': r.ingredient1_id, 'qty1': r.qty1,
+        'rule_id': r.rule_id, 'image_url': r.image.url if r.image else None,
+    })
+
+@require_http_methods(["POST"])
+def update_fruit_recipe(request, recipe_id):
+    r = FruitRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    r.name = request.POST.get('fruitName') or r.name
+    r.ingredient1_id = request.POST.get('fruitMainIngredient1') or r.ingredient1_id
+    r.qty1 = request.POST.get('fruitQtyMainIngredient1') or r.qty1
+    r.rule_id = request.POST.get('fruitRule') or r.rule_id
+    if request.FILES.get('image'): r.image = request.FILES['image']
+    r.save()
+    return JsonResponse({'success': True})
+
+@require_http_methods(["GET"])
+def veg_recipe_detail(request, recipe_id):
+    r = VegRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({
+        'id': r.id, 'name': r.name,
+        'ingredient1_id': r.ingredient1_id, 'qty1': r.qty1,
+        'rule_id': r.rule_id, 'image_url': r.image.url if r.image else None,
+    })
+
+@require_http_methods(["POST"])
+def update_veg_recipe(request, recipe_id):
+    r = VegRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    r.name = request.POST.get('vegName') or r.name
+    r.ingredient1_id = request.POST.get('vegMainIngredient1') or r.ingredient1_id
+    r.qty1 = request.POST.get('vegQtyMainIngredient1') or r.qty1
+    r.rule_id = request.POST.get('vegRule') or r.rule_id
+    if request.FILES.get('image'): r.image = request.FILES['image']
+    r.save()
+    return JsonResponse({'success': True})
+
+@require_http_methods(["GET"])
+def wg_recipe_detail(request, recipe_id):
+    r = WgRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({
+        'id': r.id, 'name': r.name,
+        'ingredient1_id': r.ingredient1_id, 'qty1': r.qty1,
+        'rule_id': r.rule_id, 'image_url': r.image.url if r.image else None,
+    })
+
+@require_http_methods(["POST"])
+def update_wg_recipe(request, recipe_id):
+    r = WgRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
+    r.name = request.POST.get('wgName') or r.name
+    r.ingredient1_id = request.POST.get('wgMainIngredient1') or r.ingredient1_id
+    r.qty1 = request.POST.get('wgQtyMainIngredient1') or r.qty1
+    r.rule_id = request.POST.get('wgRule') or r.rule_id
+    if request.FILES.get('image'): r.image = request.FILES['image']
+    r.save()
+    return JsonResponse({'success': True})

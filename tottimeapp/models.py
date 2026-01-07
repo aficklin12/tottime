@@ -80,9 +80,17 @@ class VegRecipe(models.Model):
     am_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, '_file', None):
+            if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        super(VegRecipe, self).save(*args, **kwargs)
+
 
 class FruitRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -95,9 +103,17 @@ class FruitRecipe(models.Model):
     am_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, '_file', None):
+            if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        super(FruitRecipe, self).save(*args, **kwargs)
+
 
 class WgRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -110,9 +126,17 @@ class WgRecipe(models.Model):
     am_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
+    image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, '_file', None):
+            if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        super(WgRecipe, self).save(*args, **kwargs)
+
 
 class Recipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -132,10 +156,18 @@ class Recipe(models.Model):
     grain = models.CharField(max_length=100, blank=True, null=True)
     meat_alternate = models.CharField(max_length=100, blank=True, null=True)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
+    image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
 
     def __str__(self):
         return self.name
- 
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, '_file', None):
+            if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        super(Recipe, self).save(*args, **kwargs)
+
+
 class BreakfastRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
@@ -153,9 +185,17 @@ class BreakfastRecipe(models.Model):
     last_used = models.DateTimeField(auto_now=True) 
     addfood = models.CharField(max_length=100, blank=True, null=True)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
+    image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, '_file', None):
+            if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        super(BreakfastRecipe, self).save(*args, **kwargs)
+
 
 class AMRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -176,10 +216,18 @@ class AMRecipe(models.Model):
     fruit_veg = models.CharField(max_length=100, blank=True, null=True)
     meat = models.CharField(max_length=100, blank=True, null=True)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
+    image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
 
     def __str__(self):
         return self.name
-    
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, '_file', None):
+            if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        super(AMRecipe, self).save(*args, **kwargs)
+
+
 class PMRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
@@ -199,9 +247,17 @@ class PMRecipe(models.Model):
     fruit_veg = models.CharField(max_length=100, blank=True, null=True)
     meat = models.CharField(max_length=100, blank=True, null=True)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
-    
+    image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if self.image and getattr(self.image, '_file', None):
+            if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
+                raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
+        super(PMRecipe, self).save(*args, **kwargs)
+
     
 class LastInventoryUpdate(models.Model):
 

@@ -122,6 +122,17 @@
   #recipeTabs .tab { flex-shrink: 0; } /* keep tab size consistent while scrolling */
 }
 
+    /* Ensure modals sit below a fixed navbar and above it in stacking context */
+    .modal {
+        padding-top: 64px;        /* push modal below navbar height */
+        z-index: 1060;            /* above typical navbar z-index */
+    }
+    .modal-backdrop {
+        z-index: 1050;
+    }
+
+    /* Optional: if your navbar has an unusually high z-index, lower it here */
+    /* .navbar.fixed-top { z-index: 1030; } */
 </style>
 {% endblock %}
 
@@ -208,7 +219,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <form id="createFruitRecipeForm" method="post" action="{% url 'create_fruit_recipe' %}">
+                            <form id="createFruitRecipeForm" method="post" action="{% url 'create_fruit_recipe' %}" enctype="multipart/form-data">
                                 {% csrf_token %}
                                 <div class="mb-3">
                                     <label for="fruitName" class="form-label">Fruit Name</label>
@@ -227,6 +238,10 @@
                                         <!-- Rules will be populated dynamically -->
                                     </select>
                                 </div>
+                                <div class="mb-3">
+                                    <label for="fruitImage" class="form-label">Image</label>
+                                    <input type="file" class="form-control" id="fruitImage" name="image" accept="image/*">
+                                </div>
                                 <button type="submit" class="btn btn-primary">Create Fruit Recipe</button>
                             </form>
                         </div>
@@ -241,7 +256,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <form id="createVegRecipeForm" method="post" action="{% url 'create_veg_recipe' %}">
+                            <form id="createVegRecipeForm" method="post" action="{% url 'create_veg_recipe' %}" enctype="multipart/form-data">
                                 {% csrf_token %}
                                 <div class="mb-3">
                                     <label for="vegName" class="form-label">Veg Name</label>
@@ -260,6 +275,10 @@
                                         <!-- Rules will be populated dynamically -->
                                     </select>
                                 </div>
+                                <div class="mb-3">
+                                    <label for="vegImage" class="form-label">Image</label>
+                                    <input type="file" class="form-control" id="vegImage" name="image" accept="image/*">
+                                </div>
                                 <button type="submit" class="btn btn-primary">Create Veg Recipe</button>
                             </form>
                         </div>
@@ -274,7 +293,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <form id="createWgRecipeForm" method="post" action="{% url 'create_wg_recipe' %}">
+                            <form id="createWgRecipeForm" method="post" action="{% url 'create_wg_recipe' %}" enctype="multipart/form-data">
                                 {% csrf_token %}
                                 <div class="mb-3">
                                     <label for="wgName" class="form-label">Wg Name</label>
@@ -293,6 +312,10 @@
                                         <!-- Rules will be populated dynamically -->
                                     </select>
                                 </div>
+                                <div class="mb-3">
+                                    <label for="wgImage" class="form-label">Image</label>
+                                    <input type="file" class="form-control" id="wgImage" name="image" accept="image/*">
+                                </div>
                                 <button type="submit" class="btn btn-primary">Create Wg Recipe</button>
                             </form>
                         </div>
@@ -303,14 +326,14 @@
 
             <!-- Modal for creating recipe -->
 <div class="modal fade" id="createRecipeModal" tabindex="-1" aria-labelledby="createRecipeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="createRecipeModalLabel">Create Recipe</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createRecipeForm" method="post" action="{% url 'create_recipe' %}">
+                <form id="createRecipeForm" method="post" action="{% url 'create_recipe' %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="mealName" class="form-label">Meal Name</label>
@@ -410,6 +433,10 @@
                         <label for="instructions" class="form-label">Instructions</label>
                         <textarea class="form-control" id="instructions" name="instructions" rows="4"></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label for="recipeImage" class="form-label">Image</label>
+                        <input type="file" class="form-control" id="recipeImage" name="image" accept="image/*">
+                    </div>
                     <button type="submit" class="btn btn-primary">Create Recipe</button>
                 </form>
             </div>
@@ -417,14 +444,14 @@
     </div>
 </div>
 <div class="modal fade" id="createBreakfastRecipeModal" tabindex="-1" aria-labelledby="createBreakfastRecipeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="createBreakfastRecipeModalLabel">Create Breakfast Recipe</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createBreakfastRecipeForm" method="post" action="{% url 'create_breakfast_recipe' %}">
+                <form id="createBreakfastRecipeForm" method="post" action="{% url 'create_breakfast_recipe' %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="breakfastMealName" class="form-label">Meal Name</label>
@@ -519,6 +546,10 @@
                         <label for="breakfastInstructions" class="form-label">Instructions</label>
                         <textarea class="form-control" id="breakfastInstructions" name="breakfastInstructions" rows="4"></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label for="breakfastImage" class="form-label">Image</label>
+                        <input type="file" class="form-control" id="breakfastImage" name="image" accept="image/*">
+                    </div>
                     <button type="submit" class="btn btn-primary">Create Breakfast Recipe</button>
                 </form>
             </div>
@@ -527,14 +558,14 @@
 </div>
 
 <div class="modal fade" id="createAMRecipeModal" tabindex="-1" aria-labelledby="createAMRecipeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="createAMRecipeModalLabel">Create AM Snack Recipe</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createAMRecipeForm" method="post" action="{% url 'create_am_recipe' %}">
+                <form id="createAMRecipeForm" method="post" action="{% url 'create_am_recipe' %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="amRecipeName" class="form-label">Recipe Name</label>
@@ -621,7 +652,10 @@
                         <label for="amInstructions" class="form-label">Instructions</label>
                         <textarea class="form-control" id="amInstructions" name="amInstructions" rows="4"></textarea>
                     </div>
-
+                    <div class="mb-3">
+                        <label for="amImage" class="form-label">Image</label>
+                        <input type="file" class="form-control" id="amImage" name="image" accept="image/*">
+                    </div>
                     <button type="submit" class="btn btn-primary">Create AM Snack Recipe</button>
                 </form>
             </div>
@@ -629,14 +663,14 @@
     </div>
 </div>
 <div class="modal fade" id="createPMRecipeModal" tabindex="-1" aria-labelledby="createPMRecipeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="createPMRecipeModalLabel">Create PM Snack Recipe</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="createPMRecipeForm" method="post" action="{% url 'create_pm_recipe' %}">
+                <form id="createPMRecipeForm" method="post" action="{% url 'create_pm_recipe' %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="pmRecipeName" class="form-label">Recipe Name</label>
@@ -716,14 +750,17 @@
                     <div class="mb-3">
                         <label for="pmRule" class="form-label">Rule</label>
                         <select class="form-select" id="pmRule" name="pmRule">
-                            <!-- Rules will be populated dynamically here -->
+                            <!-- Rules will be populated dynamically -->
                         </select>
                     </div>
                     <div class="mb-3">
                         <label for="pmInstructions" class="form-label">Instructions</label>
                         <textarea class="form-control" id="pmInstructions" name="pmInstructions" rows="4"></textarea>
                     </div>
-
+                    <div class="mb-3">
+                        <label for="pmImage" class="form-label">Image</label>
+                        <input type="file" class="form-control" id="pmImage" name="image" accept="image/*">
+                    </div>
                     <button type="submit" class="btn btn-primary">Create PM Snack Recipe</button>
                 </form>
             </div>
@@ -767,56 +804,40 @@
         function fetchRecipes(category) {
             let endpoint = '';
             switch (category) {
-                case 'breakfast':
-                    endpoint = '/fetch-breakfast-recipes/';
-                    break;
-                case 'am':
-                    endpoint = '/fetch-am-recipes/';
-                    break;
-                case 'lunch':
-                    endpoint = '/fetch-recipes/';
-                    break;
-                case 'pm':
-                    endpoint = '/fetch-pm-recipes/';
-                    break;
-                case 'fruit':
-                    endpoint = '/fetch-fruit-recipes/';
-                    break;
-                case 'veg':
-                    endpoint = '/fetch-veg-recipes/';
-                    break;
-                case 'wg':
-                    endpoint = '/fetch-wg-recipes/';
-                    break;
-                default:
-                    console.error('Invalid category');
-                    return;
+                case 'breakfast': endpoint = '/fetch-breakfast-recipes/'; break;
+                case 'am':        endpoint = '/fetch-am-recipes/';        break;
+                case 'lunch':     endpoint = '/fetch-recipes/';           break;
+                case 'pm':        endpoint = '/fetch-pm-recipes/';        break;
+                case 'fruit':     endpoint = '/fetch-fruit-recipes/';     break;
+                case 'veg':       endpoint = '/fetch-veg-recipes/';       break;
+                case 'wg':        endpoint = '/fetch-wg-recipes/';        break;
+                default: return;
             }
 
             fetch(endpoint)
-                .then(response => response.json())
-                .then(data => {
-                    recipeTableBody.innerHTML = ''; // Clear the table
-                    const recipes = data.recipes || [];
-                    recipes.forEach(recipe => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="clickable-name" onclick="viewRecipe(${recipe.id})">${recipe.name}</td>
-                            <td class="delete-column" style="display: none;">
-                                <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${category}" style="color: red; cursor: pointer;"></i>
-                            </td>
-                        `;
-                        recipeTableBody.appendChild(row);
-                    });
+              .then(r => r.json())
+              .then(data => {
+                  recipeTableBody.innerHTML = '';
+                  const recipes = data.recipes || [];
+                  recipes.forEach(recipe => {
+                      const row = document.createElement('tr');
+                      row.innerHTML = `
+                          <td class="clickable-name" onclick="viewRecipe(${recipe.id}, '${category}')">${recipe.name}</td>
+                          <td class="delete-column" style="display: none;">
+                              <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${category}" style="color: red; cursor: pointer;"></i>
+                          </td>
+                      `;
+                      recipeTableBody.appendChild(row);
+                  });
 
-                    // Add event listeners for delete icons
-                    const deleteIcons = document.querySelectorAll('.delete-record');
-                    deleteIcons.forEach(icon => {
-                        icon.addEventListener('click', function () {
-                            const recipeId = this.getAttribute('data-id');
-                            const category = this.getAttribute('data-category');
-                            if (confirm('Are you sure you want to delete this recipe?')) {
-                                deleteRecipe(recipeId, category);
+                  // Add event listeners for delete icons
+                  const deleteIcons = document.querySelectorAll('.delete-record');
+                  deleteIcons.forEach(icon => {
+                      icon.addEventListener('click', function () {
+                          const recipeId = this.getAttribute('data-id');
+                          const category = this.getAttribute('data-category');
+                          if (confirm('Are you sure you want to delete this recipe?')) {
+                              deleteRecipe(recipeId, category);
                             }
                         });
                     });
@@ -828,7 +849,7 @@
                         column.style.display = isDeleteColumnVisible ? 'table-cell' : 'none';
                     });
                 })
-                .catch(error => console.error('Error fetching recipes:', error));
+                .catch(err => console.error('Error fetching recipes:', err));
         }
 
         function deleteRecipe(recipeId, category) {
@@ -908,9 +929,161 @@
         updateActiveTab(document.querySelector('#breakfast-tab')); // Set the initial active tab
     });
 
-    // Placeholder function for viewing a recipe
-    function viewRecipe(recipeId) {
-        alert(`View recipe with ID: ${recipeId}`);
+    // Helpers to populate dropdowns with a selected value
+    function populateIngredientsDropdown(selectId, selectedValue) {
+        return $.get('/fetch-ingredients/').then(response => {
+            const dropdown = $('#' + selectId);
+            dropdown.empty();
+            dropdown.append('<option value="">Select Ingredient</option>');
+            (response.ingredients || []).forEach(i => {
+                dropdown.append(`<option value="${i.id}">${i.item}</option>`);
+            });
+            if (selectedValue) dropdown.val(String(selectedValue));
+        });
+    }
+    function populateRulesDropdown(selectId, selectedValue) {
+        return $.get('/fetch-rules/').then(response => {
+            const dropdown = $('#' + selectId);
+            dropdown.empty();
+            dropdown.append('<option value="">Select Rule</option>');
+            (response.rules || []).forEach(r => {
+                dropdown.append(`<option value="${r.id}">${r.rule}</option>`);
+            });
+            if (selectedValue) dropdown.val(String(selectedValue));
+        });
+    }
+
+    // Main handler: open modal in edit mode and prefill fields
+    async function viewRecipe(id, category) {
+        try {
+            const detailUrl = `/recipe/${category}/${id}/`; // implement these detail endpoints
+            const res = await fetch(detailUrl);
+            const data = await res.json();
+
+            if (category === 'breakfast') {
+                // Open modal
+                $('#createBreakfastRecipeModal').modal('show');
+
+                // Prefill inputs
+                $('#breakfastMealName').val(data.name || '');
+                await populateIngredientsDropdown('breakfastMainIngredient1', data.ingredient1_id);
+                await populateIngredientsDropdown('breakfastMainIngredient2', data.ingredient2_id);
+                await populateIngredientsDropdown('breakfastMainIngredient3', data.ingredient3_id);
+                await populateIngredientsDropdown('breakfastMainIngredient4', data.ingredient4_id);
+                await populateIngredientsDropdown('breakfastMainIngredient5', data.ingredient5_id);
+
+                $('#breakfastQtyMainIngredient1').val(data.qty1 || '');
+                $('#breakfastQtyMainIngredient2').val(data.qty2 || '');
+                $('#breakfastQtyMainIngredient3').val(data.qty3 || '');
+                $('#breakfastQtyMainIngredient4').val(data.qty4 || '');
+                $('#breakfastQtyMainIngredient5').val(data.qty5 || '');
+
+                $('#additionalFood').val(data.addfood || '');
+                await populateRulesDropdown('breakfastRule', data.rule_id);
+                $('#breakfastInstructions').val(data.instructions || '');
+
+                // Switch form to update endpoint
+                $('#createBreakfastRecipeForm').attr('action', `/update-breakfast-recipe/${id}/`);
+            }
+
+            if (category === 'am') {
+                $('#createAMRecipeModal').modal('show');
+                $('#amRecipeName').val(data.name || '');
+                await populateIngredientsDropdown('amIngredient1', data.ingredient1_id);
+                await populateIngredientsDropdown('amIngredient2', data.ingredient2_id);
+                await populateIngredientsDropdown('amIngredient3', data.ingredient3_id);
+                await populateIngredientsDropdown('amIngredient4', data.ingredient4_id);
+                await populateIngredientsDropdown('amIngredient5', data.ingredient5_id);
+
+                $('#amQty1').val(data.qty1 || '');
+                $('#amQty2').val(data.qty2 || '');
+                $('#amQty3').val(data.qty3 || '');
+                $('#amQty4').val(data.qty4 || '');
+                $('#amQty5').val(data.qty5 || '');
+
+                $('#amFluid').val(data.fluid || '');
+                $('#amFruitVeg').val(data.fruit_veg || '');
+                $('#amMeat').val(data.meat || '');
+                await populateRulesDropdown('amRule', data.rule_id);
+                $('#amInstructions').val(data.instructions || '');
+                $('#createAMRecipeForm').attr('action', `/update-am-recipe/${id}/`);
+            }
+
+            if (category === 'pm') {
+                $('#createPMRecipeModal').modal('show');
+                $('#pmRecipeName').val(data.name || '');
+                await populateIngredientsDropdown('pmIngredient1', data.ingredient1_id);
+                await populateIngredientsDropdown('pmIngredient2', data.ingredient2_id);
+                await populateIngredientsDropdown('pmIngredient3', data.ingredient3_id);
+                await populateIngredientsDropdown('pmIngredient4', data.ingredient4_id);
+                await populateIngredientsDropdown('pmIngredient5', data.ingredient5_id);
+
+                $('#pmQty1').val(data.qty1 || '');
+                $('#pmQty2').val(data.qty2 || '');
+                $('#pmQty3').val(data.qty3 || '');
+                $('#pmQty4').val(data.qty4 || '');
+                $('#pmQty5').val(data.qty5 || '');
+
+                $('#pmFluid').val(data.fluid || '');
+                $('#pmFruitVeg').val(data.fruit_veg || '');
+                $('#pmMeat').val(data.meat || '');
+                await populateRulesDropdown('pmRule', data.rule_id);
+                $('#pmInstructions').val(data.instructions || '');
+                $('#createPMRecipeForm').attr('action', `/update-pm-recipe/${id}/`);
+            }
+
+            if (category === 'lunch') {
+                $('#createRecipeModal').modal('show');
+                $('#mealName').val(data.name || '');
+                await populateIngredientsDropdown('mainIngredient1', data.ingredient1_id);
+                await populateIngredientsDropdown('mainIngredient2', data.ingredient2_id);
+                await populateIngredientsDropdown('mainIngredient3', data.ingredient3_id);
+                await populateIngredientsDropdown('mainIngredient4', data.ingredient4_id);
+                await populateIngredientsDropdown('mainIngredient5', data.ingredient5_id);
+
+                $('#qtyMainIngredient1').val(data.qty1 || '');
+                $('#qtyMainIngredient2').val(data.qty2 || '');
+                $('#qtyMainIngredient3').val(data.qty3 || '');
+                $('#qtyMainIngredient4').val(data.qty4 || '');
+                $('#qtyMainIngredient5').val(data.qty5 || '');
+
+                $('#grain').val(data.grain || '');
+                $('#meatAlternate').val(data.meat_alternate || '');
+                await populateRulesDropdown('rule', data.rule_id);
+                $('#instructions').val(data.instructions || '');
+                $('#createRecipeForm').attr('action', `/update-recipe/${id}/`);
+            }
+
+            if (category === 'fruit') {
+                $('#fruitRecipeModal').modal('show');
+                $('#fruitName').val(data.name || '');
+                await populateIngredientsDropdown('fruitMainIngredient1', data.ingredient1_id);
+                $('#fruitQtyMainIngredient1').val(data.qty1 || '');
+                await populateRulesDropdown('fruitRule', data.rule_id);
+                $('#createFruitRecipeForm').attr('action', `/update-fruit-recipe/${id}/`);
+            }
+
+            if (category === 'veg') {
+                $('#vegRecipeModal').modal('show');
+                $('#vegName').val(data.name || '');
+                await populateIngredientsDropdown('vegMainIngredient1', data.ingredient1_id);
+                $('#vegQtyMainIngredient1').val(data.qty1 || '');
+                await populateRulesDropdown('vegRule', data.rule_id);
+                $('#createVegRecipeForm').attr('action', `/update-veg-recipe/${id}/`);
+            }
+
+            if (category === 'wg') {
+                $('#wgRecipeModal').modal('show');
+                $('#wgName').val(data.name || '');
+                await populateIngredientsDropdown('wgMainIngredient1', data.ingredient1_id);
+                $('#wgQtyMainIngredient1').val(data.qty1 || '');
+                await populateRulesDropdown('wgRule', data.rule_id);
+                $('#createWgRecipeForm').attr('action', `/update-wg-recipe/${id}/`);
+            }
+        } catch (e) {
+            console.error('Failed to open recipe for edit:', e);
+            toastr.error('Unable to load recipe.');
+        }
     }
 </script>
 <script>
@@ -1210,29 +1383,26 @@
 <script>
     $(document).ready(function () {
         $('#createBreakfastRecipeForm').submit(function (e) {
-            e.preventDefault(); // Prevent the default form submission
-
-            const formData = $(this).serialize(); // Serialize form data
-            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
-
+            e.preventDefault();
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+            const formData = new FormData(this);
             $.ajax({
-                url: $(this).attr('action'), // Use the form's action attribute
+                url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
-                },
+                headers: { 'X-CSRFToken': csrfToken },
+                processData: false,
+                contentType: false,
                 success: function (response) {
                     if (response.success) {
-                        $('#createBreakfastRecipeModal').modal('hide'); // Hide the modal
+                        $('#createBreakfastRecipeModal').modal('hide');
                         toastr.success('Breakfast recipe created successfully!');
-                        location.reload(); // Reload the page to update the table
+                        location.reload();
                     } else {
                         toastr.error('Error creating breakfast recipe.');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
+                error: function () {
                     toastr.error('An error occurred while creating the breakfast recipe.');
                 }
             });
@@ -1242,31 +1412,25 @@
 <script>
     $(document).ready(function () {
         $('#createAMRecipeForm').submit(function (e) {
-            e.preventDefault(); // Prevent the default form submission
-
-            const formData = $(this).serialize(); // Serialize form data
-            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
-
+            e.preventDefault();
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+            const formData = new FormData(this);
             $.ajax({
-                url: $(this).attr('action'), // Use the form's action attribute
+                url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
-                },
+                headers: { 'X-CSRFToken': csrfToken },
+                processData: false,
+                contentType: false,
                 success: function (response) {
                     if (response.success) {
-                        alert('AM recipe created successfully!');
-                        $('#createAMRecipeModal').modal('hide'); // Hide the modal
-                        location.reload(); // Reload the page to update the table
+                        $('#createAMRecipeModal').modal('hide');
+                        location.reload();
                     } else {
                         alert('Error creating AM recipe.');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while creating the AM recipe.');
-                }
+                error: function () { alert('An error occurred while creating the AM recipe.'); }
             });
         });
     });
@@ -1274,31 +1438,25 @@
 <script>
     $(document).ready(function () {
         $('#createRecipeForm').submit(function (e) {
-            e.preventDefault(); // Prevent the default form submission
-
-            const formData = $(this).serialize(); // Serialize form data
-            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
-
+            e.preventDefault();
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+            const formData = new FormData(this);
             $.ajax({
-                url: $(this).attr('action'), // Use the form's action attribute
+                url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
-                },
+                headers: { 'X-CSRFToken': csrfToken },
+                processData: false,
+                contentType: false,
                 success: function (response) {
                     if (response.success) {
-                        alert('Recipe created successfully!');
-                        $('#createRecipeModal').modal('hide'); // Hide the modal
-                        location.reload(); // Reload the page to update the table
+                        $('#createRecipeModal').modal('hide');
+                        location.reload();
                     } else {
                         alert('Error creating recipe.');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while creating the recipe.');
-                }
+                error: function () { alert('An error occurred while creating the recipe.'); }
             });
         });
     });
@@ -1306,31 +1464,25 @@
 <script>
     $(document).ready(function () {
         $('#createPMRecipeForm').submit(function (e) {
-            e.preventDefault(); // Prevent the default form submission
-
-            const formData = $(this).serialize(); // Serialize form data
-            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
-
+            e.preventDefault();
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+            const formData = new FormData(this);
             $.ajax({
-                url: $(this).attr('action'), // Use the form's action attribute
+                url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
-                },
+                headers: { 'X-CSRFToken': csrfToken },
+                processData: false,
+                contentType: false,
                 success: function (response) {
                     if (response.success) {
-                        alert('PM recipe created successfully!');
-                        $('#createPMRecipeModal').modal('hide'); // Hide the modal
-                        location.reload(); // Reload the page to update the table
+                        $('#createPMRecipeModal').modal('hide');
+                        location.reload();
                     } else {
                         alert('Error creating PM recipe.');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while creating the PM recipe.');
-                }
+                error: function () { alert('An error occurred while creating the PM recipe.'); }
             });
         });
     });
@@ -1338,30 +1490,25 @@
 <script>
     $(document).ready(function () {
         $('#createFruitRecipeForm').submit(function (e) {
-            e.preventDefault(); // Prevent the default form submission
-
-            const formData = $(this).serialize(); // Serialize form data
-            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
-
+            e.preventDefault();
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+            const formData = new FormData(this);
             $.ajax({
-                url: $(this).attr('action'), // Use the form's action attribute
+                url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
-                },
+                headers: { 'X-CSRFToken': csrfToken },
+                processData: false,
+                contentType: false,
                 success: function (response) {
                     if (response.success) {
-                        $('#fruitRecipeModal').modal('hide'); // Hide the modal
-                        location.reload(); // Reload the page to update the table
+                        $('#fruitRecipeModal').modal('hide');
+                        location.reload();
                     } else {
                         alert('Error creating fruit recipe.');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while creating the fruit recipe.');
-                }
+                error: function () { alert('An error occurred while creating the fruit recipe.'); }
             });
         });
     });
@@ -1369,30 +1516,25 @@
 <script>
     $(document).ready(function () {
         $('#createVegRecipeForm').submit(function (e) {
-            e.preventDefault(); // Prevent the default form submission
-
-            const formData = $(this).serialize(); // Serialize form data
-            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val(); // Get CSRF token
-
+            e.preventDefault();
+            const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
+            const formData = new FormData(this);
             $.ajax({
-                url: $(this).attr('action'), // Use the form's action attribute
+                url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken // Include CSRF token in the headers
-                },
+                headers: { 'X-CSRFToken': csrfToken },
+                processData: false,
+                contentType: false,
                 success: function (response) {
                     if (response.success) {
-                        $('#vegRecipeModal').modal('hide'); // Hide the modal
-                        location.reload(); // Reload the page to update the table
+                        $('#vegRecipeModal').modal('hide');
+                        location.reload();
                     } else {
                         alert('Error creating vegetable recipe.');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while creating the vegetable recipe.');
-                }
+                error: function () { alert('An error occurred while creating the vegetable recipe.'); }
             });
         });
     });
@@ -1401,17 +1543,15 @@
     $(document).ready(function () {
         $('#createWgRecipeForm').submit(function (e) {
             e.preventDefault();
-
-            const formData = $(this).serialize();
             const csrfToken = $('input[name="csrfmiddlewaretoken"]').val();
-
+            const formData = new FormData(this);
             $.ajax({
                 url: $(this).attr('action'),
                 method: 'POST',
                 data: formData,
-                headers: {
-                    'X-CSRFToken': csrfToken
-                },
+                headers: { 'X-CSRFToken': csrfToken },
+                processData: false,
+                contentType: false,
                 success: function (response) {
                     if (response.success) {
                         $('#wgRecipeModal').modal('hide');
@@ -1421,10 +1561,7 @@
                         toastr.error('Error creating WG recipe.');
                     }
                 },
-                error: function (xhr, status, error) {
-                    console.error('Error:', error);
-                    toastr.error('An error occurred while creating the WG recipe.');
-                }
+                error: function () { toastr.error('An error occurred while creating the WG recipe.'); }
             });
         });
     });

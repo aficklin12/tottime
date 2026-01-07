@@ -239,6 +239,21 @@ urlpatterns = [
 
     path('meal_calculator/', login_required(views.meal_calculator), name='meal_calculator'),
 
+    path('recipe/breakfast/<int:recipe_id>/', login_required(views.breakfast_recipe_detail), name='breakfast_recipe_detail'),
+    path('update-breakfast-recipe/<int:recipe_id>/', login_required(views.update_breakfast_recipe), name='update_breakfast_recipe'),
+    path('recipe/am/<int:recipe_id>/', login_required(views.am_recipe_detail), name='am_recipe_detail'),
+    path('update-am-recipe/<int:recipe_id>/', login_required(views.update_am_recipe), name='update_am_recipe'),
+    path('recipe/pm/<int:recipe_id>/', login_required(views.pm_recipe_detail), name='pm_recipe_detail'),
+    path('update-pm-recipe/<int:recipe_id>/', login_required(views.update_pm_recipe), name='update_pm_recipe'),
+    path('recipe/lunch/<int:recipe_id>/', login_required(views.recipe_detail), name='recipe_detail'),
+    path('update-recipe/<int:recipe_id>/', login_required(views.update_recipe), name='update_recipe'),
+    path('recipe/fruit/<int:recipe_id>/', login_required(views.fruit_recipe_detail), name='fruit_recipe_detail'),
+    path('update-fruit-recipe/<int:recipe_id>/', login_required(views.update_fruit_recipe), name='update_fruit_recipe'),
+    path('recipe/veg/<int:recipe_id>/', login_required(views.veg_recipe_detail), name='veg_recipe_detail'),
+    path('update-veg-recipe/<int:recipe_id>/', login_required(views.update_veg_recipe), name='update_veg_recipe'),
+    path('recipe/wg/<int:recipe_id>/', login_required(views.wg_recipe_detail), name='wg_recipe_detail'),
+    path('update-wg-recipe/<int:recipe_id>/', login_required(views.update_wg_recipe), name='update_wg_recipe'),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 
