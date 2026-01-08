@@ -5524,7 +5524,13 @@ def inbox_perms(request):
         return permissions_context
 
     main_user = get_user_for_view(request)
-    groups = Group.objects.exclude(name="Free User").exclude(id=8)
+    groups = (
+        Group.objects
+        .exclude(name="Free User")
+        .exclude(id__in=[8, 9])
+        .exclude(name__iexact="CACFP Only")
+        .order_by('name')
+    )
     for sender in groups:
         for receiver in groups:
             MessagingPermission.objects.get_or_create(
@@ -5619,7 +5625,7 @@ def permissions(request):
                         )
         return redirect('permissions')
 
-    groups = Group.objects.exclude(id=8).exclude(name__in=["Owner", "Parent", "Free User"]).order_by('name')
+    groups = Group.objects.exclude(id__in=[8, 9]).exclude(name__in=["Owner", "Parent", "Free User"]).order_by('name')
 
     role_permissions = defaultdict(list)
     for group in groups:
