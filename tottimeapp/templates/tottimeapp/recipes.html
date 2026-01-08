@@ -1047,62 +1047,207 @@ function setImageLoading(prefix) {
     if (btn)   { btn.style.display = 'inline-block'; btn.textContent = 'Replace image'; btn.disabled = true; btn.removeAttribute('data-replace'); }
 }
 
-// Open modal in edit mode immediately, then fetch/populate
+// NEW: toggle handler so "Replace image" shows/hides the file input
+function registerReplaceToggle(prefix) {
+    const btn = document.getElementById(prefix + 'ImageReplace');
+    const input = document.getElementById(prefix + 'Image');
+    const view = document.getElementById(prefix + 'ImageView');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        const replacing = this.getAttribute('data-replace') === 'true';
+        if (replacing) {
+            this.removeAttribute('data-replace');
+            this.textContent = 'Replace image';
+            if (input) { input.value = ''; input.style.display = 'none'; }
+            if (view)  { view.style.display = view.href ? 'inline-block' : 'none'; }
+        } else {
+            this.setAttribute('data-replace', 'true');
+            this.textContent = 'Cancel replace';
+            if (view)  { view.style.display = 'none'; }
+            if (input) { input.style.display = 'block'; }
+        }
+    });
+}
+
+// helper: show ingredient container if data exists
+function showContainer(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'block';
+}
+
+// --- POPULATE HELPERS ---
+function valOrEmpty(v) { return (v === null || v === undefined) ? '' : v; }
+function chooseId(objOrId) {
+    if (!objOrId) return null;
+    if (typeof objOrId === 'object' && objOrId.id) return objOrId.id;
+    return objOrId;
+}
+
+// --- Populate per category ---
+function populateBreakfast(data) {
+    $('#breakfastMealName').val(valOrEmpty(data.name));
+    $('#additionalFood').val(valOrEmpty(data.addfood || data.additional_food || data.additionalFood));
+    $('#breakfastInstructions').val(valOrEmpty(data.instructions));
+    populateRulesDropdown('breakfastRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
+
+    // ingredient 1..5
+    for (let n = 1; n <= 5; n++) {
+        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
+        const qty   = data[`qty${n}`];
+        if (n > 1 && (ingId || qty)) showContainer(`breakfastMainIngredient${n}Container`);
+        populateIngredientsDropdown(`breakfastMainIngredient${n}`, ingId);
+        $(`#breakfastQtyMainIngredient${n}`).val(valOrEmpty(qty));
+    }
+}
+
+function populateLunch(data) {
+    $('#mealName').val(valOrEmpty(data.name));
+    $('#instructions').val(valOrEmpty(data.instructions));
+    $('#grain').val(valOrEmpty(data.grain));
+    $('#meatAlternate').val(valOrEmpty(data.meat_alternate || data.meatAlternate));
+    populateRulesDropdown('rule', chooseId(data.rule_id || (data.rule && data.rule.id)));
+
+    for (let n = 1; n <= 5; n++) {
+        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
+        const qty   = data[`qty${n}`];
+        if (n > 1 && (ingId || qty)) showContainer(`mainIngredient${n}Container`);
+        populateIngredientsDropdown(`mainIngredient${n}`, ingId);
+        $(`#qtyMainIngredient${n}`).val(valOrEmpty(qty));
+    }
+}
+
+function populateAM(data) {
+    $('#amRecipeName').val(valOrEmpty(data.name));
+    $('#amInstructions').val(valOrEmpty(data.instructions));
+    $('#amFluid').val(valOrEmpty(data.fluid));
+    $('#amFruitVeg').val(valOrEmpty(data.fruitveg || data.fruit_veg));
+    $('#amMeat').val(valOrEmpty(data.meat));
+    populateRulesDropdown('amRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
+
+    for (let n = 1; n <= 5; n++) {
+        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
+        const qty   = data[`qty${n}`];
+        if (n > 1 && (ingId || qty)) showContainer(`amIngredient${n}Container`);
+        populateIngredientsDropdown(`amIngredient${n}`, ingId);
+        $(`#amQty${n}`).val(valOrEmpty(qty));
+    }
+}
+
+function populatePM(data) {
+    $('#pmRecipeName').val(valOrEmpty(data.name));
+    $('#pmInstructions').val(valOrEmpty(data.instructions));
+    $('#pmFluid').val(valOrEmpty(data.fluid));
+    $('#pmFruitVeg').val(valOrEmpty(data.fruitveg || data.fruit_veg));
+    $('#pmMeat').val(valOrEmpty(data.meat));
+    populateRulesDropdown('pmRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
+
+    for (let n = 1; n <= 5; n++) {
+        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
+        const qty   = data[`qty${n}`];
+        if (n > 1 && (ingId || qty)) showContainer(`pmIngredient${n}Container`);
+        populateIngredientsDropdown(`pmIngredient${n}`, ingId);
+        $(`#pmQty${n}`).val(valOrEmpty(qty));
+    }
+}
+
+function populateFruit(data) {
+    $('#fruitName').val(valOrEmpty(data.name));
+    populateRulesDropdown('fruitRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
+    populateIngredientsDropdown('fruitMainIngredient1', chooseId(data.ingredient1_id || (data.ingredient1 && data.ingredient1.id)));
+    $('#fruitQtyMainIngredient1').val(valOrEmpty(data.qty1));
+}
+
+function populateVeg(data) {
+    $('#vegName').val(valOrEmpty(data.name));
+    populateRulesDropdown('vegRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
+    populateIngredientsDropdown('vegMainIngredient1', chooseId(data.ingredient1_id || (data.ingredient1 && data.ingredient1.id)));
+    $('#vegQtyMainIngredient1').val(valOrEmpty(data.qty1));
+}
+
+function populateWg(data) {
+    $('#wgName').val(valOrEmpty(data.name));
+    populateRulesDropdown('wgRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
+    populateIngredientsDropdown('wgMainIngredient1', chooseId(data.ingredient1_id || (data.ingredient1 && data.ingredient1.id)));
+    $('#wgQtyMainIngredient1').val(valOrEmpty(data.qty1));
+}
+
+// Open modal in edit mode immediately, then fetch and populate fully
 async function viewRecipe(id, category) {
-    // Set UI to "Update" BEFORE fetching
+    // show modal + instant image placeholders
     if (category === 'breakfast') {
         setModalUI('#createBreakfastRecipeModalLabel', '#breakfastSubmitBtn', 'Update Breakfast Recipe', 'Update Breakfast Recipe');
         $('#createBreakfastRecipeForm').attr('action', `/update-breakfast-recipe/${id}/`);
         $('#createBreakfastRecipeModal').modal('show');
-        setImageLoading('breakfast');            // NEW
+        setImageLoading('breakfast');
     } else if (category === 'am') {
         setModalUI('#createAMRecipeModalLabel', '#amSubmitBtn', 'Update AM Snack Recipe', 'Update AM Snack Recipe');
         $('#createAMRecipeForm').attr('action', `/update-am-recipe/${id}/`);
         $('#createAMRecipeModal').modal('show');
-        setImageLoading('am');                   // NEW
+        setImageLoading('am');
     } else if (category === 'pm') {
         setModalUI('#createPMRecipeModalLabel', '#pmSubmitBtn', 'Update PM Snack Recipe', 'Update PM Snack Recipe');
         $('#createPMRecipeForm').attr('action', `/update-pm-recipe/${id}/`);
         $('#createPMRecipeModal').modal('show');
-        setImageLoading('pm');                   // NEW
+        setImageLoading('pm');
     } else if (category === 'lunch') {
         setModalUI('#createRecipeModalLabel', '#lunchSubmitBtn', 'Update Recipe', 'Update Recipe');
         $('#createRecipeForm').attr('action', `/update-recipe/${id}/`);
         $('#createRecipeModal').modal('show');
-        setImageLoading('recipe');               // NEW
+        setImageLoading('recipe');
     } else if (category === 'fruit') {
         setModalUI('#fruitRecipeModalLabel', '#fruitSubmitBtn', 'Update Fruit Recipe', 'Update Fruit Recipe');
         $('#createFruitRecipeForm').attr('action', `/update-fruit-recipe/${id}/`);
         $('#fruitRecipeModal').modal('show');
-        setImageLoading('fruit');                // NEW
+        setImageLoading('fruit');
     } else if (category === 'veg') {
         setModalUI('#vegRecipeModalLabel', '#vegSubmitBtn', 'Update Veg Recipe', 'Update Veg Recipe');
         $('#createVegRecipeForm').attr('action', `/update-veg-recipe/${id}/`);
         $('#vegRecipeModal').modal('show');
-        setImageLoading('veg');                  // NEW
+        setImageLoading('veg');
     } else if (category === 'wg') {
         setModalUI('#wgRecipeModalLabel', '#wgSubmitBtn', 'Update Wg Recipe', 'Update Wg Recipe');
         $('#createWgRecipeForm').attr('action', `/update-wg-recipe/${id}/`);
         $('#wgRecipeModal').modal('show');
-        setImageLoading('wg');                   // NEW
+        setImageLoading('wg');
     }
 
     try {
         const res = await fetch(`/recipe/${category}/${id}/`);
         const data = await res.json();
-        // ...existing population...
-        if (category === 'breakfast') setImageUI('breakfast', extractImagePath(data));
-        else if (category === 'am')   setImageUI('am', extractImagePath(data));
-        else if (category === 'pm')   setImageUI('pm', extractImagePath(data));
-        else if (category === 'lunch')setImageUI('recipe', extractImagePath(data));
-        else if (category === 'fruit')setImageUI('fruit', extractImagePath(data));
-        else if (category === 'veg')  setImageUI('veg', extractImagePath(data));
-        else if (category === 'wg')   setImageUI('wg', extractImagePath(data));
+
+        // populate fields per category
+        if (category === 'breakfast') {
+            populateBreakfast(data);
+            setImageUI('breakfast', extractImagePath(data));
+        } else if (category === 'am') {
+            populateAM(data);
+            setImageUI('am', extractImagePath(data));
+        } else if (category === 'pm') {
+            populatePM(data);
+            setImageUI('pm', extractImagePath(data));
+        } else if (category === 'lunch') {
+            populateLunch(data);
+            setImageUI('recipe', extractImagePath(data));
+        } else if (category === 'fruit') {
+            populateFruit(data);
+            setImageUI('fruit', extractImagePath(data));
+        } else if (category === 'veg') {
+            populateVeg(data);
+            setImageUI('veg', extractImagePath(data));
+        } else if (category === 'wg') {
+            populateWg(data);
+            setImageUI('wg', extractImagePath(data));
+        }
     } catch (e) {
         console.error('Failed to open recipe for edit:', e);
         toastr.error('Unable to load recipe.');
     }
 }
+
+// Register image toggles once DOM is ready
+document.addEventListener('DOMContentLoaded', function () {
+    ['recipe','breakfast','am','pm','fruit','veg','wg'].forEach(registerReplaceToggle);
+});
 </script>
 <script>
 $(document).ready(function () {
@@ -1118,7 +1263,96 @@ $(document).ready(function () {
         });
     }
 
-    // ...existing create* handlers remain; they already call hideImageViews()
+    // cache original form actions so we can restore them for create
+    const initialActions = {
+        breakfast: $('#createBreakfastRecipeForm').attr('action'),
+        am:        $('#createAMRecipeForm').attr('action'),
+        lunch:     $('#createRecipeForm').attr('action'),
+        pm:        $('#createPMRecipeForm').attr('action'),
+        fruit:     $('#createFruitRecipeForm').attr('action'),
+        veg:       $('#createVegRecipeForm').attr('action'),
+        wg:        $('#createWgRecipeForm').attr('action')
+    };
+
+    // generic helpers
+    function resetSelects(selectIds) {
+        selectIds.forEach(id => populateIngredientsDropdown(id, null));
+    }
+    function resetRules(ruleId) {
+        populateRulesDropdown(ruleId, null);
+    }
+
+    // CREATE handlers (force create UI, clear data, populate lists, show only file input)
+    $('#createBreakfastButton').on('click', function () {
+        setModalUI('#createBreakfastRecipeModalLabel', '#breakfastSubmitBtn', 'Create Breakfast Recipe', 'Create Breakfast Recipe');
+        $('#createBreakfastRecipeForm').attr('action', initialActions.breakfast);
+        $('#breakfastMealName,#additionalFood,#breakfastInstructions').val('');
+        ['#breakfastMainIngredient2Container','#breakfastMainIngredient3Container','#breakfastMainIngredient4Container','#breakfastMainIngredient5Container'].forEach(s => $(s).hide());
+        ['#breakfastQtyMainIngredient1','#breakfastQtyMainIngredient2','#breakfastQtyMainIngredient3','#breakfastQtyMainIngredient4','#breakfastQtyMainIngredient5'].forEach(s => $(s).val(''));
+        resetSelects(['breakfastMainIngredient1','breakfastMainIngredient2','breakfastMainIngredient3','breakfastMainIngredient4','breakfastMainIngredient5']);
+        resetRules('breakfastRule');
+        hideImageViews();
+    });
+
+    $('#createAMButton').on('click', function () {
+        setModalUI('#createAMRecipeModalLabel', '#amSubmitBtn', 'Create AM Snack Recipe', 'Create AM Snack Recipe');
+        $('#createAMRecipeForm').attr('action', initialActions.am);
+        $('#amRecipeName,#amFluid,#amFruitVeg,#amMeat,#amInstructions').val('');
+        ['#amIngredient2Container','#amIngredient3Container','#amIngredient4Container','#amIngredient5Container'].forEach(s => $(s).hide());
+        ['#amQty1','#amQty2','#amQty3','#amQty4','#amQty5'].forEach(s => $(s).val(''));
+        resetSelects(['amIngredient1','amIngredient2','amIngredient3','amIngredient4','amIngredient5']);
+        resetRules('amRule');
+        hideImageViews();
+    });
+
+    $('#createLunchButton').on('click', function () {
+        setModalUI('#createRecipeModalLabel', '#lunchSubmitBtn', 'Create Recipe', 'Create Recipe');
+        $('#createRecipeForm').attr('action', initialActions.lunch);
+        $('#mealName,#grain,#meatAlternate,#instructions').val('');
+        ['#mainIngredient2Container','#mainIngredient3Container','#mainIngredient4Container','#mainIngredient5Container'].forEach(s => $(s).hide());
+        ['#qtyMainIngredient1','#qtyMainIngredient2','#qtyMainIngredient3','#qtyMainIngredient4','#qtyMainIngredient5'].forEach(s => $(s).val(''));
+        resetSelects(['mainIngredient1','mainIngredient2','mainIngredient3','mainIngredient4','mainIngredient5']);
+        resetRules('rule');
+        hideImageViews();
+    });
+
+    $('#createPMButton').on('click', function () {
+        setModalUI('#createPMRecipeModalLabel', '#pmSubmitBtn', 'Create PM Snack Recipe', 'Create PM Snack Recipe');
+        $('#createPMRecipeForm').attr('action', initialActions.pm);
+        $('#pmRecipeName,#pmFluid,#pmFruitVeg,#pmMeat,#pmInstructions').val('');
+        ['#pmIngredient2Container','#pmIngredient3Container','#pmIngredient4Container','#pmIngredient5Container'].forEach(s => $(s).hide());
+        ['#pmQty1','#pmQty2','#pmQty3','#pmQty4','#pmQty5'].forEach(s => $(s).val(''));
+        resetSelects(['pmIngredient1','pmIngredient2','pmIngredient3','pmIngredient4','pmIngredient5']);
+        resetRules('pmRule');
+        hideImageViews();
+    });
+
+    $('#createFruitButton').on('click', function () {
+        setModalUI('#fruitRecipeModalLabel', '#fruitSubmitBtn', 'Create Fruit Recipe', 'Create Fruit Recipe');
+        $('#createFruitRecipeForm').attr('action', initialActions.fruit);
+        $('#fruitName,#fruitQtyMainIngredient1').val('');
+        resetSelects(['fruitMainIngredient1']);
+        resetRules('fruitRule');
+        hideImageViews();
+    });
+
+    $('#createVegButton').on('click', function () {
+        setModalUI('#vegRecipeModalLabel', '#vegSubmitBtn', 'Create Veg Recipe', 'Create Veg Recipe');
+        $('#createVegRecipeForm').attr('action', initialActions.veg);
+        $('#vegName,#vegQtyMainIngredient1').val('');
+        resetSelects(['vegMainIngredient1']);
+        resetRules('vegRule');
+        hideImageViews();
+    });
+
+    $('#createWGButton').on('click', function () {
+        setModalUI('#wgRecipeModalLabel', '#wgSubmitBtn', 'Create Wg Recipe', 'Create Wg Recipe');
+        $('#createWgRecipeForm').attr('action', initialActions.wg);
+        $('#wgName,#wgQtyMainIngredient1').val('');
+        resetSelects(['wgMainIngredient1']);
+        resetRules('wgRule');
+        hideImageViews();
+    });
 });
 </script>
 {% endblock %}
