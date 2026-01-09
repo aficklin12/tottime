@@ -203,23 +203,60 @@
   #recipeTabs .tab { flex-shrink: 0; } /* keep tab size consistent while scrolling */
 }
 
-    /* Ensure modals sit below a fixed navbar and above it in stacking context */
-    .modal {
-        padding-top: 64px;        /* push modal below navbar height */
-        z-index: 1060;            /* above typical navbar z-index */
-    }
-    .modal-backdrop {
-        z-index: 1050;
-    }
+/* Mobile modal sizing: fit between navbars */
+@media (max-width: 999px) {
+  /* adjust these if your navbar/bottom bar heights differ */
+  :root {
+    --top-nav-h: 56px;
+    --bottom-nav-h: 64px;
+    --modal-margin: 12px;
+  }
 
-    /* Optional: if your navbar has an unusually high z-index, lower it here */
-    /* .navbar.fixed-top { z-index: 1030; } */
+  .modal { 
+    padding-top: var(--top-nav-h) !important; 
+    z-index: 3000 !important; 
+  }
+  .modal-backdrop { z-index: 2999 !important; }
 
-    /* Spacer so content isn’t hidden behind the bottom nav on mobile */
-    @media (max-width: 999px) {
-        .mobile-nav-spacer { height: 72px; }
-        .desktop-only { display: none !important; }
-    }
+  .modal-dialog,
+  .modal-dialog.modal-dialog-centered {
+    /* keep dialog inside viewport */
+    margin: var(--modal-margin) auto !important;
+    width: auto !important;
+    max-width: min(640px, 95vw) !important;
+    align-items: flex-start !important; /* avoid vertical centering overflow */
+  }
+
+  .modal-content {
+    box-sizing: border-box;
+    /* viewport minus top navbar, bottom nav, and a small margin */
+    max-height: calc(100vh - var(--top-nav-h) - var(--bottom-nav-h) - (2 * var(--modal-margin))) !important;
+    overflow-y: auto !important;
+  }
+
+  /* slightly tighter paddings inside the modal for small screens */
+  .modal-header { padding: 0.5rem 0.9rem !important; }
+  .modal-body   { padding: 0.6rem 0.9rem !important; }
+  .modal-footer { padding: 0.5rem 0.9rem !important; }
+}
+
+/* Ensure modals sit below a fixed navbar and above it in stacking context */
+.modal {
+    padding-top: 64px;        /* push modal below navbar height */
+    z-index: 1060;            /* above typical navbar z-index */
+}
+.modal-backdrop {
+    z-index: 1050;
+}
+
+/* Optional: if your navbar has an unusually high z-index, lower it here */
+/* .navbar.fixed-top { z-index: 1030; } */
+
+/* Spacer so content isn’t hidden behind the bottom nav on mobile */
+@media (max-width: 999px) {
+    .mobile-nav-spacer { height: 72px; }
+    .desktop-only { display: none !important; }
+}
 </style>
 {% endblock %}
 
