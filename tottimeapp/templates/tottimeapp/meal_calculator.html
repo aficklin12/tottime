@@ -153,48 +153,166 @@
         font-style: italic;
     }
     @media (max-width: 999px) {
+    /* Hide desktop elements */
+    .meal-type-tabs { display: none !important; }
+    .calculate-btn.desktop-only { display: none !important; }
+    .desktop-only { display: none !important; }
+
+    /* Tighten content spacing under the dropdown */
+    .meal-calculator { margin-top: 6px !important; padding-top: 0 !important; }
+
+    /* Full-bleed sticky dropdown bar, attached to navbar */
+    #mealCalcDropdownContainer {
+        display: block !important;
+        position: sticky;
+        top: 56px;                    /* set to your navbar height */
+        z-index: 1090;
+        padding: 6px 12px;            /* compact height */
+        background-color: rgba(34,37,41,1);
+        border-bottom: 1px solid #1f2125;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+
+        /* full-bleed across viewport */
+        width: 100vw;
+        margin-left: calc(50% - 50vw) !important;
+        margin-right: calc(50% - 50vw) !important;
+    }
+
+    #mealCalcDropdownContainer .mobile-select-wrap {
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+
+    #mealCalcDropdownContainer .form-select,
+    #mealCalcDropdownContainer .form-select option,
+    #mealCalcDropdownContainer .form-select optgroup {
+        display: inline-block;
+        width: auto;
+        padding: 6px 10px;
+        margin: 0;
+        height: auto;
+        line-height: 1.1 !important;
+        font-size: 1rem;
+        border: none !important;
+        border-radius: 6px;
+        background-color: rgba(34,37,41,.95) !important;
+        color: #fff !important;
+        box-shadow: none !important;
+        -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    }
+
+    #mealCalcDropdownContainer .form-select:focus,
+    #mealCalcDropdownContainer .form-select:hover,
+    #mealCalcDropdownContainer .form-select:active {
+        outline: none !important; box-shadow: none !important;
+        background: transparent !important; border: none !important;
+    }
+
+    #mealCalcDropdownContainer .mobile-dropdown-indicator {
+        display: inline-block; width: 0; height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid #ffffff;
+        pointer-events: none; margin-left: -12px;
+    }
+
+    /* Keep space for bottom bar */
+    .mobile-nav-spacer { height: 72px; }
+
+    /* Flush dropdown with ages bar (no gap); center selected text */
+    #mealCalcDropdownContainer {
+        margin-bottom: 0 !important;
+        border-bottom: none !important;
+        box-shadow: none !important;
+    }
+    #mealTypeDropdown { text-align: center; text-align-last: center; }
+
+    /* Mobile-only ages row: full-bleed, navbar color, centered white labels */
+    .age-group-inputs {
+        background: rgba(34,37,41,1) !important;
+        color: #fff !important;
+        padding: 8px 12px !important;
+        margin: 0 0 10px !important;         /* flush under dropdown */
+        border-radius: 0 !important;
+
+        /* full-bleed across viewport */
+        width: 100vw;
+        margin-left: calc(50% - 50vw) !important;
+        margin-right: calc(50% - 50vw) !important;
+    }
+    .age-group-inputs h3 { display: none !important; }
+
+    .age-group-inputs .input-row {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important; /* allow shrinking */
+        gap: 6px !important;
+    }
+    .age-group-inputs .input-group { 
+        min-width: 0 !important;       /* let grid item shrink */
+        text-align: center !important;
+    }
+    .age-group-inputs .input-group input {
+        width: 100% !important;         /* fill cell */
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 6px 8px !important;
+        text-align: center !important;
+    }
+    .age-group-inputs .input-group label {
+        color: #fff !important;
+        text-align: center !important;
+        font-weight: 600 !important;
+        margin-bottom: 4px !important;
+        font-size: 12px !important;     /* smaller label to save width */
+    }
+
+    /* Remove the gap below the dropdown */
     .meal-calculator {
-        padding: 10px;
-        margin: 10px;
+        margin-top: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
-    
+
+    /* Ensure dropdown and ages bar are flush */
+    #mealCalcDropdownContainer {
+        margin-bottom: 0 !important;
+        border-bottom: 0 !important;    /* no seam */
+        box-shadow: none !important;
+    }
+
+    .age-group-inputs {
+        margin-bottom: 0 !important;     /* no gap above table */
+    }
+
+    /* Make results table full-bleed and attach to ages row */
     .results-table {
-        margin-right: 30px;
-        margin-left: 10px;
-    }
-    
-    .results-table th,
-    .results-table td {
-        padding: 8px 6px;
-        font-size: 13px;
-    }
-    
-    .meal-type-tabs {
-        margin-left: 25px;
-    }
-    
-    .meal-tab {
-        padding: 5px 8px;
-        font-size: 13px;
-    }
-    
-    .food-component {
-        font-size: 13px;
-    }
-    
-    .sub-item {
-        font-size: 12px;
-    }
-    
-    .total-amount {
-        font-size: 13px;
+        width: 100vw !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border-top: none !important;
+
+        /* full-bleed across viewport */
+        margin-left: calc(50% - 50vw) !important;
+        margin-right: calc(50% - 50vw) !important;
     }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>CACFP Meal Calculator</h1>
+<h1 class="desktop-only">CACFP Meal Calculator</h1>
+
+<!-- Mobile meal-type dropdown (visible <1000px) -->
+<div id="mealCalcDropdownContainer" class="d-md-none" role="region" aria-label="Select meal type">
+    <div class="mobile-select-wrap">
+        <select id="mealTypeDropdown" class="form-select form-select-sm" aria-label="Meal type">
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch/Dinner</option>
+            <option value="snack">Snack</option>
+        </select>
+        <span class="mobile-dropdown-indicator" aria-hidden="true"></span>
+    </div>
+</div>
+
 <div class="meal-calculator">
     
     
@@ -218,13 +336,13 @@
                 <input type="number" id="ages-13-18" min="0" value="0">
             </div>
         </div>
-        <button class="calculate-btn" onclick="calculateMeals()">Calculate Meal Requirements</button>
+        <button class="calculate-btn desktop-only" onclick="calculateMeals()">Calculate Meal Requirements</button>
     </div>
     
     <div class="meal-type-tabs">
-        <button class="meal-tab active" onclick="showMeal('breakfast')">Breakfast</button>
-        <button class="meal-tab" onclick="showMeal('lunch')">Lunch/Dinner</button>
-        <button class="meal-tab" onclick="showMeal('snack')">Snack</button>
+        <button class="meal-tab active" data-meal="breakfast" onclick="showMeal('breakfast')">Breakfast</button>
+        <button class="meal-tab" data-meal="lunch" onclick="showMeal('lunch')">Lunch/Dinner</button>
+        <button class="meal-tab" data-meal="snack" onclick="showMeal('snack')">Snack</button>
     </div>
     
     <div id="breakfast-results" class="results-section active">
@@ -276,6 +394,14 @@
         </table>
     </div>
 </div>
+
+<!-- Mobile bottom nav: center button runs calculateMeals() -->
+<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Meal calculator actions">
+    <button id="mobileCalculateBtn" class="btn update-btn" type="button" title="Calculate">
+        <i class="fas fa-calculator" aria-hidden="true"></i>
+    </button>
+</div>
+<div class="mobile-nav-spacer d-md-none"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -746,6 +872,35 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById(id).addEventListener('input', function() {
             localStorage.setItem(id, this.value);
         });
+    });
+});
+
+// Wire mobile bottom-bar calculate button
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('mobileCalculateBtn')?.addEventListener('click', function () {
+        calculateMeals();
+    });
+});
+
+/* Sync mobile dropdown with tabs/sections */
+document.addEventListener('DOMContentLoaded', function () {
+    const dd = document.getElementById('mealTypeDropdown');
+
+    // Set initial value from active tab
+    const activeTab = document.querySelector('.meal-tab.active');
+    dd.value = activeTab?.dataset.meal || 'breakfast';
+
+    // When dropdown changes, switch section and tab highlight
+    dd.addEventListener('change', function () {
+        const val = this.value;
+        showMeal(val);
+        document.querySelectorAll('.meal-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.meal-tab[data-meal="${val}"]`)?.classList.add('active');
+    });
+
+    // Keep dropdown in sync when a desktop tab is clicked
+    document.querySelectorAll('.meal-tab').forEach(btn => {
+        btn.addEventListener('click', () => { dd.value = btn.dataset.meal; });
     });
 });
 </script>

@@ -93,19 +93,100 @@
         display: none;
     }
     @media (max-width: 999px) {
-    .tabs {
-        display: none !important;
+    .tabs { display: none !important; }
+
+    /* flush container so dropdown/header can be full-bleed */
+    .container.mt-4 {
+        margin-top: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
+
+    /* Mobile dropdown bar */
     #recipeDropdownContainer {
         display: block !important;
-        margin-bottom: 10px;
-        text-align: center;
+        position: sticky;
+        top: 56px; /* match navbar height */
+        z-index: 1090;
+        padding: 6px 12px;
+        background-color: rgba(34, 37, 41, 1);
+        border-bottom: 1px solid #1f2125;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+        width: 100vw;
+        margin-left: calc(50% - 50vw) !important;
+        margin-right: calc(50% - 50vw) !important;
     }
-    #recipeCategoryDropdown {
-        width: 220px;
-        margin: 10px auto;
+
+    #recipeDropdownContainer .mobile-select-wrap { display: inline-flex; align-items: center; gap: 6px; }
+
+    #recipeDropdownContainer .form-select,
+    #recipeDropdownContainer .form-select option,
+    #recipeDropdownContainer .form-select optgroup {
         display: inline-block;
+        width: auto;
+        padding: 6px 10px;
+        margin: 0;
+        height: auto;
+        line-height: 1.1 !important;
+        font-size: 1rem;
+        border: none !important;
+        border-radius: 6px;
+        background-color: rgba(34, 37, 41, 0.95) !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+        -webkit-appearance: none; -moz-appearance: none; appearance: none;
     }
+
+    #recipeDropdownContainer .form-select:focus,
+    #recipeDropdownContainer .form-select:hover,
+    #recipeDropdownContainer .form-select:active {
+        outline: none !important; box-shadow: none !important; background: transparent !important; border: none !important;
+    }
+
+    #recipeDropdownContainer .mobile-dropdown-indicator {
+        display: inline-block; width: 0; height: 0;
+        border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid #ffffff;
+        pointer-events: none; margin-left: -12px;
+    }
+
+    .desktop-only { display: none !important; }
+
+    /* CONTENT: make the list full-bleed and remove table header */
+    .tab-content {
+        width: 100%;
+        padding: 0 !important;
+        margin: 6px 0 0 0 !important; /* small gap under dropdown */
+    }
+    .tab-content table {
+        width: 100% !important;
+        border: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        table-layout: fixed;
+        background: transparent;
+    }
+    .tab-content table thead { display: none !important; } /* hide header on mobile */
+
+    /* Keep only horizontal row dividers like inventory */
+    .tab-content table th,
+    .tab-content table td {
+        border-left: none !important;
+        border-right: none !important;
+        border-top: none !important;
+        border-bottom: 1px solid #dee2e6 !important;
+        background-clip: padding-box;
+    }
+
+    /* Name column uses most width; delete column stays compact when shown */
+    .tab-content table td:first-child { width: auto; }
+    .tab-content table td.delete-column { width: 48px; text-align: center; }
+
+    /* Optional: subtle background similar to inventory */
+    .tab-content table tbody { background-color: #e8e8e8bd !important; }
+    .tab-content table tbody tr td { background-color: transparent !important; }
+
+    /* Bottom nav spacer */
+    .mobile-nav-spacer { height: 72px; }
 }
 @media (min-width: 1000px) {
     #recipeDropdownContainer {
@@ -133,14 +214,20 @@
 
     /* Optional: if your navbar has an unusually high z-index, lower it here */
     /* .navbar.fixed-top { z-index: 1030; } */
+
+    /* Spacer so content isn’t hidden behind the bottom nav on mobile */
+    @media (max-width: 999px) {
+        .mobile-nav-spacer { height: 72px; }
+        .desktop-only { display: none !important; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>Recipe Lists</h1>
+<h1 class="desktop-only">Recipe Lists</h1>
 <div class="container mt-4">
     <!-- Buttons for creating recipes -->
-    <div class="mt-3 d-flex align-items-center">
+    <div class="mt-3 d-flex align-items-center desktop-only">
         <!-- Recipe Buttons -->
         <div>
             <button type="button" class="btn btn-recipe" id="createBreakfastButton" data-bs-toggle="modal" data-bs-target="#createBreakfastRecipeModal" style="display: block;">
@@ -182,16 +269,19 @@
     </div>
 
     <!-- Mobile Dropdown for recipe categories -->
-    <div class="d-block d-md-none mb-3" id="recipeDropdownContainer">
-        <select class="form-select" id="recipeCategoryDropdown" aria-label="Select recipe category">
-            <option value="breakfast">Breakfast</option>
-            <option value="am">AM Snack</option>
-            <option value="lunch">Lunch</option>
-            <option value="pm">PM Snack</option>
-            <option value="fruit">Fruits</option>
-            <option value="veg">Vegetables</option>
-            <option value="wg">Whole Grains</option>
-        </select>
+    <div class="d-block d-md-none" id="recipeDropdownContainer" role="region" aria-label="Select recipe category">
+        <div class="mobile-select-wrap">
+            <select class="form-select form-select-sm" id="recipeCategoryDropdown" aria-label="Select recipe category">
+                <option value="breakfast">Breakfast</option>
+                <option value="am">AM Snack</option>
+                <option value="lunch">Lunch</option>
+                <option value="pm">PM Snack</option>
+                <option value="fruit">Fruits</option>
+                <option value="veg">Vegetables</option>
+                <option value="wg">Whole Grains</option>
+            </select>
+            <span class="mobile-dropdown-indicator" aria-hidden="true"></span>
+        </div>
     </div>
 
     <!-- Table for displaying recipes -->
@@ -211,6 +301,20 @@
         </table>
     </div>
 </div>
+
+<!-- Mobile bottom nav (visible <1000px) -->
+<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Recipe actions">
+    <button id="mobileToggleDeleteBtn" class="btn" type="button" title="Toggle Delete">
+        <i class="fas fa-trash-alt" aria-hidden="true"></i>
+    </button>
+    
+    <button id="mobileCreateBtn" class="btn" type="button" title="Create">
+        <i class="fas fa-plus" aria-hidden="true"></i>
+    </button>
+</div>
+<div class="mobile-nav-spacer d-md-none"></div>
+
+<!-- Modals -->
 <div class="modal fade" id="fruitRecipeModal" tabindex="-1" aria-labelledby="fruitRecipeModalLabel" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -785,6 +889,70 @@
 
 {% block scripts %}
 <script>
+    // helper: current category from active tab (or dropdown on mobile)
+    function getCurrentCategory() {
+        const activeTab = document.querySelector('#recipeTabs .active-tab');
+        if (activeTab) return activeTab.getAttribute('data-category');
+        const dd = document.getElementById('recipeCategoryDropdown');
+        return dd ? dd.value : 'breakfast';
+    }
+
+    // keep mobile create button label/title synced
+    function updateMobileCreateBtn(category) {
+        const map = {
+            breakfast: 'Create Breakfast Recipe',
+            am:        'Create AM Snack Recipe',
+            lunch:     'Create Lunch Recipe',
+            pm:        'Create PM Snack Recipe',
+            fruit:     'Add Fruit to Menu Rules',
+            veg:       'Add Vegetables to Menu Rules',
+            wg:        'Add Whole Grains to Menu Rules'
+        };
+        const btn = document.getElementById('mobileCreateBtn');
+        if (btn) { btn.setAttribute('aria-label', map[category] || 'Create'); btn.title = map[category] || 'Create'; }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // wire bottom nav buttons
+        const mobileDelete  = document.getElementById('mobileToggleDeleteBtn');
+        const mobileRefresh = document.getElementById('mobileRefreshBtn');
+        const mobileCreate  = document.getElementById('mobileCreateBtn');
+
+        if (mobileDelete) {
+            mobileDelete.addEventListener('click', function () {
+                // reuse existing top trash toggle
+                document.getElementById('toggleDeleteColumn')?.click();
+            });
+        }
+        if (mobileRefresh) {
+            mobileRefresh.addEventListener('click', function () {
+                const cat = getCurrentCategory();
+                // trigger the tab click to run existing fetch logic
+                const tab = document.querySelector(`#recipeTabs .tab[data-category="${cat}"]`);
+                tab?.click();
+            });
+        }
+        if (mobileCreate) {
+            mobileCreate.addEventListener('click', function () {
+                const cat = getCurrentCategory();
+                const btns = {
+                    breakfast: document.getElementById('createBreakfastButton'),
+                    am:        document.getElementById('createAMButton'),
+                    lunch:     document.getElementById('createLunchButton'),
+                    pm:        document.getElementById('createPMButton'),
+                    fruit:     document.getElementById('createFruitButton'),
+                    veg:       document.getElementById('createVegButton'),
+                    wg:        document.getElementById('createWGButton')
+                };
+                btns[cat]?.click();
+            });
+        }
+
+        // set initial label for mobile create button
+        updateMobileCreateBtn(getCurrentCategory());
+    });
+</script>
+<script>
     document.addEventListener('DOMContentLoaded', function () {
         const recipeTableBody = document.getElementById('recipeTableBody');
         const deleteColumnHeader = document.getElementById('deleteColumnHeader');
@@ -804,11 +972,10 @@
         // Initially hide the delete column
         deleteColumnHeader.style.display = 'none';
 
+        // Existing top trash icon toggle
         toggleDeleteButton.addEventListener('click', function () {
             const isHidden = deleteColumnHeader.style.display === 'none' || deleteColumnHeader.style.display === '';
             deleteColumnHeader.style.display = isHidden ? 'table-cell' : 'none';
-
-            // Toggle visibility for all delete-column cells
             const deleteColumns = document.querySelectorAll('.delete-column');
             deleteColumns.forEach(column => {
                 column.style.display = isHidden ? 'table-cell' : 'none';
@@ -887,60 +1054,54 @@
             });
         }
 
-        // Function to toggle buttons based on the active tab
         function toggleButtons(category) {
             Object.keys(buttons).forEach(key => {
                 buttons[key].style.display = key === category ? 'block' : 'none';
             });
+            // Keep mobile create button title in sync
+            updateMobileCreateBtn(category);
         }
 
-        // Function to update active tab styling
         function updateActiveTab(clickedTab) {
-            tabs.forEach(tab => {
-                tab.classList.remove('active-tab'); // Remove active class from all tabs
-            });
-            clickedTab.classList.add('active-tab'); // Add active class to the clicked tab
+            tabs.forEach(tab => tab.classList.remove('active-tab'));
+            clickedTab.classList.add('active-tab');
         }
 
-        // Event listener for tab clicks
+        // Tab clicks
         tabs.forEach(tab => {
             tab.addEventListener('click', function () {
                 const category = this.getAttribute('data-category');
                 fetchRecipes(category);
                 toggleButtons(category);
-                updateActiveTab(this); // Update the active tab styling
-                // Sync dropdown value
-                if (dropdown) {
-                    dropdown.value = category;
-                }
+                updateActiveTab(this);
+                if (dropdown) dropdown.value = category;
+                updateMobileCreateBtn(category);
             });
         });
 
-        // Event listener for dropdown changes (MOBILE)
+        // Mobile dropdown
         if (dropdown) {
-            // Set dropdown to match the active tab on load
             const activeTab = document.querySelector('#recipeTabs .active-tab');
-            if (activeTab) {
-                dropdown.value = activeTab.getAttribute('data-category');
-            }
+            if (activeTab) dropdown.value = activeTab.getAttribute('data-category');
             dropdown.addEventListener('change', function () {
                 const category = this.value;
                 fetchRecipes(category);
                 toggleButtons(category);
-                // Update tab styling for consistency if user resizes window
                 tabs.forEach(tab => {
                     tab.classList.remove('active-tab');
                     if (tab.getAttribute('data-category') === category) {
                         tab.classList.add('active-tab');
                     }
                 });
+                updateMobileCreateBtn(category);
             });
         }
 
-        // Load the first tab (Breakfast) by default
+        // Initial load
         fetchRecipes('breakfast');
         toggleButtons('breakfast');
-        updateActiveTab(document.querySelector('#breakfast-tab')); // Set the initial active tab
+        updateActiveTab(document.querySelector('#breakfast-tab'));
+        updateMobileCreateBtn('breakfast');
     });
 
     // Cached lookups to avoid repeated network calls
