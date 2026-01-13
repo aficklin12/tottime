@@ -282,6 +282,20 @@ th {
    MOBILE STYLES (<1000px)
    ========================= */
 @media (max-width: 999px) {
+    .navbar-location-bar {
+        /* was z-index: 1040; */
+        z-index: 1099 !important; 
+        box-shadow: none !important;
+        border-bottom: 0 !important;
+    }
+
+    /* ensure the dropdown menu paints above page content */
+    .navbar-location-bar .dropdown,
+    .navbar-location-bar .dropdown-menu {
+        position: relative;
+        z-index: 1100 !important;
+    }
+
     .h1-multiloc {
         margin-top: 80px !important;
     }
@@ -394,7 +408,7 @@ th {
         justify-content: space-around;
         align-items: center;
         padding: 6px 10px;
-        box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
     }
     
     #mobileBottomNav .btn,

@@ -3966,7 +3966,7 @@ def update_attendance(request):
 def manual_sign_in_ajax(request):
     if request.method == 'POST':
         student_id = request.POST.get('student')
-        sign_in_time_str = request.POST.get('sign_in_time')  # Expecting "HH:MM"
+        sign_in_time_str = request.POST.get('sign_in_time')  # "HH:MM"
 
         if student_id:
             student = get_object_or_404(Student, pk=student_id)
@@ -3974,26 +3974,35 @@ def manual_sign_in_ajax(request):
 
             if sign_in_time_str:
                 try:
-                    # Parse time from string (HH:MM)
                     time_obj = datetime.strptime(sign_in_time_str, '%H:%M').time()
-                    # Combine with today's date
                     sign_in_datetime = timezone.make_aware(datetime.combine(today_date, time_obj))
                 except ValueError:
                     return JsonResponse({'success': False, 'error': 'Invalid time format. Use HH:MM.'}, status=400)
             else:
-                # If no time is provided, use the current time
                 sign_in_datetime = timezone.now()
 
-            # Use get_user_for_view to determine the correct user
+            # Block if there is an open record today (no sign_out_time yet)
+            has_open_today = AttendanceRecord.objects.filter(
+                student=student,
+                sign_in_time__date=today_date,
+                sign_out_time__isnull=True
+            ).exists()
+            if has_open_today:
+                return JsonResponse(
+                    {'success': False, 'error': 'Student is already signed in today and has not signed out.'},
+                    status=409
+                )
+
             assigned_user = get_user_for_view(request)
 
-            # Save record
-            AttendanceRecord.objects.create(
-                user=assigned_user,  # Assigning the user from get_user_for_view
-                student=student,
-                sign_in_time=sign_in_datetime
-            )
+            with transaction.atomic():
+                AttendanceRecord.objects.create(
+                    user=assigned_user,
+                    student=student,
+                    sign_in_time=sign_in_datetime
+                )
             return JsonResponse({'success': True})
+
     return JsonResponse({'success': False}, status=400)
 
 @login_required

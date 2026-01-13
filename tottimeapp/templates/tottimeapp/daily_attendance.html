@@ -1,4 +1,4 @@
-{% extends 'tottimeapp/base.html' %}
+{% extends 'tottimeapp/base_dynamic.html' %}
 {% load static %} 
 {% load custom_filters %}
 {% load dict_extras %}
@@ -64,9 +64,19 @@ color: rgb(255, 255, 255);
 background-color: rgb(54, 56, 56);
 border-color: rgb(54, 56, 56);
 }
-.delete-column {
-    display: none;
-  }
+/* Hide delete column by default; shown when table has .delete-visible */
+.attendance-table:not(.delete-visible) th.delete-column,
+.attendance-table:not(.delete-visible) td.delete-column {
+        display: none !important;
+}
+
+/* Unassign teacher buttons: hidden by default; shown in delete mode */
+.attendance-table:not(.delete-visible) .unassign-column {
+    display: none !important;
+}
+.attendance-table.delete-visible .unassign-column {
+    display: inline-flex !important;
+}
 
     /* Reduce padding and size for delete buttons within the table */
     .table .delete-record {
@@ -130,7 +140,7 @@ table {
         flex-wrap: wrap;
     }
     th {
-            background-color: #272630 !important;
+            background-color: rgba(34, 37, 41, 1) !important;
             color: #ffffff !important;
         }
 select.classroom-select {
@@ -201,104 +211,255 @@ input[type="time"].sign-out-time:focus {
     background-color: var(--classroom-color, #f8f9fa) !important;
   }
 
-@media (max-width: 1000px) {
+@media (max-width: 999px) {
+  /* hide desktop controls on mobile */
+  .desktop-only { display: none !important; }
+
+  /* keep content visible above the bottom nav */
+  .mobile-nav-spacer { height: 72px; }
+
+  /* Full-width (full-bleed) tables on mobile */
   table {
-    margin-left: 5px !important;
-    margin-right: 5px !important;
-    width: calc(100% - 10px) !important;
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    border-collapse: collapse;
-  }
-  th, td {
-    min-width: 100px; /* or adjust as needed */
-    width: auto;
-    font-size: 80%;
-    text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    table-layout: fixed !important;
+    border-radius: 0 !important;
+
+    /* remove page gutters and span the viewport */
+    margin: 8px 0 12px 0 !important;      /* keep small vertical spacing */
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
   }
 
-  table tbody tr {
-    height: 32px;
+  /* Keep only horizontal row dividers like other mobile lists */
+  table th, table td {
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
   }
-  table td, table th {
-    padding-top: 4px;
-    padding-bottom: 4px;
+
+  /* Ensure header rows inside the table also respect full width without rounded corners */
+  table thead th:first-child,
+  table thead th:last-child,
+  table tbody tr:last-child td:first-child,
+  table tbody tr:last-child td:last-child {
+    border-radius: 0 !important;
   }
-  table th:nth-child(2),
-  table td:nth-child(2),
-  table th:nth-child(3),
-  table td:nth-child(3) {
-    width: 95px !important;
-    min-width: 65px !important;
-    max-width: 115px !important;
-    white-space: nowrap;
+
+  /* Collapse delete column on mobile so others expand */
+  .attendance-table:not(.delete-visible) {
+    table-layout: auto !important;
   }
-   table th:nth-child(4),
-  table td:nth-child(4) {
-    width: 55px !important;
-    min-width: 55px !important;
-    max-width: 155px !important;
-    white-space: nowrap;
+  .attendance-table:not(.delete-visible) col.col-delete {
+    display: none !important;
   }
-    table th:nth-child(1),
-  table td:nth-child(1) {
-    width: 55px !important;
-    min-width: 55px !important;
-    max-width: 155px !important;
-    white-space: nowrap;
+  .attendance-table.delete-visible col.col-delete {
+    display: table-column !important;
+    width: 56px !important; /* match your icon/button width */
   }
-  input[type="time"].sign-in-time,
-  input[type="time"].sign-out-time {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
+
+  /* Safety: hide cells if JS hasn’t run yet */
+  .attendance-table:not(.delete-visible) th.delete-column,
+  .attendance-table:not(.delete-visible) td.delete-column {
+    display: none !important;
+  }
+
+  /* Mobile classroom switcher bar (full-bleed under navbar) */
+  #classroomSwitchContainer {
+    position: sticky;
+    top: 56px;                    /* navbar height */
+    z-index: 1090;
+    padding: 6px 12px;
+    background: #222529;
+    border-bottom: 1px solid #1f2125;
+
+    width: 100vw;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+  }
+  #classroomSwitchContainer .form-select {
+    border: none !important;
+    background: rgba(34,37,41,.95) !important;
+    color: #fff !important;
     padding: 6px 10px;
-    border: 1px solid #ccc;
+    text-align: center;
+    text-align-last: center;
     border-radius: 6px;
-    background-color: #fff;
-    font-size: 11px;
-    color: #333;
-    cursor: pointer;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    border-color: rgba(204, 204, 204, 0.03);
+    font-weight: 700;     /* bold */
+    font-size: 1.1rem;   
+     -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+
+    /* keep dark bg and add arrow */
+    background-color: rgba(34,37,41,.95) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M3.2 6l4.8 4.8L12.8 6z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 14px !important;
+
+    padding-right: 36px; /* room for arrow */
   }
-  input[type="time"].sign-in-time::-webkit-calendar-picker-indicator,
-  input[type="time"].sign-out-time::-webkit-calendar-picker-indicator {
-    cursor: pointer;
+
+  /* Hide native arrow on old Edge/IE */
+  #classroomSwitchContainer .form-select::-ms-expand {
+    display: none;
   }
-  input[type="time"].sign-in-time:hover,
-  input[type="time"].sign-in-time:focus,
-  input[type="time"].sign-out-time:hover,
-  input[type="time"].sign-out-time:focus {
-    border-color: #39bdb4;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.2);
+  /* Optional: option styling (limited support on iOS) */
+  #classroomSwitchContainer .form-select option {
+    font-weight: 700;
+    font-size: 1.1rem;
   }
+  table {
+    margin-top: 0 !important;            /* remove gap */
+    /* ...existing table mobile rules... */
+  }
+  /* Only one classroom table visible at a time */
+  table.attendance-table { display: none; }
+  table.attendance-table.is-active { display: table; }
+
+  /* Hide the in-table classroom title row on mobile (the dropdown replaces it) */
+  .attendance-table .classroom-title-row { display: none !important; }
+}
+@media (max-width: 999px) {
+  /* Mobile classroom switcher bar (flush to table) */
+  #classroomSwitchContainer {
+    border-bottom: none !important;     /* remove the line under the dropdown */
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Attach table directly under the switcher without any seam */
+  table.attendance-table {
+    margin-top: 0 !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+  }
+  /* Ensure the first header row doesn't draw a top border */
+  table.attendance-table thead tr:first-child th {
+    border-top: 0 !important;
+  }
+}
+@media (max-width: 999px) {
+  /* wrapper for positioning the inline arrow */
+  #classroomSwitchContainer .select-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  /* remove bg arrow; keep centered text */
+  #classroomSwitchContainer .select-wrap .form-select {
+    background-image: none !important;   /* override previous bg SVG */
+    text-align: center;
+    text-align-last: center;
+  }
+
+  /* the visible chevron that sits right after the text */
+  #classroomSwitchContainer .select-wrap .select-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+    pointer-events: none;                /* don’t block select clicks */
+  }
+}
+
+/* Hide Assign teacher row when delete mode is on (desktop and mobile) */
+.attendance-table.delete-visible .assign-controls-row {
+  display: table-row !important;
+}
+.attendance-table:not(.delete-visible) .assign-controls-row {
+  display: none !important;
+}
+
+/* Delete column: consistent width + perfectly centered button */
+.attendance-table.delete-visible th.delete-column,
+.attendance-table.delete-visible td.delete-column {
+  display: table-cell !important;
+}
+
+.attendance-table th.delete-column,
+.attendance-table td.delete-column {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    padding: 0 6px !important;          /* remove extra gap */
+    text-align: center !important;
+    vertical-align: middle !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+/* Body cells transparent to blend with table rows */
+.attendance-table td.delete-column { 
+    background: transparent !important; 
+}
+
+/* Header cell matches dark header background */
+.attendance-table th.delete-column { 
+    background-color: rgba(34, 37, 41, 1) !important; 
+}
+
+/* The button itself */
+.attendance-table .delete-record {
+  display: inline-flex;                /* center inside cell */
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  border-radius: 6px;
+  box-shadow: none;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>Daily Attendance</h1>
+<h1 class="desktop-only">Daily Attendance</h1>
 
-                <button type="button" class="btn btn-primaryoff" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
-                    Sign In
-                </button>
-                <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
-                    <i class="fas fa-trash-alt" style="color: red;"></i>
-                </button>
-                <a href="{% url 'attendance_record' %}" class="btn btn-rec" style="margin-left: 15px;">
-                    Attendance Records
-                </a>
-                {% for classroom, records in attendance_data.items %}
-    <table>
+<!-- Mobile classroom switcher -->
+<div id="classroomSwitchContainer" class="d-md-none" role="region" aria-label="Select classroom">
+  <div class="select-wrap">
+    <select id="classroomSwitch" class="form-select form-select-sm" aria-label="Classroom">
+      {% for classroom, records in attendance_data.items %}
+        <option value="{{ classroom.id }}">
+          {{ classroom }} - Ratio: {{ relative_counts|get_item:classroom }} / {{ adjusted_ratios|get_item:classroom.id }}
+        </option>
+      {% endfor %}
+    </select>
+    <span class="select-arrow" aria-hidden="true">▾</span>
+  </div>
+</div>
+
+<!-- Top controls (hidden on mobile) -->
+<button type="button" class="btn btn-primaryoff desktop-only" data-bs-toggle="modal" data-bs-target="#manualSignInModal">
+    Sign In
+</button>
+<button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm order-1 order-lg-0 desktop-only" style="text-decoration: none; font-weight: bold; font-size: 1.2em; margin-top:15px;">
+    <i class="fas fa-exchange-alt" style="color: red;" ></i>
+</button>
+<a href="{% url 'attendance_record' %}" class="btn btn-rec desktop-only" style="margin-left: 15px;">
+    Attendance Records
+</a>
+
+{% for classroom, records in attendance_data.items %}
+<table class="attendance-table" id="classroomTable-{{ classroom.id }}" data-classroom-id="{{ classroom.id }}">
+    <colgroup>
+        <col class="col-student">
+        <col class="col-signin">
+        <col class="col-signout">
+        <col class="col-classroom">
+        <col class="col-delete">
+    </colgroup>
     <thead>
         <!-- First Row: Classroom and Ratio -->
-       <tr>
+        <tr class="classroom-title-row">
             <th colspan="5"
                 class="classroom-header classroom-header-bg"
                 style="{% if classroom and classroom.color %}--classroom-color: {{ classroom.color }};{% endif %}">
@@ -311,7 +472,7 @@ input[type="time"].sign-out-time:focus {
             </th>
         </tr>
         <!-- Second Row: Assign Teacher -->
-        <tr>
+        <tr class="assign-controls-row">
             <th colspan="5" class="assign-teacher-header">
                 <div class="assign-teacher-row">
                     <select id="availableTeachers-{{ classroom.id }}" class="form-select" style="width: 170px;">
@@ -321,10 +482,6 @@ input[type="time"].sign-out-time:focus {
                         {% endfor %}
                     </select>
                     <button class="btn btn-assign assign-teacher-btn" data-classroom-id="{{ classroom.id }}">Assign</button>
-                   <button onclick="toggleDeleteColumn()" class="btn btn-unassign" type="button">
-                        Unassign
-                    </button>
-                    
                 </div>
             </th>
         </tr>
@@ -338,7 +495,7 @@ input[type="time"].sign-out-time:focus {
                                 data-teacher-id="{{ teacher.id }}"
                                 data-classroom-id="{{ classroom.id }}"
                                 style="display: none;">
-                            <i class="fas fa-trash-alt" style="color: white;"></i>
+                            <i class="fas fa-exchange-alt" style="color: white;"></i>
                         </button>
                     {% empty %}
                         <span>No teachers assigned to this classroom.</span>
@@ -353,7 +510,7 @@ input[type="time"].sign-out-time:focus {
             <th>Sign Out</th>
             <th>Classroom</th>
             <th class="delete-column" id="deleteColumnHeader">
-                <i class="fas fa-trash-alt" style="color: white;"></i>
+                <i class="fas fa-user-minus" style="color: white;"></i>
             </th>
         </tr>
     </thead>
@@ -392,12 +549,29 @@ input[type="time"].sign-out-time:focus {
         <p>No attendance records available for today.</p>
     </div>
 {% endfor %}
-            </main>
-           <!-- Manual Sign In Modal -->
+
+<!-- Mobile bottom nav (uses base_minimal styles) -->
+<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Attendance actions">
+  <!-- LEFT: Records -->
+  <a id="mobileRecordsBtn" class="btn" href="{% url 'attendance_record' %}" title="Records">
+    <i class="fas fa-list-alt" aria-hidden="true"></i>
+  </a>
+  <!-- CENTER: Sign In (primary) -->
+  <button id="mobileSignInBtn" class="btn update-btn" type="button" title="Sign In">
+    <i class="fas fa-user-plus" aria-hidden="true"></i>
+  </button>
+  <!-- RIGHT: Toggle Delete -->
+  <button id="mobileToggleDeleteBtn" class="btn" type="button" title="Toggle Delete">
+    <i class="fas fa-exchange-alt" aria-hidden="true"></i>
+  </button>
+</div>
+<div class="mobile-nav-spacer d-md-none"></div>
+
+<!-- Manual Sign In Modal -->
             <div class="modal fade" id="manualSignInModal" tabindex="-1" aria-labelledby="manualSignInModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                <div class="modal-content">
-                    <form id="manualSignInForm">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="manualSignInForm">
                     <div class="modal-header">
                         <h5 class="modal-title" id="manualSignInModalLabel">Manual Student Sign In</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -425,12 +599,13 @@ input[type="time"].sign-out-time:focus {
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button type="submit" class="btn btn-primary">Sign In</button>
                     </div>
-                    </form>
-                </div>
-                </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
-            <script>
+<script>
     $(document).ready(function () {
         function updateAttendanceRecord(recordId, field, newValue) {
             $.ajax({
@@ -519,36 +694,44 @@ input[type="time"].sign-out-time:focus {
 </script>
 
 <script>
-    $('#manualSignInModal').on('show.bs.modal', function () {
-        var now = new Date();
-        var hours = now.getHours().toString().padStart(2, '0');
-        var minutes = now.getMinutes().toString().padStart(2, '0');
-        $('#signInTime').val(hours + ':' + minutes);
-    });
+  $('#manualSignInModal').on('show.bs.modal', function () {
+    const now = new Date();
+    const hh = now.getHours().toString().padStart(2,'0');
+    const mm = now.getMinutes().toString().padStart(2,'0');
+    $('#signInTime').val(`${hh}:${mm}`);
+  });
 
-    $(document).ready(function () {
-        $('#manualSignInForm').on('submit', function (e) {
-            e.preventDefault();
+  $(function () { // jQuery ready
+    $('#manualSignInForm').on('submit', function (e) {
+      e.preventDefault();
 
-            $.ajax({
-                url: '{% url "manual_sign_in_ajax" %}',
-                method: 'POST',
-                data: $(this).serialize(),
-                success: function (response) {
-                    if (response.success) {
-                        toastr.success('Student signed in successfully.');
-                        $('#manualSignInModal').modal('hide');
-                        location.reload();
-                    } else {
-                        toastr.error('Failed to sign in the student: ' + (response.error || 'Unknown error.'));
-                    }
-                },
-                error: function () {
-                    toastr.error('An error occurred while signing in the student.');
-                }
-            });
-        });
+      $.ajax({
+        url: '{% url "manual_sign_in_ajax" %}',
+        method: 'POST',
+        data: $(this).serialize(),
+        dataType: 'json'
+      })
+      .done(function (response) {
+        if (response.success) {
+          toastr.success('Student signed in successfully.');
+          $('#manualSignInModal').modal('hide');
+          location.reload();
+        } else {
+          toastr.warning(response.error || 'Student already has an open sign-in today.');
+        }
+      })
+      .fail(function (xhr) {
+        const msg = (xhr.responseJSON && xhr.responseJSON.error)
+          ? xhr.responseJSON.error
+          : 'An error occurred while signing in the student.';
+        if (xhr.status === 409) {
+          toastr.warning(msg);  // duplicate sign-in
+        } else {
+          toastr.error(msg);
+        }
+      });
     });
+  });
 </script>
 
 <script>
@@ -618,9 +801,12 @@ input[type="time"].sign-out-time:focus {
 
 // Toggle function
 function toggleDeleteColumn() {
-    $('.delete-column').toggle();
-    $('.unassign-column').toggle();
+    const $tables = $('table.attendance-table');
+    $tables.toggleClass('delete-visible');                 // drives layout + CSS hide/show
+    const show = $tables.first().hasClass('delete-visible');
 }
+
+// Ensure initial state is driven purely by CSS (.delete-visible)
     $(document).ready(function () {
         $('.assign-teacher-btn').on('click', function () {
             var classroomId = $(this).data('classroom-id');
@@ -653,5 +839,130 @@ function toggleDeleteColumn() {
             });
         });
     });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // left: toggle delete/unassign columns
+  document.getElementById('mobileToggleDeleteBtn')?.addEventListener('click', function () {
+    document.getElementById('toggleDeleteColumn')?.click();
+  });
+
+  // center: open Sign In modal
+  document.getElementById('mobileSignInBtn')?.addEventListener('click', function () {
+    const el = document.getElementById('manualSignInModal');
+    if (el) new bootstrap.Modal(el).show();
+  });
+});
+</script>
+
+<script>
+// Mobile: show one classroom table at a time
+document.addEventListener('DOMContentLoaded', function () {
+  const dd = document.getElementById('classroomSwitch');
+  if (!dd) return;
+
+  function showClassroom(id) {
+    document.querySelectorAll('table.attendance-table').forEach(t => t.classList.remove('is-active'));
+    const tbl = document.getElementById('classroomTable-' + id);
+    if (tbl) tbl.classList.add('is-active');
+  }
+
+  // initial selection (restore last chosen if still present)
+  let id = localStorage.getItem('attendance.selectedClassroom');
+  if (!id || !document.getElementById('classroomTable-' + id)) {
+    id = dd.options[0]?.value || document.querySelector('table.attendance-table')?.dataset.classroomId;
+  }
+  if (id) {
+    dd.value = id;
+    showClassroom(id);
+  }
+
+  dd.addEventListener('change', function () {
+    showClassroom(this.value);
+    localStorage.setItem('attendance.selectedClassroom', this.value);
+  });
+});
+</script>
+
+<script>
+/* Position the arrow just after the centered option text (mobile) */
+document.addEventListener('DOMContentLoaded', function () {
+  const wrap = document.querySelector('#classroomSwitchContainer .select-wrap');
+  const select = document.getElementById('classroomSwitch');
+  const arrow = wrap ? wrap.querySelector('.select-arrow') : null;
+  if (!wrap || !select || !arrow) return;
+
+  // hidden measurer for text width
+  const measurer = document.createElement('span');
+  measurer.style.position = 'absolute';
+  measurer.style.visibility = 'hidden';
+  measurer.style.whiteSpace = 'pre';
+  wrap.appendChild(measurer);
+
+  function placeArrow() {
+    const styles = getComputedStyle(select);
+    measurer.style.fontFamily = styles.fontFamily;
+    measurer.style.fontSize = styles.fontSize;
+    measurer.style.fontWeight = styles.fontWeight;
+    measurer.style.letterSpacing = styles.letterSpacing;
+
+    const text = select.options[select.selectedIndex]?.textContent || '';
+    measurer.textContent = text;
+
+    const textWidth = measurer.getBoundingClientRect().width;
+    const containerWidth = select.clientWidth;
+    const gap = 6; // space between text and arrow
+
+    // Centered text: left edge = (W - Tw)/2; arrow after text = that + Tw + gap
+    const left = (containerWidth + textWidth) / 2 + gap;
+    arrow.style.left = left + 'px';
+  }
+
+  placeArrow();
+  select.addEventListener('change', placeArrow);
+  window.addEventListener('resize', placeArrow);
+});
+</script>
+<script>
+// Mobile: bottom nav actions (reuse modal instance; prevent double open)
+document.addEventListener('DOMContentLoaded', function () {
+  const toggleBtn = document.getElementById('mobileToggleDeleteBtn');
+  const mobileBtn = document.getElementById('mobileSignInBtn');
+  const el = document.getElementById('manualSignInModal');
+
+  toggleBtn?.addEventListener('click', function () {
+    document.getElementById('toggleDeleteColumn')?.click();
+  });
+
+  if (mobileBtn && el) {
+    const modal = bootstrap.Modal.getOrCreateInstance(el); // no duplicate instances
+    mobileBtn.addEventListener('click', function () {
+      if (el.classList.contains('show')) return; // already open
+      mobileBtn.disabled = true;
+      modal.show();
+    });
+    el.addEventListener('shown.bs.modal', () => { mobileBtn.disabled = true; });
+    el.addEventListener('hidden.bs.modal', () => { mobileBtn.disabled = false; });
+  }
+});
+</script>
+
+<script>
+// Ensure the backdrop/body state is cleared after any modal hides
+document.addEventListener('hidden.bs.modal', function () {
+  document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+  document.body.classList.remove('modal-open');
+  document.body.style.removeProperty('padding-right');
+});
+</script>
+<script>
+// Mobile: bind delete toggle directly (no proxy to desktop button)
+document.addEventListener('DOMContentLoaded', function () {
+  const mobileBtn = document.getElementById('mobileToggleDeleteBtn');
+  mobileBtn?.addEventListener('click', function () {
+    toggleDeleteColumn();  // directly toggle
+  });
+});
 </script>
 {% endblock %}
