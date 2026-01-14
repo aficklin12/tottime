@@ -1,4 +1,4 @@
-{% extends 'tottimeapp/base.html' %}
+{% extends 'tottimeapp/base_dynamic.html' %}
 {% load static %} 
 {% load custom_filters %}
 {% load dict_extras %}
@@ -110,10 +110,348 @@
           margin: 0;
         }
         
+        /* Mobile dashboard toggle */
+        .mobile-dashboard { display: none; }
+        .desktop-content { display: block; }
+
+        @media (max-width: 999px) {
+          .desktop-content { display: none !important; }
+          .mobile-dashboard { display: block; }
+        }
+
+        /* Mobile dashboard grid + squares (adapted from index_cacfp) */
+        .mobile-dashboard .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 18px;
+            width: 100%;
+            max-width: 960px;
+            margin: 18px auto;
+            align-items: center;
+            justify-items: center;
+            padding: 12px;
+        }
+
+        .mobile-dashboard .btn-square {
+            width: 100%;
+            max-width: 220px;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px;
+            border-radius: 14px;
+            color: #ffffff;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            transition: transform .14s ease, box-shadow .14s ease;
+            background: rgb(57, 189, 180);
+            border: 0;
+            box-shadow: 0 10px 26px rgba(0,0,0,0.09);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mobile-dashboard .btn-square:hover,
+        .mobile-dashboard .btn-square:focus {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.14);
+            text-decoration: none;
+            outline: none;
+        }
+
+        .mobile-dashboard .sb-nav-link-icon {
+            display: block;
+            font-size: 1.6rem;
+            line-height: 1;
+            margin-bottom: 6px;
+            transform-origin: center;
+        }
+        .mobile-dashboard .sb-nav-link-icon i {
+            color: #ffffff;
+            font-size: 1.6rem;
+            width: 1.9em;
+            height: 1.9em;
+            display: inline-block;
+            text-align: center;
+            transform-origin: center;
+            transform: translateY(16px) scale(1.6);
+            will-change: transform;
+            margin-bottom: -0.06em;
+        }
+
+        .mobile-dashboard .label {
+            display: block;
+            padding: 0 8px;
+            line-height: 1;
+            font-size: 1.25rem;
+            color: #ffffff;
+            font-weight: 600;
+            text-shadow: none;
+        }
+
+        @media (min-width: 1200px) {
+            .mobile-dashboard .dashboard-grid { gap: 24px; }
+            .mobile-dashboard .btn-square { max-width: 220px; }
+            .mobile-dashboard .btn-square .label { font-size: 1.35rem; }
+        }
+        /* Hide subgrids by default (override grid display) */
+        .mobile-dashboard .mobile-subgrid,
+        .mobile-dashboard .dashboard-grid.mobile-subgrid { display: none; }
 </style>
 {% endblock %}
 
 {% block content %}
+        <!-- Mobile-only squares dashboard -->
+        <div class="container-fluid px-4 mobile-dashboard">
+            <!-- Main sections grid -->
+            <div id="mobileMainGrid" class="dashboard-grid" style="min-height: 40vh;">
+                {% if show_sign_in or show_daily_attendance or show_rosters %}
+                <button type="button" class="btn btn-primary btn-square" onclick="openMobileSection('attendance')" aria-label="Attendance">
+                    <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                    <span class="label">Attendance</span>
+                </button>
+                {% endif %}
+
+                {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count or show_infant_menu %}
+                <button type="button" class="btn btn-primary btn-square" onclick="openMobileSection('food')" aria-label="Food Program">
+                    <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div>
+                    <span class="label">Food Program</span>
+                </button>
+                {% endif %}
+
+                {% if show_enrollment %}
+                <button type="button" class="btn btn-primary btn-square" onclick="openMobileSection('enrollment')" aria-label="Enrollment">
+                    <div class="sb-nav-link-icon"><i class="fas fa-user-graduate"></i></div>
+                    <span class="label">Enrollment</span>
+                </button>
+                {% endif %}
+
+                {% if show_billing or show_payment_setup or show_pay_summary %}
+                <button type="button" class="btn btn-primary btn-square" onclick="openMobileSection('payments')" aria-label="Payments">
+                    <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div>
+                    <span class="label">Payments</span>
+                </button>
+                {% endif %}
+
+                {% if show_clock_in or show_orientation %}
+                <button type="button" class="btn btn-primary btn-square" onclick="openMobileSection('employees')" aria-label="Employees">
+                    <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div>
+                    <span class="label">Employees</span>
+                </button>
+                {% endif %}
+
+                {% if show_orientation %}
+                <button type="button" class="btn btn-primary btn-square" onclick="openMobileSection('quality')" aria-label="ABC Quality">
+                    <div class="sb-nav-link-icon"><i class="fas fa-clipboard-check"></i></div>
+                    <span class="label">ABC Quality</span>
+                </button>
+                {% endif %}
+
+                {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions or show_payment_setup %}
+                <button type="button" class="btn btn-primary btn-square" onclick="openMobileSection('settings')" aria-label="Settings">
+                    <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div>
+                    <span class="label">Settings</span>
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Attendance sub-grid -->
+            {% if show_sign_in or show_daily_attendance or show_rosters %}
+            <div id="mobileSection-attendance" class="dashboard-grid mobile-subgrid">
+                {% if show_sign_in %}
+                <a href="{% url 'sign_in' %}" class="btn btn-primary btn-square" aria-label="Sign In">
+                    <div class="sb-nav-link-icon"><i class="fas fa-sign-in-alt"></i></div>
+                    <span class="label">Sign In</span>
+                </a>
+                {% endif %}
+                {% if show_daily_attendance %}
+                <a href="{% url 'daily_attendance' %}" class="btn btn-primary btn-square" aria-label="Daily Attendance">
+                    <div class="sb-nav-link-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <span class="label">Daily Attendance</span>
+                </a>
+                <a href="{% url 'classroom' %}" class="btn btn-primary btn-square" aria-label="Classroom">
+                    <div class="sb-nav-link-icon"><i class="fas fa-chalkboard"></i></div>
+                    <span class="label">Classroom</span>
+                </a>
+                {% endif %}
+                {% if show_rosters %}
+                <a href="{% url 'rosters' %}" class="btn btn-primary btn-square" aria-label="Rosters">
+                    <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
+                    <span class="label">Rosters</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Enrollment sub-grid -->
+            {% if show_enrollment %}
+            <div id="mobileSection-enrollment" class="dashboard-grid mobile-subgrid">
+                <a href="{% url 'enrollment' %}" class="btn btn-primary btn-square" aria-label="Enrollment">
+                    <div class="sb-nav-link-icon"><i class="fas fa-user-graduate"></i></div>
+                    <span class="label">Enrollment</span>
+                </a>
+                <a href="{% url 'policies' %}" class="btn btn-primary btn-square" aria-label="Policies">
+                    <div class="sb-nav-link-icon"><i class="fas fa-file-alt"></i></div>
+                    <span class="label">Policies</span>
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- Food Program sub-grid -->
+            {% if show_inventory or show_weekly_menu or show_milk_inventory or show_meal_count or show_infant_menu %}
+            <div id="mobileSection-food" class="dashboard-grid mobile-subgrid">
+                {% if show_inventory %}
+                <a href="{% url 'inventory_list' %}" class="btn btn-primary btn-square" aria-label="Inventory">
+                    <div class="sb-nav-link-icon"><i class="fas fa-list"></i></div>
+                    <span class="label">Inventory</span>
+                </a>
+                {% endif %}
+                {% if show_weekly_menu %}
+                <a href="{% url 'menu' %}" class="btn btn-primary btn-square" aria-label="Weekly Menu">
+                    <div class="sb-nav-link-icon"><i class="fas fa-calendar-alt"></i></div>
+                    <span class="label">Weekly Menu</span>
+                </a>
+                {% endif %}
+                {% if show_infant_menu %}
+                <a href="{% url 'infant_menu' %}" class="btn btn-primary btn-square" aria-label="Infant Menu">
+                    <div class="sb-nav-link-icon"><i class="fas fa-baby"></i></div>
+                    <span class="label">Infant Menu</span>
+                </a>
+                {% endif %}
+                {% if show_milk_inventory %}
+                <a href="{% url 'milk_count' %}" class="btn btn-primary btn-square" aria-label="Milk Inventory">
+                    <div class="sb-nav-link-icon"><i class="fas fa-tint"></i></div>
+                    <span class="label">Milk Inventory</span>
+                </a>
+                {% endif %}
+                {% if show_meal_count %}
+                <a href="{% url 'meal_count' %}" class="btn btn-primary btn-square" aria-label="Meal Count">
+                    <div class="sb-nav-link-icon"><i class="fas fa-list-ol"></i></div>
+                    <span class="label">Meal Count</span>
+                </a>
+                {% endif %}
+                {% if show_inventory %}
+                <a href="{% url 'meal_calculator' %}" class="btn btn-primary btn-square" aria-label="Meal Calculator">
+                    <div class="sb-nav-link-icon"><i class="fas fa-calculator"></i></div>
+                    <span class="label">Meal Calculator</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Payments sub-grid -->
+            {% if show_billing or show_payment_setup or show_pay_summary %}
+            <div id="mobileSection-payments" class="dashboard-grid mobile-subgrid">
+                {% if show_pay_summary %}
+                <a href="{% url 'pay_summary' %}" class="btn btn-primary btn-square" aria-label="Pay Summary">
+                    <div class="sb-nav-link-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <span class="label">Pay Summary</span>
+                </a>
+                {% endif %}
+                {% if show_billing %}
+                <a href="{% url 'payment' %}" class="btn btn-primary btn-square" aria-label="Billing">
+                    <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div>
+                    <span class="label">Billing</span>
+                </a>
+                <a href="{% url 'all_pay_history' %}" class="btn btn-primary btn-square" aria-label="Pay History">
+                    <div class="sb-nav-link-icon"><i class="fas fa-history"></i></div>
+                    <span class="label">Pay History</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Employees sub-grid -->
+            {% if show_clock_in or show_orientation %}
+            <div id="mobileSection-employees" class="dashboard-grid mobile-subgrid">
+                {% if show_clock_in %}
+                <a href="{% url 'clock_in' %}" class="btn btn-primary btn-square" aria-label="Time Clock">
+                    <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div>
+                    <span class="label">Time Clock</span>
+                </a>
+                <a href="{% url 'time_sheet' %}" class="btn btn-primary btn-square" aria-label="Time Sheet">
+                    <div class="sb-nav-link-icon"><i class="fas fa-file-alt"></i></div>
+                    <span class="label">Time Sheet</span>
+                </a>
+                {% endif %}
+                {% if show_orientation %}
+                <a href="{% url 'curriculum' %}" class="btn btn-primary btn-square" aria-label="Curriculum">
+                    <div class="sb-nav-link-icon"><i class="fas fa-book-open"></i></div>
+                    <span class="label">Curriculum</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- ABC Quality sub-grid -->
+            {% if show_orientation %}
+            <div id="mobileSection-quality" class="dashboard-grid mobile-subgrid">
+                <a href="{% url 'abc_quality' %}" class="btn btn-primary btn-square" aria-label="ABC Quality">
+                    <div class="sb-nav-link-icon"><i class="fas fa-clipboard-check"></i></div>
+                    <span class="label">ABC Quality</span>
+                </a>
+                <a href="{% url 'resources' %}" class="btn btn-primary btn-square" aria-label="Resources">
+                    <div class="sb-nav-link-icon"><i class="fas fa-book"></i></div>
+                    <span class="label">Resources</span>
+                </a>
+                <a href="{% url 'staff_orientation' %}" class="btn btn-primary btn-square" aria-label="Orientation">
+                    <div class="sb-nav-link-icon"><i class="fas fa-user-check"></i></div>
+                    <span class="label">Orientation</span>
+                </a>
+                <a href="{% url 'score_sheet_list' %}" class="btn btn-primary btn-square" aria-label="Classroom Score">
+                    <div class="sb-nav-link-icon"><i class="fas fa-star"></i></div>
+                    <span class="label">Classroom Score</span>
+                </a>
+                <a href="{% url 'surveys_list' %}" class="btn btn-primary btn-square" aria-label="Surveys">
+                    <div class="sb-nav-link-icon"><i class="fas fa-poll"></i></div>
+                    <span class="label">Surveys</span>
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- Settings sub-grid -->
+            {% if show_classroom_options or show_recipes or show_menu_rules or show_permissions or show_payment_setup %}
+            <div id="mobileSection-settings" class="dashboard-grid mobile-subgrid">
+                {% if show_classroom_options %}
+                <a href="{% url 'classroom_options' %}" class="btn btn-primary btn-square" aria-label="Classroom Options">
+                    <div class="sb-nav-link-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                    <span class="label">Classroom Options</span>
+                </a>
+                {% endif %}
+                {% if show_recipes %}
+                <a href="{% url 'recipes' %}" class="btn btn-primary btn-square" aria-label="Recipe Options">
+                    <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div>
+                    <span class="label">Recipe Options</span>
+                </a>
+                {% endif %}
+                {% if show_menu_rules %}
+                <a href="{% url 'menu_rules' %}" class="btn btn-primary btn-square" aria-label="Menu Rules">
+                    <div class="sb-nav-link-icon"><i class="fas fa-list-alt"></i></div>
+                    <span class="label">Menu Rules</span>
+                </a>
+                {% endif %}
+                {% if show_permissions %}
+                <a href="{% url 'permissions' %}" class="btn btn-primary btn-square" aria-label="Permissions">
+                    <div class="sb-nav-link-icon"><i class="fas fa-user-shield"></i></div>
+                    <span class="label">Permissions</span>
+                </a>
+                {% endif %}
+                {% if show_payment_setup %}
+                <a href="{% url 'square_account' %}" class="btn btn-primary btn-square" aria-label="Payment Set-Up">
+                    <div class="sb-nav-link-icon"><i class="fas fa-credit-card"></i></div>
+                    <span class="label">Payment Set-Up</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Desktop content (hidden on <1000px) -->
+        <div class="desktop-content">
               <h1 class="mt-4">Student Announcements</h1> 
                 <div class="container-fluid px-4">
                   <!--  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
@@ -389,6 +727,27 @@
 {% endblock %}
 {% block scripts %}
 <script>
+    // Mobile sections navigation (show sub-grid, hide main)
+    (function() {
+        window.openMobileSection = function(name) {
+            var main = document.getElementById('mobileMainGrid');
+            if (main) main.style.display = 'none';
+            document.querySelectorAll('.mobile-subgrid').forEach(function(el){ el.style.display = 'none'; });
+            var target = document.getElementById('mobileSection-' + name);
+            if (target) target.style.display = 'grid';
+        };
+        window.closeMobileSection = function() {
+            document.querySelectorAll('.mobile-subgrid').forEach(function(el){ el.style.display = 'none'; });
+            var main = document.getElementById('mobileMainGrid');
+            if (main) main.style.display = 'grid';
+        };
+        // Ensure initial state shows only main grid on load
+        document.addEventListener('DOMContentLoaded', function(){
+            // Only applies to mobile view; harmless otherwise
+            window.closeMobileSection();
+        });
+    })();
+
             // Wait for the document to be ready
             $(document).ready(function() {
                 // Function to fetch and display out-of-stock items
