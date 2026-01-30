@@ -114,11 +114,17 @@
                 font-size: 1.35rem;
             }
         }
+
+        @media (max-width: 1000px) {
+          h1.mt-4 {
+            display: none;
+          }
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-   <h1 class="mt-4">CACFP User Dashboard</h1>
+  
    <div class="container-fluid px-4">
         {% if base_template == 'tottimeapp/base_minimal.html' %}
         <div class="dashboard-grid" style="min-height: 40vh;">

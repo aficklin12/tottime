@@ -488,6 +488,24 @@ class WeeklyMenu(models.Model):
 
     def __str__(self):
         return f"Menu for {self.user.username} on {self.date}"
+
+
+class WeeklyMenuAssignedRule(models.Model):
+    """Store temporary/per-cell assigned Rule FK for a saved WeeklyMenu row."""
+    weekly_menu = models.ForeignKey(WeeklyMenu, on_delete=models.CASCADE, related_name='assigned_rules')
+    cell_id = models.CharField(max_length=100)
+    rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
+    manual_color_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text='Manual color override data (if not using a Rule)'
+    )
+
+    class Meta:
+        unique_together = ('weekly_menu', 'cell_id')
+
+    def __str__(self):
+        return f"{self.weekly_menu} - {self.cell_id} -> {self.rule}"
     
 class UserRole(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="roles")

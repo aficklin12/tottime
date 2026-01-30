@@ -2543,4 +2543,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 })();
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const mq = window.matchMedia('(max-width: 999px)');
+  const removeVals = ['category-shopping-list', 'category-order-soon', 'category-out-of-stock'];
+
+  function pruneOptions() {
+    // Header select(s) inside table
+    document.querySelectorAll('#categoryDropdownHeader').forEach(sel => {
+      removeVals.forEach(val => {
+        const opt = Array.from(sel.options).find(o => o.value === val);
+        if (opt) opt.remove();
+      });
+    });
+    // Central mobile dropdown (if present)
+    const central = document.getElementById('categoryDropdown');
+    if (central) {
+      removeVals.forEach(val => {
+        const opt = Array.from(central.options).find(o => o.value === val);
+        if (opt) opt.remove();
+      });
+    }
+  }
+
+  if (mq.matches) pruneOptions();
+  mq.addEventListener('change', e => { if (e.matches) pruneOptions(); });
+});
+</script>
 {% endblock %}

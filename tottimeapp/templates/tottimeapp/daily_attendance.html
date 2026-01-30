@@ -965,4 +965,122 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+<script>
+/* Toast-based confirm dialog with OK/Cancel buttons */
+function confirmToast(message, title, onYes, onNo) {
+  // Clear any prior confirm toasts to avoid stacking
+  // (keeps other success/error toasts intact)
+  // If you want to keep them, remove this line.
+  // toastr.clear();
+
+  const $toast = toastr.warning(
+    `<div>${message}</div>
+     <div class="mt-2">
+       <button type="button" class="btn btn-primary btn-sm me-2" id="toastYesBtn">OK</button>
+       <button type="button" class="btn btn-secondary btn-sm" id="toastNoBtn">Cancel</button>
+     </div>`,
+    title || 'Confirm',
+    {
+      timeOut: 0,
+      extendedTimeOut: 0,
+      tapToDismiss: false,
+      closeButton: true,
+      escapeHtml: false,          // allow HTML buttons
+      newestOnTop: true,
+      positionClass: 'toast-top-center',
+      preventDuplicates: true
+    }
+  );
+
+  // Wire buttons inside this toast
+  if ($toast && $toast.length) {
+    $toast.find('#toastYesBtn').on('click', function () {
+      toastr.clear($toast);
+      if (onYes) onYes();
+    });
+    $toast.find('#toastNoBtn').on('click', function () {
+      toastr.clear($toast);
+      if (onNo) onNo();
+    });
+    // Optional: focus OK for quick keyboard confirm
+    setTimeout(() => $toast.find('#toastYesBtn').trigger('focus'), 0);
+  }
+}
+</script>
+
+<script>
+// Replace native confirm with toast confirm for record deletes
+$(document).ready(function () {
+  $('.delete-record').on('click', function () {
+    var recordId = $(this).data('id');
+    confirmToast('Are you sure you want to delete this attendance record?', 'Confirm Delete', function () {
+      $.ajax({
+        url: '{% url "delete_attendance" %}',
+        method: 'POST',
+        data: {
+          id: recordId,
+          csrfmiddlewaretoken: '{{ csrf_token }}'
+        },
+        success: function (response) {
+          if (response.success) {
+            toastr.success('Attendance record deleted.');
+            location.reload();
+          } else {
+            toastr.error(response.error || 'Failed to delete record.');
+          }
+        },
+        error: function () {
+          toastr.error('An error occurred while deleting the record.');
+        }
+      });
+    }, function () {
+      // Cancel clicked — no action
+      toastr.info('Delete canceled.');
+    });
+  });
+});
+</script>
+
+<script>
+// Ensure only the toast-based confirm runs
+$(function () {
+  // Remove any previous handlers (direct or delegated)
+  $(document).off('click', '.delete-record');
+  $('.delete-record').off('click');
+
+  // Delegated handler so it works for dynamic rows too
+  $(document).on('click', '.delete-record', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const recordId = $(this).data('id');
+
+    confirmToast('Are you sure you want to delete this attendance record?', 'Confirm Delete',
+      function onYes() {
+        $.ajax({
+          url: '{% url "delete_attendance" %}',
+          method: 'POST',
+          data: { id: recordId, csrfmiddlewaretoken: '{{ csrf_token }}' }
+        })
+        .done(function (response) {
+          if (response.success) {
+            toastr.success('Attendance record deleted.');
+            location.reload();
+          } else {
+            toastr.error(response.error || 'Failed to delete record.');
+          }
+        })
+        .fail(function () {
+          toastr.error('An error occurred while deleting the record.');
+        });
+      },
+      function onNo() {
+        toastr.info('Delete canceled.');
+      }
+    );
+
+    return false; // double-safety
+  });
+});
+</script>
 {% endblock %}

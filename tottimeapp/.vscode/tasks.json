@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "makemigrations for manual color field",
+			"type": "shell",
+			"command": "python ../manage.py makemigrations tottimeapp",
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

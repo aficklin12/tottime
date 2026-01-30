@@ -23,7 +23,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, TemporaryAccess, FeedRecord, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, WeeklyMenuAssignedRule, TemporaryAccess, FeedRecord, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -1627,6 +1627,15 @@ def menu(request):
     base_template = 'tottimeapp/base_minimal.html' if use_minimal_base else 'tottimeapp/base.html'
     permissions_context['base_template'] = base_template
 
+    # Provide inventory items (a-z) for client-side searchable selectors
+    try:
+        inventory_qs = Inventory.objects.filter(user_id=main_user.id).order_by(Lower('item')).values_list('item', flat=True).distinct()
+        inventory_list = list(inventory_qs)
+    except Exception:
+        inventory_list = []
+    permissions_context['inventory_items_json'] = json.dumps(inventory_list)
+    permissions_context['use_inventory_selectors'] = bool(inventory_list)
+
     response = render(request, 'tottimeapp/weekly-menu.html', permissions_context)
 
     if param_minimal:
@@ -2733,15 +2742,27 @@ def save_menu(request):
            
             data = json.loads(raw_body)
            
-            # Get today's date
-            today = datetime.now()
-            
-            # Calculate the next Monday
-            next_monday = today + timedelta(days=(7 - today.weekday()))
-     
-            
-            # Create a list of the next week dates (Monday to Friday)
-            week_dates = [(next_monday + timedelta(days=i)).date() for i in range(5)]
+            # Determine week start from client if provided, otherwise default to next Monday
+            week_dates = []
+            week_start_str = data.get('week_start') or None
+            if week_start_str:
+                try:
+                    # Expecting ISO YYYY-MM-DD
+                    parsed = datetime.strptime(week_start_str, '%Y-%m-%d').date()
+                    # Ensure parsed is a Monday; if not, compute the Monday of that week
+                    if parsed.weekday() != 0:
+                        parsed = parsed - timedelta(days=parsed.weekday())
+                    week_dates = [(parsed + timedelta(days=i)) for i in range(5)]
+                except Exception:
+                    # Fallback to server-calculated next Monday
+                    today = datetime.now()
+                    next_monday = today + timedelta(days=(7 - today.weekday()))
+                    week_dates = [(next_monday + timedelta(days=i)).date() for i in range(5)]
+            else:
+                # Create a list of the next week dates (Monday to Friday)
+                today = datetime.now()
+                next_monday = today + timedelta(days=(7 - today.weekday()))
+                week_dates = [(next_monday + timedelta(days=i)).date() for i in range(5)]
            
 
             # Define the days of the week
@@ -2834,6 +2855,24 @@ def save_menu(request):
                     )
                     
                     action = "Created" if created else "Updated"
+
+                    # Persist assigned rules for this day's menu (if provided)
+                    try:
+                        from .models import WeeklyMenuAssignedRule
+                        assigned_rules_all = data.get('assigned_rules', {}) or {}
+                        # Find rules keys that belong to this day (cell ids start with day name)
+                        day_assigned = {cid: rid for cid, rid in assigned_rules_all.items() if cid.startswith(day_key)}
+                        # Remove existing assigned rules for this day's cells on this weekly menu
+                        WeeklyMenuAssignedRule.objects.filter(weekly_menu=menu_obj, cell_id__startswith=day_key).delete()
+                        for cell_id, rule_id in day_assigned.items():
+                            try:
+                                rule_obj = Rule.objects.get(id=rule_id, user=menu_user)
+                                WeeklyMenuAssignedRule.objects.create(weekly_menu=menu_obj, cell_id=cell_id, rule=rule_obj)
+                            except Rule.DoesNotExist:
+                                # skip invalid rule ids
+                                continue
+                    except Exception as ar_ex:
+                        logger.warn('Failed to persist assigned rules: %s', ar_ex)
   
 
                 except Exception as day_error:
@@ -3325,6 +3364,7 @@ def classroom(request):
     try:
         main_user = get_user_for_view(request)
         classrooms = None
+
         attempts = [
             ('user', False),
             ('main_user', False),
@@ -3337,10 +3377,7 @@ def classroom(request):
         ]
         for field_name, is_id in attempts:
             try:
-                if is_id:
-                    kwargs = {field_name: main_user.id}
-                else:
-                    kwargs = {field_name: main_user}
+                kwargs = {field_name: (main_user.id if is_id else main_user)}
                 classrooms = Classroom.objects.filter(**kwargs)
                 break
             except FieldError:
@@ -3363,87 +3400,103 @@ def classroom(request):
         if selected_classroom_id:
             selected_classroom = classrooms.filter(id=selected_classroom_id).first()
 
-        # Find all attendance records where sign_out_time is null and sign_in_time is not today
         today = timezone.localdate()
+
+        # Students with an open record that did not start today (red banner)
         unsigned_records = AttendanceRecord.objects.filter(
             sign_out_time__isnull=True
         ).exclude(
             sign_in_time__date=today
         )
-
-        # Get student IDs who have any such unsigned record
         students_not_signed_out = set(unsigned_records.values_list('student_id', flat=True))
 
-        # Build all_students as a list
-        if selected_classroom_id:
-            students_in_classroom = list(Student.objects.filter(
-                classroom_id=selected_classroom_id
-            ).annotate(
-                is_signed_in=Exists(
-                    AttendanceRecord.objects.filter(
-                        student=OuterRef('pk'),
-                        sign_out_time__isnull=True
-                    )
-                )
-            ).exclude(
-                Exists(
-                    AttendanceRecord.objects.filter(
-                        student=OuterRef('pk'),
-                        classroom_override__isnull=False,
-                        sign_out_time__isnull=True
-                    )
-                )
-            ))
-            students_with_override = list(Student.objects.filter(
-                attendancerecord__classroom_override=Classroom.objects.get(id=selected_classroom_id).name,
-                attendancerecord__sign_out_time__isnull=True
-            ).annotate(
-                is_signed_in=Exists(
-                    AttendanceRecord.objects.filter(
-                        student=OuterRef('pk'),
-                        sign_out_time__isnull=True
-                    )
-                )
-            ))
-            all_students = students_in_classroom + students_with_override
-        else:
-            assigned_students = list(Student.objects.filter(
-                classroom__assignments__mainuser=main_user
-            ).annotate(
-                is_signed_in=Exists(
-                    AttendanceRecord.objects.filter(
-                        student=OuterRef('pk'),
-                        sign_out_time__isnull=True
-                    )
-                )
-            ).exclude(
-                Exists(
-                    AttendanceRecord.objects.filter(
-                        student=OuterRef('pk'),
-                        classroom_override__isnull=False,
-                        sign_out_time__isnull=True
-                    )
-                )
-            ))
-            override_students = list(Student.objects.filter(
-                attendancerecord__classroom_override__in=[s.classroom.name for s in assigned_students],
-                attendancerecord__sign_out_time__isnull=True
-            ).annotate(
-                is_signed_in=Exists(
-                    AttendanceRecord.objects.filter(
-                        student=OuterRef('pk'),
-                        sign_out_time__isnull=True
-                    )
-                )
-            ))
-            all_students = assigned_students + override_students
+        # Annotations
+        active_qs = AttendanceRecord.objects.filter(
+            student=OuterRef('pk'),
+            sign_out_time__isnull=True
+        )
 
-        # Set the flag on each student object
+        if selected_classroom_id:
+            # Base roster: assigned to selected classroom, excluding those currently overridden elsewhere
+            students_in_classroom = list(
+                Student.objects.filter(classroom_id=selected_classroom_id)
+                .annotate(is_signed_in=Exists(active_qs))
+                .exclude(
+                    Exists(
+                        AttendanceRecord.objects.filter(
+                            student=OuterRef('pk'),
+                            classroom_override__isnull=False,
+                            sign_out_time__isnull=True
+                        )
+                    )
+                )
+            )
+            try:
+                selected_class_name = Classroom.objects.get(id=selected_classroom_id).name
+            except Classroom.DoesNotExist:
+                selected_class_name = None
+
+            # Add students currently overridden into this classroom (active override)
+            override_students_active = []
+            if selected_class_name:
+                override_students_active = list(
+                    Student.objects.filter(
+                        attendancerecord__classroom_override=selected_class_name,
+                        attendancerecord__sign_out_time__isnull=True
+                    ).annotate(is_signed_in=Exists(active_qs))
+                )
+
+            combined = {s.id: s for s in students_in_classroom}
+            for s in override_students_active:
+                combined[s.id] = s
+            all_students = list(combined.values())
+
+        else:
+            # Teacher-wide roster across all assigned classrooms, excluding active overrides elsewhere
+            assigned_students = list(
+                Student.objects.filter(classroom__assignments__mainuser=main_user)
+                .annotate(is_signed_in=Exists(active_qs))
+                .exclude(
+                    Exists(
+                        AttendanceRecord.objects.filter(
+                            student=OuterRef('pk'),
+                            classroom_override__isnull=False,
+                            sign_out_time__isnull=True
+                        )
+                    )
+                )
+            )
+            assigned_class_names = [s.classroom.name for s in assigned_students if s.classroom]
+
+            # Add students currently overridden into any of the teacher’s classes
+            override_students_active = []
+            if assigned_class_names:
+                override_students_active = list(
+                    Student.objects.filter(
+                        attendancerecord__classroom_override__in=assigned_class_names,
+                        attendancerecord__sign_out_time__isnull=True
+                    ).annotate(is_signed_in=Exists(active_qs))
+                )
+
+            combined = {s.id: s for s in assigned_students}
+            for s in override_students_active:
+                combined[s.id] = s
+            all_students = list(combined.values())
+
+        # Flags
         for student in all_students:
             student.not_signed_out_yesterday = student.id in students_not_signed_out
 
-        # Sort students
-        all_students.sort(key=lambda s: (-s.is_signed_in, s.last_name, s.first_name))
+        # Filters
+        if status_filter == 'signed_in':
+            filtered_students = [s for s in all_students if s.is_signed_in]
+        elif status_filter == 'signed_out':
+            filtered_students = [s for s in all_students if not s.is_signed_in]
+        else:
+            filtered_students = list(all_students)
+
+        # Sort: signed-in first, then name
+        filtered_students.sort(key=lambda s: (-int(bool(s.is_signed_in)), s.last_name, s.first_name))
 
         inventory_items = Inventory.objects.filter(
             category='Infants',
@@ -3453,20 +3506,19 @@ def classroom(request):
             Q(item__icontains='formula') |
             Q(item__icontains='snack')
         )
-
         permissions_context['inventory_items'] = inventory_items
 
         show_red_flag = any(s.not_signed_out_yesterday for s in all_students)
 
     except MainUser.DoesNotExist:
-        all_students = []
+        filtered_students = []
         classrooms = Classroom.objects.none()
         selected_classroom = None
         status_filter = 'signed_in'
         show_red_flag = False
 
     return render(request, 'classroom.html', {
-        'assigned_students': all_students,
+        'assigned_students': filtered_students,
         'classrooms': classrooms,
         'classroom': selected_classroom,
         'status_filter': status_filter,
@@ -5311,6 +5363,14 @@ def fetch_inventory_rules(request):
 
     return JsonResponse({'item_rules': item_rule_map})
 
+
+@login_required
+def list_rules(request):
+    """Return JSON list of rule objects for current user (id, rule, gradient_start, gradient_end, text_color)."""
+    user = get_user_for_view(request)
+    qs = Rule.objects.filter(user=user).values('id', 'rule', 'gradient_start', 'gradient_end', 'text_color')
+    return JsonResponse(list(qs), safe=False)
+
 @login_required
 def get_wg_candidates(request):
     user = get_user_for_view(request)
@@ -5342,40 +5402,71 @@ def get_wg_candidates(request):
 @login_required
 def past_menus(request):
     user = get_user_for_view(request)  # Get the appropriate user (main user or subuser's main user)
-    # Check permissions for the specific page
     required_permission_id = 271  # Permission ID for weekly_menu
     permissions_context = check_permissions(request, required_permission_id)
-    # If check_permissions returns a redirect, return it immediately
     if isinstance(permissions_context, HttpResponseRedirect):
         return permissions_context
+
     # Fetch all unique Monday dates from the WeeklyMenu model for the logged-in user, ordered by date in descending order
     monday_dates = WeeklyMenu.objects.filter(day_of_week='Mon', user=user).values_list('date', flat=True).distinct().order_by('-date')
-    # Generate date ranges only for valid Mondays
+
+    # Generate date ranges only for valid Mondays, including the year
     date_ranges = []
     for monday in monday_dates:
-        # Calculate the corresponding Friday for each Monday
         friday = monday + timedelta(days=4)
-        # Ensure that the Monday-Friday range is valid (avoid reversing dates)
         if friday > monday:
-            date_range_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d')}"
+            date_range_str = f"{monday.strftime('%b %d, %Y')} - {friday.strftime('%b %d, %Y')}"
             date_ranges.append(date_range_str)
-    # Initialize selected range and menu data
+
+    # Fetch all available dates for mobile date picker
+    all_dates = WeeklyMenu.objects.filter(user=user).values_list('date', flat=True).distinct().order_by('-date')
+
     selected_menu_data = None
     selected_range = None
-    # Check if a date range was selected
+    selected_date = None
+    selected_monday_str = None
+    selected_friday_str = None
+
+    # On initial GET load, auto-select the latest Monday week so the table is populated
+    if request.method != 'POST':
+        try:
+            latest_monday = monday_dates.first()
+            if latest_monday:
+                start_date = latest_monday
+                end_date = start_date + timedelta(days=4)
+                selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date], user=user).order_by('date')
+                selected_range = f"{start_date.strftime('%b %d, %Y')} - {end_date.strftime('%b %d, %Y')}"
+                selected_date = None
+                selected_monday_str = start_date.strftime('%Y-%m-%d')
+                selected_friday_str = end_date.strftime('%Y-%m-%d')
+        except Exception:
+            selected_menu_data = None
+
     if request.method == 'POST':
-        selected_range = request.POST.get('dateRangeSelect')
-        if selected_range:
-            # Parse the date range
-            start_date_str, end_date_str = selected_range.split(' - ')
-            start_date = datetime.strptime(start_date_str, '%b %d')
-            end_date = datetime.strptime(end_date_str, '%b %d')
-            # Adjust the year based on the current year's Mondays
-            current_year = datetime.now().year
-            start_date = start_date.replace(year=current_year)
-            end_date = end_date.replace(year=current_year)
-            # Fetch WeeklyMenu entries within the selected range for the logged-in user, sorted by date
-            selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date], user=user).order_by('date')
+        # Check for mobile date picker input
+        mobile_date = request.POST.get('mobileDateSelect')
+        if mobile_date:
+            try:
+                selected_date = datetime.strptime(mobile_date, '%Y-%m-%d').date()
+                selected_menu_data = WeeklyMenu.objects.filter(date=selected_date, user=user).order_by('date')
+                selected_monday_str = selected_date.strftime('%Y-%m-%d')
+                selected_friday_str = (selected_date + timedelta(days=4)).strftime('%Y-%m-%d')
+            except Exception:
+                selected_menu_data = None
+        # Check for desktop date range select
+        else:
+            selected_range = request.POST.get('dateRangeSelect')
+            if selected_range:
+                try:
+                    start_date_str, end_date_str = selected_range.split(' - ')
+                    start_date = datetime.strptime(start_date_str.strip(), '%b %d, %Y')
+                    end_date = datetime.strptime(end_date_str.strip(), '%b %d, %Y')
+                    selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date], user=user).order_by('date')
+                    selected_monday_str = start_date.strftime('%Y-%m-%d')
+                    selected_friday_str = end_date.strftime('%Y-%m-%d')
+                except Exception:
+                    selected_menu_data = None
+
         # Handle form submission to save menu changes
         if 'save_changes' in request.POST and selected_menu_data:
             for i, menu in enumerate(selected_menu_data):
@@ -5399,13 +5490,100 @@ def past_menus(request):
                 menu.pm_bread = request.POST.get(f'pm_bread_{i}')
                 menu.pm_meat = request.POST.get(f'pm_meat_{i}')
                 menu.save()
-            return redirect('past_menus')  # Redirect to refresh data
-    # Pass the date ranges, selected menu data, and selected range to the template
+            # Persist any assigned rules sent from the form as JSON
+            try:
+                from .models import WeeklyMenuAssignedRule, Rule
+                assigned_rules_json = request.POST.get('assigned_rules_json', '{}')
+                assigned_rules_all = json.loads(assigned_rules_json or '{}')
+                weekday_keys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+                for i, menu in enumerate(selected_menu_data):
+                    day_key = weekday_keys[i] if i < len(weekday_keys) else ''
+                    if not day_key:
+                        continue
+                    # grab only assignments that belong to this weekday
+                    day_assigned = {cid: val for cid, val in assigned_rules_all.items() if cid.startswith(day_key)}
+                    # remove previous assignments for this weekly_menu and weekday
+                    WeeklyMenuAssignedRule.objects.filter(weekly_menu=menu, cell_id__startswith=day_key).delete()
+                    for cell_id, val in day_assigned.items():
+                        # If the posted value is a dict-like, treat it as manual_color_data
+                        if isinstance(val, dict):
+                            WeeklyMenuAssignedRule.objects.create(
+                                weekly_menu=menu,
+                                cell_id=cell_id,
+                                rule=None,
+                                manual_color_data=val
+                            )
+                        else:
+                            # Try to interpret as a rule id (int or numeric string)
+                            try:
+                                rid = int(val)
+                                try:
+                                    rule_obj = Rule.objects.get(id=rid, user=user)
+                                    WeeklyMenuAssignedRule.objects.create(weekly_menu=menu, cell_id=cell_id, rule=rule_obj)
+                                except Rule.DoesNotExist:
+                                    # skip invalid rule ids
+                                    continue
+                            except (TypeError, ValueError):
+                                # not a rule id and not a dict - skip
+                                continue
+            except Exception as persist_ex:
+                logger.warn('Failed to persist assigned rules from past-menus form: %s', persist_ex)
+            # Don't redirect - just re-render with the current selection maintained
+
+    # Build a mapping of assigned rules for the selected menus so past-menus can render colors
+    assigned_rules_json = '{}'
+    try:
+        if selected_menu_data:
+            menu_qs = list(selected_menu_data)
+            from .models import WeeklyMenuAssignedRule
+            assigned_qs = WeeklyMenuAssignedRule.objects.filter(weekly_menu__in=menu_qs).select_related('rule')
+            assigned_map = {}
+            for a in assigned_qs:
+                # If this assignment references a Rule FK, use its colors.
+                if a.rule:
+                    r = a.rule
+                    assigned_map[a.cell_id.lower()] = {
+                        'id': r.id,
+                        'rule_label': r.rule,
+                        'gradient_start': r.gradient_start,
+                        'gradient_end': r.gradient_end,
+                        'text_color': r.text_color,
+                    }
+                # Otherwise, if manual_color_data exists, include those values.
+                elif a.manual_color_data:
+                    m = a.manual_color_data or {}
+                    assigned_map[a.cell_id.lower()] = {
+                        'id': None,
+                        'rule_label': m.get('label') if isinstance(m, dict) else None,
+                        'gradient_start': m.get('gradient_start') if isinstance(m, dict) else None,
+                        'gradient_end': m.get('gradient_end') if isinstance(m, dict) else None,
+                        'text_color': m.get('text_color') if isinstance(m, dict) else None,
+                    }
+            assigned_rules_json = json.dumps(assigned_map)
+    except Exception:
+        assigned_rules_json = '{}'
+
+    # Build list of all rules for legend display (include gradient colors and text color)
+    rules_list_json = '[]'
+    try:
+        from .models import Rule
+        import json as _json
+        rules_qs = Rule.objects.filter(user=user).values('id', 'rule', 'gradient_start', 'gradient_end', 'text_color')
+        rules_list_json = _json.dumps(list(rules_qs))
+    except Exception:
+        rules_list_json = '[]'
+
     context = {
         'date_ranges': date_ranges,
+        'all_dates': all_dates,
         'selected_menu_data': selected_menu_data,
         'selected_range': selected_range,
-        **permissions_context,  # Include permission flags dynamically
+        'selected_date': selected_date,
+        'selected_monday_str': selected_monday_str,
+        'selected_friday_str': selected_friday_str,
+        'assigned_rules_json': assigned_rules_json,
+        'rules_list_json': rules_list_json,
+        **permissions_context,
     }
     return render(request, 'past-menus.html', context)
 

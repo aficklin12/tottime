@@ -17,6 +17,13 @@
   background-color: #272630;
   color: #fff;
   text-align: center;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+/* AM Snack toggle button - hidden by default, shown only on mobile */
+.am-snack-toggle-btn {
+    display: none;
 }
 
 .table {
@@ -28,12 +35,27 @@
   overflow: hidden;
 }
 
+/* Allow header dropdown to overflow the table bounds */
+#weeklyMenuTable {
+    overflow: visible;
+}
+
 .table-title { border: 1px solid #dee2e6; padding: .75rem; text-align: center; }
 
 th, td {
-  border: 1px solid #dee2e6;
-  padding: .75rem;
-  word-wrap: break-word;
+    border: 1px solid #dee2e6;
+    padding: .75rem;
+    word-wrap: break-word;
+}
+
+thead tr:first-child th {
+    border-top: none !important;
+}
+thead tr:first-child th:first-child {
+    border-top-left-radius: 10px;
+}
+thead tr:first-child th:last-child {
+    border-top-right-radius: 10px;
 }
 
 .table thead th, .table tbody td { text-align: left; font-weight: normal; }
@@ -186,6 +208,113 @@ th, td {
   text-align: center;
 }
 
+/* Desktop header actions (ellipsis dropdown) */
+.weekly-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    gap: 10px;
+    width: 100%;
+    padding-right: 52px; /* reserve space for menu button */
+}
+
+.desktop-menu-wrapper {
+    display: none;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1250;
+}
+
+/* Left-aligned header icon group (generate + save) */
+.desktop-header-left {
+    display: none;
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1250;
+    gap: 8px;
+    align-items: center;
+}
+.desktop-header-left .icon-btn {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.desktop-header-left .icon-generate { color: rgb(57,189,180); }
+.desktop-header-left .icon-save { color: rgb(228,218,79); }
+
+.desktop-menu-btn {
+    background: transparent;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.desktop-menu-btn:hover,
+.desktop-menu-btn:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+    outline: none;
+}
+
+.desktop-menu-dropdown {
+    position: absolute;
+    top: 110%;
+    right: 0;
+    background-color: rgba(34, 37, 41, 1);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 190px;
+    z-index: 1260;
+    display: none;
+    overflow: hidden;
+}
+
+.desktop-menu-dropdown.show {
+    display: block;
+}
+
+.desktop-menu-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    text-align: left;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.desktop-menu-dropdown button:hover,
+.desktop-menu-dropdown button:focus {
+    background-color: rgba(57, 189, 180, 0.2);
+    outline: none;
+}
+
+.desktop-menu-dropdown button i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
 /* --- Print rules (replace entire block with this) --- */
 @media print {
   /* Hide non-print UI */
@@ -196,7 +325,8 @@ th, td {
   #generateMenuBtn,
   #saveMenuBtn,
   #mobileDaySelector,
-  #mobileBottomNav {
+    #mobileBottomNav,
+    .desktop-menu-wrapper {
     display: none !important;
   }
 
@@ -286,6 +416,7 @@ th, td {
    - show only selected day column
    ========================= */
 @media (max-width: 1000px) {
+    .desktop-menu-wrapper { display: none !important; }
   /* hide header + top button area */
   h1.mt-4,
   .top-button-row,
@@ -359,6 +490,24 @@ th, td {
     display: none !important;
   }
 
+  /* EXCEPT AM Snack header - keep visible for toggle button */
+  .table tbody tr td.vertical-header.am-snack-header {
+    display: block !important;
+    position: absolute;
+    right: 8px;
+    top: -1.25rem;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+    z-index: 10;
+  }
+
+  .table tbody tr td.vertical-header.am-snack-header .am-snack-text {
+    display: none;
+  }
+
   /* Force table to use 2-column layout on mobile by targeting the rows */
   .table tbody tr {
     display: grid !important;
@@ -398,7 +547,9 @@ th, td {
   /* AM Snack section */
   .table tbody tr:nth-child(5)::before {
     content: 'AM Snack';
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: absolute;
     left: 0;
     right: 0;
@@ -412,6 +563,16 @@ th, td {
     z-index: 1;
     grid-column: 1 / -1;
   }
+    /* When AM Snack is hidden, add a small gap under the header and remove cell borders */
+    .table tbody tr.am-snack-row.am-hidden::after {
+        content: '';
+        display: block;
+        height: 8px; /* gap below header bar only when hidden */
+    }
+    .table tbody tr.am-snack-row.am-hidden td,
+    .table tbody tr.am-snack-row.am-hidden th {
+        border: none !important; /* avoid stray gridline under header when hidden */
+    }
 
   .table tbody tr:nth-child(5) {
     position: relative;
@@ -520,6 +681,37 @@ th, td {
 
   /* minor button tweaks for mobile nav */
   #mobileBottomNav .btn { background: transparent; border: none; padding: 6px 8px; color: #fff; }
+
+  /* AM Snack toggle button - only visible on mobile */
+  .am-snack-toggle-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0;
+    background: rgba(34, 37, 41, 1);
+    border: none;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .am-snack-toggle-btn:hover {
+    background: rgba(44, 47, 51, 1);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .am-snack-toggle-btn:active {
+    background: rgba(24, 27, 31, 1);
+  }
+
+  .am-snack-toggle-btn i {
+    transition: transform 0.2s ease;
+  }
 }
 /* =========================
    DESKTOP (>=1001px)
@@ -528,11 +720,11 @@ th, td {
    - hide day selector
    ========================= */
 @media (min-width: 1001px) {
-  h1.mt-4,
+
   .top-button-row,
-  #printableTable > form .mb-3 {
-    display: block !important;
-  }
+    #printableTable > form .mb-3 {
+        display: none !important; /* hide top row on desktop; header icons used instead */
+    }
 
   #mobileDaySelector {
     display: none !important;
@@ -542,6 +734,11 @@ th, td {
   #mobileBottomNav {
     display: none !important;
   }
+
+    .desktop-menu-wrapper {
+        display: flex !important;
+        align-items: center;
+    }
 
   body { padding-bottom: 0; }
   .table thead th, .table tbody td { font-size: 1rem; }
@@ -555,7 +752,40 @@ th, td {
 
     /* Show legend only on desktop */
     .rules-legend { display: flex !important; }
+
+    /* show left header icons on desktop */
+    .desktop-header-left { display: flex !important; }
+
+#weeklyMenuHeader + h1,
+h1.mt-4 {
+    margin-top: 1.55rem !important;
+    margin-bottom: 0 !important;
 }
+
+/* keep a small gap between the h1 and the printable container/table */
+#printableTable {
+    margin-top: 0.75rem !important;
+    padding-top: 0 !important;
+}
+
+/* pull the table left to match the saved-legend placement (compensate base table margin-left) */
+#weeklyMenuTable {
+    margin-left: 0px !important;
+    margin-right: 12px !important;
+}
+
+.rules-legend,
+#rulesLegend {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.container#printableTable .row.mt-3 {
+    margin-top: 0 !important;
+}
+}
+
+
 
 /* =========================
      Loading Overlay
@@ -573,7 +803,6 @@ th, td {
     align-items: center;
     justify-content: center;
 }
-
 /* =========================
    Rules Legend Styles
    - Hidden by default; shown on desktop (>1000px)
@@ -644,6 +873,7 @@ th, td {
     filter: blur(2px) brightness(0.6) saturate(0.9);
     transition: filter 160ms ease;
 }
+
 </style>
 {% endblock %}
 
@@ -663,9 +893,6 @@ th, td {
                         <div class="mb-3">
                             <button id="generateMenuBtn" class="btn btn-primaryoff mr-2" type="button">Generate Menu</button>
                             <button id="saveMenuBtn" type="submit" class="btn btn-secondary">Save</button> <!-- Button type set to submit -->
-                            <a href="{% url 'past_menus' %}" class="btn btn-rec" style="margin-left: 15px;">
-                                Saved Menus
-                            </a>    
                             <button type="button" class="btn btn-outline-primary link-switch" style="margin-left: 10px;" onclick="openInventoryWindow()">
                             Inventory
                         </button>
@@ -675,7 +902,11 @@ th, td {
                 </div>
 
                 <!-- Desktop-only Rule Legend (color gradients → rule labels) -->
-                <div id="rulesLegend" class="rules-legend" aria-label="Rule legend" role="list"></div>
+                <div id="rulesLegend" class="rules-legend" aria-label="Rule legend" role="list">
+                    <a href="{% url 'past_menus' %}" class="saved-menus-icon" title="Saved Menus" aria-label="Saved Menus" style="font-size:18px; color: rgb(57,189,180); text-decoration:none; display:inline-flex; align-items:center; margin-left:6px; margin-right:12px;">
+                        <i class="fas fa-folder-open" aria-hidden="true"></i>
+                    </a>
+                </div>
 
                <!-- Mobile Day Selector -->
 <div id="mobileDaySelector">
@@ -692,10 +923,13 @@ th, td {
                 <i class="fas fa-ellipsis-v"></i>
             </button>
             <div id="mobileMenuDropdown" class="mobile-menu-dropdown">
-                <button type="button" id="generatePDFBtn">
+                <button type="button" id="generatePDFBtnMobile">
                     <i class="fas fa-file-pdf"></i>Generate PDF
                 </button>
-                <button type="button" id="exportWeeklyMenuCSV">
+                <button type="button" id="editDatesBtnMobile" title="Edit week dates">
+                    <i class="fas fa-calendar-alt"></i>Edit Dates
+                </button>
+                <button type="button" id="exportWeeklyMenuCSVMobile">
                 <i class="fas fa-file-csv"></i>Export Menu
                 </button>
             </div>
@@ -717,7 +951,41 @@ th, td {
   </colgroup>
   <thead>
                         <tr>
-                            <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">Weekly Menu: Date - Date</th>
+                            <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">
+                                <div class="weekly-header-container">
+                                    <div class="desktop-header-left" aria-hidden="false">
+                                        <button type="button" id="headerGenerateBtn" class="icon-btn icon-generate" title="Generate Menu" aria-label="Generate Menu" onclick="document.getElementById('generateMenuBtn').click();">
+                                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                                        </button>
+                                        <button type="button" id="headerSaveBtn" class="icon-btn icon-save" title="Save Menu" aria-label="Save Menu" onclick="document.getElementById('saveMenuBtn').click();">
+                                            <i class="fas fa-save" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                    <span class="weekly-header-title">Weekly Menu: Date - Date</span>
+                                    <div class="desktop-menu-wrapper" aria-label="Menu" role="group">
+                                        <button type="button" id="desktopMenuBtn" class="desktop-menu-btn" title="Menu" aria-label="Menu Options">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div id="desktopMenuDropdown" class="desktop-menu-dropdown" aria-hidden="true">
+                                            <button type="button" id="generatePDFBtn">
+                                                <i class="fas fa-file-pdf"></i>Generate PDF
+                                            </button>
+                                            <button type="button" id="exportWeeklyMenuCSV">
+                                                <i class="fas fa-file-csv"></i>Export Menu
+                                            </button>
+                                            <button type="button" id="editDatesBtn" title="Edit week dates">
+                                                <i class="fas fa-calendar-alt"></i>Edit Dates
+                                            </button>
+                                            <button type="button" id="openInventoryBtn" onclick="openInventoryWindow()" title="Inventory">
+                                                <i class="fas fa-box"></i>Inventory
+                                            </button>
+                                            <button type="button" id="toggleAMSnackDesktopBtn">
+                                                <i class="fas fa-utensils"></i>Toggle AM Snack
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
                         </tr>
                     <tr>
                         <th scope="col" colspan="2">Facility: {{ facility_name }}</th>
@@ -770,8 +1038,13 @@ th, td {
                             <td id="thursdayadd1" style="text-align: center;" data-day="thursday"></td>
                             <td id="fridayadd1" style="text-align: center;" data-day="friday"></td>
                         </tr>
-                        <tr>
-                            <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">AM Snack</td>
+                        <tr class="am-snack-row">
+                            <td class="vertical-header am-snack-header" rowspan="4" style="font-weight: bold; text-align: center;">
+                                <span class="am-snack-text">AM Snack</span>
+                                <button type="button" id="amSnackToggleBtn" class="am-snack-toggle-btn" onclick="toggleAMSnackMobile()" aria-label="Toggle AM Snack section">
+                                    <i class="fas fa-plus" id="amSnackToggleIcon"></i>
+                                </button>
+                            </td>
                             <td>Choose 2 of these 5: Fluid Milk</td>
                             <td id="mondaychoose1" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdaychoose1" style="text-align: center;" data-day="tuesday"></td>
@@ -779,7 +1052,7 @@ th, td {
                             <td id="thursdaychoose1" style="text-align: center;" data-day="thursday"></td>
                             <td id="fridaychoose1" style="text-align: center;" data-day="friday"></td>
                         </tr>
-                        <tr>
+                        <tr class="am-snack-row">
                             <td>Fruit, Vegetable, or Full Strength Juice</td>
                             <td id="mondayfruit2" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdayfruit2" style="text-align: center;" data-day="tuesday"></td>
@@ -787,7 +1060,7 @@ th, td {
                             <td id="thursdayfruit2" style="text-align: center;" data-day="thursday"></td>
                             <td id="fridayfruit2" style="text-align: center;" data-day="friday"></td>
                         </tr>
-                        <tr>
+                        <tr class="am-snack-row">
                             <td>Bread or Bread Alternate(s)</td>
                             <td id="mondaybread2" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdaybread2" style="text-align: center;" data-day="tuesday"></td>
@@ -795,7 +1068,7 @@ th, td {
                             <td id="thursdaybread2" style="text-align: center;" data-day="thursday"></td>
                             <td id="fridaybread2" style="text-align: center;" data-day="friday"></td>
                         </tr>
-                        <tr>
+                        <tr class="am-snack-row">
                             <td>Meat or Meat Alternate</td>
                             <td id="mondaymeat1" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdaymeat1" style="text-align: center;" data-day="tuesday"></td>
@@ -897,21 +1170,21 @@ th, td {
                 </table>
                 <!-- MOBILE: fixed bottom navigation (visible only on small screens via CSS) -->
                 <div id="mobileBottomNav" role="navigation" aria-label="Mobile actions">
-                    <button type="button" class="btn btn-primaryoff" onclick="document.getElementById('generateMenuBtn').click();" title="Generate Menu">
-                        <i class="fas fa-magic" aria-hidden="true"></i>
-                        <span class="sr-only">Generate Menu</span>
-                    </button>
-
+                    
+                    <a href="{% url 'past_menus' %}" class="btn btn-rec" title="Saved Menus" role="button">
+                        <i class="fas fa-folder-open" aria-hidden="true"></i>
+                        <span class="sr-only">Saved Menus</span>
+                    </a>
                     <!-- Center circular update/save button (uses base_minimal .update-btn styles) -->
                     <button type="button" class="btn update-btn" onclick="document.getElementById('saveMenuBtn').click();" title="Save Menu">
                         <i class="fas fa-save" aria-hidden="true"></i>
                         <span class="sr-only">Save Menu</span>
                     </button>
-
-                    <a href="{% url 'past_menus' %}" class="btn btn-rec" title="Saved Menus" role="button">
-                        <i class="fas fa-folder-open" aria-hidden="true"></i>
-                        <span class="sr-only">Saved Menus</span>
-                    </a>
+                    <button type="button" class="btn btn-primaryoff" onclick="document.getElementById('generateMenuBtn').click();" title="Generate Menu">
+                        <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        <span class="sr-only">Generate Menu</span>
+                    </button>
+                   
                 </div>
             </div>
         </div>
@@ -919,6 +1192,19 @@ th, td {
     {% endblock %}
 {% block scripts %}
 <script>
+// On mobile, auto-hide AM Snack if no data in any AM Snack cell
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.matchMedia('(max-width: 1000px)').matches) {
+        // Only run on mobile
+        if (!amSnackHasAnyData()) {
+            // Only toggle off if not already hidden
+            const firstRow = document.querySelector('#weeklyMenuTable tbody tr.am-snack-row');
+            if (firstRow && !firstRow.classList.contains('am-hidden')) {
+                toggleAMSnackMobile(false);
+            }
+        }
+    }
+});
 /* Persist-in-progress weekly menu, robust generate handlers, WG filler (idempotent + dedupe), and full mapping to all table cells */
 
 /* Local storage key */
@@ -974,6 +1260,127 @@ function clearAllMenuCellStyles() {
     });
 }
 
+/* AM Snack visibility helpers */
+function getAMSnackCellIds() {
+    return [
+        'mondaychoose1','tuesdaychoose1','wednesdaychoose1','thursdaychoose1','fridaychoose1',
+        'mondayfruit2','tuesdayfruit2','wednesdayfruit2','thursdayfruit2','fridayfruit2',
+        'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',
+        'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1'
+    ];
+}
+function amSnackHasAnyData() {
+    const ids = getAMSnackCellIds();
+    for (let i = 0; i < ids.length; i++) {
+        const el = document.getElementById(ids[i]);
+        if (el && el.innerText.trim().length > 0) return true;
+    }
+    return false;
+}
+// Only auto-hide AM Snack if toggled off, not if empty
+function toggleAMSnackVisibility() {
+    const rows = Array.from(document.querySelectorAll('#weeklyMenuTable tbody tr.am-snack-row'));
+    if (rows.length === 0) return;
+
+    const firstRow = rows[0];
+    const otherRows = rows.slice(1);
+    const isDesktop = window.matchMedia('(min-width: 1001px)').matches;
+
+    // Always show if visible, regardless of data
+    if (!firstRow.classList.contains('am-hidden')) {
+        rows.forEach(r => r.style.removeProperty('display'));
+        firstRow.querySelectorAll('td, th').forEach(cell => {
+            try { cell.style.removeProperty('display'); } catch(e) {}
+        });
+        firstRow.classList.remove('am-hidden');
+        updateAMSnackToggleIcon();
+        return;
+    }
+
+    // If hidden, keep hidden
+    if (isDesktop) {
+        rows.forEach(row => {
+            try { row.style.setProperty('display', 'none', 'important'); }
+            catch(e) { row.style.display = 'none'; }
+        });
+        firstRow.classList.add('am-hidden');
+    } else {
+        try { firstRow.style.removeProperty('display'); } catch(e) {}
+        firstRow.querySelectorAll('td:not(.vertical-header), th:not(.vertical-header)').forEach(cell => {
+            try { cell.style.setProperty('display', 'none', 'important'); }
+            catch(e) { cell.style.display = 'none'; }
+        });
+        firstRow.classList.add('am-hidden');
+        otherRows.forEach(row => {
+            try { row.style.setProperty('display', 'none', 'important'); }
+            catch(e) { row.style.display = 'none'; }
+        });
+    }
+    updateAMSnackToggleIcon();
+}
+
+// Mobile and desktop toggle for AM Snack section
+function toggleAMSnackMobile(forceShow) {
+    const rows = Array.from(document.querySelectorAll('#weeklyMenuTable tbody tr.am-snack-row'));
+    if (rows.length === 0) return;
+
+    const firstRow = rows[0];
+    const otherRows = rows.slice(1);
+    const isDesktop = window.matchMedia('(min-width: 1001px)').matches;
+    let isCurrentlyHidden;
+    if (isDesktop) {
+        // On desktop, treat hidden if any row is hidden
+        isCurrentlyHidden = rows.every(row => row.style.display === 'none' || row.style.display === 'none!important');
+    } else {
+        isCurrentlyHidden = firstRow.classList.contains('am-hidden');
+    }
+
+    const shouldShow = typeof forceShow === 'boolean' ? forceShow : isCurrentlyHidden;
+
+    if (shouldShow) {
+        // Show AM Snack content (all rows and vertical header)
+        rows.forEach(r => r.style.removeProperty('display'));
+        firstRow.querySelectorAll('td, th').forEach(cell => {
+            try { cell.style.removeProperty('display'); } catch(e) {}
+        });
+        firstRow.classList.remove('am-hidden');
+    } else {
+        if (isDesktop) {
+            // Hide entire AM Snack section including vertical header
+            rows.forEach(row => {
+                try { row.style.setProperty('display', 'none', 'important'); }
+                catch(e) { row.style.display = 'none'; }
+            });
+        } else {
+            // Hide AM Snack content (keep header visible)
+            try { firstRow.style.removeProperty('display'); } catch(e) {}
+            firstRow.querySelectorAll('td:not(.vertical-header), th:not(.vertical-header)').forEach(cell => {
+                try { cell.style.setProperty('display', 'none', 'important'); }
+                catch(e) { cell.style.display = 'none'; }
+            });
+            firstRow.classList.add('am-hidden');
+            otherRows.forEach(row => {
+                try { row.style.setProperty('display', 'none', 'important'); }
+                catch(e) { row.style.display = 'none'; }
+            });
+        }
+    }
+    // Update toggle button icon
+    updateAMSnackToggleIcon();
+}
+
+/* Update toggle button icon based on visibility state */
+function updateAMSnackToggleIcon() {
+    const toggleIcon = document.getElementById('amSnackToggleIcon');
+    if (!toggleIcon) return;
+
+    const firstRow = document.querySelector('#weeklyMenuTable tbody tr.am-snack-row');
+    if (!firstRow) return;
+
+    const isHidden = firstRow.classList.contains('am-hidden');
+    toggleIcon.className = isHidden ? 'fas fa-plus' : 'fas fa-minus';
+}
+
 /* Helpers */
 const DAYS = ["monday","tuesday","wednesday","thursday","friday"];
 const DAY_FULL = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
@@ -1020,6 +1427,13 @@ function isWGText(text) { return WG_NAME_RX.test(text || ""); }
 /* Apply gradient styling to cells based on inventory rules (and mark WG by rule_label or name) */
 async function applyGradientsToCells() {
     const itemRules = await fetchInventoryRules();
+    // Try to fetch rules list (for assigned rule ids)
+    let ruleList = null;
+    try {
+        const rr = await fetch('/api/list_rules/', { method: 'GET', headers: { 'X-CSRFToken': getCookie('csrftoken') }});
+        const rdata = await rr.json();
+        ruleList = Array.isArray(rdata) ? rdata : (rdata.rules || []);
+    } catch (e) { ruleList = null; }
 
     // Always start from a clean slate
     clearAllMenuCellStyles();
@@ -1031,6 +1445,23 @@ async function applyGradientsToCells() {
         const cell = document.getElementById(cellId);
         if (!cell) return;
         const text = cell.innerText.trim();
+        // If a rule id is assigned to this cell, prefer that rule's styles
+        if (cell.dataset && cell.dataset.ruleId) {
+            if (ruleList) {
+                const assignedRule = ruleList.find(r => String(r.id) === String(cell.dataset.ruleId));
+                if (assignedRule) {
+                    const gs = assignedRule.gradient_start || WG_DEFAULT_STYLE.gradient_start;
+                    const ge = assignedRule.gradient_end || WG_DEFAULT_STYLE.gradient_end;
+                    const tc = assignedRule.text_color || WG_DEFAULT_STYLE.text_color;
+                    cell.style.background = `linear-gradient(135deg, ${gs}, ${ge})`;
+                    cell.style.color = tc;
+                    cell.dataset.ruleApplied = 'true';
+                    cell.dataset.ruleLabel = assignedRule.rule || assignedRule.rule_label || '';
+                    matchCount++;
+                    return;
+                }
+            }
+        }
         if (!text) return;
 
         const rule = itemRules[text];
@@ -1085,8 +1516,17 @@ function saveMenuProgressToLocalStorage() {
             const el = document.getElementById(id);
             if (el) menu[id] = el.innerText;
         });
-        const header = document.getElementById('weeklyMenuHeader');
-        if (header) menu.weeklyMenuHeader = header.innerText;
+        // persist assigned rule ids (cellId -> ruleId)
+        try {
+            const assigned = {};
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.dataset && el.dataset.ruleId) assigned[id] = el.dataset.ruleId;
+            });
+            if (Object.keys(assigned).length) menu.assigned_rules = assigned;
+        } catch(e) { /* ignore */ }
+        const headerTitleEl = document.querySelector('.weekly-header-title');
+        if (headerTitleEl) menu.weeklyMenuHeader = headerTitleEl.innerText;
         const dates = Array.from(document.querySelectorAll('.weekday-date')).map(e => e.innerText);
         menu.weekdayDates = dates;
         localStorage.setItem(MENU_PROGRESS_KEY, JSON.stringify(menu));
@@ -1101,8 +1541,8 @@ function restoreMenuProgressFromLocalStorage() {
         if (!menu) return;
         Object.entries(menu).forEach(([k, v]) => {
             if (k === 'weeklyMenuHeader') {
-                const h = document.getElementById('weeklyMenuHeader');
-                if (h) h.innerText = v;
+                const hTitle = document.querySelector('.weekly-header-title');
+                if (hTitle) hTitle.innerText = v;
                 const match = v.match(/Weekly Menu: (\d{2})\/(\d{2})/);
                 if (match) {
                     const month = parseInt(match[1]) - 1;
@@ -1119,8 +1559,39 @@ function restoreMenuProgressFromLocalStorage() {
                 if (el) el.innerText = v;
             }
         });
-        setTimeout(() => applyGradientsToCells(), 200);
-        setTimeout(() => ensureDailyWG(), 400);
+        // If assigned_rules were saved, restore them and apply styles from rules endpoint
+        if (menu.assigned_rules && typeof menu.assigned_rules === 'object') {
+            fetch('/api/list_rules/', { method: 'GET', headers: { 'X-CSRFToken': getCookie('csrftoken') }})
+                .then(r => r.json())
+                .then(data => {
+                    const rules = Array.isArray(data) ? data : (data.rules || []);
+                    Object.entries(menu.assigned_rules).forEach(([cellId, ruleId]) => {
+                        const el = document.getElementById(cellId);
+                        if (!el) return;
+                        el.dataset.ruleId = ruleId;
+                        const r = rules.find(rr => String(rr.id) === String(ruleId));
+                        if (r) {
+                            el.dataset.ruleLabel = r.rule || r.rule_label || '';
+                            const gs = r.gradient_start || WG_DEFAULT_STYLE.gradient_start;
+                            const ge = r.gradient_end || WG_DEFAULT_STYLE.gradient_end;
+                            const tc = r.text_color || WG_DEFAULT_STYLE.text_color;
+                            el.style.background = `linear-gradient(135deg, ${gs}, ${ge})`;
+                            el.style.color = tc;
+                            el.dataset.ruleApplied = 'true';
+                        }
+                    });
+                })
+                .catch(e => { console.warn('restoreMenu: failed to fetch rules', e); })
+                .finally(() => {
+                    setTimeout(() => applyGradientsToCells(), 200);
+                    setTimeout(() => ensureDailyWG(), 400);
+                    setTimeout(() => toggleAMSnackVisibility(), 500);
+                });
+        } else {
+            setTimeout(() => applyGradientsToCells(), 200);
+            setTimeout(() => ensureDailyWG(), 400);
+            setTimeout(() => toggleAMSnackVisibility(), 500);
+        }
     } catch (err) { console.warn('restoreMenuProgress failed', err); }
 }
 
@@ -1223,7 +1694,8 @@ function updateDates() {
     nextFriday.setDate(nextMonday.getDate() + 4);
     const startDateString = ('0' + (nextMonday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextMonday.getDate()).slice(-2);
     const endDateString = ('0' + (nextFriday.getMonth() + 1)).slice(-2) + '/' + ('0' + nextFriday.getDate()).slice(-2);
-    $('#weeklyMenuHeader').text('Weekly Menu: ' + startDateString + ' - ' + endDateString);
+    const headerTitle = document.querySelector('.weekly-header-title');
+    if (headerTitle) headerTitle.textContent = 'Weekly Menu: ' + startDateString + ' - ' + endDateString;
     $('.weekday-date').each(function(index) {
         const date = new Date(nextMonday);
         date.setDate(nextMonday.getDate() + index);
@@ -1340,26 +1812,64 @@ function updateTable(response){
         safeSetText(day + 'Milk', '1% w.milk (unflavored)');
         safeSetText(day + 'LunchMilk', '1% w.milk (unflavored)');
     });
+    {% if not use_inventory_selectors %}
     enableEditablesForAllCells();
+    {% endif %}
 }
-function updateAMTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
-function updatePMTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+function updateAMTable(response){ populateFromResponse(response); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} toggleAMSnackVisibility(); }
+function updatePMTable(response){ populateFromResponse(response); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} }
 function updateBreakfastTable(response){
     populateFromResponse(response);
     DAYS.forEach(day => { safeSetText(day + 'Milk', '1% w.milk (unflavored)'); });
+    {% if not use_inventory_selectors %}
     enableEditablesForAllCells();
+    {% endif %}
 }
-function updateFruitTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
-function updateVegetableTable(response){ populateFromResponse(response); enableEditablesForAllCells(); }
+function updateFruitTable(response){ populateFromResponse(response); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} }
+function updateVegetableTable(response){ populateFromResponse(response); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} }
 
 /* Document ready: restore, attach handlers */
+
 $(document).ready(function() {
     restoreMenuProgressFromLocalStorage();
+    {% if not use_inventory_selectors %}
     enableEditablesForAllCells();
+    {% endif %}
     initializeDaySelector();
     updateDropdownWithDates();
     // Initial legend build (in case rules are already cached server-side)
     setTimeout(() => { buildRulesLegendFromCache(); }, 100);
+    // By default, hide AM Snack on desktop, show on mobile
+    setTimeout(() => {
+        if (window.matchMedia('(min-width: 1001px)').matches) {
+            // On desktop: if any AM Snack field has data, show; else hide
+            const rows = Array.from(document.querySelectorAll('#weeklyMenuTable tbody tr.am-snack-row'));
+            const amSnackIds = [
+                'mondaychoose1','tuesdaychoose1','wednesdaychoose1','thursdaychoose1','fridaychoose1',
+                'mondayfruit2','tuesdayfruit2','wednesdayfruit2','thursdayfruit2','fridayfruit2',
+                'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',
+                'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1'
+            ];
+            let hasData = false;
+            for (let i = 0; i < amSnackIds.length; i++) {
+                const el = document.getElementById(amSnackIds[i]);
+                if (el && el.innerText.trim().length > 0) { hasData = true; break; }
+            }
+            if (rows.length) {
+                if (hasData) {
+                    rows.forEach(r => r.style.removeProperty('display'));
+                    rows[0].classList.remove('am-hidden');
+                } else {
+                    rows.forEach(row => {
+                        try { row.style.setProperty('display', 'none', 'important'); } catch(e) { row.style.display = 'none'; }
+                    });
+                    rows[0].classList.add('am-hidden');
+                }
+            }
+        } else {
+            toggleAMSnackVisibility();
+        }
+    }, 120);
 
     $('#generateMenuBtn').on('keydown keypress', function(e){ if (e.key === 'Enter' || e.keyCode === 13){ e.preventDefault(); return false; }});
     $('#menuForm').on('keydown keypress', function(e){
@@ -1367,7 +1877,7 @@ $(document).ready(function() {
             if (!$(e.target).is('#saveMenuBtn') && !$(e.target).hasClass('input-box')){ e.preventDefault(); return false; }
         }
     });
-    $(document).on('blur', '.input-box', function(){ setTimeout(saveMenuProgressToLocalStorage, 80); });
+    $(document).on('blur', '.input-box', function(){ setTimeout(() => { saveMenuProgressToLocalStorage(); toggleAMSnackVisibility(); }, 80); });
 
     function ajaxPost(url) {
         return $.ajax({ url, type: 'POST', data: {}, beforeSend: function(xhr){ xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken')); } });
@@ -1410,17 +1920,32 @@ $(document).ready(function() {
 
         $.when.apply($, calls).always(async function() {
             try {
-                updateDates();
+                // Preserve any user-selected week (window.nextMondayDate) instead
+                // of recomputing next Monday from today which would overwrite
+                // an edited/saved week. If no preserved week exists, fall back
+                // to computing the next Monday.
+                let preservedMonday = null;
+                if (window.nextMondayDate) {
+                    preservedMonday = (window.nextMondayDate instanceof Date) ? window.nextMondayDate : parseISO(window.nextMondayDate) || new Date(window.nextMondayDate);
+                }
+                if (preservedMonday && !isNaN(preservedMonday)) {
+                    updateWeekDatesFromMonday(preservedMonday);
+                } else {
+                    updateDates();
+                }
                 DAYS.forEach(day => {
                     safeSetText(day + 'Milk', document.getElementById(day + 'Milk')?.innerText || '1% w.milk (unflavored)');
                     safeSetText(day + 'LunchMilk', document.getElementById(day + 'LunchMilk')?.innerText || '1% w.milk (unflavored)');
                 });
                 saveMenuProgressToLocalStorage();
+                {% if not use_inventory_selectors %}
                 enableEditablesForAllCells();
+                {% endif %}
 
                 // Recolor then ensure WG in sequence
                 await applyGradientsToCells();
                 await ensureDailyWG();
+                toggleAMSnackVisibility();
                 await buildRulesLegendFromCache();
             } finally {
                 hideLoading();
@@ -1466,7 +1991,10 @@ async function buildRulesLegendFromCache() {
                     <span class="legend-label" style="${labelStyle}">${item.rule_label}</span>
                 </div>`;
     }).join('');
-    container.innerHTML = html;
+    // Preserve any existing saved-menus icon (so JS rebuild doesn't remove it)
+    const existingIcon = container.querySelector('.saved-menus-icon');
+    const existingIconHtml = existingIcon ? existingIcon.outerHTML : '';
+    container.innerHTML = existingIconHtml + html;
 }
 
 /* Save menu to database */
@@ -1527,6 +2055,10 @@ function saveMenu() {
     let menuData = {
         facility_name: facilityName,
         sponsor_name: sponsorName,
+        // include chosen week start so server saves correct dates
+        week_start: (window.nextMondayDate ? (new Date(window.nextMondayDate)).toISOString().split('T')[0] : null),
+        // also include visible weekday strings (MM/DD) as a fallback
+        weekdayDates: Array.from(document.querySelectorAll('.weekday-date')).map(e => e.innerText.trim()),
         monday: {
             am_fluid_milk: document.getElementById('mondayMilk')?.innerText || '',
             am_fruit_veg: document.getElementById('mondayfruit')?.innerText || '',
@@ -1634,6 +2166,13 @@ function saveMenu() {
         }
     };
 
+    // Collect assigned rules (cellId -> ruleId)
+    try {
+        const assigned = {};
+        document.querySelectorAll('[data-rule-id]').forEach(el => { if (el.id && el.dataset.ruleId) assigned[el.id] = el.dataset.ruleId; });
+        menuData.assigned_rules = assigned;
+    } catch(e) { /* ignore */ }
+
     $.ajax({
         url: '/api/save_menu/',
         type: 'POST',
@@ -1681,17 +2220,23 @@ $('#mobileMenuBtn').on('click', function(e) {
     $('#mobileMenuDropdown').toggleClass('show');
 });
 
+// Desktop header dropdown toggle
+$('#desktopMenuBtn').on('click', function(e) {
+    e.stopPropagation();
+    $('#desktopMenuDropdown').toggleClass('show');
+});
+
 // Close dropdown when clicking outside
 $(document).on('click', function(e) {
-    if (!$(e.target).closest('#mobileMenuBtn, #mobileMenuDropdown').length) {
-        $('#mobileMenuDropdown').removeClass('show');
+    if (!$(e.target).closest('#mobileMenuBtn, #mobileMenuDropdown, #desktopMenuBtn, #desktopMenuDropdown').length) {
+        $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
     }
 });
 
 // Generate PDF button - prints full weekly table regardless of screen size
-$('#generatePDFBtn').on('click', function(e) {
+$(document).on('click', '#generatePDFBtn, #generatePDFBtnMobile', function(e) {
     e.preventDefault();
-    $('#mobileMenuDropdown').removeClass('show');
+    $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
     
     const isMobile = window.innerWidth <= 1000;
     const mobileShowElements = document.querySelectorAll('.mobile-show-day');
@@ -1772,7 +2317,7 @@ function exportWeeklyMenuCSV() {
 
     const getText = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
     const rows = [];
-    const headerTitle = document.getElementById('weeklyMenuHeader');
+    const headerTitle = document.querySelector('.weekly-header-title');
     if (headerTitle) rows.push([getText(headerTitle)]);
     const thead = table.querySelector('thead');
     if (thead) thead.querySelectorAll('tr').forEach(tr => { rows.push(Array.from(tr.children).map(getText)); });
@@ -1806,8 +2351,487 @@ function exportWeeklyMenuCSV() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    $('#mobileMenuDropdown').removeClass('show');
+    $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
 }
-$(document).on('click', '#exportWeeklyMenuCSV', function(e) { e.preventDefault(); exportWeeklyMenuCSV(); });
+$(document).on('click', '#exportWeeklyMenuCSV, #exportWeeklyMenuCSVMobile', function(e) { e.preventDefault(); exportWeeklyMenuCSV(); });
+
+// Desktop dropdown: Toggle AM Snack
+$(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
+    e.preventDefault();
+    $('#desktopMenuDropdown').removeClass('show');
+    toggleAMSnackMobile();
+});
+</script>
+<script>
+// Autocomplete selector for menu cells
+(function(){
+    // Inventory items passed from view
+    const INVENTORY_ITEMS = {{ inventory_items_json|safe }} || [];
+
+    // Build dropdown container
+    const dropdown = document.createElement('div');
+    dropdown.id = 'inventory-autocomplete-popup';
+    Object.assign(dropdown.style, {
+        position: 'absolute', zIndex: 2000, background: '#fff', border: '1px solid #ccc',
+        minWidth: '220px', maxHeight: '260px', overflowY: 'auto', boxShadow: '0 6px 18px rgba(0,0,0,0.15)', display: 'none'
+    });
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.setAttribute('aria-label','Search inventory items');
+    Object.assign(searchInput.style, { width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: 'none', outline: 'none' });
+
+    const list = document.createElement('div');
+    list.style.padding = '6px';
+
+    dropdown.appendChild(searchInput);
+    dropdown.appendChild(list);
+    document.body.appendChild(dropdown);
+
+    let activeCell = null;
+    let actionCell = null;
+
+    // Action popup: offers Edit Item or Edit Rule for the clicked cell
+    const actionPopup = document.createElement('div');
+    actionPopup.id = 'inventory-action-popup';
+    Object.assign(actionPopup.style, {
+        position: 'absolute', zIndex: 2100, background: '#fff', border: '1px solid #ccc',
+        padding: '6px', borderRadius: '6px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', display: 'none'
+    });
+    const itemBtn = document.createElement('button');
+    itemBtn.type = 'button';
+    itemBtn.textContent = 'Edit Item';
+    itemBtn.className = 'btn btn-primary btn-sm';
+    Object.assign(itemBtn.style, { marginRight: '6px', padding: '6px 8px', cursor: 'pointer' });
+    const ruleBtn = document.createElement('button');
+    ruleBtn.type = 'button';
+    ruleBtn.textContent = 'Edit Rule';
+    ruleBtn.className = 'btn btn-primary btn-sm';
+    Object.assign(ruleBtn.style, { padding: '6px 8px', cursor: 'pointer' });
+    actionPopup.appendChild(itemBtn);
+    actionPopup.appendChild(ruleBtn);
+    document.body.appendChild(actionPopup);
+
+    // Rules dropdown (select a Rule model instance by id)
+    const rulesMenu = document.createElement('div');
+    rulesMenu.id = 'inventory-rules-menu';
+    Object.assign(rulesMenu.style, {
+        position: 'absolute', zIndex: 2200, background: '#fff', border: '1px solid #ccc',
+        minWidth: '220px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 6px 18px rgba(0,0,0,0.15)', display: 'none', padding: '6px'
+    });
+    document.body.appendChild(rulesMenu);
+    let rulesCache = null;
+
+
+    // wire action buttons
+    itemBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        e.preventDefault(); if (!actionCell) { closeActionPopup(); return; } const cell = actionCell; closeActionPopup(); showPopupForCell(cell);
+    });
+    ruleBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        e.preventDefault();
+        if (!actionCell) { closeActionPopup(); return; }
+        const cell = actionCell;
+        closeActionPopup();
+        openRuleEditor(cell);
+    });
+
+    function openRuleEditor(cell){
+        if (!cell) return;
+        // fetch rules if needed then show rulesMenu anchored to the cell
+        const rect = cell.getBoundingClientRect();
+        // temporarily show hidden to measure and clamp into viewport
+        rulesMenu.style.zIndex = 99999;
+        rulesMenu.style.left = '0px';
+        rulesMenu.style.top = '0px';
+        rulesMenu.style.visibility = 'hidden';
+        rulesMenu.style.display = 'block';
+        rulesMenu.innerHTML = '<div style="padding:6px;font-style:italic;color:#666">Loading rules…</div>';
+        // allow layout to update then measure
+        requestAnimationFrame(() => {
+            const menuW = rulesMenu.offsetWidth || 240;
+            const menuH = rulesMenu.offsetHeight || 160;
+            let left = window.scrollX + rect.left;
+            let top = window.scrollY + rect.bottom + 6;
+            // clamp to viewport
+            const maxLeft = window.scrollX + Math.max(8, window.innerWidth - menuW - 8);
+            const maxTop = window.scrollY + Math.max(8, window.innerHeight - menuH - 8);
+            if (left > maxLeft) left = maxLeft;
+            if (top > maxTop) top = maxTop;
+            if (left < window.scrollX + 6) left = window.scrollX + 6;
+            if (top < window.scrollY + 6) top = window.scrollY + 6;
+            rulesMenu.style.left = left + 'px';
+            rulesMenu.style.top = top + 'px';
+            rulesMenu.style.visibility = 'visible';
+            rulesMenu.style.pointerEvents = 'auto';
+        });
+
+        function renderRules(list){
+            rulesMenu.innerHTML = '';
+            const clearRow = document.createElement('div');
+            clearRow.textContent = 'Clear rule';
+            Object.assign(clearRow.style, { padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', fontWeight: '600' });
+            clearRow.addEventListener('click', () => {
+                delete cell.dataset.ruleId;
+                cell.dataset.ruleLabel = '';
+                cell.dataset.ruleApplied = 'false';
+                cell.style.background = '';
+                cell.style.color = '';
+                rulesMenu.style.display = 'none';
+                try { saveMenuProgressToLocalStorage(); applyGradientsToCells(); ensureDailyWG(); } catch(e){}
+            });
+            rulesMenu.appendChild(clearRow);
+
+            list.forEach(r => {
+                const row = document.createElement('div');
+                row.textContent = r.rule || r.rule_label || r.rule_text || ('Rule ' + r.id);
+                Object.assign(row.style, { padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' });
+                row.addEventListener('click', () => {
+                    cell.dataset.ruleId = r.id;
+                    cell.dataset.ruleLabel = r.rule || r.rule_label || '';
+                    cell.dataset.ruleApplied = 'true';
+                    const gs = r.gradient_start || WG_DEFAULT_STYLE.gradient_start;
+                    const ge = r.gradient_end || WG_DEFAULT_STYLE.gradient_end;
+                    const tc = r.text_color || WG_DEFAULT_STYLE.text_color;
+                    cell.style.background = `linear-gradient(135deg, ${gs}, ${ge})`;
+                    cell.style.color = tc;
+                    rulesMenu.style.display = 'none';
+                    try { saveMenuProgressToLocalStorage(); applyGradientsToCells(); ensureDailyWG(); } catch(e){}
+                });
+                row.addEventListener('mouseenter', () => row.style.background = 'rgba(0,0,0,0.04)');
+                row.addEventListener('mouseleave', () => row.style.background = '');
+                rulesMenu.appendChild(row);
+            });
+        }
+
+        if (rulesCache) {
+            renderRules(rulesCache);
+            return;
+        }
+
+        fetch('/api/list_rules/', { method: 'GET', headers: { 'X-CSRFToken': getCookie('csrftoken') }})
+            .then(r => r.json())
+            .then(data => {
+                // Expecting an array of rule objects: {id, rule, gradient_start, gradient_end, text_color}
+                rulesCache = Array.isArray(data) ? data : (data.rules || []);
+                renderRules(rulesCache);
+            })
+            .catch(err => {
+                console.warn('Failed to fetch rules:', err);
+                rulesMenu.innerHTML = '<div style="padding:6px;color:#900">Failed to load rules</div>';
+            });
+    }
+
+    function showActionPopupForCell(cell){
+        if (!cell) return;
+        actionCell = cell;
+        const rect = cell.getBoundingClientRect();
+        actionPopup.style.left = (window.scrollX + rect.left) + 'px';
+        actionPopup.style.top = (window.scrollY + rect.bottom + 6) + 'px';
+        actionPopup.style.display = 'block';
+    }
+
+    function closeActionPopup(){ actionPopup.style.display = 'none'; actionCell = null; }
+
+    function showPopupForCell(cell){
+        if (!cell) return;
+        activeCell = cell;
+        searchInput.value = cell.innerText.trim();
+        renderList(searchInput.value || '');
+        const rect = cell.getBoundingClientRect();
+        dropdown.style.left = (window.scrollX + rect.left) + 'px';
+        dropdown.style.top = (window.scrollY + rect.bottom + 6) + 'px';
+        dropdown.style.minWidth = Math.max(220, rect.width) + 'px';
+        dropdown.style.display = 'block';
+        searchInput.focus();
+        searchInput.select();
+    }
+
+    function closePopup(){ dropdown.style.display = 'none'; activeCell = null; }
+
+    function renderList(filter){
+        const q = (filter || '').toLowerCase().trim();
+        list.innerHTML = '';
+        const matches = INVENTORY_ITEMS.filter(it => it.toLowerCase().indexOf(q) !== -1);
+        const toShow = q === '' ? INVENTORY_ITEMS.slice(0,100) : matches.slice(0,100);
+
+        toShow.forEach(item => {
+            const row = document.createElement('div');
+            row.textContent = item;
+            Object.assign(row.style, { padding: '6px 8px', cursor: 'pointer', borderRadius: '4px' });
+            row.addEventListener('click', () => { if (!activeCell) return; activeCell.innerText = item; closePopup(); try { saveMenuProgressToLocalStorage(); applyGradientsToCells(); ensureDailyWG(); } catch(e){} });
+            row.addEventListener('mouseenter', () => row.style.background = 'rgba(0,0,0,0.04)');
+            row.addEventListener('mouseleave', () => row.style.background = '');
+            list.appendChild(row);
+        });
+
+        if (q !== '' && matches.length === 0) {
+            const addRow = document.createElement('div');
+            addRow.textContent = `Add custom: "${filter}"`;
+            Object.assign(addRow.style, { padding: '8px', fontStyle: 'italic', cursor: 'pointer', borderTop: '1px solid rgba(0,0,0,0.06)' });
+            addRow.addEventListener('click', () => { if (!activeCell) return; activeCell.innerText = filter; closePopup(); try { saveMenuProgressToLocalStorage(); applyGradientsToCells(); ensureDailyWG(); } catch(e){} });
+            list.appendChild(addRow);
+        }
+    }
+
+    function attachHandlers(){
+        const ids = [
+            'mondayMilk','tuesdayMilk','wednesdayMilk','thursdayMilk','fridayMilk',
+            'mondayfruit','tuesdayfruit','wednesdayfruit','thursdayfruit','fridayfruit',
+            'mondaybread','tuesdaybread','wednesdaybread','thursdaybread','fridaybread',
+            'mondayadd1','tuesdayadd1','wednesdayadd1','thursdayadd1','fridayadd1',
+            'mondaychoose1','tuesdaychoose1','wednesdaychoose1','thursdaychoose1','fridaychoose1',
+            'mondayfruit2','tuesdayfruit2','wednesdayfruit2','thursdayfruit2','fridayfruit2',
+            'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',
+            'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1',
+            'mondayMeals','tuesdayMeals','wednesdayMeals','thursdayMeals','fridayMeals',
+            'mondayLunchMilk','tuesdayLunchMilk','wednesdayLunchMilk','thursdayLunchMilk','fridayLunchMilk',
+            'mondayvege','tuesdayvege','wednesdayvege','thursdayvege','fridayvege',
+            'mondayfruit3','tuesdayfruit3','wednesdayfruit3','thursdayfruit3','fridayfruit3',
+            'mondayGrain','tuesdayGrain','wednesdayGrain','thursdayGrain','fridayGrain',
+            'mondayMeatAlternate','tuesdayMeatAlternate','wednesdayMeatAlternate','thursdayMeatAlternate','fridayMeatAlternate',
+            'mondayadd2','tuesdayadd2','wednesdayadd2','thursdayadd2','fridayadd2',
+            'mondaychoose2','tuesdaychoose2','wednesdaychoose2','thursdaychoose2','fridaychoose2',
+            'mondayfruit4','tuesdayfruit4','wednesdayfruit4','thursdayfruit4','fridayfruit4',
+            'mondaybread3','tuesdaybread3','wednesdaybread3','thursdaybread3','fridaybread3',
+            'mondaymeat3','tuesdaymeat3','wednesdaymeat3','thursdaymeat3','fridaymeat3'
+        ];
+
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.cursor = 'text';
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // If an autocomplete dropdown or rules menu is open, don't re-open the action popup
+                if (dropdown.style.display === 'block' || rulesMenu.style.display === 'block') return;
+                // If user clicked into an input element inside the cell, allow default (don't show popup)
+                const tg = e.target || null;
+                if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.classList && tg.classList.contains('input-box'))) return;
+                // If the action popup is already showing for this cell, don't show it again
+                if (actionCell === el && actionPopup.style.display === 'block') return;
+
+                closePopup();
+                closeActionPopup();
+                showActionPopupForCell(el);
+            });
+        });
+    }
+
+    searchInput.addEventListener('input', () => renderList(searchInput.value));
+    searchInput.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') { closePopup(); }
+        if (ev.key === 'Enter') { const first = list.firstElementChild; if (first) { first.click(); ev.preventDefault(); } }
+    });
+
+    document.addEventListener('click', (ev) => {
+        if (!dropdown.contains(ev.target) && !actionPopup.contains(ev.target) && !rulesMenu.contains(ev.target)) closePopup();
+        if (!actionPopup.contains(ev.target)) closeActionPopup();
+        if (!rulesMenu.contains(ev.target)) rulesMenu.style.display = 'none';
+    });
+    window.addEventListener('resize', closePopup);
+    window.addEventListener('scroll', closePopup, true);
+    window.addEventListener('resize', () => { rulesMenu.style.display = 'none'; });
+    window.addEventListener('scroll', () => { rulesMenu.style.display = 'none'; }, true);
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachHandlers);
+    else attachHandlers();
+})();
+</script>
+<script>
+// Clickable weekly header date editor (Mon–Fri only)
+(function(){
+    const header = document.querySelector('.weekly-header-title');
+    if (!header) return;
+
+    function formatMMDD(date) {
+        const mm = String(date.getMonth()+1).padStart(2,'0');
+        const dd = String(date.getDate()).padStart(2,'0');
+        return mm + '/' + dd;
+    }
+
+    // Use local YYYY-MM-DD formatting/parsing to avoid timezone shifts
+    function toISO(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function parseISO(v) {
+        if (!v || typeof v !== 'string') return null;
+        const parts = v.split('-').map(p => parseInt(p, 10));
+        if (parts.length !== 3 || parts.some(isNaN)) return null;
+        const [y, m, d] = parts;
+        return new Date(y, m - 1, d);
+    }
+
+    function getMondayOf(date) {
+        const d = new Date(date);
+        const dow = d.getDay(); // 0 Sun .. 6 Sat
+        const diff = (dow === 0) ? -6 : (1 - dow); // shift Sun->Mon previous, else to Monday
+        d.setDate(d.getDate() + diff);
+        d.setHours(0,0,0,0);
+        return d;
+    }
+
+    function updateWeekDatesFromMonday(monday) {
+        if (!monday) return;
+        const spans = document.querySelectorAll('.weekday-date');
+        for (let i=0;i<5;i++){
+            const d = new Date(monday); d.setDate(monday.getDate()+i);
+            if (spans[i]) spans[i].innerText = formatMMDD(d);
+        }
+        // update header
+        const friday = new Date(monday); friday.setDate(monday.getDate()+4);
+        header.innerText = `Weekly Menu: ${formatMMDD(monday)} - ${formatMMDD(friday)}`;
+        // remember for other code
+        window.nextMondayDate = monday;
+        try { updateDropdownWithDates(); saveMenuProgressToLocalStorage(); } catch(e){}
+    }
+
+    header.style.cursor = 'pointer';
+    header.title = 'Click to edit week start date (Mon–Fri)';
+
+    header.addEventListener('click', function(e){
+        e.stopPropagation();
+        // prevent multiple editors
+        if (document.getElementById('weekly-start-editor')) return;
+
+        // initial value: prefer existing weekday spans or nextMondayDate
+        let initMonday = window.nextMondayDate || null;
+        const firstSpan = document.querySelector('.weekday-date');
+        if (!initMonday && firstSpan && firstSpan.innerText.trim()) {
+            const parts = firstSpan.innerText.trim().split('/');
+            if (parts.length === 2) {
+                const now = new Date(); const year = now.getFullYear();
+                const d = new Date(`${year}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+                if (!isNaN(d)) initMonday = getMondayOf(d);
+            }
+        }
+        if (!initMonday) {
+            // compute next Monday
+            const today = new Date(); const dow = today.getDay();
+            const daysUntilNextMonday = (dow === 0) ? 1 : (8 - dow);
+            initMonday = new Date(today); initMonday.setDate(today.getDate() + daysUntilNextMonday);
+            initMonday.setHours(0,0,0,0);
+        }
+
+        // build editor
+        const container = document.createElement('span');
+        container.id = 'weekly-start-editor';
+        container.style.display = 'inline-flex';
+        container.style.gap = '8px';
+        container.style.alignItems = 'center';
+
+        const input = document.createElement('input');
+        input.type = 'date';
+        input.value = toISO(initMonday);
+        input.style.padding = '4px 8px';
+        input.style.borderRadius = '4px';
+        input.style.border = '1px solid #ccc';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button'; saveBtn.className = 'btn btn-primary btn-sm'; saveBtn.textContent = 'Save';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button'; cancelBtn.className = 'btn btn-secondary btn-sm'; cancelBtn.textContent = 'Cancel';
+
+        const note = document.createElement('small');
+        note.style.color = '#d00'; note.style.marginLeft = '6px'; note.style.display = 'none';
+
+        container.appendChild(input); container.appendChild(saveBtn); container.appendChild(cancelBtn); container.appendChild(note);
+
+        // swap header content
+        const originalText = header.innerText;
+        header.innerText = '';
+        header.appendChild(container);
+        input.focus();
+
+        function closeEditor(restory=true){
+            // remove editor UI if present and restore header styling/clickability
+            const el = document.getElementById('weekly-start-editor');
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+            if (restory) {
+                header.innerText = originalText;
+            } else {
+                // ensure header shows the updated text (compute from weekday spans if necessary)
+                const spans = document.querySelectorAll('.weekday-date');
+                if (spans && spans.length >= 5 && spans[0].innerText.trim()) {
+                    const m = spans[0].innerText.trim();
+                    const f = spans[4].innerText.trim();
+                    header.innerText = `Weekly Menu: ${m} - ${f}`;
+                }
+            }
+            header.style.cursor = 'pointer';
+            header.title = 'Click to edit week start date (Mon–Fri)';
+            header.removeAttribute('data-editing');
+        }
+
+        cancelBtn.addEventListener('click', function(){
+            // defensively remove editor and restore header (mirror save fallback)
+            try { closeEditor(true); } catch(e) { /* ignore */ }
+            setTimeout(() => {
+                const lingering = document.querySelectorAll('#weekly-start-editor');
+                lingering.forEach(n => { if (n && n.parentNode) n.parentNode.removeChild(n); });
+                // restore header text if necessary
+                if (originalText && header) header.innerText = originalText;
+                header.style.cursor = 'pointer';
+                header.title = 'Click to edit week start date (Mon–Fri)';
+                header.removeAttribute('data-editing');
+            }, 10);
+        });
+        input.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') { closeEditor(true); } if (ev.key === 'Enter') { saveBtn.click(); } });
+
+                saveBtn.addEventListener('click', function(){
+                        const v = input.value; const d = parseISO(v);
+                        if (!d) { note.innerText = 'Invalid date'; note.style.display='inline'; return; }
+                        const dow = d.getDay();
+                        if (dow === 0 || dow === 6) { note.innerText = 'Please choose a weekday (Mon–Fri)'; note.style.display='inline'; return; }
+                        // compute monday of that week
+                        const monday = getMondayOf(d);
+                        updateWeekDatesFromMonday(monday);
+                        // ensure editor is removed after any other updates settle
+                        setTimeout(() => {
+                            try { closeEditor(false); } catch(e) { /* ignore */ }
+                            // as a fallback, remove any lingering editor elements under header
+                            const lingering = document.querySelectorAll('#weekly-start-editor');
+                            lingering.forEach(n => { if (n && n.parentNode) n.parentNode.removeChild(n); });
+                            // ensure header displays expected text
+                            const spans = document.querySelectorAll('.weekday-date');
+                            if (spans && spans.length >= 5 && spans[0].innerText.trim()) {
+                                header.innerText = `Weekly Menu: ${spans[0].innerText.trim()} - ${spans[4].innerText.trim()}`;
+                            }
+                        }, 50);
+                });
+    });
+})();
+
+// Dropdown 'Edit Dates' handlers — trigger the same header editor
+(function(){
+    function openWeeklyDateEditor(){
+        const headerTitle = document.querySelector('.weekly-header-title');
+        if (headerTitle) {
+            headerTitle.click();
+        } else {
+            console.warn('weekly-header-title not found');
+        }
+    }
+
+    // Attach handlers if buttons exist (works with dynamic DOM loading)
+    document.addEventListener('click', function(e){
+        const t = e.target;
+        if (!t) return;
+        // support clicks on inner <i> or button
+        const btn = t.closest && t.closest('#editDatesBtn, #editDatesBtnMobile');
+        if (!btn) return;
+        openWeeklyDateEditor();
+        // close dropdowns if open
+        const d1 = document.getElementById('desktopMenuDropdown');
+        const d2 = document.getElementById('mobileMenuDropdown');
+        if (d1) d1.classList.remove('show');
+        if (d2) d2.classList.remove('show');
+    });
+})();
 </script>
 {% endblock %}

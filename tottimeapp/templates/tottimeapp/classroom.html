@@ -1,4 +1,4 @@
-{% extends 'tottimeapp/base.html' %}
+{% extends 'tottimeapp/base_minimal.html' %}
 {% load static %} 
 {% load custom_filters %}
 {% load dict_extras %}
@@ -28,7 +28,7 @@
     overflow: hidden;
 }
 th {
-            background-color: #272630 !important;
+            background-color: rgba(34, 37, 41, 1) !important;
             color: #ffffff !important;
         }
 body {
@@ -174,96 +174,166 @@ body {
             color: #fff;
         }
 @media (max-width: 1000px) {
-    /* Remove centering from .d-flex for the button row */
-    h1 {
-        font-size: 1.6rem !important;
-        margin: 0 !important;
-        padding: 14px 0 14px 12px !important;
-        font-weight: 600 !important;
-        text-align: left !important;
-        line-height: 1.2 !important;
-        color: #fff !important;
-        width: 100vw !important;
-        border-radius: 0 !important;
-        box-sizing: border-box !important;
-        display: block !important;
-    }
-    .mobile-classroom-bg {
-    background-color: var(--classroom-color, #272630) !important;
+  /* Hide H1; keep classroom color for the filter bar */
+  h1 { display: none !important; }
+  .mobile-classroom-bg {
+    background-color: var(--classroom-color, rgba(34, 37, 41, 1)) !important;
   }
-    .d-flex.justify-content-start.align-items-center.mt-3 {
-        flex-direction: row !important;
-        justify-content: flex-start !important;
-        align-items: center !important;
-        text-align: left !
-        gap: 8px !important; /* Optional: add spacing between items */
-    }
-    /* Prevent all .d-flex from being column on mobile */
-    .d-flex {
-        flex-direction: row !important;
-    }
-    .student-card {
-        width: 70px !important;
-        height: 90px !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-        padding-top: 2px !important;
-    }
-    .profile-picture-container,
-    .card-img-top.rounded-circle,
-    .profile-picture-container img {
-        margin-left: 4px !important;
-        width: 50px !important;
-        height: 50px !important;
-        font-size: 0.7rem !important;
-    }
-    .card-title {
-        font-size: 0.5rem !important;
-        max-width: 60px !important;      /* Limit width to fit card */
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: normal !important;  /* Allow wrapping */
-        word-break: break-word !important;
-        display: block !important;
-        margin: 0 auto !important;
-    }
-    .card-body.p-2 {
-        padding: 2px !important;
-        min-width: 0 !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-    }
-    .checkmark-overlay {
-        margin-left: -4px !important;
-        margin-top: 2px !important;
-        width: 70px !important;
-        height: 90px !important;
-    }
-    .checkmark-rectangle i {
 
-    font-size: 2rem !important; /* Adjust size of the checkmark */
+  .d-flex.justify-content-start.align-items-center.mt-3 {
+    display: none !important;
+    margin-top: 0 !important;
+  }
+
+  /* Compact cards */
+  .student-card {
+    width: 70px !important;
+    height: 90px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding-top: 2px !important;
+  }
+  .profile-picture-container,
+  .card-img-top.rounded-circle,
+  .profile-picture-container img {
+    margin-left: 4px !important;
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 0.7rem !important;
+  }
+  .card-title {
+    font-size: 0.5rem !important;
+    max-width: 60px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    display: block !important;
+    margin: 0 auto !important;
+  }
+  .card-body.p-2 {
+    padding: 2px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .checkmark-overlay {
+    margin-left: -4px !important;
+    margin-top: 2px !important;
+    width: 70px !important;
+    height: 90px !important;
+  }
+  .checkmark-rectangle i { font-size: 2rem !important; }
+  #selectButton { margin-left: 25px !important; }
+  .card-container {
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Filter bar flush under navbar */
+  #filterBarWrap {
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  #filterForm {
+    display: flex !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 10px 12px !important;
+    margin-left: 0 !important;
+    background-color: var(--classroom-color, rgba(34, 37, 41, 1)) !important;
+    border-radius: 0 !important;
+    align-items: center !important;
+    justify-content: flex-start !important;  /* left-align items */
+    gap: 12px !important;                    /* space between selects */
+  }
+
+  /* Make selects content-width; remove background caret and stretch */
+  #filterForm .form-select {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    background: transparent !important;
+    background-image: none !important;       /* remove SVG caret */
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    text-align: left !important;
+    text-align-last: left !important;
+    padding: 6px 8px !important;             /* tight padding */
+    width: auto !important;
+  }
+  #filterForm .form-select option { color: #000 !important; }
+
+  /* Wrap select + caret inline so caret is right after text */
+  #filterForm .select-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    position: relative;   /* harmless; no absolute children now */
+    width: auto !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+  #filterForm .select-wrap .form-select::-ms-expand { display: none; }
+
+  /* Arrow placed directly after the visible text */
+  #filterForm .select-wrap .select-arrow {
+    position: static !important;
+    margin-left: 4px !important;
+    transform: none !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    pointer-events: none !important;
+  }
+
+  /* Remove divider between selects */
+  #filterForm .select-wrap + .select-wrap .form-select {
+    border-left: none !important;
+  }
+
+  /* Hide desktop-only controls on mobile */
+  #selectButton,
+  #selectAllContainer,
+  #actionsContainer {
+    display: none !important;
+  }
+
+  /* Center location switcher */
+  .location-switch {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0 !important;
+    z-index: 1030;
+  }
+#filterForm { width: 100% !important; }
+#filterForm .select-wrap { flex: 0 0 auto !important; }
+#filterForm { justify-content: space-between !important; gap: 0 !important; }
+  #filterForm .select-wrap:first-child { margin-right: 0 !important; }
+  #filterForm .select-wrap:last-child { margin-left: auto !important; }
 
 }
-#selectButton {
-    margin-left: 25px !important;
-}
-.card-container {
-    justify-content: center!important;   /* Center horizontally */
-    align-items: center!important;
-}
+
+@media (min-width: 1001px) {
+  #filterForm .select-wrap .select-arrow {
+    display: none !important;
+  }
 }
     </style>
 {% endblock %}
 {% block content %}
-                <div class="d-flex justify-content-between align-items-center mt-4">
-                  <h1
-                    class="mobile-classroom-bg"
-                    style="{% if classroom and classroom.color %}--classroom-color: {{ classroom.color }};{% endif %}"
-                    >
-                    {% if classroom %}{{ classroom.name }} Classroom{% else %}My Classroom{% endif %}
-                    </h1>
-                    </div>
-
+  <h1
+    class="mobile-classroom-bg"
+    style="{% if classroom and classroom.color %}--classroom-color: {{ classroom.color }};{% endif %}"
+    >
+    {% if classroom %}{{ classroom.name }} Classroom{% else %}My Classroom{% endif %}
+    </h1>
                 <div class="d-flex justify-content-start align-items-center mt-3">
                     <button id="selectButton" class="btn btn-primaryoff me-2">Select</button>
                     <div id="selectAllContainer" class="form-check" style="display: none;">
@@ -284,25 +354,31 @@ body {
                     </div>
                 </div>
 
-                <!-- Move the Change Classroom Dropdown under the Select Button -->
-                <div class="d-flex align-items-center mt-3" style="margin-left: 10px;">
-                    <form id="filterForm" method="get" style="display: flex; gap: 10px;">
-                         <select id="statusFilter" name="status" class="form-select" style="width: auto; display: inline-block;">
-                            <option value="signed_in" {% if status_filter == 'signed_in' %}selected{% endif %}>Signed In</option>
-                            <option value="signed_out" {% if status_filter == 'signed_out' %}selected{% endif %}>Signed Out</option>
-                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
-                        </select>
-                        <select id="classroomFilter" name="classroom_id" class="form-select" style="width: auto; display: inline-block;">
-                            <option value="" {% if not classroom %}selected{% endif %}>Change Classroom</option>
-                            {% for classroom in classrooms %}
-                            <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == request.GET.classroom_id %}selected{% endif %}>
-                                {{ classroom.name }}
-                            </option> 
-                            {% endfor %}
-                        </select>
-                       
-                    </form>
-                </div>
+                <!-- Replace your filterForm selects with this structure -->
+                <div id="filterBarWrap" class="d-flex align-items-center mt-3" style="margin-left: 10px;">
+    <form id="filterForm" method="get" style="display: flex; gap: 10px;">
+    <div class="select-wrap" style="position: relative; width: auto;">
+            <select id="classroomFilter" name="classroom_id" class="form-select" style="width: auto; display: inline-block;">
+                <option value="" {% if not classroom %}selected{% endif %}>Change Classroom</option>
+                {% for classroom in classrooms %}
+                <option value="{{ classroom.id }}" {% if classroom.id|stringformat:"s" == request.GET.classroom_id %}selected{% endif %}>
+                    {{ classroom.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <span class="select-arrow" aria-hidden="true">▾</span>
+        </div>
+        <div class="select-wrap" style="position: relative; width: auto;">
+            <select id="statusFilter" name="status" class="form-select" style="width: auto; display: inline-block;">
+                <option value="signed_in" {% if status_filter == 'signed_in' %}selected{% endif %}>Signed In</option>
+                <option value="signed_out" {% if status_filter == 'signed_out' %}selected{% endif %}>Signed Out</option>
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+            </select>
+            <span class="select-arrow" aria-hidden="true">▾</span>
+        </div>
+        
+    </form>
+</div>
                 
                 <div class="container mt-4">
     <div class="card-container"> <!-- Flexbox container -->
@@ -573,6 +649,30 @@ body {
                     </div>
                 </div>
                 </div>
+
+                <!-- Mobile Bottom Navigation -->
+<div id="mobileBottomNav" class="d-md-none" style="display: flex;">
+    <!-- Deselect All -->
+    <button type="button" id="deselectAllBtn" class="btn" title="Deselect All">
+        <i class="fas fa-square"></i>
+    </button>
+    <!-- Actions Dropdown (center, prominent) -->
+    <div class="dropdown update-btn">
+        <button class="btn update-btn" type="button" id="mobileActionsButton" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 1.2rem;">
+            <i class="fas fa-magic"></i>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="mobileActionsButton">
+            <li><a class="dropdown-item" href="#" id="mobileMarkOutside">Mark Outside</a></li>
+            <li><a class="dropdown-item" href="#" id="mobileMarkInside">Mark Inside</a></li>
+            <li><a class="dropdown-item" href="#" id="mobileSignIn">Sign In</a></li>
+            <li><a class="dropdown-item" href="#" id="mobileSignOut">Sign Out</a></li>
+        </ul>
+    </div>
+    <!-- Select All -->
+    <button type="button" id="selectAllBtn" class="btn" title="Select All">
+        <i class="fas fa-check-square"></i>
+    </button>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -595,6 +695,7 @@ $(document).ready(function() {
             $('#selectAllContainer').show();
             $('#actionsContainer').show();
             $(this).text('Cancel');
+            if (window.innerWidth < 1000) $('#mobileBottomNav').show();
         } else {
             $('.student-checkbox').hide();
             $('#selectAllContainer').hide();
@@ -603,6 +704,7 @@ $(document).ready(function() {
             $('.checkmark-overlay').hide();
             $('#selectAllCheckbox').prop('checked', false);
             $(this).text('Select');
+            if (window.innerWidth < 1000) $('#mobileBottomNav').hide();
         }
     });
 
@@ -795,6 +897,12 @@ $(document).ready(function() {
     $('#markInside').on('click', function() { handleAttendanceAction('mark_inside'); });
     $('#signIn').on('click', function() { handleAttendanceAction('sign_in'); });
     $('#signOut').on('click', function() { handleAttendanceAction('sign_out'); });
+
+    // Add these for mobile actions:
+    $('#mobileMarkOutside').on('click', function() { handleAttendanceAction('mark_outside'); });
+    $('#mobileMarkInside').on('click', function() { handleAttendanceAction('mark_inside'); });
+    $('#mobileSignIn').on('click', function() { handleAttendanceAction('sign_in'); });
+    $('#mobileSignOut').on('click', function() { handleAttendanceAction('sign_out'); });
 
     // Incident report modal
     $('#addIncidentReportButton').on('click', function() {
@@ -1070,6 +1178,16 @@ $(document).ready(function() {
     }
     // Allow normal submission if not "Other"
 });
+});
+
+// Bottom nav "Select All" button
+$('#selectAllBtn').on('click', function() {
+    $('#selectAllCheckbox').prop('checked', true).trigger('change');
+});
+
+// Bottom nav "Deselect All" button
+$('#deselectAllBtn').on('click', function() {
+    $('#selectAllCheckbox').prop('checked', false).trigger('change');
 });
 </script>
 {% endblock %}

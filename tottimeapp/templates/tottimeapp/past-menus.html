@@ -1,415 +1,2588 @@
-{% extends 'tottimeapp/base.html' %}
-{% load static %} 
+{% extends 'tottimeapp/base_dynamic.html' %}
+{% load static %}
 {% load custom_filters %}
 {% load dict_extras %}
 {% block title %}Saved Weekly Menu{% endblock %}
 
 {% block styles %}
 <style>
-
-
-
+/* Base / shared styles */
 .table textarea {
-    border: none; /* Add border */
-    text-align: center; /* Center text */
-    white-space: normal; /* Allows text to wrap */
-    overflow-wrap: break-word; /* Break words to the next line */
-    resize: none; /* Prevents resizing */
-    width: 100%; /* Ensures it takes full width */
-    box-sizing: border-box; /* Include padding and border in element's total width and height */
-    min-height: auto; /* Minimum height to show */
+  border: none;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
+  resize: none;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: auto;
 }
-#weeklyMenuHeader {
-    background-color: #272630;
-    color: #ffffff;
-    text-align: center;
+/* Desktop header actions (ellipsis dropdown) */
+.weekly-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    gap: 10px;
+    width: 100%;
+    padding-right: 52px; /* reserve space for menu button */
 }
-.button-container {
-    margin-right: 10px; /* Adjust the margin as needed */
+.desktop-menu-wrapper {
+    display: flex !important;
+    align-items: center;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1250;
 }
-
-th, td {
-    border: 1px solid #dee2e6; /* Add border */
-    padding: .75rem; /* Add padding */
-    word-wrap: break-word; /* Break words to the next line */
-    vertical-align: top; /* Align content to the top */
+.desktop-menu-btn {
+    background: transparent;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
-
-/* Style for the table title */
-.table-title {
-    border-collapse: collapse; /* Collapse the borders of the table */
-    width: 100%; /* Make the table take up the entire width */
-    table-layout: auto;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px; /* Add this for rounded corners */
+.desktop-menu-btn:hover,
+.desktop-menu-btn:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+    outline: none;
+}
+.desktop-menu-dropdown {
+    position: absolute;
+    top: 110%;
+    right: 0;
+    background-color: rgba(34, 37, 41, 1);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 190px;
+    z-index: 1260;
+    display: none;
     overflow: hidden;
 }
+.desktop-menu-dropdown.show {
+    display: block;
+}
+.desktop-menu-dropdown button {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    text-align: left;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.desktop-menu-dropdown button:hover,
+.desktop-menu-dropdown button:focus {
+    background-color: rgba(57, 189, 180, 0.2);
+    outline: none;
+}
+.desktop-menu-dropdown button i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+/* Mobile menu button and dropdown */
+.mobile-menu-btn {
+  background-color: rgba(34, 37, 41, 1) !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.mobile-menu-btn:hover {
+  background-color: rgba(44, 47, 51, 1) !important;
+}
+.mobile-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 5px;
+  background-color: rgba(34, 37, 41, 1);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 180px;
+  z-index: 1150;
+  display: none;
+  overflow: hidden;
+}
+.mobile-menu-dropdown.show {
+  display: block;
+}
+.mobile-menu-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  text-align: left;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.mobile-menu-dropdown button:hover {
+  background-color: rgba(57, 189, 180, 0.2);
+}
+.mobile-menu-dropdown button i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+}
+
+#weeklyMenuHeader {
+  background-color: #272630;
+  color: #ffffff;
+  text-align: center;
+}
+
+.button-container { margin-right: 10px; }
+
+th, td {
+  border: 1px solid #dee2e6;
+  padding: .75rem;
+  word-wrap: break-word;
+  vertical-align: top;
+  position: relative;
+  z-index: 1;
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.table thead th,
+.table tbody td { text-align: left; font-weight: normal; }
+.table thead th,
+.table tbody tr:nth-child(-n+3) { font-weight: bold; }
 
 .vertical-header {
-    writing-mode: vertical-rl; /* Set text to vertical writing mode */
-    transform: rotate(180deg); /* Rotate the text 180 degrees */
-    white-space: nowrap; /* Prevent text from wrapping */
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  text-align: center;
+  font-weight: bold;
 }
 
-
-
-/* Custom button styles */
+/* Desktop row button styles */
 .btn-primary {
-    background-color: rgb(228, 218, 79); /* Change primary button color */
-    border-color: rgb(228, 218, 79);
-    color:rgb(33, 31, 39);
-    font-weight: 555;
-    
+  background-color: rgb(228, 218, 79);
+  border-color: rgb(228, 218, 79);
+  color: rgb(33, 31, 39);
+  font-weight: 555;
 }
+.btn-primary:hover { background-color: #b4ad46; border-color: #b4ad46; }
 
 .btn-success {
-    background-color: rgb(57, 189, 180); /* Change success button color */
-    border-color: rgb(57, 189, 180);
-    color:rgb(33, 31, 39);
-    font-weight: 555;
+  background-color: rgb(57, 189, 180);
+  border-color: rgb(57, 189, 180);
+  color: rgb(33, 31, 39);
+  font-weight: 555;
 }
+.btn-success:hover { background-color: #007b8a; border-color: #007b8a; }
 
-/* Additional hover styles (optional) */
-.btn-primary:hover {
-    background-color: #b4ad46;
-    border-color: #b4ad46;
-}
-
-.btn-success:hover {
-    background-color: #007b8a;
-    border-color: #007b8a;
-}
 .btn-rec {
-background-color: rgb(153, 158, 158); /* Change success button color */
-border-color: rgb(153, 158, 158);
-color: rgb(33, 31, 39);
-font-size: 17px;
-font-weight: 550;
-margin-top: 3px;
-height: 36px;
-padding: 4px 6px !important; /* Add padding for more space */
-
+  background-color: rgb(153, 158, 158);
+  border-color: rgb(153, 158, 158);
+  color: rgb(33, 31, 39);
+  font-size: 17px;
+  font-weight: 550;
+  margin-top: 3px;
+  height: 36px;
+  padding: 4px 6px !important;
 }
+.btn-rec:hover { color: #fff; background-color: rgb(54, 56, 56); border-color: rgb(54, 56, 56); }
 
-/* Additional hover styles (optional) */
-.btn-rec:hover {
-color: rgb(255, 255, 255);
-background-color: rgb(54, 56, 56);
-border-color: rgb(54, 56, 56);
-}
 .btn-primaryoff {
-            background-color: rgb(57, 189, 180); /* Change success button color */
-            border-color: rgb(57, 189, 180);
-            color: rgb(33, 31, 39);
-            font-weight: bold;
-            margin-left: 20px;
-        }
-    
-.btn-primaryoff:hover {
-            background-color: #007b8a;
-            border-color: #007b8a;
-            color: #fff;
-        }
-        .btn-secondary {
-    background-color: rgb(228, 218, 79); /* Change primary button color */
-    border-color: rgb(228, 218, 79);
-    color:rgb(33, 31, 39);
-    font-weight: 555;
-    
+  background-color: rgb(57, 189, 180);
+  border-color: rgb(57, 189, 180);
+  color: rgb(33, 31, 39);
+  font-weight: bold;
+  margin-left: 20px;
 }
+.btn-primaryoff:hover { background-color: #007b8a; border-color: #007b8a; color: #fff; }
 
-
-/* Additional hover styles (optional) */
-.btn-secondary:hover {
-    background-color: #b4ad46;
-    border-color: #b4ad46;
+.btn-secondary {
+  background-color: rgb(228, 218, 79);
+  border-color: rgb(228, 218, 79);
+  color: rgb(33, 31, 39);
+  font-weight: 555;
 }
+.btn-secondary:hover { background-color: #b4ad46; border-color: #b4ad46; }
+
 #dateRangeSelect {
-    width: 255px!important; /* Set a fixed width for the select element */
-    margin-bottom: 10px; /* Add some margin to the top */
-    margin-left: 20px; /* Add some margin to the left */
+  width: 255px !important;
+  margin-bottom: 10px;
+  margin-left: 20px;
 }
+
+/* Flush the sticky selector under the navbar and remove gaps */
+.container.mt-5 { margin-top: 0 !important; }
+.container, .container-fluid {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Override previous margins/padding and full-width layout */
+#mobileDateSelector {
+  top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+  margin: 0 !important;
+  margin-left: 0 !important;
+  padding: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+}
+
+/* Sticky mobile date selector under navbar — flush edges */
+#mobileDateSelector {
+  display: block !important;
+  position: sticky;
+  top: var(--navbar-height, 56px) !important; /* JS below will set this */
+  z-index: 1100;
+  margin: 0 !important;
+  padding: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  background-color: rgba(34, 37, 41, 1);
+}
+
+/* Force selector flush left and full-width */
+#mobileDateSelector {
+  margin-left: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important; /* override 100vw */
+}
+
+/* Remove inner wrapper padding so it hits the edge */
+#mobileDateSelector > div {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Make dropdown edge-to-edge on mobile */
+.mobile-date-dropdown {
+  width: 100% !important;   /* override 50% */
+  border-radius: 0 !important;
+}
+
+/* Safety: no page-level left gap */
+html, body {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Mobile (<=1000px) */
+@media (max-width: 1000px) {
+  /* Hide title + desktop controls, add space for bottom nav */
+  h1.mt-4 { display: none !important; }
+  .desktop-controls { display: none !important; }
+  #printableTable { margin-bottom: 80px; }
+
+.rules-legend,
+        .rules-legend-left,
+        .rules-legend-right { display: none !important; }
+
+  /* Sticky mobile date selector under navbar */
+  #mobileDateSelector {
+    display: block !important;
+    position: sticky;
+    top: 56px;
+    z-index: 1100;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    left: 0;
+    right: 0;
+    background-color: rgba(34, 37, 41, 1);
+  }
+
+  .mobile-date-picker {
+    width: 50%;
+    padding: 10px 14px;
+    font-size: 1.05rem;
+    line-height: 1.25 !important;
+    border-radius: 6px;
+    background-color: rgba(34, 37, 41, 1) !important;
+    color: #fff !important;
+    border: 1px solid #495057;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mobile-date-picker:focus,
+  .mobile-date-picker:hover { 
+    outline: none; 
+    background-color: rgba(34, 37, 41, 1) !important;
+    border-color: #6c757d;
+  }
+  .mobile-date-picker::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+  }
+
+  /* Ensure mobile bottom nav stays above content */
+  #mobileBottomNav { z-index: 1200; }
+
+  /* Remove table header (thead) on mobile */
+  .table thead { display: none !important; }
+
+  /* Hide non-day header rows (Facility/Sponsor) on mobile */
+  .table tbody tr.facility-row th,
+  .table tbody tr.sponsor-row th { display: none !important; }
+
+  /* Flush table to edges on mobile */
+  .container, #printableTable { padding-left: 0 !important; padding-right: 0 !important; margin-left: 0 !important; margin-right: 0 !important; }
+  .row { margin-left: 0 !important; margin-right: 0 !important; }
+  .col, .col-auto { padding-left: 0 !important; padding-right: 0 !important; }
+  .mt-4 { margin-left: 0 !important; margin-right: 0 !important; }
+  .table { width: 100% !important; margin: 0 !important; overflow: visible !important; }
+
+  /* Match weekly-menu but tighter; let height fit content */
+  .table th,
+  .table td {
+    padding: .28rem .3rem !important;  /* tighter than .4/.5rem */
+    font-size: 1rem !important;        /* keep font size same */
+    line-height: 1.05 !important;      /* compact line height */
+  }
+
+  .table td textarea,
+  .table textarea,
+  .table td textarea.form-control {
+    font-size: 1rem !important;        /* keep font size */
+    line-height: .9 !important;       /* increase line-height for vertical centering */
+    padding: .2rem .3rem !important;   /* minimal padding for tight fit */
+    height: auto !important;           /* let autoResize set exact height */
+    min-height: 0 !important;          /* no forced extra height */
+    overflow-y: hidden !important;     /* no scrollbar; height grows if needed */
+    text-align: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Increase line-height for section rows to center text */
+  .table tbody tr:nth-child(3) textarea,
+  .table tbody tr:nth-child(7) textarea,
+  .table tbody tr:nth-child(11) textarea,
+  .table tbody tr:nth-child(18) textarea {
+    line-height: 1.2 !important;
+  }
+
+  /* Hide ALL day columns except first on mobile */
+  .table thead tr th[data-day],
+  .table tbody tr td[data-day],
+  .table tbody tr th[data-day] { display: none !important; }
+
+  /* Keep only the first cell in each row visible on mobile */
+  .table thead tr th[data-day]:first-of-type,
+  .table tbody tr td[data-day]:first-of-type,
+  .table tbody tr th[data-day]:first-of-type { display: table-cell !important; }
+
+  /* Override to show first data cell that has class mobile-show-day */
+  .table tbody tr td.mobile-show-day:first-child,
+  .table tbody tr td[data-day].mobile-show-day { display: table-cell !important; }
+
+  /* Hide vertical section header cells on mobile to avoid duplication */
+  .table tbody tr th.vertical-header,
+  .table tbody tr td.vertical-header { display: none !important; }
+
+  /* Force table to use 2-column layout on mobile (match weekly-menu) */
+  .table tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+    position: relative;
+    z-index: auto;
+  }
+
+  /* Keep table cell display and use padding for alignment */
+  .table tbody tr td {
+    display: block !important;
+    padding: .28rem .3rem !important;  /* match tighter cell padding */
+    border: 1px solid #dee2e6 !important;
+    display: flex !important;
+    align-items: center !important; /* center vertically */
+  }
+
+  /* First column (labels) - left aligned */
+  .table tbody tr td:first-child {
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Second column (data/textareas) - center aligned */
+  .table tbody tr td:last-child {
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .table tbody tr td:last-child textarea {
+    width: 100% !important;
+    display: block !important;
+  }
+
+  /* Remove z-index from cells on mobile so headers can appear above */
+  @media (max-width: 1000px) {
+    th, td {
+      z-index: auto !important;
+    }
+  }
+
+
+  /* Section headers (mobile) — match weekly-menu style */
+  /* Breakfast starts at tbody row 3 (after Facility & Sponsor) */
+  .table tbody tr:nth-child(3)::before {
+    content: 'Breakfast';
+    display: block;
+    position: absolute;
+    left: 0; right: 0; top: -1.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.25rem;
+    border: 1px solid #dee2e6;
+    z-index: 1050;
+    grid-column: 1 / -1;
+  }
+  .table tbody tr:nth-child(3) { position: relative; margin-top: 0; z-index: 1050; }
+
+  /* AM Snack at tbody row 7 */
+  .table tbody tr:nth-child(7)::before {
+    content: 'AM Snack';
+    display: block;
+    position: absolute;
+    left: 0; right: 0; top: -1.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.25rem;
+    border: 1px solid #dee2e6;
+    z-index: 1050;
+    grid-column: 1 / -1;
+  }
+  .table tbody tr:nth-child(7) { position: relative; margin-top: 1.5rem; z-index: 1050; }
+
+  /* Lunch at tbody row 11 */
+  .table tbody tr:nth-child(11)::before {
+    content: 'Lunch';
+    display: block;
+    position: absolute;
+    left: 0; right: 0; top: -1.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.25rem;
+    border: 1px solid #dee2e6;
+    z-index: 1050;
+    grid-column: 1 / -1;
+  }
+  .table tbody tr:nth-child(11) { position: relative; margin-top: 1.5rem; z-index: 1050; }
+
+  /* PM Snack at tbody row 18 */
+  .table tbody tr:nth-child(18)::before {
+    content: 'PM Snack';
+    display: block;
+    position: absolute;
+    left: 0; right: 0; top: -1.5rem;
+    background-color: rgba(34, 37, 41, 1);
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    padding: 0.25rem;
+    border: 1px solid #dee2e6;
+    z-index: 1050;
+    grid-column: 1 / -1;
+  }
+  .table tbody tr:nth-child(18) { position: relative; margin-top: 1.5rem; z-index: 1050; }
+}
+
+/* Desktop (>=1001px) */
+@media (min-width: 1001px) {
+  #mobileDateSelector { display: none !important; }
+  #mobileBottomNav { display: none !important; }
+  :root { --desktop-table-right-gap: 24px; }
+  /* Add a right padding on the printable container to create visible gap */
+  #printableTable { padding-right: var(--desktop-table-right-gap) !important; box-sizing: border-box; }
+  
+  /* Desktop: remove fixed widths; let columns size to content */
+  .table {
+    table-layout: auto !important;
+    width: calc(100% - var(--desktop-table-right-gap)) !important; /* leave a right gap */
+    max-width: calc(100% - var(--desktop-table-right-gap)) !important;
+    box-sizing: border-box !important;
+    /* Allow dropdowns originating inside the table to overflow without being clipped */
+    overflow: visible !important;
+  }
+  .table thead th,
+  .table tbody td,
+  .table tbody th {
+    width: auto !important;
+    white-space: normal !important;
+  }
+
+  /* Desktop: ensure rows grow to fit tallest textarea/content */
+  .table tr { height: auto !important; }
+  .table td, .table th { vertical-align: top !important; }
+  .table td textarea,
+  .table textarea,
+  .table td textarea.form-control {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow-y: hidden !important;
+    box-sizing: border-box !important;
+  }
+  /* Ensure all columns are visible on desktop */
+  .table thead tr th,
+  .table tbody tr td,
+  .table tbody tr th { display: table-cell !important; }
+
+  /* Remove the low z-index on table cells at desktop so absolutely
+     positioned dropdowns inside table headers can escape the cell's
+     stacking context and appear above table contents. */
+  th, td { z-index: auto !important; }
+
+  /* Desktop: enforce visible rounded corners while allowing dropdowns
+     to overflow. Use separate border model so corner radii render cleanly. */
+  .table {
+    border-radius: 12px !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    overflow: visible !important; /* keep dropdown visible */
+  }
+
+  /* Round the visible table corners: top comes from the header cell
+     (the header spans the full width) and bottom uses the last row's
+     first/last cells. Add background-clip so border radii don't show
+     cell backgrounds past the rounded corners. */
+  #weeklyMenuHeader {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+    background-clip: padding-box !important;
+    overflow: visible !important;
+  }
+
+  .table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 12px !important;
+    background-clip: padding-box !important;
+  }
+  .table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 12px !important;
+    background-clip: padding-box !important;
+  }
+  #headerDateBtn,
+#headerDateDropdown {
+ display: none !important;
+ }
+   /* Make the native calendar icon white */
+                    #desktopDateSearch::-webkit-calendar-picker-indicator {
+                      filter: invert(1) brightness(2);
+                    }
+                    #desktopDateSearch {
+                      background: transparent;
+                      color: #fff;
+                    }
+}
+    /* =========================
+       Rules Legend Styles (copied from weekly-menu)
+       ========================= */
+    .rules-legend {
+        display: none;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        align-items: center;
+        margin: 12px 0 8px 0;
+    }
+    /* Header date dropdown styles (desktop) */
+    .header-date-wrapper { display:inline-block; position: relative; margin-right: 10px; }
+    .header-date-btn {
+      display: inline-flex; align-items: center; gap:8px; background: transparent; border: none; color: #fff; cursor: pointer; padding:6px 8px;
+      font-weight:700; border-radius:6px;
+    }
+    .header-date-dropdown { display: none; position: absolute; left: 0; top: calc(100% + 8px); background:#fff; color:#222; border:1px solid #ddd; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.12); min-width:220px; z-index:2200; max-height: 352px; overflow-y: auto; }
+    .header-date-dropdown .header-date-option { padding:8px 12px; cursor:pointer; border-bottom:1px solid #f5f5f5; }
+    .header-date-dropdown .header-date-option:last-child { border-bottom: none; }
+    .header-date-dropdown .header-date-option:hover { background:#f6f8f9; }
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: rgba(0,0,0,0.04);
+    }
+    .legend-swatch {
+        width: 28px;
+        height: 14px;
+        border-radius: 6px;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+        display:inline-block;
+    }
+    .legend-label {
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    /* Header edit icon (hidden by default, shown on desktop) */
+    .weekly-header-container { position: relative; }
+    .desktop-edit-icon {
+      display: none;
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgb(57,189,180); /* blue icon color */
+      background: transparent;
+      border: none;
+      padding: 6px 8px;
+      font-size: 1.0rem;
+      cursor: pointer;
+    }
+    .desktop-save-btn {
+      display: none;
+      position: absolute;
+      left: 44px; /* just to the right of the icon */
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgb(228,218,79); /* yellow icon color */
+      background: transparent;
+      border: none;
+      padding: 6px 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border-radius: 6px;
+      box-shadow: none;
+    }
+    /* keep the controls-row button visible by default (for tablet/mobile) */
+    #desktopEditBtnControls { display: inline-block; }
+    @media (min-width:1000px) {
+      .rules-legend {
+        display:flex;
+        justify-content: space-between; /* left button and right legend */
+        align-items: center;
+        width: 100%;
+      }
+      /* make the inner container shrink-to-fit */
+      #ruleLegendContainer,
+      .rules-legend-right .d-flex {
+        display: inline-flex !important;
+      }
+      .rules-legend-left { display: flex; align-items: center; }
+      .weekly-menus-btn { margin-left: 0; }
+      /* hide original controls-row Weekly Menus button on desktop */
+      .desktop-controls .btn-rec { display: none !important; }
+      /* On desktop, hide the controls-row select/button and show the header icon; header Save stays hidden until editing */
+      #desktopEditBtnControls { display: none !important; }
+      /* hide controls select on desktop, header dropdown will be used */
+      #dateRangeSelect { display: none !important; }
+      #desktopSaveBtn { display: none !important; }
+      .desktop-edit-icon { display: inline-block; }
+      .desktop-save-btn { display: none; }
+      /* show header save only when body has .editing class */
+      body.editing .desktop-save-btn { display: inline-block; }
+      /* header date button visible on desktop */
+      .header-date-btn { display: inline-flex; }
+    }
+
 </style>
 {% endblock %}
 
 {% block content %}
-                <h1 class="mt-4">Saved Weekly Menu</h1>
-                <div class="container mt-5" id="printableTable">
-                    <form id="menuForm" method="post"> 
-                        {% csrf_token %}
-                        <div class="row mt-3 d-flex align-items-center justify-content-start"> <!-- Added d-flex and align-items-center -->
-                            <div class="col-auto"> <!-- Use col-auto for automatic width based on content -->
-                         
-                            </div>
-                            <div class="col-auto"> <!-- Same here for the select and buttons -->
-                                <select name="dateRangeSelect" class="form-select" id="dateRangeSelect" style="width: 155px; margin-top: 20px;" required>
-                                    <option value="">-- Select a Date Range --</option>
-                                    {% for date_range in date_ranges %}
-                                        <option value="{{ date_range }}" {% if date_range == selected_range %}selected{% endif %}>{{ date_range }}</option>
-                                    {% empty %}
-                                        <option value="">No date ranges available</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-auto"> <!-- Buttons will align in the same row -->
-                                <button type="submit" id="goButton" class="btn btn-primaryoff mt-1">Go</button> <!-- mt-1 for small margin -->
-                            </div>
-                            
-                            <div class="col-auto">
-                                <button type="submit" name="save_changes" class="btn btn-secondary mt-1">Save Changes</button> <!-- mt-1 for small margin -->
-                            </div>
-                            <div class="col-auto">
-                                <a href="{% url 'menu' %}" class="btn btn-rec">Weekly Menus</a>
-                            </div>
-                           
-                        </div>
-                    
-                    {% if selected_menu_data %}
-                    <div class="mt-4">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">
-                                        Weekly Menu: {{ selected_range }}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <th scope="col" colspan="2">Facility:</th>
-                                    <th scope="col" style="text-align: center;">Monday</th>
-                                    <th scope="col" style="text-align: center;">Tuesday</th>
-                                    <th scope="col" style="text-align: center;">Wednesday</th>
-                                    <th scope="col" style="text-align: center;">Thursday</th>
-                                    <th scope="col" style="text-align: center;">Friday</th>
-                                </tr>
-                                <tr>
-                                    <th scope="col" colspan="2">Sponsor:</th>
-                                    {% for menu in selected_menu_data %}
-                                        <th style="text-align: center;">{{ menu.date|date:"m/d" }}</th>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">Breakfast</td>
-                                    <td>Fluid Milk</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="am_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fluid_milk }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Fruit, Vegetable, or Full Strength Juice</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="am_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fruit_veg }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Bread or Bread Alternate(s)</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="am_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.am_bread }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Additional Food (Optional)</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="am_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.am_additional }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">AM Snack</td>
-                                    <td>Choose 2 of these 5: Fluid Milk</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="ams_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fluid_milk }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Fruit, Vegetable, or Full Strength Juice</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="ams_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fruit_veg }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Bread or Bread Alternate(s)</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="ams_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_bread }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Meat or Meat Alternate</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="ams_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_meat }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td class="vertical-header" rowspan="7" style="font-weight: bold; text-align: center;">Lunch</td>
-                                    <td>Main Dish</td>
-                                    {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="lunch_main_dish_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_main_dish }}</textarea>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Fluid Milk</td>
-                                {% for menu in selected_menu_data %}
-                                    <td>
-                                        <textarea name="lunch_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fluid_milk }}</textarea>
-                                    </td>
-                                {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Vegetable</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="lunch_vegetable_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_vegetable }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Fruit</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="lunch_fruit_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fruit }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Grain</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="lunch_grain_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_grain }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Meat or Meat Alternate</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="lunch_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_meat }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Additional Food (Optional)</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="lunch_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_additional }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">PM Snack</td>
-                                    <td>Choose 2 of these 5: Fluid Milk</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="pm_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fluid_milk }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Fruit, Vegetable, or Full Strength Juice</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="pm_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fruit_veg }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Bread or Bread Alternate(s)</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="pm_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_bread }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
-                                <tr>
-                                    <td>Meat or Meat Alternate</td>
-                                    {% for menu in selected_menu_data %}
-                                        <td>
-                                            <textarea name="pm_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_meat }}</textarea>
-                                        </td>
-                                    {% endfor %}
-                                </tr>
+<h1 class="mt-4">Saved Weekly Menu</h1>
 
-                                                            </tbody>
-                                                        </table>
-                                </div>
-                                {% else %}
-                                <p class="mt-4" style="margin-left: 27px;">No menu data available for the selected date range.</p>
-                                {% endif %}
-                                </form>
+<div class="container mt-5" id="printableTable">
+  <form id="menuForm" method="post">
+    {% csrf_token %}
+
+    <!-- Mobile: sticky date picker (flush under navbar) -->
+    <div id="mobileDateSelector" aria-label="Date selector">
+        <div style="display: flex; justify-content: space-between; align-items: center; background-color: rgba(34, 37, 41, 1); padding: 10px;">
+        <input type="date" 
+             id="mobileDateSelect"
+             name="mobileDateSelect"
+             class="mobile-date-picker"
+             aria-label="Select Date"
+             {% if selected_date %}value="{{ selected_date|date:'Y-m-d' }}"{% endif %}
+             required>
+        <div style="position: relative;">
+          <button type="button" id="mobileMenuBtn" class="mobile-menu-btn" title="Menu" aria-label="Menu Options">
+            <i class="fas fa-ellipsis-v" style="margin-right: 10px;"></i>
+          </button>
+          <div id="mobileMenuDropdown" class="mobile-menu-dropdown">
+              <button type="button" id="generatePDFBtnMobile">
+                <i class="fas fa-file-pdf"></i>Generate PDF
+              </button>
+              <button type="button" id="exportWeeklyMenuCSVMobile">
+                <i class="fas fa-file-csv"></i>Export Menu
+              </button>
+              <button type="button" id="toggleAMSnackMobileBtn">
+                <i class="fas fa-utensils"></i>Toggle AM Snack
+              </button>
+          </div>
+        </div>
+        </div>
+    </div>
+
+
+
+    <!-- Desktop controls row (hidden on mobile) -->
+    <div class="row mt-3 d-flex align-items-center justify-content-start desktop-controls">
+      <div class="col-auto"></div>
+
+      <div class="col-auto">
+        <select name="dateRangeSelect"
+                class="form-select"
+                id="dateRangeSelect"
+                style="width: 155px; margin-top: 20px;"
+                required>
+          {% for date_range in date_ranges %}
+            <option value="{{ date_range }}" {% if date_range == selected_range %}selected{% endif %}>
+              {{ date_range }}
+            </option>
+          {% empty %}
+            <option value="">No date ranges available</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <button type="button" id="desktopEditBtnControls" class="btn btn-primary mt-1">Enable Editing</button>
+      </div>
+
+      <div class="col-auto">
+        <button type="submit" name="save_changes" class="btn btn-secondary mt-1" id="desktopSaveBtn" style="display:none;">Save Changes</button>
+      </div>
+
+      <div class="col-auto">
+        <a href="{% url 'menu' %}" class="btn btn-rec">Menus</a>
+      </div>
+    </div>
+
+
+
+
+    <div class="rules-legend" style="display:flex; align-items:center; gap:12px; justify-content:flex-start; margin-top:10px; margin-left:28px;">
+      <div class="rules-legend-left" style="flex:0 0 auto;">
+        <a href="{% url 'menu' %}" class="back-btn" title="Back to Menus" aria-label="Back to Menus" style="font-size:18px; color:inherit; text-decoration:none; display:inline-flex; align-items:center;">
+          <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        </a>
+      </div>
+      <div class="rules-legend-right" style="flex:1 1 auto;">
+        <div id="ruleLegendContainer" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+          <!-- Populated by inline script below using `rules_list_json` from context -->
+        </div>
+      </div>
+    </div>
+
+
+    {% if selected_menu_data %}
+    <div class="mt-4">
+      <table class="table">
+        <thead>
+          <tr>
+            <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">
+                <div class="weekly-header-container">
+                <button type="button" id="desktopEditBtn" class="desktop-edit-icon" title="Toggle Edit Mode" aria-label="Toggle Edit Mode">
+                  <i class="fas fa-edit" aria-hidden="true"></i>
+                </button>
+                <button type="submit" name="save_changes" id="desktopSaveBtnHeader" class="desktop-save-btn" title="Save Menu" aria-label="Save Menu">
+                  <i class="fas fa-save" aria-hidden="true"></i>
+                </button>
+                <div style="display: flex; align-items: center; gap: 0; background: rgba(34,37,41,1); z-index: 3000; position: relative;"> 
+                    <span class="weekly-header-title" style="margin-right:0; background: rgba(34,37,41,1); padding: 0 4px; position: relative; z-index: 10;">Weekly Menu:</span>
+                  <input type="date" id="desktopDateSearch" aria-label="Search by date"
+                    style="background: transparent; border: none; color: white; padding: 0; border-radius: 0; outline: none; font-size: 1em; width: 28px; min-width: 28px; max-width: 28px; cursor: pointer; margin-left: -10px; margin-right:8px; position: relative; z-index: 1;" />
+                  <span style="font-size: 1em; color: #fff; min-width: 90px; text-align: left; display: inline-block;">{{ selected_monday_str }}</span>
+                  <span style="font-size: 0.95em; color: #fff;">to <span style="color: #fff; font-weight: bold;">{{ selected_friday_str }}</span></span>
+                </div>
+
+                <div class="header-date-wrapper">
+                  <button type="button" id="headerDateBtn" class="header-date-btn" aria-haspopup="true" aria-expanded="false">
+                    <span id="headerDateLabel">{{ selected_range }}</span>
+                    <i class="fas fa-caret-down" style="margin-left:8px;"></i>
+                  </button>
+                  <div id="headerDateDropdown" class="header-date-dropdown" role="menu" aria-hidden="true">
+                    {% for date_range in date_ranges %}
+                      <div class="header-date-option" data-value="{{ date_range }}">{{ date_range }}</div>
+                    {% empty %}
+                      <div class="header-date-option" data-value="">No date ranges available</div>
+                    {% endfor %}
+                  </div>
+                </div>
+              
+                <div class="desktop-menu-wrapper" aria-label="Menu" role="group">
+                  <button type="button" id="desktopMenuBtn" class="desktop-menu-btn" title="Menu" aria-label="Menu Options">
+                    <i class="fas fa-ellipsis-v"></i>
+                  </button>
+                  <div id="desktopMenuDropdown" class="desktop-menu-dropdown" aria-hidden="true">
+                    <button type="button" id="generatePDFBtn">
+                      <i class="fas fa-file-pdf"></i>Generate PDF
+                    </button>
+                    <button type="button" id="exportWeeklyMenuCSV">
+                      <i class="fas fa-file-csv"></i>Export Menu
+        
+                    <button type="button" id="editDatesBtn" title="Edit week dates">
+                      <i class="fas fa-calendar-alt"></i>Edit Dates
+                    </button>
+                    <button type="button" id="toggleAMSnackDesktopBtn">
+                      <i class="fas fa-utensils"></i>Toggle AM Snack
+                    </button>
+                  </div>
+                </div>
+                </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="facility-row">
+            <th scope="col" colspan="2">Facility:</th>
+            <th scope="col" style="text-align: center;" data-day="monday" class="mobile-show-day">Monday</th>
+            <th scope="col" style="text-align: center;" data-day="tuesday">Tuesday</th>
+            <th scope="col" style="text-align: center;" data-day="wednesday">Wednesday</th>
+            <th scope="col" style="text-align: center;" data-day="thursday">Thursday</th>
+            <th scope="col" style="text-align: center;" data-day="friday">Friday</th>
+          </tr>
+          <tr class="sponsor-row">
+            <th scope="col" colspan="2">Sponsor:</th>
+            {% for menu in selected_menu_data %}
+              {% if forloop.counter0 == 0 %}
+                <th style="text-align: center;" data-day="monday" class="mobile-show-day">{{ menu.date|date:"m/d" }}</th>
+              {% elif forloop.counter0 == 1 %}
+                <th style="text-align: center;" data-day="tuesday">{{ menu.date|date:"m/d" }}</th>
+              {% elif forloop.counter0 == 2 %}
+                <th style="text-align: center;" data-day="wednesday">{{ menu.date|date:"m/d" }}</th>
+              {% elif forloop.counter0 == 3 %}
+                <th style="text-align: center;" data-day="thursday">{{ menu.date|date:"m/d" }}</th>
+              {% else %}
+                <th style="text-align: center;" data-day="friday">{{ menu.date|date:"m/d" }}</th>
+              {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="4">Breakfast</th>
+            <td>Fluid Milk</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td id="mondayMilk" data-day="monday" class="mobile-show-day"><textarea name="am_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td id="tuesdayMilk" data-day="tuesday"><textarea name="am_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td id="wednesdayMilk" data-day="wednesday"><textarea name="am_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td id="thursdayMilk" data-day="thursday"><textarea name="am_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fluid_milk }}</textarea></td>
+            {% else %}
+            <td id="fridayMilk" data-day="friday"><textarea name="am_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fluid_milk }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Fruit, Vegetable, or Full Strength Juice</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td id="mondayfruit" data-day="monday" class="mobile-show-day"><textarea name="am_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td id="tuesdayfruit" data-day="tuesday"><textarea name="am_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td id="wednesdayfruit" data-day="wednesday"><textarea name="am_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td id="thursdayfruit" data-day="thursday"><textarea name="am_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fruit_veg }}</textarea></td>
+            {% else %}
+            <td id="fridayfruit" data-day="friday"><textarea name="am_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.am_fruit_veg }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Bread or Bread Alternate(s)</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td id="mondaybread" data-day="monday" class="mobile-show-day"><textarea name="am_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.am_bread }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td id="tuesdaybread" data-day="tuesday"><textarea name="am_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.am_bread }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td id="wednesdaybread" data-day="wednesday"><textarea name="am_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.am_bread }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td id="thursdaybread" data-day="thursday"><textarea name="am_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.am_bread }}</textarea></td>
+            {% else %}
+            <td id="fridaybread" data-day="friday"><textarea name="am_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.am_bread }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Additional Food (Optional)</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td id="mondayadd1" data-day="monday" class="mobile-show-day"><textarea name="am_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.am_additional }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td id="tuesdayadd1" data-day="tuesday"><textarea name="am_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.am_additional }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td id="wednesdayadd1" data-day="wednesday"><textarea name="am_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.am_additional }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td id="thursdayadd1" data-day="thursday"><textarea name="am_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.am_additional }}</textarea></td>
+            {% else %}
+            <td id="fridayadd1" data-day="friday"><textarea name="am_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.am_additional }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="4">AM Snack</th>
+            <td>Choose 2 of these 5: Fluid Milk</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="ams_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="ams_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="ams_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fluid_milk }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="ams_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fluid_milk }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Fruit, Vegetable, or Full Strength Juice</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="ams_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="ams_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="ams_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fruit_veg }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="ams_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_fruit_veg }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Bread or Bread Alternate(s)</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_bread }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="ams_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_bread }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="ams_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_bread }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="ams_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_bread }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="ams_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_bread }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Meat or Meat Alternate</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_meat }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="ams_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_meat }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="ams_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_meat }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="ams_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_meat }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="ams_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.ams_meat }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="7">Lunch</th>
+            <td>Main Dish</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_main_dish_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_main_dish }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="lunch_main_dish_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_main_dish }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="lunch_main_dish_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_main_dish }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="lunch_main_dish_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_main_dish }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="lunch_main_dish_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_main_dish }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Fluid Milk</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="lunch_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="lunch_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="lunch_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fluid_milk }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="lunch_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fluid_milk }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Vegetable</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_vegetable_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_vegetable }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="lunch_vegetable_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_vegetable }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="lunch_vegetable_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_vegetable }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="lunch_vegetable_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_vegetable }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="lunch_vegetable_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_vegetable }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Fruit</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_fruit_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fruit }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="lunch_fruit_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fruit }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="lunch_fruit_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fruit }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="lunch_fruit_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fruit }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="lunch_fruit_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_fruit }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Grain</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_grain_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_grain }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="lunch_grain_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_grain }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="lunch_grain_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_grain }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="lunch_grain_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_grain }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="lunch_grain_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_grain }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Meat or Meat Alternate</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_meat }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="lunch_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_meat }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="lunch_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_meat }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="lunch_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_meat }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="lunch_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_meat }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Additional Food (Optional)</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_additional }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="lunch_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_additional }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="lunch_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_additional }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="lunch_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_additional }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="lunch_additional_{{ forloop.counter0 }}" class="form-control">{{ menu.lunch_additional }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="4">PM Snack</th>
+            <td>Choose 2 of these 5: Fluid Milk</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="pm_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="pm_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fluid_milk }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="pm_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fluid_milk }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="pm_fluid_milk_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fluid_milk }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Fruit, Vegetable, or Full Strength Juice</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="pm_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="pm_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fruit_veg }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="pm_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fruit_veg }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="pm_fruit_veg_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_fruit_veg }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Bread or Bread Alternate(s)</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_bread }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="pm_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_bread }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="pm_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_bread }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="pm_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_bread }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="pm_bread_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_bread }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          <tr>
+            <td>Meat or Meat Alternate</td>
+            {% for menu in selected_menu_data %}
+            {% if forloop.counter0 == 0 %}
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_meat }}</textarea></td>
+            {% elif forloop.counter0 == 1 %}
+            <td data-day="tuesday"><textarea name="pm_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_meat }}</textarea></td>
+            {% elif forloop.counter0 == 2 %}
+            <td data-day="wednesday"><textarea name="pm_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_meat }}</textarea></td>
+            {% elif forloop.counter0 == 3 %}
+            <td data-day="thursday"><textarea name="pm_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_meat }}</textarea></td>
+            {% else %}
+            <td data-day="friday"><textarea name="pm_meat_{{ forloop.counter0 }}" class="form-control">{{ menu.pm_meat }}</textarea></td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="mt-4">
+      <table class="table">
+        <thead>
+          <tr>
+            <th id="weeklyMenuHeader" scope="col" colspan="7" style="text-align: center;">
+              Weekly Menu: {% if selected_date %}{{ selected_date|date:"m/d/Y" }}{% endif %}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="facility-row">
+            <th scope="col" colspan="2">Facility:</th>
+            <th scope="col" style="text-align: center;" data-day="monday" class="mobile-show-day">Monday</th>
+            <th scope="col" style="text-align: center;" data-day="tuesday">Tuesday</th>
+            <th scope="col" style="text-align: center;" data-day="wednesday">Wednesday</th>
+            <th scope="col" style="text-align: center;" data-day="thursday">Thursday</th>
+            <th scope="col" style="text-align: center;" data-day="friday">Friday</th>
+          </tr>
+          <tr class="sponsor-row">
+            <th scope="col" colspan="2">Sponsor:</th>
+            <th style="text-align: center;" data-day="monday" class="mobile-show-day">Date</th>
+            <th style="text-align: center;" data-day="tuesday">Date</th>
+            <th style="text-align: center;" data-day="wednesday">Date</th>
+            <th style="text-align: center;" data-day="thursday">Date</th>
+            <th style="text-align: center;" data-day="friday">Date</th>
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="4">Breakfast</th>
+            <td>Fluid Milk</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="am_fluid_milk_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="am_fluid_milk_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="am_fluid_milk_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="am_fluid_milk_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="am_fluid_milk_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Fruit, Vegetable, or Full Strength Juice</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="am_fruit_veg_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="am_fruit_veg_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="am_fruit_veg_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="am_fruit_veg_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="am_fruit_veg_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Bread or Bread Alternate(s)</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="am_bread_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="am_bread_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="am_bread_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="am_bread_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="am_bread_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Additional Food (Optional)</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="am_additional_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="am_additional_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="am_additional_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="am_additional_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="am_additional_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="4">AM Snack</th>
+            <td>Choose 2 of these 5: Fluid Milk</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_fluid_milk_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="ams_fluid_milk_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="ams_fluid_milk_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="ams_fluid_milk_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="ams_fluid_milk_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Fruit, Vegetable, or Full Strength Juice</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_fruit_veg_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="ams_fruit_veg_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="ams_fruit_veg_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="ams_fruit_veg_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="ams_fruit_veg_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Bread or Bread Alternate(s)</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_bread_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="ams_bread_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="ams_bread_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="ams_bread_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="ams_bread_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Meat or Meat Alternate</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="ams_meat_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="ams_meat_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="ams_meat_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="ams_meat_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="ams_meat_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="7">Lunch</th>
+            <td>Main Dish</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_main_dish_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="lunch_main_dish_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="lunch_main_dish_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="lunch_main_dish_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="lunch_main_dish_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Fluid Milk</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_fluid_milk_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="lunch_fluid_milk_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="lunch_fluid_milk_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="lunch_fluid_milk_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="lunch_fluid_milk_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Vegetable</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_vegetable_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="lunch_vegetable_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="lunch_vegetable_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="lunch_vegetable_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="lunch_vegetable_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Fruit</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_fruit_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="lunch_fruit_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="lunch_fruit_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="lunch_fruit_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="lunch_fruit_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Grain</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_grain_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="lunch_grain_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="lunch_grain_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="lunch_grain_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="lunch_grain_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Meat or Meat Alternate</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_meat_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="lunch_meat_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="lunch_meat_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="lunch_meat_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="lunch_meat_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Additional Food (Optional)</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="lunch_additional_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="lunch_additional_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="lunch_additional_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="lunch_additional_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="lunch_additional_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <th class="vertical-header" scope="row" rowspan="4">PM Snack</th>
+            <td>Choose 2 of these 5: Fluid Milk</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_fluid_milk_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="pm_fluid_milk_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="pm_fluid_milk_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="pm_fluid_milk_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="pm_fluid_milk_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Fruit, Vegetable, or Full Strength Juice</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_fruit_veg_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="pm_fruit_veg_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="pm_fruit_veg_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="pm_fruit_veg_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="pm_fruit_veg_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Bread or Bread Alternate(s)</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_bread_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="pm_bread_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="pm_bread_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="pm_bread_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="pm_bread_4" class="form-control"></textarea></td>
+          </tr>
+          <tr>
+            <td>Meat or Meat Alternate</td>
+            <td data-day="monday" class="mobile-show-day"><textarea name="pm_meat_0" class="form-control"></textarea></td>
+            <td data-day="tuesday"><textarea name="pm_meat_1" class="form-control"></textarea></td>
+            <td data-day="wednesday"><textarea name="pm_meat_2" class="form-control"></textarea></td>
+            <td data-day="thursday"><textarea name="pm_meat_3" class="form-control"></textarea></td>
+            <td data-day="friday"><textarea name="pm_meat_4" class="form-control"></textarea></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </form>
+
+  <!-- Mobile Bottom Navigation (visible on mobile via base_minimal CSS) -->
+  <div id="mobileBottomNav" role="navigation" aria-label="Page actions">
+    <a class="btn" href="{% url 'menu' %}" aria-label="Weekly Menus">
+      <i class="fas fa-list" aria-hidden="true"></i>
+      <span class="visually-hidden">Weekly Menus</span>
+    </a>
+    <button class="btn update-btn" id="mobileEditBtn" aria-label="Enable Editing">
+      <i class="fas fa-edit" aria-hidden="true"></i>
+      <span class="visually-hidden">Enable Editing</span>
+    </button>
+    <button class="btn update-btn" id="mobileSaveBtn" aria-label="Save Changes" style="display:none;">
+      <i class="fas fa-save" aria-hidden="true"></i>
+      <span class="visually-hidden">Save Changes</span>
+    </button>
+    <button class="btn" id="mobileBackBtn" aria-label="Previous Page" onclick="history.back()">
+      <i class="fas fa-arrow-left" aria-hidden="true"></i>
+      <span class="visually-hidden">Previous Page</span>
+    </button>
+    <button class="btn" id="mobileCancelBtn" aria-label="Cancel" style="display:none;">
+      <i class="fas fa-times" aria-hidden="true"></i>
+      <span class="visually-hidden">Cancel</span>
+    </button>
+  </div>
+</div>
 {% endblock %}
+
 {% block scripts %}
+    <script>
+      (function(){
+        try{
+          var rules = {{ rules_list_json|safe }} || [];
+          var container = document.getElementById('ruleLegendContainer');
+          if(!container || !rules.length) return;
+          rules.forEach(function(r){
+            var item = document.createElement('div');
+            item.className = 'legend-item';
+            var swatch = document.createElement('div');
+            swatch.className = 'legend-swatch';
+            swatch.style.background = 'linear-gradient(90deg,' + (r.gradient_start || 'rgba(200,200,200,0.3)') + ',' + (r.gradient_end || 'rgba(240,240,240,0.5)') + ')';
+            var label = document.createElement('span');
+            label.className = 'legend-label';
+            label.textContent = r.rule || '';
+            item.appendChild(swatch);
+            item.appendChild(label);
+            container.appendChild(item);
+          });
+        }catch(e){/* fail silently */}
+      })();
+    </script>
 <script>
-                        function getCookie(name) {
-                            let cookieValue = null;
-                            if (document.cookie && document.cookie !== '') {
-                                const cookies = document.cookie.split(';');
-                                for (let i = 0; i < cookies.length; i++) {
-                                    const cookie = cookies[i].trim();
-                                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                                        break;
-                                    }
-                                }
-                            }
-                            return cookieValue;
-                        }
-        
-                        const csrftoken = getCookie('csrftoken');
-        
-                        window.onload = function() {
-                            const today = new Date();
-                            const pastWeekdays = [];
-                            let count = 0;
-        
-                            for (let i = 1; count < 5; i++) {
-                                const day = new Date(today);
-                                day.setDate(today.getDate() - i);
-                                if (day.getDay() !== 0 && day.getDay() !== 6) { // 0 = Sunday, 6 = Saturday
-                                    pastWeekdays.push(day.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }));
-                                    count++;
-                                }
-                            }
-        
-                            const dateRangeSelect = document.getElementById('dateRangeSelect');
-                            for (let i = 0; i < pastWeekdays.length - 1; i++) {
-                                const option = document.createElement('option');
-                                option.value = `${pastWeekdays[i]} - ${pastWeekdays[i + 1]}`;
-                                option.text = `${pastWeekdays[i]} - ${pastWeekdays[i + 1]}`;
-                                dateRangeSelect.add(option);
-                            }
-                        }
-                    </script>
-                    <script>
-                        document.addEventListener('DOMContentLoaded', function () {
-                            const textareas = document.querySelectorAll('.table textarea');
-                    
-                            textareas.forEach(textarea => {
-                                textarea.addEventListener('input', autoResize);
-                                // Initial resize on page load
-                                autoResize.call(textarea);
-                            });
-                    
-                            function autoResize() {
-                                this.style.height = 'auto'; // Reset height
-                                this.style.height = this.scrollHeight + 'px'; // Set to the scroll height
-                            }
-                        });
+// --- Menu dropdowns and export logic (copied/adapted from weekly-menu.html) ---
+// Mobile menu dropdown toggle
+$('#mobileMenuBtn').on('click', function(e) {
+  e.stopPropagation();
+  $('#mobileMenuDropdown').toggleClass('show');
+});
+// Desktop header dropdown toggle
+$('#desktopMenuBtn').on('click', function(e) {
+  e.stopPropagation();
+  $('#desktopMenuDropdown').toggleClass('show');
+});
+// Close dropdown when clicking outside
+$(document).on('click', function(e) {
+  if (!$(e.target).closest('#mobileMenuBtn, #mobileMenuDropdown, #desktopMenuBtn, #desktopMenuDropdown').length) {
+    $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
+  }
+});
+// Generate PDF button - prints full table regardless of screen size
+$(document).on('click', '#generatePDFBtn, #generatePDFBtnMobile', function(e) {
+  e.preventDefault();
+  $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
+  const isMobile = window.innerWidth <= 1000;
+  const mobileShowElements = document.querySelectorAll('.mobile-show-day');
+  const allDayElements = document.querySelectorAll('[data-day]');
+  const verticalHeaders = document.querySelectorAll('.vertical-header');
+  const tbody = document.querySelector('.table tbody');
+  const thead = document.querySelector('.table thead');
+  const allRows = document.querySelectorAll('.table tbody tr');
+  const originalStyles = {
+    body: tbody ? tbody.style.cssText : '',
+    head: thead ? thead.style.cssText : '',
+  };
+  const printStyle = document.createElement('style');
+  printStyle.id = 'temp-print-style';
+  printStyle.innerHTML = `
+    body.printing-pdf { overflow-x: visible !important; max-width: none !important; }
+    body.printing-pdf .table { table-layout: fixed !important; width: 100% !important; }
+    body.printing-pdf .table thead { display: table-header-group !important; }
+    body.printing-pdf .table tbody { display: table-row-group !important; background-color: #fff !important; }
+    body.printing-pdf .table tbody tr { display: table-row !important; grid-template-columns: none !important; margin-top: 0 !important; margin-left: 0 !important; width: auto !important; position: static !important; }
+    body.printing-pdf .table tbody tr::before { content: none !important; display: none !important; }
+    body.printing-pdf .table tbody tr td, body.printing-pdf .table tbody tr th, body.printing-pdf .table thead tr th { display: table-cell !important; padding: 0.2rem !important; font-size: 0.65rem !important; line-height: 1.1 !important; word-wrap: break-word !important; overflow-wrap: break-word !important; }
+    body.printing-pdf .table tbody tr td.vertical-header { display: table-cell !important; writing-mode: vertical-rl !important; transform: rotate(180deg) !important; white-space: nowrap !important; box-sizing: border-box; width: 24px; min-width: 24px; max-width: 24px; padding: 2px 1px; text-align: center !important; font-size: 0.7rem !important; }
+    body.printing-pdf .table thead tr th[data-day], body.printing-pdf .table tbody tr td[data-day], body.printing-pdf .table tbody tr th[data-day] { display: table-cell !important; }
+    body.printing-pdf #mobileDateSelector, body.printing-pdf #mobileBottomNav { display: none !important; }
+    body.printing-pdf .container { padding-left: 10px !important; padding-right: 10px !important; margin-left: auto !important; margin-right: auto !important; max-width: 100% !important; }
+    body.printing-pdf #printableTable { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    @media print {
+      h1, .sb-topnav, .sb-sidenav-footer, .button-container, #generateMenuBtn, #saveMenuBtn, #mobileDateSelector, #mobileBottomNav { display: none !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { margin: 0; padding: 0; width: 100%; }
+      .container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+      .table { table-layout: fixed !important; width: 100% !important; border-collapse: collapse !important; }
+      .table thead { display: table-header-group !important; }
+      .table tbody { display: table-row-group !important; }
+      .table tbody tr { display: table-row !important; grid-template-columns: none !important; position: static !important; margin: 0 !important; page-break-inside: avoid !important; }
+      .table tbody tr::before { content: none !important; display: none !important; }
+      .table tbody tr td.vertical-header { display: table-cell !important; writing-mode: vertical-rl !important; transform: rotate(180deg) !important; white-space: nowrap !important; width: 24px !important; min-width: 24px !important; max-width: 24px !important; padding: 2px 1px !important; font-size: 0.7rem !important; }
+      .table thead tr th, .table tbody tr td, .table tbody tr th { display: table-cell !important; padding: 0.2rem 0.15rem !important; font-size: 0.6rem !important; line-height: 1.1 !important; word-wrap: break-word !important; white-space: normal !important; overflow-wrap: break-word !important; }
+      .table tbody tr td:nth-child(2) { width: 18% !important; font-size: 0.58rem !important; }
+      .table tbody tr td[data-day], .table thead tr th[data-day] { width: 13.5% !important; }
+      .table thead tr th { font-size: 0.65rem !important; padding: 0.25rem !important; }
+      #weeklyMenuHeader { font-size: 0.75rem !important; padding: 0.3rem !important; }
+      .vertical-header { writing-mode: vertical-rl !important; transform: rotate(180deg) !important; white-space: nowrap !important; }
+      @page { size: landscape; margin: 0.3in 0.25in; }
+    }
+  `;
+  document.head.appendChild(printStyle);
+  document.body.classList.add('printing-pdf');
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      const tempStyle = document.getElementById('temp-print-style');
+      if (tempStyle) tempStyle.remove();
+      document.body.classList.remove('printing-pdf');
+      allDayElements.forEach(el => { el.style.display = ''; });
+      verticalHeaders.forEach(el => { el.style.padding = ''; });
+      allRows.forEach(row => { row.style.marginTop = ''; });
+      if (tbody) tbody.style.cssText = originalStyles.body;
+      if (thead) thead.style.cssText = originalStyles.head;
+      if (isMobile) {
+        const daySelect = document.getElementById('mobileDateSelect');
+        const selectedDay = daySelect ? daySelect.value : 'monday';
+        document.querySelectorAll('[data-day]').forEach(el => el.classList.remove('mobile-show-day'));
+        document.querySelectorAll(`[data-day="${selectedDay}"]`).forEach(el => el.classList.add('mobile-show-day'));
+      }
+    }, 500);
+  }, 100);
+});
+function exportWeeklyMenuCSV() {
+  const table = document.querySelector('.table');
+  if (!table) return;
+  const getText = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+  const rows = [];
+  const headerTitle = document.querySelector('.weekly-header-title');
+  if (headerTitle) rows.push([getText(headerTitle)]);
+  const thead = table.querySelector('thead');
+  if (thead) thead.querySelectorAll('tr').forEach(tr => { rows.push(Array.from(tr.children).map(getText)); });
+  const tbody = table.querySelector('tbody');
+  if (tbody) {
+    Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+      const cells = Array.from(tr.children);
+      if (cells[0] && cells[0].classList.contains('vertical-header')) { rows.push([getText(cells[0])]); return; }
+      rows.push(cells.map(getText));
+    });
+  }
+  const toCSVLine = (arr) => arr.map(v => {
+    const s = v == null ? '' : String(v);
+    const escaped = s.replace(/"/g, '""');
+    return /[",\n]/.test(s) ? `"${escaped}"` : escaped;
+  }).join(',');
+  const csv = rows.map(toCSVLine).join('\n');
+  let fileName = 'weekly-menu.csv';
+  const titleText = getText(headerTitle);
+  const match = titleText.match(/Weekly Menu:\s*([0-9/]+)\s*-\s*([0-9/]+)/i);
+  if (match) fileName = `weekly-menu-${match[1].replace(/\//g, '-')}-to-${match[2].replace(/\//g, '-')}.csv`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
+}
+$(document).on('click', '#exportWeeklyMenuCSV, #exportWeeklyMenuCSVMobile', function(e) { e.preventDefault(); exportWeeklyMenuCSV(); });
+// Edit Dates button - focus the desktop date selector if present
+$(document).on('click', '#editDatesBtn, #editDatesBtnMobile', function(e) {
+  e.preventDefault();
+  $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
+  const el = document.getElementById('dateRangeSelect');
+  if (el) { try { el.focus(); } catch(e) {} }
+});
+
+// Toggle AM Snack: find the vertical-header row whose text contains 'AM Snack'
+function toggleAMSnackMobile(forceShow) {
+  const th = Array.from(document.querySelectorAll('th.vertical-header')).find(t => (t.textContent||'').trim().toLowerCase().includes('am snack'));
+  if (!th) return;
+  const firstRow = th.closest('tr');
+  const rowspan = parseInt(th.getAttribute('rowspan') || '1', 10);
+  const rows = [firstRow];
+  let cur = firstRow;
+  for (let i = 1; i < rowspan; i++) { if (cur.nextElementSibling) { cur = cur.nextElementSibling; rows.push(cur); } }
+
+  // Determine current state: hidden if all rows are display none or inline style
+  const isHidden = rows.every(r => (r.style.display === 'none' || window.getComputedStyle(r).display === 'none'));
+  // If forceShow is boolean, use it. Otherwise, if hidden, show; if visible, hide.
+  const shouldShow = typeof forceShow === 'boolean' ? forceShow : isHidden;
+
+  if (shouldShow) {
+    rows.forEach(r => { r.style.removeProperty('display'); });
+  } else {
+    rows.forEach(r => { try { r.style.setProperty('display', 'none', 'important'); } catch(e) { r.style.display = 'none'; } });
+  }
+}
+
+// Desktop dropdown: Toggle AM Snack
+$(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
+  e.preventDefault();
+  $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
+  toggleAMSnackMobile();
+});
+
+// Mobile dropdown: Toggle AM Snack
+$(document).on('click', '#toggleAMSnackMobileBtn', function(e) {
+  e.preventDefault();
+  $('#mobileMenuDropdown, #desktopMenuDropdown').removeClass('show');
+  toggleAMSnackMobile();
+});
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+window.onload = function() {
+  const today = new Date();
+  const pastWeekdays = [];
+  let count = 0;
+
+  for (let i = 1; count < 5; i++) {
+    const day = new Date(today);
+    day.setDate(today.getDate() - i);
+    if (day.getDay() !== 0 && day.getDay() !== 6) {
+      pastWeekdays.push(day.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }));
+      count++;
+    }
+  }
+
+  const desktopSelect = document.getElementById('dateRangeSelect');
+  const mobileSelect = document.getElementById('mobileDateRangeSelect');
+
+  function addOptions(sel) {
+    if (!sel) return;
+    for (let i = 0; i < pastWeekdays.length - 1; i++) {
+      const value = `${pastWeekdays[i]} - ${pastWeekdays[i + 1]}`;
+      const exists = Array.from(sel.options).some(o => o.value === value);
+      if (!exists) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.text = value;
+        sel.add(option);
+      }
+    }
+  }
+
+  addOptions(desktopSelect);
+  addOptions(mobileSelect);
+
+  // Align initial value
+  if (desktopSelect && mobileSelect) {
+    mobileSelect.value = desktopSelect.value || mobileSelect.value;
+  }
+};
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const textareas = document.querySelectorAll('.table textarea');
+  let editMode = false;
+
+  // Set all textareas to readonly by default
+  textareas.forEach(textarea => {
+    textarea.setAttribute('readonly', true);
+    textarea.addEventListener('input', autoResize);
+    autoResize.call(textarea);
+  });
+
+  function autoResize() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+  }
+
+  // Recalculate heights on window resize to keep rows fitting content
+  function resizeAllTextareas() {
+    textareas.forEach(t => {
+      t.style.height = 'auto';
+      t.style.height = t.scrollHeight + 'px';
+    });
+  }
+  window.addEventListener('resize', resizeAllTextareas);
+
+  // Apply gradient colors based on inventory rules
+  let inventoryRulesCache = null;
+  const WG_DEFAULT_STYLE = {
+    gradient_start: "rgba(153,158,158,0.25)",
+    gradient_end: "rgba(57,189,180,0.18)",
+    text_color: "#21201f"
+  };
+
+  // Assigned rules provided server-side for these saved menus (cell_id -> rule attrs)
+  const assignedRulesFromServer = {{ assigned_rules_json|default:'{}'|safe }};
+
+  async function fetchInventoryRules() {
+    if (inventoryRulesCache) return inventoryRulesCache;
+    try {
+      const response = await fetch('/api/fetch_inventory_rules/', {
+        method: 'GET',
+        headers: { 'X-CSRFToken': csrftoken }
+      });
+      const data = await response.json();
+      inventoryRulesCache = data.item_rules || {};
+      return inventoryRulesCache;
+    } catch (error) {
+      console.error('Error fetching inventory rules:', error);
+      return {};
+    }
+  }
+
+  async function applyGradientsToCells() {
+    const itemRules = await fetchInventoryRules();
+    
+    // Find all textareas only in the table body
+    const tableBody = document.querySelector('.table tbody');
+    if (!tableBody) return;
+    
+    const tableTextareas = tableBody.querySelectorAll('textarea');
+    
+    tableTextareas.forEach(textarea => {
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      const parentTd = textarea.closest('td');
+      if (!parentTd) return;
+      // Respect manual/background already set by server or user: do not remove it.
+      const existingBg = (parentTd.style.background || textarea.style.background || '').trim();
+      const existingColor = (parentTd.style.color || textarea.style.color || '').trim();
+
+      // Build a canonical cell id used for assigned rules: prefer td id, otherwise map textarea name to weekly-menu id
+      const day = parentTd.dataset.day || '';
+      const nameAttr = textarea.name || '';
+      const nameNoIndex = nameAttr.replace(/_\d+$/, '');
+      // Map common field names to the ids used in weekly-menu.html
+      const fieldIdMap = {
+        'am_fluid_milk': 'Milk',
+        'am_fruit_veg': 'fruit',
+        'am_bread': 'bread',
+        'am_additional': 'add1',
+        'ams_fluid_milk': 'choose1',
+        'ams_fruit_veg': 'fruit2',
+        'ams_bread': 'bread2',
+        'ams_meat': 'meat1',
+        'lunch_main_dish': 'Meals',
+        'lunch_fluid_milk': 'LunchMilk',
+        'lunch_vegetable': 'vege',
+        'lunch_fruit': 'fruit3',
+        'lunch_grain': 'Grain',
+        'lunch_meat': 'MeatAlternate',
+        'lunch_additional': 'add2',
+        'pm_fluid_milk': 'choose2',
+        'pm_fruit_veg': 'fruit4',
+        'pm_bread': 'bread3',
+        'pm_meat': 'meat3'
+      };
+
+      // If the parent cell already has an id, use that (matches weekly-menu ids)
+      let cellId = (parentTd.id || '').toString();
+      if (!cellId) {
+        const mapped = fieldIdMap[nameNoIndex] || null;
+        if (mapped) {
+          cellId = (day + mapped).toLowerCase();
+        } else {
+          // Fallback: collapse name parts (previous behavior)
+          let nameKey = nameNoIndex.includes('_') ? nameNoIndex.split('_').slice(1).join('_') : nameNoIndex;
+          nameKey = nameKey.replace(/_/g, '');
+          cellId = (day + nameKey).toLowerCase();
+        }
+      } else {
+        cellId = cellId.toLowerCase();
+      }
+
+      // Prefer server-assigned rule for this specific cell if present
+      const assignedRule = assignedRulesFromServer && assignedRulesFromServer[cellId] ? assignedRulesFromServer[cellId] : null;
+
+      const rule = itemRules[text];
+
+      if (existingBg && existingBg !== 'transparent') {
+        // There's a manual background present — don't overwrite it.
+        // Still attach rule metadata if we can, and ensure readable text color.
+        if (rule) {
+          parentTd.dataset.ruleId = rule.id || '';
+          // Only set text color if none explicitly set
+          if (!existingColor) {
+            parentTd.style.color = rule.text_color || WG_DEFAULT_STYLE.text_color;
+            textarea.style.color = rule.text_color || WG_DEFAULT_STYLE.text_color;
+          }
+        } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i.test(text)) {
+          const s = WG_DEFAULT_STYLE;
+          if (!existingColor) {
+            parentTd.style.color = s.text_color;
+            textarea.style.color = s.text_color;
+          }
+        }
+        return; // preserve manual background
+      }
+
+      // No manual background — apply rule or WG default as before
+      if (assignedRule) {
+        // Apply server-assigned rule regardless of text matching
+        parentTd.style.background = `linear-gradient(135deg, ${assignedRule.gradient_start}, ${assignedRule.gradient_end})`;
+        parentTd.style.color = assignedRule.text_color;
+        textarea.style.background = 'transparent';
+        textarea.style.color = assignedRule.text_color;
+        parentTd.dataset.ruleId = assignedRule.id || '';
+      } else if (rule) {
+        parentTd.style.background = `linear-gradient(135deg, ${rule.gradient_start}, ${rule.gradient_end})`;
+        parentTd.style.color = rule.text_color;
+        textarea.style.background = 'transparent';
+        textarea.style.color = rule.text_color;
+        parentTd.dataset.ruleId = rule.id || '';
+      } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i.test(text)) {
+        const s = WG_DEFAULT_STYLE;
+        parentTd.style.background = `linear-gradient(135deg, ${s.gradient_start}, ${s.gradient_end})`;
+        parentTd.style.color = s.text_color;
+        textarea.style.background = 'transparent';
+        textarea.style.color = s.text_color;
+      }
+    });
+  }
+
+  // Apply gradients on load and after any changes
+  applyGradientsToCells();
+  // Ensure initial heights are correct after styles/fonts apply
+  resizeAllTextareas();
+
+  // Reapply gradients after textarea changes
+  textareas.forEach(textarea => {
+    textarea.addEventListener('blur', applyGradientsToCells);
+  });
+
+  // Desktop date range auto-submit
+  const desktopSelect = document.getElementById('dateRangeSelect');
+  const form = document.getElementById('menuForm');
+  
+  if (desktopSelect && form) {
+    desktopSelect.addEventListener('change', function () {
+      if (this.value) {
+        form.submit();
+      }
+    });
+  }
+
+  // Mobile date picker auto-submit
+  const mobileDatePicker = document.getElementById('mobileDateSelect');
+  if (mobileDatePicker && form) {
+    mobileDatePicker.addEventListener('change', function () {
+      if (this.value) {
+        form.submit();
+      }
+    });
+  }
+
+  // Toggle edit mode function
+  function toggleEditMode() {
+    editMode = !editMode;
+    const mobileEditBtn = document.getElementById('mobileEditBtn');
+    const mobileSaveBtn = document.getElementById('mobileSaveBtn');
+    const mobileBackBtn = document.getElementById('mobileBackBtn');
+    const mobileCancelBtn = document.getElementById('mobileCancelBtn');
+    const desktopEditBtn = document.getElementById('desktopEditBtn'); // header icon
+    const desktopEditBtnControls = document.getElementById('desktopEditBtnControls'); // controls-row full text button
+    const desktopSaveBtn = document.getElementById('desktopSaveBtn');
+    const desktopSaveBtnHeader = document.getElementById('desktopSaveBtnHeader');
+
+    // When toggling edit mode ON we do NOT make textareas writable immediately.
+    // The intended flow: toggle edit mode enables the per-cell action popup; the
+    // user must click a cell then choose "Edit Item" to make that cell's textarea
+    // editable. When toggling edit mode OFF we ensure all textareas are readonly.
+    if (!editMode) {
+      // turning editing OFF -> set all textareas readonly to lock edits
+      textareas.forEach(textarea => textarea.setAttribute('readonly', true));
+    }
+
+    // Toggle mobile button visibility
+    if (mobileEditBtn && mobileSaveBtn) {
+      if (editMode) {
+        mobileEditBtn.style.display = 'none';
+        mobileSaveBtn.style.display = 'block';
+        mobileBackBtn.style.display = 'none';
+        mobileCancelBtn.style.display = 'block';
+      } else {
+        mobileEditBtn.style.display = 'block';
+        mobileSaveBtn.style.display = 'none';
+        mobileBackBtn.style.display = 'block';
+        mobileCancelBtn.style.display = 'none';
+      }
+    }
+
+    // Toggle desktop button/icon and controls-row button
+    if (desktopSaveBtn) {
+      desktopSaveBtn.style.display = editMode ? 'inline-block' : 'none';
+    }
+    if (desktopSaveBtnHeader) {
+      desktopSaveBtnHeader.style.display = editMode ? 'inline-block' : 'none';
+    }
+
+    if (desktopEditBtnControls) {
+      if (editMode) {
+        desktopEditBtnControls.textContent = 'Disable Editing';
+        desktopEditBtnControls.classList.remove('btn-primary');
+        desktopEditBtnControls.classList.add('btn-success');
+      } else {
+        desktopEditBtnControls.textContent = 'Enable Editing';
+        desktopEditBtnControls.classList.remove('btn-success');
+        desktopEditBtnControls.classList.add('btn-primary');
+      }
+    }
+
+    if (desktopEditBtn) {
+      if (editMode) {
+        desktopEditBtn.innerHTML = '<i class="fas fa-times"></i>';
+        desktopEditBtn.setAttribute('title', 'Disable Editing');
+        desktopEditBtn.setAttribute('aria-label', 'Disable Editing');
+      } else {
+        desktopEditBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        desktopEditBtn.setAttribute('title', 'Enable Editing');
+        desktopEditBtn.setAttribute('aria-label', 'Enable Editing');
+      }
+    }
+    // Toggle body class so CSS can show/hide header Save consistently
+    try { document.body.classList.toggle('editing', editMode); } catch (e) {}
+  }
+
+  // Desktop edit button (header icon) and controls-row button
+  document.getElementById('desktopEditBtn')?.addEventListener('click', toggleEditMode);
+  document.getElementById('desktopEditBtnControls')?.addEventListener('click', toggleEditMode);
+
+  // Mobile edit button
+  document.getElementById('mobileEditBtn')?.addEventListener('click', toggleEditMode);
+
+  // Mobile cancel button
+  document.getElementById('mobileCancelBtn')?.addEventListener('click', toggleEditMode);
+
+  // Desktop save button - ensure form submission with current date selection
+  document.getElementById('desktopSaveBtn')?.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (form) {
+      // Ensure date range is included
+      const dateSelect = document.getElementById('dateRangeSelect');
+      if (dateSelect && dateSelect.value) {
+        // Remove any existing save_changes inputs to avoid duplicates
+        const existing = form.querySelectorAll('input[name="save_changes"]');
+        existing.forEach(input => input.remove());
+        
+        // Create hidden input to indicate save action
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'save_changes';
+        hidden.value = '1';
+        form.appendChild(hidden);
+        // Also include assigned_rules_json if any manual rule assignments exist
+        const existingAssigned = form.querySelector('input[name="assigned_rules_json"]');
+        if (existingAssigned) existingAssigned.remove();
+        const assignedInput = document.createElement('input');
+        assignedInput.type = 'hidden';
+        assignedInput.name = 'assigned_rules_json';
+        assignedInput.value = JSON.stringify(window.pastAssignedRules || {});
+        form.appendChild(assignedInput);
+
+        // Ensure all textareas are writable so their values post
+        form.querySelectorAll('textarea').forEach(t => t.removeAttribute('readonly'));
+
+        form.submit();
+      }
+    }
+  });
+
+  // Header save button should behave the same as the desktop save button
+  document.getElementById('desktopSaveBtnHeader')?.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (form) {
+      // Prefer desktop dateRangeSelect, fallback to mobileDateSelect
+      const dateSelect = document.getElementById('dateRangeSelect');
+      const mobileDate = document.getElementById('mobileDateSelect');
+      const hasDate = (dateSelect && dateSelect.value) || (mobileDate && mobileDate.value);
+      if (hasDate) {
+        // Remove any existing save_changes inputs to avoid duplicates
+        const existing = form.querySelectorAll('input[name="save_changes"]');
+        existing.forEach(input => input.remove());
+
+        // Create hidden input to indicate save action
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'save_changes';
+        hidden.value = '1';
+        form.appendChild(hidden);
+
+        // Also include assigned_rules_json if present in the page state
+        const existingAssigned = form.querySelector('input[name="assigned_rules_json"]');
+        if (existingAssigned) existingAssigned.remove();
+        const assignedInput = document.createElement('input');
+        assignedInput.type = 'hidden';
+        assignedInput.name = 'assigned_rules_json';
+        assignedInput.value = JSON.stringify(window.pastAssignedRules || {});
+        form.appendChild(assignedInput);
+
+        // Ensure all textareas are writable so their values post
+        form.querySelectorAll('textarea').forEach(t => t.removeAttribute('readonly'));
+
+        form.submit();
+      } else {
+        // no date selected
+        alert('Please select a date range (desktop) or date (mobile) before saving.');
+      }
+    }
+  });
+
+  // Header date dropdown behaviour: open/close and select
+  const headerDateBtn = document.getElementById('headerDateBtn');
+  const headerDateDropdown = document.getElementById('headerDateDropdown');
+  const headerDateLabel = document.getElementById('headerDateLabel');
+  const desktopSelectEl = document.getElementById('dateRangeSelect');
+  const desktopDateSearch = document.getElementById('desktopDateSearch');
+
+  // Desktop date search: select range containing picked date
+  function parseMenuDate(str) {
+    // Expects format: 'Mar 09, 2026'
+    const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    const m = str.match(/([A-Za-z]{3}) (\d{2}), (\d{4})/);
+    if (!m) return null;
+    return new Date(Number(m[3]), months[m[1]], Number(m[2]));
+  }
+  if (desktopDateSearch && desktopSelectEl) {
+    desktopDateSearch.addEventListener('change', function () {
+      if (!this.value) return;
+      const picked = new Date(this.value + 'T00:00:00');
+      let found = false;
+      for (let i = 0; i < desktopSelectEl.options.length; i++) {
+        const opt = desktopSelectEl.options[i];
+        // Parse range: "Mar 09, 2026 - Mar 13, 2026"
+        const match = opt.value.match(/([A-Za-z]{3} \d{2}, \d{4}) - ([A-Za-z]{3} \d{2}, \d{4})/);
+        if (match) {
+          const start = parseMenuDate(match[1]);
+          const end = parseMenuDate(match[2]);
+          if (start && end && picked >= start && picked <= end) {
+            desktopSelectEl.value = opt.value;
+            if (headerDateLabel) headerDateLabel.textContent = opt.value;
+            if (form) form.submit();
+            found = true;
+            break;
+          }
+        }
+      }
+      if (!found) {
+        alert('No menu found for the selected date.');
+      }
+    });
+  }
+  if (headerDateBtn && headerDateDropdown) {
+    headerDateBtn.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      const isOpen = headerDateDropdown.style.display === 'block';
+      headerDateDropdown.style.display = isOpen ? 'none' : 'block';
+      headerDateBtn.setAttribute('aria-expanded', (!isOpen).toString());
+    });
+    // option clicks
+    headerDateDropdown.querySelectorAll('.header-date-option').forEach(opt => {
+      opt.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        const val = this.dataset.value || '';
+        // set the hidden desktop select so server sees the value
+        if (desktopSelectEl) {
+          desktopSelectEl.value = val;
+        }
+        // update the header label
+        headerDateLabel.textContent = val || '';
+        headerDateDropdown.style.display = 'none';
+        headerDateBtn.setAttribute('aria-expanded', 'false');
+        // submit the form to load that week (do not include save_changes)
+        if (form) form.submit();
+      });
+    });
+    // close on outside click
+    document.addEventListener('click', function () { if (headerDateDropdown) { headerDateDropdown.style.display = 'none'; headerDateBtn.setAttribute('aria-expanded','false'); } });
+  }
+
+  // Mobile save button - ensure form submission with current date selection
+  document.getElementById('mobileSaveBtn')?.addEventListener('click', function () {
+    if (form) {
+      // Ensure date is included
+      const dateSelect = document.getElementById('mobileDateSelect');
+      if (dateSelect && dateSelect.value) {
+        // Remove any existing save_changes inputs to avoid duplicates
+        const existing = form.querySelectorAll('input[name="save_changes"]');
+        existing.forEach(input => input.remove());
+        
+        // Create hidden input to indicate save action
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'save_changes';
+        hidden.value = '1';
+        form.appendChild(hidden);
+        // Also add assigned_rules JSON if any
+        const existingAssigned = form.querySelector('input[name="assigned_rules_json"]');
+        if (existingAssigned) existingAssigned.remove();
+        const assignedInput = document.createElement('input');
+        assignedInput.type = 'hidden';
+        assignedInput.name = 'assigned_rules_json';
+        assignedInput.value = JSON.stringify(window.pastAssignedRules || {});
+        form.appendChild(assignedInput);
+        form.submit();
+      }
+    }
+  });
+
+  // --- Per-cell action popup for past-menus (Edit Item / Edit Rule) ---
+  // Create popup elements
+  const actionPopup = document.createElement('div');
+  actionPopup.id = 'past-inventory-action-popup';
+  actionPopup.style.position = 'absolute';
+  actionPopup.style.display = 'none';
+  actionPopup.style.padding = '6px';
+  actionPopup.style.borderRadius = '8px';
+  actionPopup.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+  actionPopup.style.background = '#fff';
+  // Ensure popup sits above any table cell / textarea stacking contexts
+  actionPopup.style.zIndex = 2147483647;
+  actionPopup.innerHTML = `
+    <button type="button" id="past-edit-item-btn" class="btn btn-sm btn-primary" style="margin-right:6px;">Edit Item</button>
+    <button type="button" id="past-edit-rule-btn" class="btn btn-sm btn-primary" style="margin-right:6px;">Edit Rule</button>
+  `;
+  document.body.appendChild(actionPopup);
+
+  const rulesMenu = document.createElement('div');
+  rulesMenu.id = 'past-inventory-rules-menu';
+  rulesMenu.style.position = 'absolute';
+  rulesMenu.style.display = 'none';
+  rulesMenu.style.minWidth = '180px';
+  rulesMenu.style.maxHeight = '260px';
+  rulesMenu.style.overflow = 'auto';
+  rulesMenu.style.background = '#fff';
+  rulesMenu.style.border = '1px solid #ddd';
+  rulesMenu.style.borderRadius = '8px';
+  rulesMenu.style.boxShadow = '0 6px 18px rgba(0,0,0,0.12)';
+  // rules menu slightly below the action popup but still very high
+  rulesMenu.style.zIndex = 2147483646;
+  document.body.appendChild(rulesMenu);
+
+  // Local map of assigned rules for form submission
+  window.pastAssignedRules = window.pastAssignedRules || {};
+
+  let currentTargetTd = null;
+  let suppressDocumentClick = false;
+  let lastActionedTd = null;
+
+  function hideActionPopup() {
+    // restore pointer-events for any textarea in the current target before hiding
+    try {
+      if (currentTargetTd) {
+        const ta = currentTargetTd.querySelector && currentTargetTd.querySelector('textarea');
+        if (ta && ta.dataset && ta.dataset._savedPointer !== undefined) {
+          ta.style.pointerEvents = ta.dataset._savedPointer || '';
+          delete ta.dataset._savedPointer;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    actionPopup.style.display = 'none';
+    currentTargetTd = null;
+  }
+
+  function hideRulesMenu() {
+    rulesMenu.style.display = 'none';
+    rulesMenu.innerHTML = '';
+  }
+
+  document.addEventListener('click', function (e) {
+    // If a cell just opened the popup via pointerdown, the following
+    // click event would normally bubble here and immediately close it.
+    // Suppress that first click so the popup remains visible for selection.
+    if (suppressDocumentClick) { suppressDocumentClick = false; return; }
+    // Close popups when clicking outside
+    if (!actionPopup.contains(e.target) && !rulesMenu.contains(e.target)) {
+      // If user clicked outside, clear the "action done" marker so
+      // clicking the same cell again (after clicking away) will reopen popup.
+      try {
+        if (currentTargetTd && currentTargetTd.dataset && currentTargetTd.dataset.actionDone === '1') {
+          delete currentTargetTd.dataset.actionDone;
+        }
+      } catch (err) {}
+      hideActionPopup();
+      hideRulesMenu();
+    }
+  });
+
+  // Show popup when interacting with a table cell while in edit mode.
+  // Use pointerdown (captured before focus) so clicks on textareas
+  // open the popup instead of focusing the textarea.
+  document.querySelectorAll('.table tbody td').forEach(td => {
+    td.addEventListener('pointerdown', function (e) {
+      if (!editMode) return; // only when editing enabled
+      // If rules menu is open, don't reopen action popup
+      if (rulesMenu.style.display === 'block') return;
+      // If the popup is already visible for this same td, allow normal events
+      if (actionPopup.style.display === 'block' && currentTargetTd === td) return;
+      // If the user clicked another cell previously, clear that cell's marker
+      // so returning to it later will allow another popup. This ensures merely
+      // clicking another cell (without performing an action) resets the state.
+      if (lastActionedTd && lastActionedTd !== td) {
+        try { delete lastActionedTd.dataset.actionDone; } catch (er) {}
+        lastActionedTd = null;
+      }
+      // If this cell already had an action performed, don't re-open the popup
+      if (td.dataset && td.dataset.actionDone === '1') return;
+
+      // Intercept the pointer event to prevent the textarea/input from receiving focus
+      // (prevents the highlight/focus behavior seen when clicking the textarea).
+      try { e.preventDefault(); } catch (er) {}
+      e.stopPropagation();
+
+      // make textarea in this cell click-through so the popup buttons receive clicks
+      try {
+        const ta = td.querySelector && td.querySelector('textarea');
+        if (ta && ta.dataset && ta.dataset._savedPointer === undefined) {
+          ta.dataset._savedPointer = ta.style.pointerEvents || '';
+          ta.style.pointerEvents = 'none';
+        }
+      } catch (err) {}
+
+      currentTargetTd = td;
+      // Prevent the immediate following click from closing the popup
+      suppressDocumentClick = true;
+      const rect = td.getBoundingClientRect();
+      actionPopup.style.left = (window.scrollX + rect.left + 8) + 'px';
+      actionPopup.style.top = (window.scrollY + rect.top + 8) + 'px';
+      actionPopup.style.display = 'block';
+      hideRulesMenu();
+    }, { capture: true });
+  });
+
+  // Edit Item button — focus textarea and enable editing
+  document.getElementById('past-edit-item-btn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (!currentTargetTd) return;
+    const ta = currentTargetTd.querySelector('textarea');
+    if (ta) {
+      // restore pointer-events so textarea can be interacted with, then enable editing
+      try {
+        if (ta.dataset && ta.dataset._savedPointer !== undefined) {
+          ta.style.pointerEvents = ta.dataset._savedPointer || '';
+          delete ta.dataset._savedPointer;
+        }
+      } catch (e) {}
+      ta.removeAttribute('readonly');
+      // focus after pointer-events restored
+      ta.focus();
+      // Allow autoResize to recalc
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    }
+    // Mark this cell as actioned so it won't prompt again until another cell is actioned
+    try {
+      if (lastActionedTd && lastActionedTd !== currentTargetTd) {
+        delete lastActionedTd.dataset.actionDone;
+      }
+      currentTargetTd.dataset.actionDone = '1';
+      lastActionedTd = currentTargetTd;
+    } catch (e) {}
+    hideActionPopup();
+  });
+
+  // Edit Rule button — fetch rules and show dropdown
+  document.getElementById('past-edit-rule-btn').addEventListener('click', async function (e) {
+    e.stopPropagation();
+    if (!currentTargetTd) return;
+    hideRulesMenu();
+    // position rules menu near the cell
+    const rect = currentTargetTd.getBoundingClientRect();
+    rulesMenu.style.left = (window.scrollX + rect.left + 8) + 'px';
+    rulesMenu.style.top = (window.scrollY + rect.bottom + 8) + 'px';
+    rulesMenu.style.display = 'block';
+    // fetch rules
+    try {
+      const res = await fetch('/api/list_rules/', { method: 'GET', headers: { 'X-CSRFToken': csrftoken }});
+      const rules = await res.json();
+      if (!Array.isArray(rules)) return;
+      // Add a Clear Rule option at the top
+      const clearItem = document.createElement('div');
+      clearItem.style.padding = '8px';
+      clearItem.style.cursor = 'pointer';
+      clearItem.style.borderBottom = '1px solid #f0f0f0';
+      clearItem.style.fontWeight = '600';
+      clearItem.textContent = 'Clear Rule';
+      clearItem.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        // compute canonical cell id consistent with past-menus rendering
+        const ta = currentTargetTd.querySelector && currentTargetTd.querySelector('textarea');
+        const day = currentTargetTd.dataset.day || '';
+        const nameAttr = ta ? (ta.name || '') : '';
+        const nameNoIndex = nameAttr.replace(/_\d+$/, '');
+        const fieldIdMap = {
+          'am_fluid_milk': 'Milk', 'am_fruit_veg': 'fruit', 'am_bread': 'bread', 'am_additional': 'add1',
+          'ams_fluid_milk': 'choose1', 'ams_fruit_veg': 'fruit2', 'ams_bread': 'bread2', 'ams_meat': 'meat1',
+          'lunch_main_dish': 'Meals', 'lunch_fluid_milk': 'LunchMilk', 'lunch_vegetable': 'vege', 'lunch_fruit': 'fruit3',
+          'lunch_grain': 'Grain', 'lunch_meat': 'MeatAlternate', 'lunch_additional': 'add2',
+          'pm_fluid_milk': 'choose2', 'pm_fruit_veg': 'fruit4', 'pm_bread': 'bread3', 'pm_meat': 'meat3'
+        };
+        let cellId = (currentTargetTd.id || '').toString();
+        if (!cellId) {
+          const mapped = fieldIdMap[nameNoIndex] || null;
+          if (mapped) cellId = (day + mapped).toLowerCase();
+          else {
+            let nameKey = nameNoIndex.includes('_') ? nameNoIndex.split('_').slice(1).join('_') : nameNoIndex;
+            nameKey = nameKey.replace(/_/g, '');
+            cellId = (day + nameKey).toLowerCase();
+          }
+        } else {
+          cellId = cellId.toLowerCase();
+        }
+        // remove local assignment so it will not be recreated on save
+        try { delete window.pastAssignedRules[cellId]; } catch (e) {}
+        // update hidden input
+        const existingAssigned = form.querySelector('input[name="assigned_rules_json"]');
+        if (existingAssigned) existingAssigned.value = JSON.stringify(window.pastAssignedRules || {});
+        // clear styles and dataset
+        try { delete currentTargetTd.dataset.ruleId; currentTargetTd.style.background = ''; currentTargetTd.style.color = ''; const taEl = currentTargetTd.querySelector && currentTargetTd.querySelector('textarea'); if (taEl) { taEl.style.background = ''; taEl.style.color = ''; } } catch (e) {}
+        try { if (lastActionedTd && lastActionedTd !== currentTargetTd) { delete lastActionedTd.dataset.actionDone; } currentTargetTd.dataset.actionDone = '1'; lastActionedTd = currentTargetTd; } catch (e) {}
+        hideRulesMenu();
+        hideActionPopup();
+      });
+      rulesMenu.appendChild(clearItem);
+
+      rules.forEach(r => {
+        const item = document.createElement('div');
+        item.style.padding = '8px';
+        item.style.cursor = 'pointer';
+        item.style.borderBottom = '1px solid #f0f0f0';
+        item.textContent = r.rule;
+        item.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          // apply style
+          const gstart = r.gradient_start || WG_DEFAULT_STYLE.gradient_start;
+          const gend = r.gradient_end || WG_DEFAULT_STYLE.gradient_end;
+          const txt = r.text_color || WG_DEFAULT_STYLE.text_color;
+          currentTargetTd.style.background = `linear-gradient(135deg, ${gstart}, ${gend})`;
+          currentTargetTd.style.color = txt;
+          const ta = currentTargetTd.querySelector('textarea');
+          if (ta) { ta.style.background = 'transparent'; ta.style.color = txt; }
+          // compute canonical cell id consistent with past-menus rendering
+          const day = currentTargetTd.dataset.day || '';
+          const nameAttr = ta ? (ta.name || '') : '';
+          const nameNoIndex = nameAttr.replace(/_\d+$/, '');
+          const fieldIdMap = {
+            'am_fluid_milk': 'Milk',
+            'am_fruit_veg': 'fruit',
+            'am_bread': 'bread',
+            'am_additional': 'add1',
+            'ams_fluid_milk': 'choose1',
+            'ams_fruit_veg': 'fruit2',
+            'ams_bread': 'bread2',
+            'ams_meat': 'meat1',
+            'lunch_main_dish': 'Meals',
+            'lunch_fluid_milk': 'LunchMilk',
+            'lunch_vegetable': 'vege',
+            'lunch_fruit': 'fruit3',
+            'lunch_grain': 'Grain',
+            'lunch_meat': 'MeatAlternate',
+            'lunch_additional': 'add2',
+            'pm_fluid_milk': 'choose2',
+            'pm_fruit_veg': 'fruit4',
+            'pm_bread': 'bread3',
+            'pm_meat': 'meat3'
+          };
+          let cellId = (currentTargetTd.id || '').toString();
+          if (!cellId) {
+            const mapped = fieldIdMap[nameNoIndex] || null;
+            if (mapped) cellId = (day + mapped).toLowerCase();
+            else {
+              let nameKey = nameNoIndex.includes('_') ? nameNoIndex.split('_').slice(1).join('_') : nameNoIndex;
+              nameKey = nameKey.replace(/_/g, '');
+              cellId = (day + nameKey).toLowerCase();
+            }
+          } else {
+            cellId = cellId.toLowerCase();
+          }
+          // store mapping locally for submission
+          window.pastAssignedRules[cellId] = r.id;
+          // Mark this cell as actioned so it won't prompt again until another cell is actioned
+          try {
+            if (lastActionedTd && lastActionedTd !== currentTargetTd) {
+              delete lastActionedTd.dataset.actionDone;
+            }
+            currentTargetTd.dataset.actionDone = '1';
+            lastActionedTd = currentTargetTd;
+          } catch (e) {}
+          // ensure hidden input exists
+          const existingAssigned = form.querySelector('input[name="assigned_rules_json"]');
+          if (existingAssigned) existingAssigned.value = JSON.stringify(window.pastAssignedRules);
+          else {
+            const assignedInput = document.createElement('input');
+            assignedInput.type = 'hidden';
+            assignedInput.name = 'assigned_rules_json';
+            assignedInput.value = JSON.stringify(window.pastAssignedRules);
+            form.appendChild(assignedInput);
+          }
+          hideRulesMenu();
+          hideActionPopup();
+        });
+        rulesMenu.appendChild(item);
+      });
+    } catch (err) {
+      console.error('Failed to load rules', err);
+    }
+  });
+
+
+
+
+});
+</script>
+<script>
+function debounce(fn, wait) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+function adjustTableForDesktop() {
+  if (window.innerWidth <= 1000) {
+    const table = document.querySelector('.table');
+    if (!table) return;
+    // remove inline widths/heights applied previously so mobile styles are unaffected
+    const colgroup = table.querySelector('colgroup');
+    if (colgroup) Array.from(colgroup.children).forEach(c => c.style.width = '');
+    table.querySelectorAll('tbody tr, thead tr').forEach(tr => {
+      Array.from(tr.children).forEach(cell => {
+        if (cell.classList.contains('vertical-header')) return; // keep vertical headers untouched on mobile
+        cell.style.height = '';
+        cell.style.width = '';
+      });
+    });
+    return;
+  }
+
+  const table = document.querySelector('.table');
+  if (!table) return;
+
+  // Determine number of columns from the first non-empty row
+  const firstRow = table.querySelector('tbody tr:not(.facility-row):not(.sponsor-row)') || table.querySelector('thead tr');
+  if (!firstRow) return;
+  const colCount = firstRow.children.length;
+
+  // Ensure a colgroup exists with the right number of cols
+  let colgroup = table.querySelector('colgroup');
+  if (!colgroup) {
+    colgroup = document.createElement('colgroup');
+    for (let i = 0; i < colCount; i++) colgroup.appendChild(document.createElement('col'));
+    table.insertBefore(colgroup, table.firstChild);
+  } else {
+    while (colgroup.children.length < colCount) colgroup.appendChild(document.createElement('col'));
+    while (colgroup.children.length > colCount) colgroup.removeChild(colgroup.lastChild);
+  }
+
+  // Identify columns that are vertical-headers so we don't size them
+  const headerCols = new Set();
+  table.querySelectorAll('tbody tr, thead tr').forEach(tr => {
+    Array.from(tr.children).forEach((cell, idx) => {
+      if (cell.classList && cell.classList.contains('vertical-header')) headerCols.add(idx);
+    });
+  });
+
+  // Measure natural content widths using an offscreen element
+  const measurer = document.createElement('div');
+  measurer.style.position = 'absolute';
+  measurer.style.visibility = 'hidden';
+  measurer.style.height = 'auto';
+  measurer.style.whiteSpace = 'nowrap';
+  document.body.appendChild(measurer);
+
+  const natural = new Array(colCount).fill(0);
+  table.querySelectorAll('thead tr, tbody tr').forEach(tr => {
+    const cells = Array.from(tr.children);
+    cells.forEach((cell, idx) => {
+      if (headerCols.has(idx)) return; // skip vertical headers from measurements
+      // strip interactive elements but keep text for measurement
+      measurer.innerHTML = cell.textContent || cell.innerText || '';
+      measurer.style.width = 'auto';
+      const w = Math.ceil(measurer.scrollWidth) + 24; // padding fudge
+      if (w > natural[idx]) natural[idx] = w;
+    });
+  });
+  document.body.removeChild(measurer);
+
+  // Compute totals excluding headerCols
+  let totalNatural = 0;
+  natural.forEach((w, i) => { if (!headerCols.has(i)) totalNatural += w; });
+  if (totalNatural === 0) totalNatural = 1;
+  natural.forEach((w, i) => {
+    if (headerCols.has(i)) {
+      // leave vertical header columns to their natural/auto size
+      colgroup.children[i].style.width = 'auto';
+    } else {
+      const pct = Math.max(6, Math.round((w / totalNatural) * 100));
+      colgroup.children[i].style.width = pct + '%';
+    }
+  });
+
+  // Normalize to 100% by adjusting last column
+  let sumPct = Array.from(colgroup.children).reduce((s, c, idx) => s + (headerCols.has(idx) ? 0 : (parseInt(c.style.width, 10) || 0)), 0);
+  if (sumPct !== 100) {
+    // adjust the last non-header column to sum to 100%
+    for (let i = colgroup.children.length - 1; i >= 0; i--) {
+      if (headerCols.has(i)) continue;
+      const last = colgroup.children[i];
+      const current = parseInt(last.style.width, 10) || 0;
+      last.style.width = (current + (100 - sumPct)) + '%';
+      break;
+    }
+  }
+
+  // Equalize row heights to the tallest cell in that row (desktop only)
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    const cells = Array.from(tr.children).filter(c => !c.classList.contains('vertical-header'));
+    // reset first so measurements are consistent
+    cells.forEach(cell => cell.style.height = 'auto');
+    let maxH = 0;
+    cells.forEach(cell => {
+      const h = cell.getBoundingClientRect().height;
+      if (h > maxH) maxH = h;
+    });
+    cells.forEach(cell => cell.style.height = maxH + 'px');
+  });
+}
+
+// Run after DOM ready and after textarea autosize operations
+document.addEventListener('DOMContentLoaded', function () {
+  adjustTableForDesktop();
+});
+
+// Also run after fonts/styles settle, and when window resizes (debounced)
+window.addEventListener('load', function () { adjustTableForDesktop(); });
+window.addEventListener('resize', debounce(adjustTableForDesktop, 150));
+</script>
+<script>
+// Hide AM Snack rows by default on page load
+window.addEventListener('DOMContentLoaded', function () {
+  // Check if any AM Snack textarea has data
+  var hasAMSnackData = false;
+  document.querySelectorAll('th.vertical-header').forEach(function(th) {
+    if ((th.textContent||'').trim().toLowerCase().includes('am snack')) {
+      // Find all textareas in the AM Snack section (rowspan rows)
+      const firstRow = th.closest('tr');
+      const rowspan = parseInt(th.getAttribute('rowspan') || '1', 10);
+      let cur = firstRow;
+      for (let i = 0; i < rowspan; i++) {
+        if (cur) {
+          cur.querySelectorAll('textarea').forEach(function(ta) {
+            if (ta.value && ta.value.trim() !== '') hasAMSnackData = true;
+          });
+          cur = cur.nextElementSibling;
+        }
+      }
+    }
+  });
+  // Now show or hide AM Snack rows based on data
+  document.querySelectorAll('th.vertical-header').forEach(function(th) {
+    if ((th.textContent||'').trim().toLowerCase().includes('am snack')) {
+      const firstRow = th.closest('tr');
+      const rowspan = parseInt(th.getAttribute('rowspan') || '1', 10);
+      let cur = firstRow;
+      for (let i = 0; i < rowspan; i++) {
+        if (cur) {
+          if (hasAMSnackData) {
+            cur.style.removeProperty('display');
+          } else {
+            try { cur.style.setProperty('display', 'none', 'important'); } catch(e) { cur.style.display = 'none'; }
+          }
+          cur = cur.nextElementSibling;
+        }
+      }
+    }
+  });
+});
+</script>
+
 {% endblock %}
