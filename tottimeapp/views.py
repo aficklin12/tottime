@@ -5427,12 +5427,22 @@ def past_menus(request):
     selected_monday_str = None
     selected_friday_str = None
 
-    # On initial GET load, auto-select the latest Monday week so the table is populated
+    # On initial GET load, prefer the Monday of the current week (if present),
+    # otherwise fall back to the latest available Monday.
     if request.method != 'POST':
         try:
-            latest_monday = monday_dates.first()
-            if latest_monday:
-                start_date = latest_monday
+            today = datetime.now().date()
+            # Monday is weekday 0
+            current_week_monday = today - timedelta(days=today.weekday())
+
+            # If we have a WeeklyMenu for the current week's Monday, use that.
+            if WeeklyMenu.objects.filter(date=current_week_monday, user=user).exists():
+                start_date = current_week_monday
+            else:
+                # fall back to the latest monday in the DB for this user
+                start_date = monday_dates.first()
+
+            if start_date:
                 end_date = start_date + timedelta(days=4)
                 selected_menu_data = WeeklyMenu.objects.filter(date__range=[start_date, end_date], user=user).order_by('date')
                 selected_range = f"{start_date.strftime('%b %d, %Y')} - {end_date.strftime('%b %d, %Y')}"

@@ -751,6 +751,44 @@ html, body {
         </div>
     </div>
 
+    <script>
+      (function() {
+        // Set the mobile datepicker value/placeholder to the currently-selected table day
+        var mobileInput = document.getElementById('mobileDateSelect');
+        var selectedMondayIso = "{{ selected_monday_str|default:'' }}"; // YYYY-MM-DD
+
+        function formatShortDateFromIso(iso) {
+          try {
+            // iso expected 'YYYY-MM-DD'
+            var parts = iso.split('-');
+            if (parts.length !== 3) return iso;
+            var y = parts[0], m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+            var shortYear = y.slice(2);
+            return m + '/' + d + '/' + shortYear;
+          } catch (e) { return iso; }
+        }
+
+        function updateMobilePlaceholder() {
+          if (!mobileInput) return;
+          try {
+            if (window.innerWidth <= 1000 && selectedMondayIso) {
+              // Set the actual value so the native date control displays the date immediately
+              if (!mobileInput.value) mobileInput.value = selectedMondayIso;
+              // Also set a human-friendly short placeholder (used by some browsers or fallbacks)
+              var short = formatShortDateFromIso(selectedMondayIso);
+              mobileInput.setAttribute('placeholder', short);
+            } else {
+              mobileInput.removeAttribute('placeholder');
+            }
+          } catch (e) { /* silent */ }
+        }
+
+        // Initialize and keep in sync on resize
+        updateMobilePlaceholder();
+        window.addEventListener('resize', updateMobilePlaceholder);
+      })();
+    </script>
+
 
 
     <!-- Desktop controls row (hidden on mobile) -->
@@ -2196,47 +2234,49 @@ document.addEventListener('DOMContentLoaded', function () {
   // Show popup when interacting with a table cell while in edit mode.
   // Use pointerdown (captured before focus) so clicks on textareas
   // open the popup instead of focusing the textarea.
-  document.querySelectorAll('.table tbody td').forEach(td => {
-    td.addEventListener('pointerdown', function (e) {
-      if (!editMode) return; // only when editing enabled
-      // If rules menu is open, don't reopen action popup
-      if (rulesMenu.style.display === 'block') return;
-      // If the popup is already visible for this same td, allow normal events
-      if (actionPopup.style.display === 'block' && currentTargetTd === td) return;
-      // If the user clicked another cell previously, clear that cell's marker
-      // so returning to it later will allow another popup. This ensures merely
-      // clicking another cell (without performing an action) resets the state.
-      if (lastActionedTd && lastActionedTd !== td) {
-        try { delete lastActionedTd.dataset.actionDone; } catch (er) {}
-        lastActionedTd = null;
-      }
-      // If this cell already had an action performed, don't re-open the popup
-      if (td.dataset && td.dataset.actionDone === '1') return;
-
-      // Intercept the pointer event to prevent the textarea/input from receiving focus
-      // (prevents the highlight/focus behavior seen when clicking the textarea).
-      try { e.preventDefault(); } catch (er) {}
-      e.stopPropagation();
-
-      // make textarea in this cell click-through so the popup buttons receive clicks
-      try {
+    document.querySelectorAll('.table tbody td').forEach(td => {
+      td.addEventListener('pointerdown', function (e) {
+        if (!editMode) return; // only when editing enabled
+        // Only allow popup for cells containing a textarea (input field)
         const ta = td.querySelector && td.querySelector('textarea');
-        if (ta && ta.dataset && ta.dataset._savedPointer === undefined) {
-          ta.dataset._savedPointer = ta.style.pointerEvents || '';
-          ta.style.pointerEvents = 'none';
+        if (!ta) return; // skip label cells
+        // If rules menu is open, don't reopen action popup
+        if (rulesMenu.style.display === 'block') return;
+        // If the popup is already visible for this same td, allow normal events
+        if (actionPopup.style.display === 'block' && currentTargetTd === td) return;
+        // If the user clicked another cell previously, clear that cell's marker
+        // so returning to it later will allow another popup. This ensures merely
+        // clicking another cell (without performing an action) resets the state.
+        if (lastActionedTd && lastActionedTd !== td) {
+          try { delete lastActionedTd.dataset.actionDone; } catch (er) {}
+          lastActionedTd = null;
         }
-      } catch (err) {}
+        // If this cell already had an action performed, don't re-open the popup
+        if (td.dataset && td.dataset.actionDone === '1') return;
 
-      currentTargetTd = td;
-      // Prevent the immediate following click from closing the popup
-      suppressDocumentClick = true;
-      const rect = td.getBoundingClientRect();
-      actionPopup.style.left = (window.scrollX + rect.left + 8) + 'px';
-      actionPopup.style.top = (window.scrollY + rect.top + 8) + 'px';
-      actionPopup.style.display = 'block';
-      hideRulesMenu();
-    }, { capture: true });
-  });
+        // Intercept the pointer event to prevent the textarea/input from receiving focus
+        // (prevents the highlight/focus behavior seen when clicking the textarea).
+        try { e.preventDefault(); } catch (er) {}
+        e.stopPropagation();
+
+        // make textarea in this cell click-through so the popup buttons receive clicks
+        try {
+          if (ta && ta.dataset && ta.dataset._savedPointer === undefined) {
+            ta.dataset._savedPointer = ta.style.pointerEvents || '';
+            ta.style.pointerEvents = 'none';
+          }
+        } catch (err) {}
+
+        currentTargetTd = td;
+        // Prevent the immediate following click from closing the popup
+        suppressDocumentClick = true;
+        const rect = td.getBoundingClientRect();
+        actionPopup.style.left = (window.scrollX + rect.left + 8) + 'px';
+        actionPopup.style.top = (window.scrollY + rect.top + 8) + 'px';
+        actionPopup.style.display = 'block';
+        hideRulesMenu();
+      }, { capture: true });
+    });
 
   // Edit Item button — focus textarea and enable editing
   document.getElementById('past-edit-item-btn').addEventListener('click', function (e) {

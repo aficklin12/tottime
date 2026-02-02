@@ -208,6 +208,30 @@ thead tr:first-child th:last-child {
   text-align: center;
 }
 
+/* Mobile Edit Dates modal (visible only on small screens) */
+#mobileEditDatesModal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    z-index: 1405;
+}
+.mobile-edit-dates-dialog {
+    background: rgba(34,37,41,1);
+    color: #fff;
+    padding: 18px;
+    border-radius: 10px;
+    width: 92%;
+    max-width: 420px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+.mobile-edit-dates-dialog label { display:block; margin-bottom:8px; font-weight:600; }
+.mobile-edit-dates-dialog .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+.mobile-edit-dates-dialog .actions button { padding:8px 12px; border-radius:6px; }
+.mobile-edit-dates-dialog input[type="date"] { width:100%; padding:8px 10px; border-radius:6px; border:none; background:#fff; color:#111; }
+
 /* Desktop header actions (ellipsis dropdown) */
 .weekly-header-container {
     display: flex;
@@ -926,16 +950,31 @@ h1.mt-4 {
                 <button type="button" id="generatePDFBtnMobile">
                     <i class="fas fa-file-pdf"></i>Generate PDF
                 </button>
-                <button type="button" id="editDatesBtnMobile" title="Edit week dates">
-                    <i class="fas fa-calendar-alt"></i>Edit Dates
-                </button>
-                <button type="button" id="exportWeeklyMenuCSVMobile">
-                <i class="fas fa-file-csv"></i>Export Menu
-                </button>
+                        
+                        <button type="button" id="exportWeeklyMenuCSVMobile">
+                            <i class="fas fa-file-csv"></i>Export Menu
+                        </button>
+
+                        <!-- Mobile-only edit dates button (opens datepicker modal) -->
+                        <button type="button" id="editDatesBtnMobile">
+                            <i class="fas fa-calendar-alt"></i>Edit Dates
+                        </button>
             </div>
         </div>
     </div>
 </div>
+
+                <!-- Mobile Edit Dates Modal -->
+                <div id="mobileEditDatesModal" role="dialog" aria-modal="true" aria-hidden="true">
+                    <div class="mobile-edit-dates-dialog" role="document">
+                        <label for="mobileDatePicker">Choose any date in the week to set Monday–Friday</label>
+                        <input type="date" id="mobileDatePicker" aria-label="Pick a date for week" />
+                        <div class="actions">
+                            <button type="button" id="mobileDateCancelBtn" class="btn btn-rec">Cancel</button>
+                            <button type="button" id="mobileDateSetBtn" class="btn btn-primaryoff">Set Week</button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="row mt-3">
                     <div class="col">
@@ -1612,6 +1651,70 @@ function initializeDaySelector() {
     showSelectedDay(savedDay);
     daySelect.addEventListener('change', function(){ showSelectedDay(this.value); });
 }
+
+/* Mobile Edit Dates handlers: open modal, compute Monday–Friday for chosen date, update header + weekday spans */
+function openMobileEditDatesModal() {
+    const m = document.getElementById('mobileEditDatesModal');
+    if (!m) return;
+    m.style.display = 'flex';
+    m.setAttribute('aria-hidden', 'false');
+    const input = document.getElementById('mobileDatePicker');
+    if (input) input.focus();
+}
+function closeMobileEditDatesModal() {
+    const m = document.getElementById('mobileEditDatesModal');
+    if (!m) return;
+    m.style.display = 'none';
+    m.setAttribute('aria-hidden', 'true');
+}
+function formatDateForHeader(d) {
+    return (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getDate().toString().padStart(2,'0') + '/' + d.getFullYear();
+}
+function setWeekFromDateISO(isoDate) {
+    if (!isoDate) return;
+    const selected = new Date(isoDate + 'T00:00:00');
+    if (isNaN(selected)) return;
+    const day = selected.getDay();
+    const diffToMonday = (day + 6) % 7; // days since Monday
+    const monday = new Date(selected);
+    monday.setDate(selected.getDate() - diffToMonday);
+    const dates = [];
+    for (let i = 0; i < 5; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        dates.push(d);
+    }
+    // Update weekday-date spans (there are five)
+    const spans = Array.from(document.querySelectorAll('.weekday-date'));
+    for (let i = 0; i < 5; i++) {
+        if (spans[i]) spans[i].innerText = formatDateForHeader(dates[i]);
+    }
+    // Update header title range
+    const headerTitleEl = document.querySelector('.weekly-header-title');
+    if (headerTitleEl) headerTitleEl.innerText = `Weekly Menu: ${formatDateForHeader(dates[0])} - ${formatDateForHeader(dates[4])}`;
+    // Update dropdown labels to reflect the new dates and persist
+    try { if (typeof updateDropdownWithDates === 'function') updateDropdownWithDates(); } catch (e) { console.warn('update dropdown failed', e); }
+    try { if (typeof saveMenuProgressToLocalStorage === 'function') saveMenuProgressToLocalStorage(); } catch (e) { console.warn('persist week failed', e); }
+    closeMobileEditDatesModal();
+}
+
+// Wire up modal buttons and interactions after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    const editBtn = document.getElementById('editDatesBtnMobile');
+    if (editBtn) editBtn.addEventListener('click', openMobileEditDatesModal);
+    const cancel = document.getElementById('mobileDateCancelBtn');
+    if (cancel) cancel.addEventListener('click', closeMobileEditDatesModal);
+    const setBtn = document.getElementById('mobileDateSetBtn');
+    if (setBtn) setBtn.addEventListener('click', function() {
+        const v = document.getElementById('mobileDatePicker') ? document.getElementById('mobileDatePicker').value : null;
+        if (v) setWeekFromDateISO(v);
+    });
+    const modal = document.getElementById('mobileEditDatesModal');
+    if (modal) {
+        modal.addEventListener('click', function(e){ if (e.target === modal) closeMobileEditDatesModal(); });
+    }
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { const mm = document.getElementById('mobileEditDatesModal'); if (mm && mm.style.display === 'flex') closeMobileEditDatesModal(); } });
+});
 
 /* Generic safe setter */
 function safeSetText(id, text) { const el = document.getElementById(id); if (!el) return; el.innerText = text == null ? '' : String(text); }
