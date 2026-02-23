@@ -232,6 +232,11 @@ input[type="time"].sign-out-time:focus {
     z-index: 1080;
     background: #222529;
   }
+  
+  /* Adjust for location bar when visible */
+  main[style*="padding-top: 100px"] .attendance-table-wrapper {
+    top: 100px !important;        /* navbar (56px) + location bar (44px) */
+  }
   table {
     width: 100vw !important;
     max-width: 100vw !important;
@@ -303,10 +308,21 @@ input[type="time"].sign-out-time:focus {
     background: #222529;
     border-bottom: 1px solid #1f2125;
     margin-top: 0 !important;
+    margin-bottom: 0 !important;
 
     width: 100vw;
     margin-left: calc(50% - 50vw) !important;
     margin-right: calc(50% - 50vw) !important;
+  }
+  
+  /* Adjust for location bar when visible */
+  main[style*="padding-top: 100px"] #classroomSwitchContainer {
+    top: 100px !important;        /* navbar (56px) + location bar (44px) */
+  }
+  
+  /* Add top padding to tables so they start below sticky switcher */
+  table.attendance-table {
+    padding-top: 50px !important;  /* Height of classroom switcher + margin */
   }
   #classroomSwitchContainer .form-select {
     border: none !important;
@@ -346,6 +362,12 @@ input[type="time"].sign-out-time:focus {
     margin-bottom: 0 !important;
     /* ...existing table mobile rules... */
   }
+  
+  /* Add margin to active table so it starts below the sticky switcher */
+  table.attendance-table.is-active {
+    margin-top: 48px !important;  /* space for sticky switcher bar */
+  }
+  
   /* Only one classroom table visible at a time */
   table.attendance-table { display: none; }
   table.attendance-table.is-active { display: table; }
