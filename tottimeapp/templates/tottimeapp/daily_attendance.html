@@ -581,9 +581,9 @@ input[type="time"].sign-out-time:focus {
                         <div class="mb-3">
                         <label for="studentSelect" class="form-label">Select Student:</label>
                         <select class="form-select" id="studentSelect" name="student">
-                            {% for student in students %}
-                            <option value="{{ student.id }}">{{ student }}</option>
-                            {% endfor %}
+                          {% for student in students %}
+                          <option value="{{ student.id }}">{{ student }}</option>
+                          {% endfor %}
                         </select>
                         </div>
                         <div class="mb-3">
@@ -605,6 +605,22 @@ input[type="time"].sign-out-time:focus {
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script>
+  $(document).ready(function() {
+    $('#studentSelect').select2({
+      dropdownParent: $('#manualSignInModal'),
+      width: '100%',
+      placeholder: 'Select student',
+      allowClear: true
+    });
+    // Reset select2 on modal open
+    $('#manualSignInModal').on('show.bs.modal', function () {
+      $('#studentSelect').val(null).trigger('change');
+    });
+  });
+</script>
 <script>
     $(document).ready(function () {
         function updateAttendanceRecord(recordId, field, newValue) {
