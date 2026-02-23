@@ -265,15 +265,27 @@ input[type="time"].sign-out-time:focus {
   }
 
   /* Collapse delete column on mobile so others expand */
-  .attendance-table:not(.delete-visible) {
-    table-layout: auto !important;
-  }
   .attendance-table:not(.delete-visible) col.col-delete {
     display: none !important;
+    width: 0 !important;
   }
   .attendance-table.delete-visible col.col-delete {
     display: table-column !important;
     width: 56px !important; /* match your icon/button width */
+  }
+  
+  /* Set specific column widths to prevent overflow */
+  .attendance-table col.col-student {
+    width: 28% !important;
+  }
+  .attendance-table col.col-signin {
+    width: 18% !important;
+  }
+  .attendance-table col.col-signout {
+    width: 18% !important;
+  }
+  .attendance-table col.col-classroom {
+    width: 36% !important;
   }
 
   /* Safety: hide cells if JS hasn’t run yet */
@@ -351,7 +363,6 @@ input[type="time"].sign-out-time:focus {
   }
 }
 
-@media (max-width: 999px) {
   /* Anchor mobile nav bar to bottom */
   #mobileBottomNav {
     position: fixed;
@@ -370,18 +381,23 @@ input[type="time"].sign-out-time:focus {
   .mobile-nav-spacer {
     height: 72px;
   }
-}
-
-/* Wrapper for table scroll on mobile */
-@media (max-width: 999px) {
-  .attendance-table-wrapper {
-    overflow-y: auto;
-    overflow-x: hidden;
-    height: calc(100vh - 56px - 72px);
-    margin: 0;
-    padding: 0;
+  
+  /* Constrain main content area to fit between top nav and bottom nav */
+  main {
+    min-height: calc(100vh - 56px - 72px) !important;
+    max-height: calc(100vh - 56px - 72px) !important;
+    height: calc(100vh - 56px - 72px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 0 !important;
   }
-}
+  
+  /* When location bar is visible, adjust for its height */
+  main[style*="padding-top: 100px"] {
+    min-height: calc(100vh - 100px - 72px) !important;
+    max-height: calc(100vh - 100px - 72px) !important;
+    height: calc(100vh - 100px - 72px) !important;
+  }
 }
 @media (max-width: 999px) {
   /* Mobile classroom switcher bar (flush to table) */
