@@ -237,7 +237,7 @@ input[type="time"].sign-out-time:focus {
     width: 100vw !important;
     max-width: 100vw !important;
     min-width: 0 !important;
-    table-layout: auto !important;
+    table-layout: fixed !important;
     border-radius: 0 !important;
     margin: 8px 0 12px 0 !important;
     margin-left: calc(50% - 50vw) !important;
@@ -251,9 +251,20 @@ input[type="time"].sign-out-time:focus {
     border-bottom: 1px solid #dee2e6 !important;
     padding-left: 12px !important;
     padding-right: 12px !important;
-    white-space: normal !important;
-    word-break: normal !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
     vertical-align: middle !important;
+    min-width: 80px;
+  }
+  @media (max-width: 999px) {
+    table {
+      table-layout: auto !important;
+    }
+    table th, table td {
+      white-space: normal !important;
+      word-break: normal !important;
+      min-width: 60px;
+    }
   }
   table thead th:first-child,
   table thead th:last-child,
