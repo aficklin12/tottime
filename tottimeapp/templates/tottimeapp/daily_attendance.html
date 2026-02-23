@@ -219,16 +219,28 @@ input[type="time"].sign-out-time:focus {
   .mobile-nav-spacer { height: 72px; }
 
   /* Full-width (full-bleed) tables on mobile */
+  .attendance-table-wrapper {
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: fixed;
+    top: 56px;
+    bottom: 72px;
+    left: 0;
+    right: 0;
+    z-index: 1080;
+    background: #222529;
+  }
   table {
     width: 100vw !important;
     max-width: 100vw !important;
     table-layout: fixed !important;
     border-radius: 0 !important;
-
-    /* remove page gutters and span the viewport */
-    margin: 8px 0 12px 0 !important;      /* keep small vertical spacing */
-    margin-left: calc(50% - 50vw) !important;
-    margin-right: calc(50% - 50vw) !important;
+    margin: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    font-size: 0.98rem;
   }
 
   /* Keep only horizontal row dividers like other mobile lists */
@@ -239,6 +251,9 @@ input[type="time"].sign-out-time:focus {
     border-bottom: 1px solid #dee2e6 !important;
     padding-left: 12px !important;
     padding-right: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   /* Ensure header rows inside the table also respect full width without rounded corners */
@@ -314,7 +329,8 @@ input[type="time"].sign-out-time:focus {
     font-size: 1.1rem;
   }
   table {
-    margin-top: 0 !important;            /* remove gap */
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
     /* ...existing table mobile rules... */
   }
   /* Only one classroom table visible at a time */
@@ -323,6 +339,49 @@ input[type="time"].sign-out-time:focus {
 
   /* Hide the in-table classroom title row on mobile (the dropdown replaces it) */
   .attendance-table .classroom-title-row { display: none !important; }
+  /* Prevent column stretching */
+  .attendance-table th, .attendance-table td {
+    max-width: 120px !important;
+  }
+  .attendance-table th.delete-column, .attendance-table td.delete-column {
+    max-width: 56px !important;
+  }
+  .attendance-table th.classroom-header, .attendance-table td.classroom-header {
+    max-width: 180px !important;
+  }
+}
+
+@media (max-width: 999px) {
+  /* Anchor mobile nav bar to bottom */
+  #mobileBottomNav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    z-index: 1100;
+    background: #222529;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: 72px;
+  }
+  .mobile-nav-spacer {
+    height: 72px;
+  }
+}
+
+/* Wrapper for table scroll on mobile */
+@media (max-width: 999px) {
+  .attendance-table-wrapper {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: calc(100vh - 56px - 72px);
+    margin: 0;
+    padding: 0;
+  }
+}
 }
 @media (max-width: 999px) {
   /* Mobile classroom switcher bar (flush to table) */
