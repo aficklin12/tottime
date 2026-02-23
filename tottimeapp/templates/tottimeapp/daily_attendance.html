@@ -212,38 +212,26 @@ input[type="time"].sign-out-time:focus {
   }
 
 @media (max-width: 999px) {
+  /* hide desktop controls on mobile */
   .desktop-only { display: none !important; }
+
+  /* keep content visible above the bottom nav */
   .mobile-nav-spacer { height: 72px; }
 
-  /* Fix bottom nav to viewport bottom */
-  #mobileBottomNav {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1200;
-    background: #222529;
-    border-top: 1px solid #1f2125;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    height: 72px;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
-  }
-  .mobile-nav-spacer { height: 72px; }
-
-  /* Make table fit viewport width, no horizontal scroll */
+  /* Full-width (full-bleed) tables on mobile */
   table {
     width: 100vw !important;
     max-width: 100vw !important;
-    min-width: 0 !important;
     table-layout: fixed !important;
     border-radius: 0 !important;
-    margin: 8px 0 12px 0 !important;
+
+    /* remove page gutters and span the viewport */
+    margin: 8px 0 12px 0 !important;      /* keep small vertical spacing */
     margin-left: calc(50% - 50vw) !important;
     margin-right: calc(50% - 50vw) !important;
-    overflow-x: hidden !important;
   }
+
+  /* Keep only horizontal row dividers like other mobile lists */
   table th, table td {
     border-left: none !important;
     border-right: none !important;
@@ -251,27 +239,17 @@ input[type="time"].sign-out-time:focus {
     border-bottom: 1px solid #dee2e6 !important;
     padding-left: 12px !important;
     padding-right: 12px !important;
-    white-space: nowrap !important;
-    word-break: keep-all !important;
-    vertical-align: middle !important;
-    min-width: 80px;
   }
-  @media (max-width: 999px) {
-    table {
-      table-layout: auto !important;
-    }
-    table th, table td {
-      white-space: normal !important;
-      word-break: normal !important;
-      min-width: 60px;
-    }
-  }
+
+  /* Ensure header rows inside the table also respect full width without rounded corners */
   table thead th:first-child,
   table thead th:last-child,
   table tbody tr:last-child td:first-child,
   table tbody tr:last-child td:last-child {
     border-radius: 0 !important;
   }
+
+  /* Collapse delete column on mobile so others expand */
   .attendance-table:not(.delete-visible) {
     table-layout: auto !important;
   }
@@ -280,19 +258,24 @@ input[type="time"].sign-out-time:focus {
   }
   .attendance-table.delete-visible col.col-delete {
     display: table-column !important;
-    width: 56px !important;
+    width: 56px !important; /* match your icon/button width */
   }
+
+  /* Safety: hide cells if JS hasn’t run yet */
   .attendance-table:not(.delete-visible) th.delete-column,
   .attendance-table:not(.delete-visible) td.delete-column {
     display: none !important;
   }
+
+  /* Mobile classroom switcher bar (full-bleed under navbar) */
   #classroomSwitchContainer {
     position: sticky;
-    top: 56px;
+    top: 56px;                    /* navbar height */
     z-index: 1090;
     padding: 6px 12px;
     background: #222529;
     border-bottom: 1px solid #1f2125;
+
     width: 100vw;
     margin-left: calc(50% - 50vw) !important;
     margin-right: calc(50% - 50vw) !important;
@@ -305,30 +288,40 @@ input[type="time"].sign-out-time:focus {
     text-align: center;
     text-align-last: center;
     border-radius: 6px;
-    font-weight: 700;
-    font-size: 1.1rem;
-    -webkit-appearance: none;
+    font-weight: 700;     /* bold */
+    font-size: 1.1rem;   
+     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
+
+    /* keep dark bg and add arrow */
     background-color: rgba(34,37,41,.95) !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M3.2 6l4.8 4.8L12.8 6z'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
     background-position: right 12px center !important;
     background-size: 14px !important;
-    padding-right: 36px;
+
+    padding-right: 36px; /* room for arrow */
   }
+
+  /* Hide native arrow on old Edge/IE */
   #classroomSwitchContainer .form-select::-ms-expand {
     display: none;
   }
+  /* Optional: option styling (limited support on iOS) */
   #classroomSwitchContainer .form-select option {
     font-weight: 700;
     font-size: 1.1rem;
   }
   table {
-    margin-top: 0 !important;
+    margin-top: 0 !important;            /* remove gap */
+    /* ...existing table mobile rules... */
   }
+  /* Only one classroom table visible at a time */
   table.attendance-table { display: none; }
   table.attendance-table.is-active { display: table; }
+
+  /* Hide the in-table classroom title row on mobile (the dropdown replaces it) */
   .attendance-table .classroom-title-row { display: none !important; }
 }
 @media (max-width: 999px) {
