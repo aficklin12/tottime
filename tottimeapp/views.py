@@ -23,7 +23,8 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, WeeklyMenuAssignedRule, TemporaryAccess, FeedRecord, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe,MessagingPermission, BreakfastRecipe, Classroom, ClassroomAssignment, AMRecipe, PMRecipe, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, FruitRecipe, VegRecipe, WgRecipe, RolePermission, SubUser, Invitation
+from .models import Classroom, WeeklyMenuAssignedRule, TemporaryAccess, FeedRecord, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe, MessagingPermission, Classroom, ClassroomAssignment, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, RolePermission, SubUser, Invitation, RecipeIngredient, NutritionFact
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST
@@ -76,6 +77,11 @@ def public_or_login_required(view_func):
     
     return wrapper
 
+
+def homepage(request):
+    """Public homepage view for anonymous visitors."""
+    return render(request, 'tottimeapp/homepage.html', {})
+
 def get_user_for_view(request):
     """
     Returns the appropriate main_user for the current request.
@@ -113,6 +119,64 @@ def get_user_for_view(request):
     logger.info(f"Returning original user: {user.id} ({user.username})")
     return user
 
+def get_recipe_ingredients(recipe):
+    """
+    Get ingredients for a recipe from the RecipeIngredient table.
+    Returns list of tuples: [(ingredient_obj, quantity), ...]
+    Works with any recipe model that has GenericRelation 'ingredients'.
+    """
+    if not recipe:
+        return []
+    
+    # Get content type for this recipe's model
+    content_type = ContentType.objects.get_for_model(recipe)
+    
+    # Query RecipeIngredient for this recipe
+    recipe_ingredients = RecipeIngredient.objects.filter(
+        content_type=content_type,
+        object_id=recipe.id
+    ).select_related('ingredient')
+    
+    # Return as list of tuples (ingredient, quantity)
+    return [(ri.ingredient, ri.quantity) for ri in recipe_ingredients if ri.ingredient]
+
+def save_recipe_ingredients(recipe, ingredient_ids, quantities):
+    """
+    Save ingredients for a recipe to the RecipeIngredient table.
+    Deletes existing ingredients and creates new ones.
+    
+    Args:
+        recipe: The recipe object (any model with GenericRelation 'ingredients')
+        ingredient_ids: List of ingredient IDs from POST data
+        quantities: List of quantities corresponding to each ingredient
+    """
+    if not recipe:
+        return
+    
+    # Get content type for this recipe's model
+    content_type = ContentType.objects.get_for_model(recipe)
+    
+    # Delete existing recipe ingredients
+    RecipeIngredient.objects.filter(
+        content_type=content_type,
+        object_id=recipe.id
+    ).delete()
+    
+    # Create new recipe ingredients
+    for ingredient_id, quantity in zip(ingredient_ids, quantities):
+        if ingredient_id and quantity:
+            try:
+                ingredient = Inventory.objects.get(id=ingredient_id)
+                RecipeIngredient.objects.create(
+                    content_type=content_type,
+                    object_id=recipe.id,
+                    ingredient=ingredient,
+                    quantity=Decimal(quantity)
+                )
+            except (Inventory.DoesNotExist, ValueError):
+                # Skip invalid ingredients or quantities
+                pass
+
 def check_permissions(request, required_permission_id=None):
     """
     Check user permissions and return context variables for links.
@@ -140,11 +204,29 @@ def check_permissions(request, required_permission_id=None):
         'total_unread_count': 0,
     }
 
-    try:
-        sub_user = SubUser.objects.get(user=request.user)
-        group_id = sub_user.group_id.id
-        main_user_id = sub_user.main_user.id
+    # Prefer the MainUser.primary_group first; fall back to SubUser.group_id when absent.
+    group_id = None
+    main_user_id = None
 
+    # Try primary_group on the user (works for MainUser instances)
+    main_group_id = getattr(request.user, 'primary_group_id', None)
+    if main_group_id:
+        group_id = main_group_id
+        main_user_id = getattr(request.user, 'id', None)
+    else:
+        # Fallback: try SubUser mapping
+        try:
+            sub_user = SubUser.objects.get(user=request.user)
+            group_id = sub_user.group_id.id
+            main_user_id = sub_user.main_user.id
+        except SubUser.DoesNotExist:
+            # No primary_group and not a SubUser: treat as main user with full access
+            allow_access = True
+            for key in permissions_context:
+                permissions_context[key] = True
+
+    # If we have a role mapping (group_id + main_user_id), evaluate permissions
+    if group_id and main_user_id:
         # Check for required permission
         if required_permission_id:
             allow_access = RolePermission.objects.filter(
@@ -191,12 +273,6 @@ def check_permissions(request, required_permission_id=None):
         total_unread_count = conversations.aggregate(total_unread=Sum('unread_count'))['total_unread'] or 0
         permissions_context['total_unread_count'] = total_unread_count
 
-    except SubUser.DoesNotExist:
-        # If user is not a SubUser, assume it's a main user and allow access to all links
-        allow_access = True
-        for key in permissions_context:
-            permissions_context[key] = True
-
     if not allow_access:
         return redirect('no_access')
 
@@ -224,6 +300,29 @@ def index(request):
         return permissions_context
 
     user = get_user_for_view(request)
+    # Check the MainUser.primary_group first for security-based redirects.
+    # If no primary_group is present, fall back to SubUser.group_id.
+    try:
+        main_group_id = getattr(request.user, 'primary_group_id', None)
+        if main_group_id == 2:
+            return redirect('index_director')
+        elif main_group_id == 3:
+            return redirect('index_teacher')
+        elif main_group_id == 4:
+            return redirect('index_cook')
+        elif main_group_id == 5:
+            return redirect('index_parent')
+        elif main_group_id == 7:
+            return redirect('index_teacher_parent')
+        elif main_group_id == 6:
+            return redirect('index_free_user')
+        elif main_group_id == 9:
+            return redirect('index_cacfp')
+    except Exception:
+        # Be resilient to unexpected user objects; continue to SubUser check
+        pass
+
+    # Fallback: check SubUser.group_id if no primary_group redirect occurred
     try:
         sub_user = SubUser.objects.get(user=request.user)
         group_id = sub_user.group_id_id
@@ -2141,15 +2240,15 @@ def order_soon_items_view(request):
     ingredient_requirements = {}
     
     # Helper function to get recipe ingredients and add to requirements
-    def add_recipe_ingredients(recipe_model, recipe_name):
+    def add_recipe_ingredients(recipe_name):
         if not recipe_name:
             return
         
         try:
-            recipe = recipe_model.objects.get(user=user, name=recipe_name)
-            for i in range(1, 6):  # Check ingredient1 through ingredient5
-                ingredient = getattr(recipe, f'ingredient{i}', None)
-                qty = getattr(recipe, f'qty{i}', None)
+            recipe = Recipe.objects.get(user=user, name=recipe_name)
+            ingredients = get_recipe_ingredients(recipe)
+            
+            for ingredient, qty in ingredients:
                 if ingredient and qty:
                     if ingredient.id not in ingredient_requirements:
                         ingredient_requirements[ingredient.id] = {
@@ -2157,74 +2256,45 @@ def order_soon_items_view(request):
                             'total_required': 0
                         }
                     ingredient_requirements[ingredient.id]['total_required'] += qty
-        except recipe_model.DoesNotExist:
-            pass
-    
-    # Helper function for single ingredient recipes
-    def add_single_ingredient_recipe(recipe_model, recipe_name):
-        if not recipe_name:
-            return
-        
-        try:
-            recipe = recipe_model.objects.get(user=user, name=recipe_name)
-            if recipe.ingredient1 and recipe.qty1:
-                if recipe.ingredient1.id not in ingredient_requirements:
-                    ingredient_requirements[recipe.ingredient1.id] = {
-                        'ingredient': recipe.ingredient1,
-                        'total_required': 0
-                    }
-                ingredient_requirements[recipe.ingredient1.id]['total_required'] += recipe.qty1
-        except recipe_model.DoesNotExist:
+        except Recipe.DoesNotExist:
             pass
     
     # Process each menu entry in the latest week
     for menu in latest_menus:
-        # Define menu fields and their associated recipe models
+        # Define all menu fields
         menu_fields = [
             # AM Snack fields
-            ('am_fluid_milk', AMRecipe),
-            ('am_fruit_veg', AMRecipe),
-            ('am_bread', AMRecipe),
-            ('am_additional', AMRecipe),
+            'am_fluid_milk',
+            'am_fruit_veg',
+            'am_bread',
+            'am_additional',
             
             # AMS fields
-            ('ams_fluid_milk', BreakfastRecipe),
-            ('ams_fruit_veg', BreakfastRecipe),
-            ('ams_bread', BreakfastRecipe),
-            ('ams_meat', BreakfastRecipe),
+            'ams_fluid_milk',
+            'ams_fruit_veg',
+            'ams_bread',
+            'ams_meat',
             
             # Lunch fields
-            ('lunch_main_dish', Recipe),
-            ('lunch_fluid_milk', Recipe),
-            ('lunch_additional', Recipe),
-            ('lunch_meat', Recipe),
+            'lunch_main_dish',
+            'lunch_fluid_milk',
+            'lunch_additional',
+            'lunch_meat',
+            'lunch_vegetable',
+            'lunch_fruit',
+            'lunch_grain',
             
             # PM Snack fields
-            ('pm_fluid_milk', PMRecipe),
-            ('pm_fruit_veg', PMRecipe),
-            ('pm_bread', PMRecipe),
-            ('pm_meat', PMRecipe),
+            'pm_fluid_milk',
+            'pm_fruit_veg',
+            'pm_bread',
+            'pm_meat',
         ]
         
-        # Special fields with specific recipe types
-        lunch_vegetable = getattr(menu, 'lunch_vegetable', None)
-        lunch_fruit = getattr(menu, 'lunch_fruit', None)
-        lunch_grain = getattr(menu, 'lunch_grain', None)
-        
-        # Process regular menu fields
-        for field_name, recipe_model in menu_fields:
+        # Process all menu fields
+        for field_name in menu_fields:
             recipe_name = getattr(menu, field_name, None)
-            add_recipe_ingredients(recipe_model, recipe_name)
-        
-        # Process special lunch fields
-        if lunch_vegetable:
-            add_single_ingredient_recipe(VegRecipe, lunch_vegetable)
-        
-        if lunch_fruit:
-            add_single_ingredient_recipe(FruitRecipe, lunch_fruit)
-        
-        if lunch_grain:
-            add_single_ingredient_recipe(WgRecipe, lunch_grain)
+            add_recipe_ingredients(recipe_name)
     
     # Filter ingredients where total_quantity is less than required quantity
     order_soon_items = []
@@ -2325,13 +2395,8 @@ def create_recipe(request):
             rule=rule  # Set rule
         )
 
-        # Save main ingredients and their quantities to the recipe
-        for index, (ingredient_id, quantity) in enumerate(zip(main_ingredient_ids, quantities), start=1):
-            if ingredient_id and quantity:
-                ingredient = get_object_or_404(Inventory, id=ingredient_id)
-                setattr(recipe, f'ingredient{index}', ingredient)
-                setattr(recipe, f'qty{index}', quantity)
-        recipe.save()
+        # Save main ingredients using helper function
+        save_recipe_ingredients(recipe, main_ingredient_ids, quantities)
 
         return JsonResponse({'success': True})
     else:
@@ -2361,18 +2426,15 @@ def create_fruit_recipe(request):
         rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
         # Create fruit recipe instance
-        fruit_recipe = FruitRecipe.objects.create(
+        fruit_recipe = Recipe.objects.create(
             user=user,
             name=recipe_name,
+            recipe_type='fruit',
             rule=rule  # This will be None if no rule is selected
         )
 
-        # Save the ingredient and its quantity to the fruit recipe
-        if ingredient_id and quantity:
-            ingredient = get_object_or_404(Inventory, id=ingredient_id)
-            fruit_recipe.ingredient1 = ingredient
-            fruit_recipe.qty1 = quantity
-        fruit_recipe.save()
+        # Save the ingredient using helper function
+        save_recipe_ingredients(fruit_recipe, [ingredient_id], [quantity])
 
         return JsonResponse({'success': True})
     else:
@@ -2402,18 +2464,15 @@ def create_veg_recipe(request):
         rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
         # Create vegetable recipe instance
-        veg_recipe = VegRecipe.objects.create(
+        veg_recipe = Recipe.objects.create(
             user=user,
             name=recipe_name,
+            recipe_type='vegetable',
             rule=rule  # This will be None if no rule is selected
         )
 
-        # Save the ingredient and its quantity to the vegetable recipe
-        if ingredient_id and quantity:
-            ingredient = get_object_or_404(Inventory, id=ingredient_id)
-            veg_recipe.ingredient1 = ingredient
-            veg_recipe.qty1 = quantity
-        veg_recipe.save()
+        # Save the ingredient using helper function
+        save_recipe_ingredients(veg_recipe, [ingredient_id], [quantity])
 
         return JsonResponse({'success': True})
     else:
@@ -2443,18 +2502,15 @@ def create_wg_recipe(request):
         rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
         # Create WG recipe instance
-        wg_recipe = WgRecipe.objects.create(
+        wg_recipe = Recipe.objects.create(
             user=user,
             name=recipe_name,
+            recipe_type='whole_grain',
             rule=rule  # This will be None if no rule is selected
         )
 
-        # Save the ingredient and its quantity to the WG recipe
-        if ingredient_id and quantity:
-            ingredient = get_object_or_404(Inventory, id=ingredient_id)
-            wg_recipe.ingredient1 = ingredient
-            wg_recipe.qty1 = quantity
-        wg_recipe.save()
+        # Save the ingredient using helper function
+        save_recipe_ingredients(wg_recipe, [ingredient_id], [quantity])
 
         return JsonResponse({'success': True})
     else:
@@ -2488,23 +2544,17 @@ def create_breakfast_recipe(request):
 
         rule = Rule.objects.get(id=rule_id) if rule_id else None
         # Create breakfast recipe instance
-        breakfast_recipe = BreakfastRecipe.objects.create(
+        breakfast_recipe = Recipe.objects.create(
             user=user,
             name=recipe_name,
+            recipe_type='breakfast',
             instructions=instructions,
             addfood=additional_food,
             rule=rule
         )
 
-        # Save main ingredients and their quantities to the breakfast recipe
-        for ingredient_id, quantity in zip(main_ingredient_ids, quantities):
-            if ingredient_id and quantity:
-                ingredient = Inventory.objects.get(id=ingredient_id)
-                # Assign main ingredients and their quantities directly to the breakfast recipe instance
-                setattr(breakfast_recipe, f'ingredient{main_ingredient_ids.index(ingredient_id) + 1}', ingredient)
-                setattr(breakfast_recipe, f'qty{main_ingredient_ids.index(ingredient_id) + 1}', quantity)
-
-        breakfast_recipe.save()  # Save the changes to the database
+        # Save main ingredients using helper function
+        save_recipe_ingredients(breakfast_recipe, main_ingredient_ids, quantities)
 
         return JsonResponse({'success': True})  # Or return any relevant data
     else:
@@ -2542,9 +2592,10 @@ def create_am_recipe(request):
         rule = Rule.objects.get(id=rule_id) if rule_id else None
 
         # Create AM recipe instance
-        am_recipe = AMRecipe.objects.create(
+        am_recipe = Recipe.objects.create(
             user=user,
             name=recipe_name,
+            recipe_type='am_snack',
             instructions=instructions,
             fluid=fluid,
             fruit_veg=fruit_veg,
@@ -2552,15 +2603,8 @@ def create_am_recipe(request):
             rule=rule  # Set rule
         )
 
-        # Save main ingredients and their quantities to the AM recipe
-        for ingredient_id, quantity in zip(main_ingredient_ids, quantities):
-            if ingredient_id and quantity:
-                ingredient = Inventory.objects.get(id=ingredient_id)
-                # Assign main ingredients and their quantities directly to the AM recipe instance
-                setattr(am_recipe, f'ingredient{main_ingredient_ids.index(ingredient_id) + 1}', ingredient)
-                setattr(am_recipe, f'qty{main_ingredient_ids.index(ingredient_id) + 1}', quantity)
-
-        am_recipe.save()  # Save the changes to the database
+        # Save main ingredients using helper function
+        save_recipe_ingredients(am_recipe, main_ingredient_ids, quantities)
 
         return JsonResponse({'success': True})  # Or return any relevant data
     else:
@@ -2598,9 +2642,10 @@ def create_pm_recipe(request):
         rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
 
         # Create PM recipe instance
-        pm_recipe = PMRecipe.objects.create(
+        pm_recipe = Recipe.objects.create(
             user=user,
             name=recipe_name,
+            recipe_type='pm_snack',
             instructions=instructions,
             fluid=fluid,
             fruit_veg=fruit_veg,
@@ -2608,14 +2653,8 @@ def create_pm_recipe(request):
             rule=rule  # Set rule
         )
 
-        # Save main ingredients and their quantities to the PM recipe
-        for index, (ingredient_id, quantity) in enumerate(zip(main_ingredient_ids, quantities), start=1):
-            if ingredient_id and quantity:
-                ingredient = get_object_or_404(Inventory, id=ingredient_id)
-                setattr(pm_recipe, f'ingredient{index}', ingredient)
-                setattr(pm_recipe, f'qty{index}', quantity)
-
-        pm_recipe.save()  # Save the changes to the database
+        # Save main ingredients using helper function
+        save_recipe_ingredients(pm_recipe, main_ingredient_ids, quantities)
 
         return JsonResponse({'success': True})  # Or return any relevant data
     else:
@@ -2665,47 +2704,48 @@ def get_recipe(request, recipe_id):
 @login_required
 def fetch_veg_recipes(request):
     user = get_user_for_view(request)
-    veg_recipes = VegRecipe.objects.filter(user=user).values('id', 'name')
+    veg_recipes = Recipe.objects.filter(user=user, recipe_type='vegetable').values('id', 'name')
     return JsonResponse({'recipes': list(veg_recipes)})
 
 @login_required
 def fetch_wg_recipes(request):
     user = get_user_for_view(request)
-    wg_recipes = WgRecipe.objects.filter(user=user).values('id', 'name')
+    wg_recipes = Recipe.objects.filter(user=user, recipe_type='whole_grain').values('id', 'name')
     return JsonResponse({'recipes': list(wg_recipes)})
 
 def fetch_fruit_recipes(request):
     user = get_user_for_view(request)
-    fruit_recipes = FruitRecipe.objects.filter(user=user).values('id', 'name')
+    fruit_recipes = Recipe.objects.filter(user=user, recipe_type='fruit').values('id', 'name')
     return JsonResponse({'recipes': list(fruit_recipes)})
 
 def fetch_breakfast_recipes(request):
     user = get_user_for_view(request)
-    breakfast_recipes = BreakfastRecipe.objects.filter(user=user).values('id', 'name')
+    breakfast_recipes = Recipe.objects.filter(user=user, recipe_type='breakfast').values('id', 'name')
     return JsonResponse({'recipes': list(breakfast_recipes)})
 
 @login_required
 def fetch_am_recipes(request):
     user = get_user_for_view(request)
-    am_recipes = AMRecipe.objects.filter(user=user).values('id', 'name')
+    from django.db.models import Q
+    am_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack')).values('id', 'name')
     return JsonResponse({'recipes': list(am_recipes)})
 
 def fetch_pm_recipes(request):
     user = get_user_for_view(request)
-    pm_recipes = PMRecipe.objects.filter(user=user).values('id', 'name')  
+    from django.db.models import Q
+    pm_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack')).values('id', 'name')  
     return JsonResponse({'recipes': list(pm_recipes)})
 
 def check_ingredients_availability(request, recipe):
     """Check if all ingredients in a recipe are available in sufficient quantities."""
     user = get_user_for_view(request)  # Get the user (main user or subuser)
     
-    for i in range(1, 6):
-        ingredient_id = getattr(recipe, f"ingredient{i}_id")
-        qty = getattr(recipe, f"qty{i}")
-        
-        if ingredient_id and qty:
+    ingredients = get_recipe_ingredients(recipe)
+    
+    for ingredient, qty in ingredients:
+        if ingredient and qty:
             # Check if the ingredient is available in the user's inventory
-            if not Inventory.objects.filter(user=user, id=ingredient_id, quantity__gte=qty).exists():
+            if not Inventory.objects.filter(user=user, id=ingredient.id, quantity__gte=qty).exists():
                 return False
     return True
     
@@ -2904,13 +2944,7 @@ def delete_recipe(request, recipe_id, category):
     if request.method == 'DELETE':
         # Map category to the corresponding model
         model_mapping = {
-            'breakfast': BreakfastRecipe,
-            'am': AMRecipe,
-            'pm': PMRecipe,
             'lunch': Recipe,
-            'fruit': FruitRecipe,
-            'veg': VegRecipe,
-            'wg': WgRecipe,
         }
 
         # Get the model based on the category
@@ -3285,7 +3319,7 @@ def daily_attendance(request):
     # Fetch attendance data
     today = date.today()
     user = get_user_for_view(request)
-    students = Student.objects.all()
+    students = Student.objects.all().order_by('first_name')
     attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=today, user=user)
     # Get classroom names from Classroom model
     classroom_options = Classroom.objects.filter(user=user).values_list('name', flat=True)
@@ -4992,50 +5026,50 @@ def select_meals_for_days(recipes, user):
                 'meal_name': selected_meal.name,
                 # IMPORTANT: do not override grain; keep what the recipe defines
                 'grain': selected_meal.grain or "",
-                'meat_alternate': selected_meal.meat_alternate or ""
+                'meat_alternate': selected_meal.meat_alternate or "",
+                'vegetable': selected_meal.veg or "",
+                'fruit3': selected_meal.fruit or ""  # Use fruit3 for lunch fruit row
             }
         else:
             menu_data[day] = {
                 'meal_name': "No available meal",
                 'grain': "",
-                'meat_alternate': ""
+                'meat_alternate': "",
+                'vegetable': "",
+                'fruit3': ""
             }
 
     return menu_data
 
 def check_ingredients_availability(recipe, user, inventory, exclude_zero_quantity=False):
     """Check if the ingredients for a recipe are available in the inventory."""
-    required_ingredients = [
-        (recipe.ingredient1, recipe.qty1),
-        (recipe.ingredient2, recipe.qty2),
-        (recipe.ingredient3, recipe.qty3),
-        (recipe.ingredient4, recipe.qty4),
-        (recipe.ingredient5, recipe.qty5)
-    ]
-    for ingredient, qty in required_ingredients:
+    ingredients = get_recipe_ingredients(recipe)
+    
+    if not ingredients:
+        return True
+    
+    for idx, (ingredient, qty) in enumerate(ingredients, 1):
         if ingredient:
             item = inventory.get(ingredient.id, None)
             if item:
                 if exclude_zero_quantity and item.quantity == 0:
                     return False
-                if item.total_quantity < (qty or 0):
+                if item.quantity < (qty or 0):
                     return False
+            else:
+                return False
+    
     return True
 
 def subtract_ingredients_from_inventory(recipe, inventory):
     """Subtract the ingredients used in a recipe from the inventory."""
-    required_ingredients = [
-        (recipe.ingredient1, recipe.qty1),
-        (recipe.ingredient2, recipe.qty2),
-        (recipe.ingredient3, recipe.qty3),
-        (recipe.ingredient4, recipe.qty4),
-        (recipe.ingredient5, recipe.qty5)
-    ]
-    for ingredient, qty in required_ingredients:
+    ingredients = get_recipe_ingredients(recipe)
+    
+    for ingredient, qty in ingredients:
         if ingredient:
             item = inventory.get(ingredient.id, None)
             if item:
-                item.total_quantity -= (qty or 0)
+                item.quantity -= (qty or 0)
                 item.save()
 
 def get_filtered_recipes(user, model, recent_days=14):
@@ -5043,30 +5077,51 @@ def get_filtered_recipes(user, model, recent_days=14):
     all_recipes = list(model.objects.filter(user=user))
     cutoff_date = timezone.now() - timedelta(days=recent_days)
     recent_recipes = model.objects.filter(user=user, last_used__gte=cutoff_date)
-    return [recipe for recipe in all_recipes if recipe not in recent_recipes]
+    filtered = [recipe for recipe in all_recipes if recipe not in recent_recipes]
+    
+    # If all recipes are filtered out (e.g., newly imported recipes all have same timestamp),
+    # return all recipes to avoid empty menu
+    if len(filtered) == 0 and len(all_recipes) > 0:
+        return all_recipes
+    
+    return filtered
 
 def generate_menu(request):
     user = get_user_for_view(request)  # Get the correct user context
     recipes = get_filtered_recipes(user, Recipe)
+    
     # Rule-aware selection (prefers daily Whole Grain without overriding grain/meat fields)
     menu_data = select_meals_for_days(recipes, user)
+    
     return JsonResponse(menu_data)
 
 @login_required
-def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_key):
+def generate_snack_menu(request, recipe_type_filter, fluid_key, fruit_key, bread_key, meat_key):
     user = get_user_for_view(request)  # main user or subuser's main user
     snack_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    recipes = list(model.objects.filter(user=user))
+    from django.db.models import Q
+    
+    # Build query based on recipe_type_filter (can be single type or list for am_pm_snack)
+    if isinstance(recipe_type_filter, list):
+        query = Q()
+        for rt in recipe_type_filter:
+            query |= Q(recipe_type=rt)
+        recipes = list(Recipe.objects.filter(user=user).filter(query))
+    else:
+        recipes = list(Recipe.objects.filter(user=user, recipe_type=recipe_type_filter))
+    
     for day in days_of_week:
         if recipes:
             selected_recipe = random.choice(recipes)
             recipes.remove(selected_recipe)
+            # Use fruit or veg field for fruit_key (either can be used for snacks)
+            fruit_veg_value = selected_recipe.fruit or selected_recipe.veg or ""
             snack_data[day] = {
-                fluid_key: selected_recipe.fluid,
-                fruit_key: selected_recipe.fruit_veg,
+                fluid_key: selected_recipe.fluid or "",
+                fruit_key: fruit_veg_value,
                 bread_key: selected_recipe.name,
-                meat_key: selected_recipe.meat
+                meat_key: selected_recipe.meat or ""
             }
         else:
             snack_data[day] = {
@@ -5078,27 +5133,30 @@ def generate_snack_menu(request, model, fluid_key, fruit_key, bread_key, meat_ke
     return JsonResponse(snack_data)
 
 def generate_am_menu(request):
-    return generate_snack_menu(request, AMRecipe, 'choose1', 'fruit2', 'bread2', 'meat1')
+    return generate_snack_menu(request, ['am_snack', 'am_pm_snack'], 'choose1', 'fruit2', 'bread2', 'meat1')
 
 def generate_pm_menu(request):
-    return generate_snack_menu(request, PMRecipe, 'choose2', 'fruit4', 'bread3', 'meat3')
+    return generate_snack_menu(request, ['pm_snack', 'am_pm_snack'], 'choose2', 'fruit4', 'bread3', 'meat3')
 
 @login_required
 def generate_breakfast_menu(request):
     user = get_user_for_view(request)
     breakfast_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    recipes = list(BreakfastRecipe.objects.filter(user=user))
+    recipes = list(Recipe.objects.filter(user=user, recipe_type='breakfast'))
     for day in days_of_week:
         if recipes:
             selected_recipe = random.choice(recipes)
             recipes.remove(selected_recipe)
+            # Use fruit or veg field for breakfast fruit/veg row
+            fruit_veg_value = selected_recipe.fruit or selected_recipe.veg or ""
             breakfast_data[day] = {
                 'bread': selected_recipe.name,
-                'add1': selected_recipe.addfood
+                'add1': selected_recipe.addfood or "",
+                'fruit': fruit_veg_value
             }
         else:
-            breakfast_data[day] = {'bread': "No available breakfast option", 'add1': ""}
+            breakfast_data[day] = {'bread': "No available breakfast option", 'add1': "", 'fruit': ""}
     return JsonResponse(breakfast_data)
 
 @login_required
@@ -5281,15 +5339,22 @@ def fetch_inventory_rules(request):
             'rule_label': inv['rule__rule'],
         }
 
-    def add_recipe_styles(model, slot):
-        qs = (model.objects
-              .filter(user=user)
-              .select_related('ingredient1__rule','ingredient2__rule','ingredient3__rule',
-                              'ingredient4__rule','ingredient5__rule','rule'))
+    def add_recipe_styles(recipe_type_filter, slot):
+        from django.db.models import Q
+        if isinstance(recipe_type_filter, list):
+            query = Q()
+            for rt in recipe_type_filter:
+                query |= Q(recipe_type=rt)
+            qs = Recipe.objects.filter(user=user).filter(query).select_related('rule')
+        else:
+            qs = Recipe.objects.filter(user=user, recipe_type=recipe_type_filter).select_related('rule')
+        
         for recipe in qs:
-            ingrs = (recipe.ingredient1, recipe.ingredient2, recipe.ingredient3,
-                     recipe.ingredient4, recipe.ingredient5)
-            ruled_ingrs = [inv for inv in ingrs if inv and inv.rule]
+            # Get ingredients from RecipeIngredient table
+            ingredients = get_recipe_ingredients(recipe)
+            
+            # Get ingredients that have rules
+            ruled_ingrs = [ing for ing, qty in ingredients if ing and ing.rule]
 
             # Always map ingredient names
             for inv in ruled_ingrs:
@@ -5327,20 +5392,21 @@ def fetch_inventory_rules(request):
                 elif slot in ('am', 'pm') and recipe.name:
                     item_rule_map.setdefault(recipe.name, override_style)
 
-    add_recipe_styles(BreakfastRecipe, 'breakfast')
-    add_recipe_styles(AMRecipe, 'am')
-    add_recipe_styles(PMRecipe, 'pm')
+    add_recipe_styles('breakfast', 'breakfast')
+    add_recipe_styles(['am_snack', 'am_pm_snack'], 'am')
+    add_recipe_styles(['pm_snack', 'am_pm_snack'], 'pm')
 
     # Lunch: color Grain based on match or recipe.rule override; main dish stays uncolored
-    lunch_qs = (Recipe.objects
-                .filter(user=user)
-                .select_related('ingredient1__rule','ingredient2__rule','ingredient3__rule',
-                                'ingredient4__rule','ingredient5__rule','rule'))
+    lunch_qs = Recipe.objects.filter(user=user, recipe_type='lunch').select_related('rule')
+    
     for r in lunch_qs:
         if not r.grain:
             continue
-        ruled_ingrs = [inv for inv in (r.ingredient1, r.ingredient2, r.ingredient3, r.ingredient4, r.ingredient5)
-                       if inv and inv.rule]
+        
+        # Get ingredients from RecipeIngredient table
+        ingredients = get_recipe_ingredients(r)
+        ruled_ingrs = [ing for ing, qty in ingredients if ing and ing.rule]
+        
         style = None
         for inv in ruled_ingrs:
             if loosely_same(r.grain, inv.item):
@@ -5378,9 +5444,9 @@ def get_wg_candidates(request):
     if not wg_rule:
         return JsonResponse({'weekly_qty': 0, 'candidates': []})
 
-    qs = (WgRecipe.objects
-          .filter(user=user, rule=wg_rule)
-          .select_related('ingredient1','rule'))
+    qs = (Recipe.objects
+          .filter(user=user, recipe_type='whole_grain', rule=wg_rule)
+          .select_related('rule'))
     out = []
     for w in qs:
         style = {
@@ -5391,10 +5457,10 @@ def get_wg_candidates(request):
         }
         out.append({
             'name': w.name,
-            'break_only': bool(w.break_only),
-            'am_only': bool(w.am_only),
-            'lunch_only': bool(w.lunch_only),
-            'pm_only': bool(w.pm_only),
+            'break_only': False,  # Recipe model doesn't have these fields for lunch recipes
+            'am_only': False,
+            'lunch_only': False,
+            'pm_only': False,
             'style': style,
         })
     return JsonResponse({'weekly_qty': wg_rule.weekly_qty, 'candidates': out})
@@ -9642,57 +9708,77 @@ def meal_calculator(request):
 
 @require_http_methods(["GET"])
 def breakfast_recipe_detail(request, recipe_id):
-    r = BreakfastRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='breakfast').first()
     if not r:
         return JsonResponse({'error': 'Not found'}, status=404)
+    
+    # Get ingredients from RecipeIngredient table
+    ingredients = get_recipe_ingredients(r)
+    ingredient_data = {}
+    for idx, (ing, qty) in enumerate(ingredients, start=1):
+        ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
+        ingredient_data[f'qty{idx}'] = float(qty) if qty else None
+        if idx == 5:  # Limit to 5 ingredients
+            break
+    
     return JsonResponse({
         'id': r.id,
         'name': r.name,
-        'ingredient1_id': r.ingredient1_id,
-        'ingredient2_id': getattr(r, 'ingredient2_id', None),
-        'ingredient3_id': getattr(r, 'ingredient3_id', None),
-        'ingredient4_id': getattr(r, 'ingredient4_id', None),
-        'ingredient5_id': getattr(r, 'ingredient5_id', None),
-        'qty1': r.qty1, 'qty2': getattr(r, 'qty2', None), 'qty3': getattr(r, 'qty3', None),
-        'qty4': getattr(r, 'qty4', None), 'qty5': getattr(r, 'qty5', None),
+        **ingredient_data,
         'addfood': r.addfood, 'rule_id': r.rule_id, 'instructions': r.instructions,
         'image_url': r.image.url if r.image else None,
     })
 
 @require_http_methods(["POST"])
 def update_breakfast_recipe(request, recipe_id):
-    r = BreakfastRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='breakfast').first()
     if not r:
         return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
     r.name = request.POST.get('breakfastMealName') or r.name
-    r.ingredient1_id = request.POST.get('breakfastMainIngredient1') or r.ingredient1_id
-    r.qty1 = request.POST.get('breakfastQtyMainIngredient1') or r.qty1
-    r.ingredient2_id = request.POST.get('breakfastMainIngredient2') or r.ingredient2_id
-    r.qty2 = request.POST.get('breakfastQtyMainIngredient2') or r.qty2
-    r.ingredient3_id = request.POST.get('breakfastMainIngredient3') or r.ingredient3_id
-    r.qty3 = request.POST.get('breakfastQtyMainIngredient3') or r.qty3
-    r.ingredient4_id = request.POST.get('breakfastMainIngredient4') or r.ingredient4_id
-    r.qty4 = request.POST.get('breakfastQtyMainIngredient4') or r.qty4
-    r.ingredient5_id = request.POST.get('breakfastMainIngredient5') or r.ingredient5_id
-    r.qty5 = request.POST.get('breakfastQtyMainIngredient5') or r.qty5
     r.addfood = request.POST.get('additionalFood') or r.addfood
     r.rule_id = request.POST.get('breakfastRule') or r.rule_id
     r.instructions = request.POST.get('breakfastInstructions') or r.instructions
     if request.FILES.get('image'):
         r.image = request.FILES['image']  # size check happens in model save()
     r.save()
+    
+    # Update ingredients
+    ingredient_ids = [
+        request.POST.get('breakfastMainIngredient1'),
+        request.POST.get('breakfastMainIngredient2'),
+        request.POST.get('breakfastMainIngredient3'),
+        request.POST.get('breakfastMainIngredient4'),
+        request.POST.get('breakfastMainIngredient5')
+    ]
+    quantities = [
+        request.POST.get('breakfastQtyMainIngredient1'),
+        request.POST.get('breakfastQtyMainIngredient2'),
+        request.POST.get('breakfastQtyMainIngredient3'),
+        request.POST.get('breakfastQtyMainIngredient4'),
+        request.POST.get('breakfastQtyMainIngredient5')
+    ]
+    save_recipe_ingredients(r, ingredient_ids, quantities)
+    
     return JsonResponse({'success': True})
 
 @require_http_methods(["GET"])
 def am_recipe_detail(request, recipe_id):
-    r = AMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    from django.db.models import Q
+    r = Recipe.objects.filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack'), id=recipe_id, user=request.user).first()
     if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    
+    # Get ingredients from RecipeIngredient table
+    ingredients = get_recipe_ingredients(r)
+    ingredient_data = {}
+    for idx, (ing, qty) in enumerate(ingredients, start=1):
+        ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
+        ingredient_data[f'qty{idx}'] = float(qty) if qty else None
+        if idx == 5:  # Limit to 5 ingredients
+            break
+    
     return JsonResponse({
         'id': r.id, 'name': r.name,
-        'ingredient1_id': r.ingredient1_id, 'ingredient2_id': r.ingredient2_id,
-        'ingredient3_id': r.ingredient3_id, 'ingredient4_id': r.ingredient4_id,
-        'ingredient5_id': r.ingredient5_id,
-        'qty1': r.qty1, 'qty2': r.qty2, 'qty3': r.qty3, 'qty4': r.qty4, 'qty5': r.qty5,
+        **ingredient_data,
         'fluid': r.fluid, 'fruit_veg': r.fruit_veg, 'meat': r.meat,
         'rule_id': r.rule_id, 'instructions': r.instructions,
         'image_url': r.image.url if r.image else None,
@@ -9700,19 +9786,10 @@ def am_recipe_detail(request, recipe_id):
 
 @require_http_methods(["POST"])
 def update_am_recipe(request, recipe_id):
-    r = AMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    from django.db.models import Q
+    r = Recipe.objects.filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack'), id=recipe_id, user=request.user).first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
     r.name = request.POST.get('amRecipeName') or r.name
-    r.ingredient1_id = request.POST.get('amIngredient1') or r.ingredient1_id
-    r.qty1 = request.POST.get('amQty1') or r.qty1
-    r.ingredient2_id = request.POST.get('amIngredient2') or r.ingredient2_id
-    r.qty2 = request.POST.get('amQty2') or r.qty2
-    r.ingredient3_id = request.POST.get('amIngredient3') or r.ingredient3_id
-    r.qty3 = request.POST.get('amQty3') or r.qty3
-    r.ingredient4_id = request.POST.get('amIngredient4') or r.ingredient4_id
-    r.qty4 = request.POST.get('amQty4') or r.qty4
-    r.ingredient5_id = request.POST.get('amIngredient5') or r.ingredient5_id
-    r.qty5 = request.POST.get('amQty5') or r.qty5
     r.fluid = request.POST.get('amFluid') or r.fluid
     r.fruit_veg = request.POST.get('amFruitVeg') or r.fruit_veg
     r.meat = request.POST.get('amMeat') or r.meat
@@ -9720,18 +9797,44 @@ def update_am_recipe(request, recipe_id):
     r.instructions = request.POST.get('amInstructions') or r.instructions
     if request.FILES.get('image'): r.image = request.FILES['image']
     r.save()
+    
+    # Update ingredients
+    ingredient_ids = [
+        request.POST.get('amIngredient1'),
+        request.POST.get('amIngredient2'),
+        request.POST.get('amIngredient3'),
+        request.POST.get('amIngredient4'),
+        request.POST.get('amIngredient5')
+    ]
+    quantities = [
+        request.POST.get('amQty1'),
+        request.POST.get('amQty2'),
+        request.POST.get('amQty3'),
+        request.POST.get('amQty4'),
+        request.POST.get('amQty5')
+    ]
+    save_recipe_ingredients(r, ingredient_ids, quantities)
+    
     return JsonResponse({'success': True})
 
 @require_http_methods(["GET"])
 def pm_recipe_detail(request, recipe_id):
-    r = PMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    from django.db.models import Q
+    r = Recipe.objects.filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack'), id=recipe_id, user=request.user).first()
     if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    
+    # Get ingredients from RecipeIngredient table
+    ingredients = get_recipe_ingredients(r)
+    ingredient_data = {}
+    for idx, (ing, qty) in enumerate(ingredients, start=1):
+        ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
+        ingredient_data[f'qty{idx}'] = float(qty) if qty else None
+        if idx == 5:  # Limit to 5 ingredients
+            break
+    
     return JsonResponse({
         'id': r.id, 'name': r.name,
-        'ingredient1_id': r.ingredient1_id, 'ingredient2_id': r.ingredient2_id,
-        'ingredient3_id': r.ingredient3_id, 'ingredient4_id': r.ingredient4_id,
-        'ingredient5_id': r.ingredient5_id,
-        'qty1': r.qty1, 'qty2': r.qty2, 'qty3': r.qty3, 'qty4': r.qty4, 'qty5': r.qty5,
+        **ingredient_data,
         'fluid': r.fluid, 'fruit_veg': r.fruit_veg, 'meat': r.meat,
         'rule_id': r.rule_id, 'instructions': r.instructions,
         'image_url': r.image.url if r.image else None,
@@ -9739,19 +9842,10 @@ def pm_recipe_detail(request, recipe_id):
 
 @require_http_methods(["POST"])
 def update_pm_recipe(request, recipe_id):
-    r = PMRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    from django.db.models import Q
+    r = Recipe.objects.filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack'), id=recipe_id, user=request.user).first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
     r.name = request.POST.get('pmRecipeName') or r.name
-    r.ingredient1_id = request.POST.get('pmIngredient1') or r.ingredient1_id
-    r.qty1 = request.POST.get('pmQty1') or r.qty1
-    r.ingredient2_id = request.POST.get('pmIngredient2') or r.ingredient2_id
-    r.qty2 = request.POST.get('pmQty2') or r.qty2
-    r.ingredient3_id = request.POST.get('pmIngredient3') or r.ingredient3_id
-    r.qty3 = request.POST.get('pmQty3') or r.qty3
-    r.ingredient4_id = request.POST.get('pmIngredient4') or r.ingredient4_id
-    r.qty4 = request.POST.get('pmQty4') or r.qty4
-    r.ingredient5_id = request.POST.get('pmIngredient5') or r.ingredient5_id
-    r.qty5 = request.POST.get('pmQty5') or r.qty5
     r.fluid = request.POST.get('pmFluid') or r.fluid
     r.fruit_veg = request.POST.get('pmFruitVeg') or r.fruit_veg
     r.meat = request.POST.get('pmMeat') or r.meat
@@ -9759,18 +9853,43 @@ def update_pm_recipe(request, recipe_id):
     r.instructions = request.POST.get('pmInstructions') or r.instructions
     if request.FILES.get('image'): r.image = request.FILES['image']
     r.save()
+    
+    # Update ingredients
+    ingredient_ids = [
+        request.POST.get('pmIngredient1'),
+        request.POST.get('pmIngredient2'),
+        request.POST.get('pmIngredient3'),
+        request.POST.get('pmIngredient4'),
+        request.POST.get('pmIngredient5')
+    ]
+    quantities = [
+        request.POST.get('pmQty1'),
+        request.POST.get('pmQty2'),
+        request.POST.get('pmQty3'),
+        request.POST.get('pmQty4'),
+        request.POST.get('pmQty5')
+    ]
+    save_recipe_ingredients(r, ingredient_ids, quantities)
+    
     return JsonResponse({'success': True})
 
 @require_http_methods(["GET"])
 def recipe_detail(request, recipe_id):
     r = Recipe.objects.filter(id=recipe_id, user=request.user).first()
     if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    
+    # Get ingredients from RecipeIngredient table
+    ingredients = get_recipe_ingredients(r)
+    ingredient_data = {}
+    for idx, (ing, qty) in enumerate(ingredients, start=1):
+        ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
+        ingredient_data[f'qty{idx}'] = float(qty) if qty else None
+        if idx == 5:  # Limit to 5 ingredients
+            break
+    
     return JsonResponse({
         'id': r.id, 'name': r.name,
-        'ingredient1_id': r.ingredient1_id, 'ingredient2_id': r.ingredient2_id,
-        'ingredient3_id': r.ingredient3_id, 'ingredient4_id': r.ingredient4_id,
-        'ingredient5_id': r.ingredient5_id,
-        'qty1': r.qty1, 'qty2': r.qty2, 'qty3': r.qty3, 'qty4': r.qty4, 'qty5': r.qty5,
+        **ingredient_data,
         'grain': r.grain, 'meat_alternate': r.meat_alternate,
         'rule_id': r.rule_id, 'instructions': r.instructions,
         'image_url': r.image.url if r.image else None,
@@ -9781,86 +9900,130 @@ def update_recipe(request, recipe_id):
     r = Recipe.objects.filter(id=recipe_id, user=request.user).first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
     r.name = request.POST.get('mealName') or r.name
-    r.ingredient1_id = request.POST.get('mainIngredient1') or r.ingredient1_id
-    r.qty1 = request.POST.get('qtyMainIngredient1') or r.qty1
-    r.ingredient2_id = request.POST.get('mainIngredient2') or r.ingredient2_id
-    r.qty2 = request.POST.get('qtyMainIngredient2') or r.qty2
-    r.ingredient3_id = request.POST.get('mainIngredient3') or r.ingredient3_id
-    r.qty3 = request.POST.get('qtyMainIngredient3') or r.qty3
-    r.ingredient4_id = request.POST.get('mainIngredient4') or r.ingredient4_id
-    r.qty4 = request.POST.get('qtyMainIngredient4') or r.qty4
-    r.ingredient5_id = request.POST.get('mainIngredient5') or r.ingredient5_id
-    r.qty5 = request.POST.get('qtyMainIngredient5') or r.qty5
     r.grain = request.POST.get('grain') or r.grain
     r.meat_alternate = request.POST.get('meatAlternate') or r.meat_alternate
     r.rule_id = request.POST.get('rule') or r.rule_id
     r.instructions = request.POST.get('instructions') or r.instructions
     if request.FILES.get('image'): r.image = request.FILES['image']
     r.save()
+    
+    # Update ingredients
+    ingredient_ids = [
+        request.POST.get('mainIngredient1'),
+        request.POST.get('mainIngredient2'),
+        request.POST.get('mainIngredient3'),
+        request.POST.get('mainIngredient4'),
+        request.POST.get('mainIngredient5')
+    ]
+    quantities = [
+        request.POST.get('qtyMainIngredient1'),
+        request.POST.get('qtyMainIngredient2'),
+        request.POST.get('qtyMainIngredient3'),
+        request.POST.get('qtyMainIngredient4'),
+        request.POST.get('qtyMainIngredient5')
+    ]
+    save_recipe_ingredients(r, ingredient_ids, quantities)
+    
     return JsonResponse({'success': True})
 
 @require_http_methods(["GET"])
 def fruit_recipe_detail(request, recipe_id):
-    r = FruitRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='fruit').first()
     if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    
+    # Get ingredients from RecipeIngredient table
+    ingredients = get_recipe_ingredients(r)
+    ingredient_data = {}
+    for idx, (ing, qty) in enumerate(ingredients, start=1):
+        ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
+        ingredient_data[f'qty{idx}'] = float(qty) if qty else None
+    
     return JsonResponse({
         'id': r.id, 'name': r.name,
-        'ingredient1_id': r.ingredient1_id, 'qty1': r.qty1,
+        **ingredient_data,
         'rule_id': r.rule_id, 'image_url': r.image.url if r.image else None,
     })
 
 @require_http_methods(["POST"])
 def update_fruit_recipe(request, recipe_id):
-    r = FruitRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='fruit').first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
     r.name = request.POST.get('fruitName') or r.name
-    r.ingredient1_id = request.POST.get('fruitMainIngredient1') or r.ingredient1_id
-    r.qty1 = request.POST.get('fruitQtyMainIngredient1') or r.qty1
     r.rule_id = request.POST.get('fruitRule') or r.rule_id
     if request.FILES.get('image'): r.image = request.FILES['image']
     r.save()
+    
+    # Update ingredients
+    ingredient_ids = [request.POST.get('fruitMainIngredient1')]
+    quantities = [request.POST.get('fruitQtyMainIngredient1')]
+    save_recipe_ingredients(r, ingredient_ids, quantities)
+    
     return JsonResponse({'success': True})
 
 @require_http_methods(["GET"])
 def veg_recipe_detail(request, recipe_id):
-    r = VegRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='vegetable').first()
     if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    
+    # Get ingredients from RecipeIngredient table
+    ingredients = get_recipe_ingredients(r)
+    ingredient_data = {}
+    for idx, (ing, qty) in enumerate(ingredients, start=1):
+        ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
+        ingredient_data[f'qty{idx}'] = float(qty) if qty else None
+    
     return JsonResponse({
         'id': r.id, 'name': r.name,
-        'ingredient1_id': r.ingredient1_id, 'qty1': r.qty1,
+        **ingredient_data,
         'rule_id': r.rule_id, 'image_url': r.image.url if r.image else None,
     })
 
 @require_http_methods(["POST"])
 def update_veg_recipe(request, recipe_id):
-    r = VegRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='vegetable').first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
     r.name = request.POST.get('vegName') or r.name
-    r.ingredient1_id = request.POST.get('vegMainIngredient1') or r.ingredient1_id
-    r.qty1 = request.POST.get('vegQtyMainIngredient1') or r.qty1
     r.rule_id = request.POST.get('vegRule') or r.rule_id
     if request.FILES.get('image'): r.image = request.FILES['image']
     r.save()
+    
+    # Update ingredients
+    ingredient_ids = [request.POST.get('vegMainIngredient1')]
+    quantities = [request.POST.get('vegQtyMainIngredient1')]
+    save_recipe_ingredients(r, ingredient_ids, quantities)
+    
     return JsonResponse({'success': True})
 
 @require_http_methods(["GET"])
 def wg_recipe_detail(request, recipe_id):
-    r = WgRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='whole_grain').first()
     if not r: return JsonResponse({'error': 'Not found'}, status=404)
+    
+    # Get ingredients from RecipeIngredient table
+    ingredients = get_recipe_ingredients(r)
+    ingredient_data = {}
+    for idx, (ing, qty) in enumerate(ingredients, start=1):
+        ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
+        ingredient_data[f'qty{idx}'] = float(qty) if qty else None
+    
     return JsonResponse({
         'id': r.id, 'name': r.name,
-        'ingredient1_id': r.ingredient1_id, 'qty1': r.qty1,
+        **ingredient_data,
         'rule_id': r.rule_id, 'image_url': r.image.url if r.image else None,
     })
 
 @require_http_methods(["POST"])
 def update_wg_recipe(request, recipe_id):
-    r = WgRecipe.objects.filter(id=recipe_id, user=request.user).first()
+    r = Recipe.objects.filter(id=recipe_id, user=request.user, recipe_type='whole_grain').first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
     r.name = request.POST.get('wgName') or r.name
-    r.ingredient1_id = request.POST.get('wgMainIngredient1') or r.ingredient1_id
-    r.qty1 = request.POST.get('wgQtyMainIngredient1') or r.qty1
     r.rule_id = request.POST.get('wgRule') or r.rule_id
     if request.FILES.get('image'): r.image = request.FILES['image']
     r.save()
+    
+    # Update ingredients
+    ingredient_ids = [request.POST.get('wgMainIngredient1')]
+    quantities = [request.POST.get('wgQtyMainIngredient1')]
+    save_recipe_ingredients(r, ingredient_ids, quantities)
+    
     return JsonResponse({'success': True})

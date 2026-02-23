@@ -1,0 +1,110 @@
+import json
+import re
+import requests
+from bs4 import BeautifulSoup
+
+url = "https://theicn.org/cnrb/wp-json/wp-ultimate-post-grid/v1/items"
+
+headers = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Origin": "https://theicn.org",
+    "Referer": "https://theicn.org/cnrb/recipes-cacfp-centers/",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+    "X-WP-Nonce": "c2f02e90a8",
+}
+
+# If you still get 403, copy the Cookie header from DevTools (Copy as cURL)
+# and paste it below.
+cookies_header = "_gid=GA1.2.240196707.1770610824; _ga_CY0EN3HPFD=GS2.1.s1770735932$o8$g1$t1770735932$j60$l0$h0; _ga=GA1.2.1305685482.1767721549; _gat_gtag_UA_63546838_8=1"
+
+payload = {
+    "id": "162987",
+    "args": {
+        "type": "load_all",
+        "filters": [
+            {
+                "type": "terms",
+                "terms": {"wprm_program_meal_type": ["lunch"]},
+                "terms_inverse": False,
+                "terms_relation": "OR",
+            }
+        ],
+        "loaded_ids": [149454,149869,135654,1190,796,112020,69,903,124414,914,149831,149461,124695,124718,960,146817,146963,147164,146831,1194,1197,146844,147179,1371],
+        "dynamic_rules": [],
+    },
+}
+
+session = requests.Session()
+session.headers.update(headers)
+if cookies_header:
+    session.headers.update({"Cookie": cookies_header})
+
+resp = session.post(url, json=payload, timeout=30)
+resp.raise_for_status()
+
+data = resp.json()
+
+def extract_urls(payload):
+    urls = []
+    if isinstance(payload, dict):
+        if payload.get("@type") == "ListItem" and "url" in payload:
+            urls.append(payload["url"])
+        for value in payload.values():
+            urls.extend(extract_urls(value))
+    elif isinstance(payload, list):
+        for item in payload:
+            urls.extend(extract_urls(item))
+    return urls
+
+def clean_text(text):
+    return re.sub(r"\s+", " ", text).strip()
+
+def extract_ingredients_from_html(html_text):
+    soup = BeautifulSoup(html_text, "html.parser")
+    heading = None
+    for tag in soup.find_all(["h2", "h3", "h4"]):
+        if clean_text(tag.get_text()).upper() == "INGREDIENTS":
+            heading = tag
+            break
+    if not heading:
+        return []
+
+    ingredients = []
+    for sibling in heading.find_all_next():
+        if sibling.name in ["h2", "h3", "h4"]:
+            next_heading = clean_text(sibling.get_text()).upper()
+            if next_heading in {"QUANTITY", "INSTRUCTIONS", "NUTRITION INFORMATION"}:
+                break
+        if sibling.name in ["li"]:
+            text = clean_text(sibling.get_text())
+            if text:
+                ingredients.append(text)
+        if sibling.name in ["td", "th"]:
+            text = clean_text(sibling.get_text())
+            if text and text not in {"WEIGHT", "MEA-SURE", "MEASURE"}:
+                ingredients.append(text)
+    # de-dup while preserving order
+    seen = set()
+    deduped = []
+    for item in ingredients:
+        if item not in seen:
+            seen.add(item)
+            deduped.append(item)
+    return deduped
+
+recipe_urls = list(dict.fromkeys(extract_urls(data)))
+ingredients_by_recipe = {}
+
+for url in recipe_urls:
+    page = requests.get(url, timeout=30)
+    page.raise_for_status()
+    ingredients_by_recipe[url] = extract_ingredients_from_html(page.text)
+
+for url, ing in ingredients_by_recipe.items():
+    print(url, ing)
+
+with open("ingredients_by_recipe.json", "w", encoding="utf-8") as f:
+    json.dump(ingredients_by_recipe, f, ensure_ascii=False, indent=2)
+
+print("Saved ingredients_by_recipe.json")

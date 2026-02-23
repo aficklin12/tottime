@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import  AbstractUser, Group, Permission
 from django.utils import timezone
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from PIL import Image, ImageDraw
 from io import BytesIO
 from datetime import date
@@ -69,11 +71,36 @@ class Inventory(models.Model):
     def __str__(self):
         return self.item
 
+
+class RecipeIngredient(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    recipe_object = GenericForeignKey('content_type', 'object_id')
+    ingredient = models.ForeignKey('Inventory', on_delete=models.SET_NULL, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.ingredient} ({self.quantity})"
+
+
+class NutritionFact(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    recipe_object = GenericForeignKey('content_type', 'object_id')
+    label = models.CharField(max_length=100)
+    amount = models.CharField(max_length=50, blank=True)
+    unit = models.CharField(max_length=20, blank=True)
+    percent_dv = models.CharField(max_length=10, blank=True)
+    raw_text = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"{self.label} {self.amount}{self.unit}"
+
 class VegRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
-    ingredient1 = models.ForeignKey('Inventory', related_name='veg_ingredient1', on_delete=models.SET_NULL, null=True)
-    qty1 = models.PositiveIntegerField(null=True)
+    ingredients = GenericRelation(RecipeIngredient, related_query_name='veg_recipe')
+    nutrition_facts = GenericRelation(NutritionFact, related_query_name='veg_recipe')
     rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
     YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
     break_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
@@ -81,6 +108,7 @@ class VegRecipe(models.Model):
     lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -95,8 +123,8 @@ class VegRecipe(models.Model):
 class FruitRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
-    ingredient1 = models.ForeignKey('Inventory', related_name='fruit_ingredient1', on_delete=models.SET_NULL, null=True)
-    qty1 = models.PositiveIntegerField(null=True)
+    ingredients = GenericRelation(RecipeIngredient, related_query_name='fruit_recipe')
+    nutrition_facts = GenericRelation(NutritionFact, related_query_name='fruit_recipe')
     rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
     YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
     break_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
@@ -104,6 +132,7 @@ class FruitRecipe(models.Model):
     lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -118,8 +147,8 @@ class FruitRecipe(models.Model):
 class WgRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
-    ingredient1 = models.ForeignKey('Inventory', related_name='wg_ingredient1', on_delete=models.SET_NULL, null=True)
-    qty1 = models.PositiveIntegerField(null=True)
+    ingredients = GenericRelation(RecipeIngredient, related_query_name='wg_recipe')
+    nutrition_facts = GenericRelation(NutritionFact, related_query_name='wg_recipe')
     rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
     YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
     break_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
@@ -127,6 +156,7 @@ class WgRecipe(models.Model):
     lunch_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     pm_only = models.BooleanField(choices=YES_NO_CHOICES, default=False)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -139,24 +169,41 @@ class WgRecipe(models.Model):
 
 
 class Recipe(models.Model):
+    RECIPE_TYPE_CHOICES = [
+        ('lunch', 'Lunch Recipe'),
+        ('vegetable', 'Vegetable Recipe'),
+        ('fruit', 'Fruit Recipe'),
+        ('whole_grain', 'Whole Grain Recipe'),
+        ('breakfast', 'Breakfast Recipe'),
+        ('am_snack', 'AM Snack Recipe'),
+        ('pm_snack', 'PM Snack Recipe'),
+        ('am_pm_snack', 'AM and PM Snack Recipe'),
+    ]
+    
+    YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
+    
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
     instructions = models.TextField(null=True)
-    ingredient1 = models.ForeignKey('Inventory', related_name='ingredient1', on_delete=models.SET_NULL, null=True)
-    qty1 = models.PositiveIntegerField(null=True)
-    ingredient2 = models.ForeignKey('Inventory', related_name='ingredient2', on_delete=models.SET_NULL, null=True)
-    qty2 = models.PositiveIntegerField(null=True)
-    ingredient3 = models.ForeignKey('Inventory', related_name='ingredient3', on_delete=models.SET_NULL, null=True)
-    qty3 = models.PositiveIntegerField(null=True)
-    ingredient4 = models.ForeignKey('Inventory', related_name='ingredient4', on_delete=models.SET_NULL, null=True)
-    qty4 = models.PositiveIntegerField(null=True)
-    ingredient5 = models.ForeignKey('Inventory', related_name='ingredient5', on_delete=models.SET_NULL, null=True)
-    qty5 = models.PositiveIntegerField(null=True)
+    ingredients = GenericRelation(RecipeIngredient, related_query_name='recipe')
+    nutrition_facts = GenericRelation(NutritionFact, related_query_name='recipe')
     last_used = models.DateTimeField(auto_now=True) 
+    # Recipe type/category
+    recipe_type = models.CharField(max_length=20, choices=RECIPE_TYPE_CHOICES, default='lunch', help_text='Category of recipe')
+    # Lunch recipe fields
     grain = models.CharField(max_length=100, blank=True, null=True)
     meat_alternate = models.CharField(max_length=100, blank=True, null=True)
+    # Breakfast recipe fields
+    addfood = models.CharField(max_length=100, blank=True, null=True, help_text='Additional food for breakfast')
+    # AM/PM Snack recipe fields
+    fluid = models.CharField(max_length=100, blank=True, null=True)
+    veg = models.CharField(max_length=100, blank=True, null=True)
+    fruit = models.CharField(max_length=100, blank=True, null=True)
+    meat = models.CharField(max_length=100, blank=True, null=True)
+    # Common fields
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -172,20 +219,13 @@ class BreakfastRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
     instructions = models.TextField(null=True)
-    ingredient1 = models.ForeignKey('Inventory', related_name='breakfast_ingredient1', on_delete=models.SET_NULL, null=True)
-    qty1 = models.PositiveIntegerField(null=True)
-    ingredient2 = models.ForeignKey('Inventory', related_name='breakfast_ingredient2', on_delete=models.SET_NULL, null=True)
-    qty2 = models.PositiveIntegerField(null=True)
-    ingredient3 = models.ForeignKey('Inventory', related_name='breakfast_ingredient3', on_delete=models.SET_NULL, null=True)
-    qty3 = models.PositiveIntegerField(null=True)
-    ingredient4 = models.ForeignKey('Inventory', related_name='breakfast_ingredient4', on_delete=models.SET_NULL, null=True)
-    qty4 = models.PositiveIntegerField(null=True)
-    ingredient5 = models.ForeignKey('Inventory', related_name='breakfast_ingredient5', on_delete=models.SET_NULL, null=True)
-    qty5 = models.PositiveIntegerField(null=True)
+    ingredients = GenericRelation(RecipeIngredient, related_query_name='breakfast_recipe')
+    nutrition_facts = GenericRelation(NutritionFact, related_query_name='breakfast_recipe')
     last_used = models.DateTimeField(auto_now=True) 
     addfood = models.CharField(max_length=100, blank=True, null=True)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -201,22 +241,15 @@ class AMRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
     instructions = models.TextField(null=True)
-    ingredient1 = models.ForeignKey('Inventory', related_name='am_ingredient1', on_delete=models.SET_NULL, null=True)
-    qty1 = models.PositiveIntegerField(null=True)
-    ingredient2 = models.ForeignKey('Inventory', related_name='am_ingredient2', on_delete=models.SET_NULL, null=True)
-    qty2 = models.PositiveIntegerField(null=True)
-    ingredient3 = models.ForeignKey('Inventory', related_name='am_ingredient3', on_delete=models.SET_NULL, null=True)
-    qty3 = models.PositiveIntegerField(null=True)
-    ingredient4 = models.ForeignKey('Inventory', related_name='am_ingredient4', on_delete=models.SET_NULL, null=True)
-    qty4 = models.PositiveIntegerField(null=True)
-    ingredient5 = models.ForeignKey('Inventory', related_name='am_ingredient5', on_delete=models.SET_NULL, null=True)
-    qty5 = models.PositiveIntegerField(null=True)
+    ingredients = GenericRelation(RecipeIngredient, related_query_name='am_recipe')
+    nutrition_facts = GenericRelation(NutritionFact, related_query_name='am_recipe')
     last_used = models.DateTimeField(auto_now=True) 
     fluid = models.CharField(max_length=100, blank=True, null=True)
     fruit_veg = models.CharField(max_length=100, blank=True, null=True)
     meat = models.CharField(max_length=100, blank=True, null=True)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -232,22 +265,15 @@ class PMRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=False)
     instructions = models.TextField(null=True)
-    ingredient1 = models.ForeignKey('Inventory', related_name='pm_ingredient1', on_delete=models.SET_NULL, null=True)
-    qty1 = models.PositiveIntegerField(null=True)
-    ingredient2 = models.ForeignKey('Inventory', related_name='pm_ingredient2', on_delete=models.SET_NULL, null=True)
-    qty2 = models.PositiveIntegerField(null=True)
-    ingredient3 = models.ForeignKey('Inventory', related_name='pm_ingredient3', on_delete=models.SET_NULL, null=True)
-    qty3 = models.PositiveIntegerField(null=True)
-    ingredient4 = models.ForeignKey('Inventory', related_name='pm_ingredient4', on_delete=models.SET_NULL, null=True)
-    qty4 = models.PositiveIntegerField(null=True)
-    ingredient5 = models.ForeignKey('Inventory', related_name='pm_ingredient5', on_delete=models.SET_NULL, null=True)
-    qty5 = models.PositiveIntegerField(null=True)
+    ingredients = GenericRelation(RecipeIngredient, related_query_name='pm_recipe')
+    nutrition_facts = GenericRelation(NutritionFact, related_query_name='pm_recipe')
     last_used = models.DateTimeField(auto_now=True) 
     fluid = models.CharField(max_length=100, blank=True, null=True)
     fruit_veg = models.CharField(max_length=100, blank=True, null=True)
     meat = models.CharField(max_length=100, blank=True, null=True)
     rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -586,6 +612,15 @@ class MainUser(AbstractUser):
     address = models.CharField(max_length=255, blank=True, null=True)
     groups = models.ManyToManyField(Group, related_name='mainuser_set', blank=True)
     user_permissions = models.ManyToManyField(Permission, related_name='mainuser_set', blank=True)
+    # Primary group/role for this MainUser (single selection linking to auth Group)
+    primary_group = models.ForeignKey(
+        Group,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='primary_users',
+        help_text='Primary role for the user (Owner, Director, Teacher, etc.)'
+    )
     stripe_account_id = models.CharField(max_length=255, null=True, blank=True)
     stripe_public_key = models.CharField(max_length=255, blank=True, null=True)
     stripe_secret_key = models.CharField(max_length=255, blank=True, null=True)

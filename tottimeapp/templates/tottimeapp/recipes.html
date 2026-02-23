@@ -65,7 +65,33 @@
     }
 
     table {
-        width: 75%;
+        width: 95%;
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 1400px;
+    }
+
+    /* Table header actions (plus icons) */
+    .table-header { display: flex; justify-content: space-between; align-items: center; }
+    .table-header-actions { display: inline-flex; align-items: center; gap: 6px; }
+    .table-header-actions .create-icon {
+        background: transparent; border: none; color: #ffffff; cursor: pointer;
+        padding: 6px; font-size: 1rem; border-radius: 6px; display: none;
+    }
+    .table-header-actions .create-icon:hover { background: rgba(255,255,255,0.06); }
+
+    /* show only the active tab's create icon on wide screens */
+    @media (min-width: 1000px) {
+        .table-header-actions .create-icon.active { display: inline-block !important; }
+    }
+    /* header trash button (white) */
+    .table-header-actions .header-trash {
+        background: transparent; border: none; color: #ffffff; cursor: pointer;
+        padding: 6px; font-size: 1rem; border-radius: 6px; display: none;
+    }
+    .table-header-actions .header-trash:hover { background: rgba(255,255,255,0.06); }
+    @media (min-width: 1000px) {
+        .table-header-actions .header-trash.active { display: inline-block !important; }
     }
 
     .delete-column {
@@ -189,18 +215,30 @@
     .mobile-nav-spacer { height: 72px; }
 }
 @media (min-width: 1000px) {
-    #recipeDropdownContainer {
-        display: none !important;
+        #recipeDropdownContainer {
+                display: none !important;
+        }
+    #recipeTabs.tabs {
+        width: 95% !important;
+        margin: 0 auto !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        overflow-x: auto;              /* keep horizontal scroll within clipped width */
+        flex-wrap: nowrap;             /* prevent wrapping so scroll appears */
+        scrollbar-width: thin;
+        gap: 6px;
     }
-  #recipeTabs.tabs {
-    width: 70% !important;
-   
-    margin-right: 0 !important;
-    overflow-x: auto;              /* keep horizontal scroll within clipped width */
-    flex-wrap: nowrap;             /* prevent wrapping so scroll appears */
-    scrollbar-width: thin;
-  }
-  #recipeTabs .tab { flex-shrink: 0; } /* keep tab size consistent while scrolling */
+    #recipeTabs .tab { flex-shrink: 0; padding: 6px 10px; font-size: 0.95rem; } /* keep tab size consistent while scrolling */
+    /* reduce left margin for tabs on large screens so they align with table */
+    .tabs { margin-left: 0 !important; margin-bottom: 0 !important; margin-top: 6px !important; }
+    /* remove extra gap between the tabs and the table (override Bootstrap mt- classes) */
+    .tab-content { margin-top: 0 !important; padding-top: 0 !important; }
+    /* make the main container slightly tighter on wide screens */
+    .container.mt-4 { max-width: 1300px; padding-left: 8px; padding-right: 8px; }
+    /* hide the large desktop create buttons (we'll use icons in the table header) */
+    .desktop-only .btn-recipe { display: none !important; }
+    /* ensure table also expands to match tabs width */
+    .tab-content table { width: 95% !important; margin-left: auto !important; margin-right: auto !important; }
 }
 
 /* Mobile modal sizing: fit between navbars */
@@ -324,14 +362,28 @@
     <!-- Table for displaying recipes -->
     <div class="tab-content mt-3">
         <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th class="delete-column" id="deleteColumnHeader">
-                        <i class="fas fa-trash-alt" style="color: white;"></i>
-                    </th>
-                </tr>
-            </thead>
+                    <thead>
+                        <tr>
+                            <th>
+                                <div class="table-header">
+                                    <div class="table-header-title">Name</div>
+                                    <div class="table-header-actions" aria-hidden="false">
+                                        <button type="button" class="create-icon" data-cat="breakfast" data-modal="#createBreakfastRecipeModal" title="Create Breakfast"><i class="fas fa-plus"></i></button>
+                                        <button type="button" class="create-icon" data-cat="am" data-modal="#createAMRecipeModal" title="Create AM Snack"><i class="fas fa-plus"></i></button>
+                                        <button type="button" class="create-icon" data-cat="lunch" data-modal="#createRecipeModal" title="Create Lunch"><i class="fas fa-plus"></i></button>
+                                        <button type="button" class="create-icon" data-cat="pm" data-modal="#createPMRecipeModal" title="Create PM Snack"><i class="fas fa-plus"></i></button>
+                                        <button type="button" class="create-icon" data-cat="fruit" data-modal="#fruitRecipeModal" title="Add Fruit"><i class="fas fa-plus"></i></button>
+                                        <button type="button" class="create-icon" data-cat="veg" data-modal="#vegRecipeModal" title="Add Vegetable"><i class="fas fa-plus"></i></button>
+                                        <button type="button" class="create-icon" data-cat="wg" data-modal="#wgRecipeModal" title="Add Whole Grain"><i class="fas fa-plus"></i></button>
+                                        <button type="button" id="headerToggleDelete" class="header-trash" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
+                                    </div>
+                                </div>
+                            </th>
+                            <th class="delete-column" id="deleteColumnHeader">
+                                <i class="fas fa-trash-alt" style="color: white;"></i>
+                            </th>
+                        </tr>
+                    </thead>
             <tbody id="recipeTableBody">
                 <!-- Recipes will be dynamically populated here -->
             </tbody>
@@ -989,6 +1041,71 @@
         updateMobileCreateBtn(getCurrentCategory());
     });
 </script>
+    <script>
+        // wire the header-plus icons to open the correct modal via Bootstrap API
+        document.addEventListener('DOMContentLoaded', function () {
+            const createIcons = Array.from(document.querySelectorAll('.create-icon'));
+
+            function updateHeaderIcons(category) {
+                if (!category) return;
+                createIcons.forEach(btn => {
+                    const cat = btn.getAttribute('data-cat');
+                    if (cat === category) btn.classList.add('active'); else btn.classList.remove('active');
+                });
+                // show header trash for the active category
+                const headerTrash = document.getElementById('headerToggleDelete');
+                if (headerTrash) {
+                    headerTrash.classList.add('active');
+                }
+            }
+
+            // open modal on icon click
+            createIcons.forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    const sel = btn.getAttribute('data-modal');
+                    if (!sel) return;
+                    const el = document.querySelector(sel);
+                    if (!el) return;
+                    try {
+                        const modal = new bootstrap.Modal(el);
+                        modal.show();
+                    } catch (err) {
+                        const targetId = btn.getAttribute('data-target');
+                        if (targetId) document.getElementById(targetId)?.click();
+                    }
+                });
+            });
+
+                // update icons on tab click and on dropdown change
+                const tabs = document.querySelectorAll('#recipeTabs .tab');
+                tabs.forEach(tab => tab.addEventListener('click', function () { updateHeaderIcons(tab.getAttribute('data-category')); }));
+                const dropdown = document.getElementById('recipeCategoryDropdown');
+                if (dropdown) dropdown.addEventListener('change', function () { updateHeaderIcons(this.value); });
+
+                // wire header trash to reuse existing toggle behavior
+                const headerTrash = document.getElementById('headerToggleDelete');
+                const topTrash = document.getElementById('toggleDeleteColumn');
+                if (headerTrash) {
+                    headerTrash.addEventListener('click', function () {
+                        // reuse existing toggle button logic by triggering the top trash (if present)
+                        if (topTrash) topTrash.click();
+                        else {
+                            // fallback: toggle delete column directly
+                            const deleteCol = document.getElementById('deleteColumnHeader');
+                            const isHidden = deleteCol.style.display === 'none' || deleteCol.style.display === '';
+                            deleteCol.style.display = isHidden ? 'table-cell' : 'none';
+                            document.querySelectorAll('.delete-column').forEach(c => c.style.display = isHidden ? 'table-cell' : 'none');
+                        }
+                    });
+                }
+
+                // hide the original desktop trash (we use header trash instead)
+                if (topTrash) topTrash.style.display = 'none';
+
+            // initial sync
+            try { updateHeaderIcons(getCurrentCategory()); } catch (_) { /* ignore if helper not ready */ }
+        });
+    </script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const recipeTableBody = document.getElementById('recipeTableBody');
@@ -1009,6 +1126,39 @@
         // Initially hide the delete column
         deleteColumnHeader.style.display = 'none';
 
+        // allow clicking the visible delete-column header to hide the delete column
+        if (deleteColumnHeader) {
+            deleteColumnHeader.style.cursor = 'default';
+            // update cursor/title whenever the column visibility changes via the toggle
+            const updateHeaderUI = function(isVisible) {
+                deleteColumnHeader.style.cursor = isVisible ? 'pointer' : 'default';
+                deleteColumnHeader.title = isVisible ? 'Click to hide delete column' : '';
+            };
+            // initial state (hidden)
+            updateHeaderUI(false);
+
+            // when header is clicked and currently visible, trigger the same toggle
+            deleteColumnHeader.addEventListener('click', function (e) {
+                const isVisible = deleteColumnHeader.style.display !== 'none' && deleteColumnHeader.style.display !== '';
+                if (isVisible) {
+                    // reuse the existing toggle button behavior
+                    toggleDeleteButton?.click();
+                    // reflect UI change
+                    updateHeaderUI(false);
+                }
+            });
+
+            // Also listen for the top toggle to update header UI accordingly
+            if (toggleDeleteButton) {
+                toggleDeleteButton.addEventListener('click', function () {
+                    const nowVisible = deleteColumnHeader.style.display === 'none' || deleteColumnHeader.style.display === '' ? true : false;
+                    // After existing toggle handler runs, the display will flip; compute expected visibility
+                    // If it was hidden, clicking the top toggle will show it (nowVisible === true)
+                    updateHeaderUI(nowVisible);
+                });
+            }
+        }
+
         // Existing top trash icon toggle
         toggleDeleteButton.addEventListener('click', function () {
             const isHidden = deleteColumnHeader.style.display === 'none' || deleteColumnHeader.style.display === '';
@@ -1017,6 +1167,10 @@
             deleteColumns.forEach(column => {
                 column.style.display = isHidden ? 'table-cell' : 'none';
             });
+            // Hide the header-only trash button while the delete column is visible,
+            // and show it again when the column is hidden.
+            const headerOnlyTrash = document.getElementById('headerToggleDelete');
+            if (headerOnlyTrash) headerOnlyTrash.classList.toggle('active', !isHidden);
         });
 
         function fetchRecipes(category) {

@@ -1,0 +1,424 @@
+{% extends 'tottimeapp/base_freeuser.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Homepage{% endblock %}
+
+{% block styles %}
+
+<style>
+    /* Import a condensed display font for a tall, condensed headline */
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700;800;900&display=swap');
+
+    /* Hero heading: condensed, uppercase, vertically emphasized and responsive */
+    .hero h1 {
+        display: block;
+        font-family: 'Oswald', 'Arial Narrow', Arial, sans-serif;
+        text-transform: uppercase;
+        font-weight: 900;
+        /* smaller clamp so stacked lines don't become oversized */
+        font-size: clamp(2.2rem, 6.5vw, 5.2rem);
+        line-height: 0.95;
+        margin-bottom: 12px;
+        letter-spacing: -0.02em;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+        padding-top: 4px;
+        -webkit-transform: scaleY(1.06);
+        transform: scaleY(1.06);
+        transform-origin: center top;
+        text-align: center;
+    }
+    .hero h1 .line { display: block; margin: 0.05em 0; }
+    /* slightly reduce size on mid screens */
+    @media (max-width: 1100px) {
+        .hero h1 { font-size: clamp(1.9rem, 7.5vw, 4.4rem); }
+    }
+    @media (max-width: 800px) {
+        .hero h1 { font-size: clamp(1.6rem, 8.5vw, 3.2rem); -webkit-transform: scaleY(1.03); transform: scaleY(1.03); }
+    }
+    @media (max-width: 480px) {
+        .hero h1 { font-size: clamp(1.2rem, 7.5vw, 2rem); -webkit-transform: scaleY(1.02); transform: scaleY(1.02); }
+    }
+
+    /* Carousel styles for feature cards (card-like appearance) */
+    .carousel { overflow: hidden; background:#e9ecef !important; padding:40px 0 !important; border-top:1px solid #ececec !important; border-bottom:1px solid #ececec !important; width:100vw; position:relative; left:50%; right:50%; margin-left:-50vw; margin-right:-50vw; box-sizing:border-box; }
+    .carousel-inner { max-width:1100px; margin:0 auto; padding:0 18px; }
+    /* allow the track to push into page margins so cards extend past the inner container */
+    .carousel-track { display: flex; gap: 24px; align-items: flex-start; padding: 0 92px; margin: 0 -92px; }
+
+    /* Fixed-width cards so they appear as distinct cards, not wide stretched boxes */
+    .carousel-track .card {
+        flex: 0 0 300px;
+        min-width: 300px;
+        max-width: 300px;
+        background: #ffffff;
+        border-radius: 10px;
+        border: 1px solid rgba(0,0,0,0.06);
+        padding: 12px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+    .carousel-track .card img { width:100%; height:auto; border-radius:6px; display:block; }
+    .carousel-track .card .card-text { width:100%; }
+    /* when text is placed above the image (top-text) we push it up slightly */
+    .carousel-track .card.top-text .card-text { order: -1; margin-bottom: 10px; }
+    /* when text follows the image, add a gap between image and the bottom text */
+    .carousel-track .card:not(.top-text) .card-text { margin-top: 12px; }
+    @media (max-width: 480px) { .carousel-track .card:not(.top-text) .card-text { margin-top: 8px; } }
+    .carousel-track .card h3 { margin: 0 0 8px; font-size:1.05rem; color: rgb(57,189,180); }
+    .carousel-track .card p { margin: 0; color: #666; font-size:0.95rem; }
+
+    /* animation: duplicate the set and scroll left by half (one set width) */
+    @keyframes scroll-cards {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+    .carousel-track { animation: scroll-cards 28s linear infinite; }
+    .carousel-track:hover { animation-play-state: paused; }
+
+    @media (max-width: 900px) {
+        .carousel-track { padding: 0 48px; margin: 0 -48px; gap:20px; }
+        .carousel-track .card { flex: 0 0 260px; min-width:260px; max-width:260px; }
+    }
+    @media (max-width: 480px) {
+        .carousel-track { padding: 0 24px; margin: 0 -24px; gap:12px; }
+        .carousel-track .card { flex: 0 0 180px; min-width:180px; max-width:180px; }
+    }
+
+    /* Feature grid: two-column rows, alternating image/text sides */
+    .feature-grid { display: grid; gap: 22px; margin-top: 18px; }
+    .feature-row { display: grid; grid-template-columns: 1fr 340px; align-items: center; gap: 18px; background: #fff; border-radius:10px; padding:16px; box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+    .feature-row.reverse { grid-template-columns: 340px 1fr; }
+    .feature-content h3 { margin:0 0 8px; }
+    .feature-content p { margin:0; color:#555; }
+    .feature-image img { width:100%; height:auto; border-radius:6px; display:block; }
+
+    @media (max-width: 900px) {
+        .feature-row, .feature-row.reverse { grid-template-columns: 1fr; }
+        .feature-row.reverse .feature-image { order: 2; }
+    }
+    /* full-bleed band behind how-it-works images */
+    .how-images-band { width:100%; background:#e9ecef !important; padding:40px 0 !important; border-top:1px solid #ececec; border-bottom:1px solid #ececec; margin-top:48px !important; }
+    .how-images-band .inner-band { width:100%; max-width:1100px; margin:0 auto; }
+    /* rows inside the how-it-works band: image + text */
+    .how-row { display:grid; grid-template-columns: 1fr 680px; gap:24px; align-items:center; }
+    .how-row.reverse { grid-template-columns: 680px 1fr; }
+    /* center text within the how-it-works section */
+    .how-it-works h2, .how-it-works p, .how-it-works ol, .how-it-works ol li { text-align: center; }
+    .how-row .how-text { text-align: center; }
+    .how-row .how-text h3 { margin-top:0; margin-bottom:8px; font-size:1.25rem !important; }
+    .how-row .how-text p { margin:0; color:#555; line-height:1.6; font-size:1.05rem !important; }
+    .how-row .how-image-card { width:100%; }
+    .how-row .how-image-card img { width:100% !important; max-width:640px !important; height:auto !important; display:block !important; border-radius:6px !important; }
+    @media (max-width: 900px) { .how-row, .how-row.reverse { grid-template-columns: 1fr; } .how-row .how-image-card { order:2; } }
+    /* larger vertical gap between stacked how-row blocks */
+    .how-row + .how-row { margin-top:78px !important; }
+    /* Reviews / testimonials below carousel */
+    .reviews-section { margin-top:28px; padding:18px 12px; }
+    .reviews-grid { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; max-width:1100px; margin:0 auto; }
+    .review-card { background:#fff; border-radius:10px; padding:14px; width:240px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); text-align:center; }
+    .review-card .stars { color:#f5b301; font-size:1.15rem; margin-bottom:8px; }
+    .review-card p { margin:0; color:#444; font-size:0.95rem; line-height:1.4; }
+    @media (max-width:640px) { .review-card { width:100%; max-width:320px; } }
+    /* Holding phone compact banner (small image with adjacent stat) */
+    /* Metrics grid: responsive 3x2 alternating cards (stat / image) */
+    .metrics-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; max-width:1100px; margin:18px auto; align-items:stretch; margin-bottom:48px; }
+    .metric-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 8px 22px rgba(0,0,0,0.06); display:flex; flex-direction:column; justify-content:center; }
+    .metric-card p { margin:0; color:#555; line-height:1.45; }
+    .metric-card { text-align:center; }
+    .metric-stat .metric-number { color: rgb(57,189,180); font-weight:800; font-size:2.1rem; margin-bottom:6px; }
+    .metric-image { display:flex; align-items:center; justify-content:center; }
+    .metric-image img { width:auto; max-width:260px; height:auto; border-radius:10px; display:block; }
+    @media (max-width:900px) { .metrics-grid { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:640px) { .metrics-grid { grid-template-columns:1fr; } .metric-card { text-align:center; } .metric-image img { max-width:320px; margin:0 auto; } }
+</style>
+
+{% endblock %}
+
+{% block content %}
+    <header class="hero" style="text-align:center;">
+        <div class="container">
+            <h1>
+                <span class="line">Simplify Inventory.</span>
+                <span class="line">Automate Your Menus.</span>
+            </h1>
+            <p style="max-width:780px; margin:32px auto 24px; color:#5a5a5a; font-size:1.05rem;">Easy to use inventory management: recipes are curated from existing stock and menus are generated automatically.</p>
+
+            <div style="margin-top:18px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                <a href="{% url 'signup' %}" class="btn btn-solid-blue" style="padding:.7rem 1.1rem; font-size:1rem;">Get started for free!</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="how-it-works" style="background:#fbfbfb; padding:32px 0;">
+        <div class="container">
+            <div style="display:flex; gap:30px; align-items:center; flex-wrap:wrap;">
+                <div style="flex:1 1 100%; display:flex; flex-direction:column; gap:20px; align-items:center;">
+                    <div style="max-width:900px; width:100%;">
+                        <h2 style="margin-top:0; text-align:center;">How it works</h2>
+                        <ol style="color:#555; max-width:780px; margin:0 auto;">
+                            <li><strong>Sync Inventory:</strong> Inventory pre-loaded with ingredients and supplies, customizable to your center's needs. All you have to do is update it!</li>
+                            <li><strong>Use or Add Custom Recipes:</strong> Add, customize, or use hundreds of government recommended recipes that comes preset. Customize once and you're done!</li>
+                            <li><strong>Auto-generated Menus:</strong> Weekly menus that follow CACFP rules and regulations will be automatically created, pulling from recipes available based on your current inventory by the click of a button!</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full-bleed light grey band behind the how-it-works images -->
+        <div class="how-images-band" style="background:#e9ecef !important; padding:40px 0 !important; border-top:1px solid #ececec !important; border-bottom:1px solid #ececec !important;">
+            <div class="container">
+                <div class="inner-band">
+                    <div class="how-row">
+                        <div class="how-text">
+                            <h3>Easy Inventory Management</h3>
+                            <p>Manage stock effortlessly from any device. Quickly add or customize items, group by type, and attach relevant details like unit, expiration, and preferred supplier. Updates sync immediately so staff always see accurate counts and can act on low-stock alerts.</p>
+                        </div>
+                        <div class="how-image-card">
+                            {% with base=MEDIA_URL|default:'https://tot-time-media.s3.amazonaws.com/' %}
+                            <img class="s3-fallback" data-paths="{{ base }}public/inventoryimage.png,https://tot-time-media.s3.amazonaws.com/public/inventoryimage.png" src="{{ base }}public/inventoryimage.png" alt="Inventory management screenshot">
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="how-row reverse" style="margin-top:48px;">
+                        <div class="how-image-card">
+                            {% with base=MEDIA_URL|default:'https://tot-time-media.s3.amazonaws.com/' %}
+                            <img class="s3-fallback" data-paths="{{ base }}public/menuimage.png,https://tot-time-media.s3.amazonaws.com/public/menuimage.png" src="{{ base }}public/menuimage.png" alt="Auto-generated menu screenshot">
+                            {% endwith %}
+                        </div>
+                        <div class="how-text">
+                            <h3>Auto-generated Menus & CACFP Compliance</h3>
+                            <p>Generate weekly menus automatically using your current inventory. The scheduler pulls from government-approved recipes or your customized lists, enforces CACFP portioning and substitution rules, and auto-populates recipes based on stock levels to minimize waste while keeping you compliant.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            </div>
+        </div>
+    </section>
+    <section class="features" style="padding:36px 0;">
+        <div class="container">
+            {% with base=MEDIA_URL|default:'https://tot-time-media.s3.amazonaws.com/' %}
+            <!-- Metrics grid (3 columns x 2 rows) alternating stat and image cards -->
+            <div class="metrics-grid" role="region" aria-label="Time and impact metrics">
+                <div class="metric-card metric-stat">
+                    <div class="metric-number">Save 10 Hours a Week!</div>
+                    <p>Directors say they save an average of 10 hours per week using Tot-Time. Inventory is simple, menus and recipes no longer needing hours of attention each week.</p>
+                </div>
+
+                <div class="metric-card metric-image">
+                    <img class="s3-fallback" data-paths="{{ base }}public/HOLDING%20PHONE%20IMAGE.png,https://tot-time-media.s3.amazonaws.com/public/HOLDING%20PHONE%20IMAGE.png" src="{{ base }}public/HOLDING%20PHONE%20IMAGE.png" alt="Holding phone showing app screenshot">
+                </div>
+
+                <div class="metric-card metric-stat">
+                    <div class="metric-number">Have Faster Prep!</div>
+                    <p>Kitchen tasks are streamlined and automated so meals are ready faster. Exact porpotioning is calculated saving more money and using less waste.</p>
+                </div>
+
+                <div class="metric-card metric-image">
+                    <img class="s3-fallback" data-paths="{{ base }}public/circletime.png,https://tot-time-media.s3.amazonaws.com/public/circletime.png" src="{{ base }}public/circletime.png" alt="Circle time in classroom">
+                </div>
+
+                 <div class="metric-card metric-stat">
+                    <div class="metric-number">Time Where it Counts</div>
+                    <p>Staff get more quality time with the children because daily tasks are simplified, spending your time where it really matters.</p>
+                </div>
+
+                <div class="metric-card metric-image">
+                    <img class="s3-fallback" data-paths="{{ base }}public/kitchentime.png,https://tot-time-media.s3.amazonaws.com/public/kitchentime.png" src="{{ base }}public/kitchentime.png" alt="Kitchen time in classroom">
+                </div>
+            </div>
+            <!-- Scrolling carousel of feature cards (duplicated set for seamless loop) -->
+            <div class="carousel" aria-label="Key features">
+                <div class="carousel-inner">
+                    <div class="carousel-track">
+                    <!-- Set A -->
+                    <div class="card top-text">
+                        <div class="card-text">
+                            <h3>Inventory Management</h3>
+                            <p>Manage stock from PC or phone — easily track stock levels, item groups, and types across centers.</p>
+                        </div>
+                        <img class="s3-fallback" data-paths="{{ base }}public/invmobileimage.png,https://tot-time-media.s3.amazonaws.com/public/invmobileimage.png" src="{{ base }}public/invmobileimage.png" alt="Inventory on mobile and desktop">
+                    </div>
+
+                    <div class="card">
+                        <img class="s3-fallback" data-paths="{{ base }}public/menumobileimage.png,https://tot-time-media.s3.amazonaws.com/public/menumobileimage.png" src="{{ base }}public/menumobileimage.png" alt="Menu creation on mobile and desktop">
+                        <div class="card-text">
+                            <h3>Menus & Compliance</h3>
+                            <p>Create menus on web or app; automatic CACFP compliance enforcement based on inventory and federal rules.</p>
+                        </div>
+                    </div>
+
+                    <div class="card top-text">
+                        <div class="card-text">
+                            <h3>Preset & Custom Recipes</h3>
+                            <p>Start with preset recipe lists tailored for childcare portions, then customize by adding or removing items.</p>
+                        </div>
+                        <img class="s3-fallback" data-paths="{{ base }}public/recipiesmobileimage.png,https://tot-time-media.s3.amazonaws.com/public/recipiesmobileimage.png" src="{{ base }}public/recipiesmobileimage.png" alt="Preset and custom recipes">
+                    </div>
+
+                    <div class="card">
+                        <img class="s3-fallback" data-paths="{{ base }}public/mealcalcimage.png,https://tot-time-media.s3.amazonaws.com/public/mealcalcimage.png" src="{{ base }}public/mealcalcimage.png" alt="Meal ingredient calculator">
+                        <div class="card-text">
+                            <h3>Meal Calculator</h3>
+                            <p>Calculate exact ingredient quantities per meal to minimize waste and ensure correct portions.</p>
+                        </div>
+                    </div>
+
+                    <!-- Set B (duplicate for continuous scroll) -->
+                     <div class="card top-text">
+                        <div class="card-text">
+                            <h3>Inventory Management</h3>
+                            <p>Manage stock from PC or phone — easily track stock levels, item groups, and types across centers.</p>
+                        </div>
+                        <img class="s3-fallback" data-paths="{{ base }}public/invmobileimage.png,https://tot-time-media.s3.amazonaws.com/public/invmobileimage.png" src="{{ base }}public/invmobileimage.png" alt="Inventory on mobile and desktop">
+                    </div>
+
+                    <div class="card">
+                        <img class="s3-fallback" data-paths="{{ base }}public/menumobileimage.png,https://tot-time-media.s3.amazonaws.com/public/menumobileimage.png" src="{{ base }}public/menumobileimage.png" alt="Menu creation on mobile and desktop">
+                        <div class="card-text">
+                            <h3>Menus & Compliance</h3>
+                            <p>Create menus on web or app; automatic CACFP compliance enforcement based on inventory and federal rules.</p>
+                        </div>
+                    </div>
+
+                    <div class="card top-text">
+                        <div class="card-text">
+                            <h3>Preset & Custom Recipes</h3>
+                            <p>Start with preset recipe lists tailored for childcare portions, then customize by adding or removing items.</p>
+                        </div>
+                        <img class="s3-fallback" data-paths="{{ base }}public/recipiesmobileimage.png,https://tot-time-media.s3.amazonaws.com/public/recipiesmobileimage.png" src="{{ base }}public/recipiesmobileimage.png" alt="Preset and custom recipes">
+                    </div>
+
+                    <div class="card">
+                        <img class="s3-fallback" data-paths="{{ base }}public/mealcalcimage.png,https://tot-time-media.s3.amazonaws.com/public/mealcalcimage.png" src="{{ base }}public/mealcalcimage.png" alt="Meal ingredient calculator">
+                        <div class="card-text">
+                            <h3>Meal Calculator</h3>
+                            <p>Calculate exact ingredient quantities per meal to minimize waste and ensure correct portions.</p>
+                        </div>
+                    </div>
+
+                     <div class="card top-text">
+                        <div class="card-text">
+                            <h3>Inventory Management</h3>
+                            <p>Manage stock from PC or phone — easily track stock levels, item groups, and types across centers.</p>
+                        </div>
+                        <img class="s3-fallback" data-paths="{{ base }}public/invmobileimage.png,https://tot-time-media.s3.amazonaws.com/public/invmobileimage.png" src="{{ base }}public/invmobileimage.png" alt="Inventory on mobile and desktop">
+                    </div>
+
+                    <div class="card">
+                        <img class="s3-fallback" data-paths="{{ base }}public/menumobileimage.png,https://tot-time-media.s3.amazonaws.com/public/menumobileimage.png" src="{{ base }}public/menumobileimage.png" alt="Menu creation on mobile and desktop">
+                        <div class="card-text">
+                            <h3>Menus & Compliance</h3>
+                            <p>Create menus on web or app; automatic CACFP compliance enforcement based on inventory and federal rules.</p>
+                        </div>
+                    </div>
+
+                    <div class="card top-text">
+                        <div class="card-text">
+                            <h3>Preset & Custom Recipes</h3>
+                            <p>Start with preset recipe lists tailored for childcare portions, then customize by adding or removing items.</p>
+                        </div>
+                        <img class="s3-fallback" data-paths="{{ base }}public/recipiesmobileimage.png,https://tot-time-media.s3.amazonaws.com/public/recipiesmobileimage.png" src="{{ base }}public/recipiesmobileimage.png" alt="Preset and custom recipes">
+                    </div>
+
+                    <div class="card">
+                        <img class="s3-fallback" data-paths="{{ base }}public/mealcalcimage.png,https://tot-time-media.s3.amazonaws.com/public/mealcalcimage.png" src="{{ base }}public/mealcalcimage.png" alt="Meal ingredient calculator">
+                        <div class="card-text">
+                            <h3>Meal Calculator</h3>
+                            <p>Calculate exact ingredient quantities per meal to minimize waste and ensure correct portions.</p>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 5-star reviews placed below carousel -->
+            <div class="reviews-section" aria-label="Customer reviews" role="region">
+                <div class="reviews-grid">
+                    <div class="review-card">
+                        <div class="stars">★★★★★</div>
+                        <p>"Inventory management is very simple and straight forward, menus are even easier, just click a button!."<strong>-Jamie H.</strong></p>
+                    </div>
+                    
+                    <div class="review-card">
+                        <div class="stars">★★★★★</div>
+                        <p>"Saved our team hours every week! This cuts down so much time!" <strong>-Amy S.</strong></p>
+                    </div>
+                    
+                    <div class="review-card">
+                        <div class="stars">★★★★★</div>
+                        <p>"I love that I can use my phone, sometimes I'm stuck away from a computer and can quickly see what we have and get a menu created instantly!"<strong>-Erin M.</strong></p>
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+        </div>
+    </section>
+
+
+    <section class="cta" style="padding:28px 0; text-align:center;">
+        <div class="container">
+            <h3 style="margin:0 0 12px;">Simplify your Menus to a click of a button!</h3>
+            <p style="margin:0 0 18px; color:#666;">Join centers already simplifying menus and inventory with automation and smart recipes.</p>
+            <a href="{% url 'signup' %}" class="btn btn-solid-blue" style="padding:.7rem 1.2rem; font-size:1rem;">Get started for free!</a>
+        </div>
+    </section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Attempt multiple possible S3 paths for images when the initial src 404s/403s.
+document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('img.s3-fallback').forEach(function(img){
+        var paths = (img.getAttribute('data-paths')||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+        // keep an index pointer on the element
+        img._s3_index = 0;
+        img.onerror = function(){
+            img._s3_index += 1;
+            if (img._s3_index < paths.length){
+                img.src = paths[img._s3_index];
+            } else {
+                // all attempts failed — optionally hide or show placeholder
+                img.style.opacity = '0.6';
+            }
+        };
+        // if no src set but paths exist, set first
+        if ((!img.src || img.src.indexOf('data:')===0) && paths.length) img.src = paths[0];
+    });
+    // Video fallback: try alternate S3 paths if the video src errors
+    document.querySelectorAll('video.s3-video-fallback').forEach(function(video){
+        var paths = (video.getAttribute('data-paths')||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+        video._s3_index = 0;
+        video.addEventListener('error', function(){
+            video._s3_index += 1;
+            if (video._s3_index < paths.length){
+                try {
+                    video.src = paths[video._s3_index];
+                    video.load();
+                    // attempt autoplay (will only work if allowed/muted)
+                    var p = video.play();
+                    if (p && p.catch) p.catch(function(){ /* ignore play fail */ });
+                } catch(e){ /* ignore */ }
+            } else {
+                // final fallback: show poster opacity change
+                video.style.opacity = '0.85';
+            }
+        });
+        // if no src set but paths exist, set first
+        if ((!video.src || video.src.indexOf('data:')===0) && paths.length) video.src = paths[0];
+    });
+});
+</script>
+{% endblock %}
+                    

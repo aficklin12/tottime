@@ -10,7 +10,7 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', login_required(views.index), name='index'),  
+    path('', views.homepage, name='homepage'),  
     path('index.html', login_required(views.index), name='index'),  
     path('index_director.html', login_required(views.index_director), name='index_director'),  
     path('index_teacher_parent.html', login_required(views.index_teacher_parent), name='index_teacher_parent'),  

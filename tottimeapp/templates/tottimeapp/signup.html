@@ -1,143 +1,220 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="" />
-    <meta name="author" content="" />
-    <title>Sign Up</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Font Awesome -->
-    <link href="https://use.fontawesome.com/releases/v6.3.0/css/all.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Tabulator CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.1.0/dist/css/tabulator.min.css" rel="stylesheet" />
-    <!-- Custom CSS -->
-    {% load static %}
-    <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
-    
-    <style>
-        .navbar-brand img {
-    width: 100%; /* Ensure the logo takes up the full width of its container */
-    max-width: 200px; /* Set a max-width to control the size of the logo */
-    height: auto; /* Maintain aspect ratio */
-    object-fit: contain; /* Make sure the logo doesn't get distorted */
-    margin-left: 0; /* Reset any left margin if needed */
-    border-radius: 0; /* Remove any border-radius if it's causing a vignette effect */
-    overflow: visible; /* Ensure no clipping occurs */
-}
+{% extends 'tottimeapp/base_freeuser.html' %}
+{% load static %} 
+{% load custom_filters %}
+{% load dict_extras %}
+{% block title %}Homepage{% endblock %}
 
-    </style>
-</head>
-<body class="sb-nav-fixed">
-    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-        <!-- Navbar Brand-->
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" data-bs-toggle="collapse" data-bs-target="#layoutSidenav" aria-controls="layoutSidenav" aria-expanded="false" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
-        
-        <a class="navbar-brand" href="{% url 'index' %}">
-            <img src="{% static 'images/logo.png' %}" alt="Tot-Time">
-        </a>
-        <!-- Navbar-->
-        <div class="ms-auto">
-            <ul class="navbar-nav me-lg-4">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <!-- Profile Picture or Default Image -->
-                        <img 
-                            src="{% if user.profile_picture %}{{ user.profile_picture.url }}{% else %}{% static 'profile_pictures/Default_pfp.jpg' %}{% endif %}" 
-                            alt="Profile Picture" 
-                            style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        {% if user.is_authenticated %}
-                            <li><a class="dropdown-item" href="{% url 'message_inbox' %}">Inbox</a></li>  <!-- Link to Inbox -->
-                            <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
-                        {% else %}
-                            <li><a class="dropdown-item" href="{% url 'login' %}">Login</a></li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider" /></li>
-                        <li><a class="dropdown-item" href="{% url 'account_settings' %}">Account Settings</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <body class="bg-primary">
-        <div id="layoutAuthentication">
-            <div id="layoutAuthentication_content">
-                <main>
-                    <div class="container">
-                        <div class="row justify-content-center">
-                            <div class="col-lg-7">
-                                <div class="card shadow-lg border-0 rounded-lg mt-5">
-                                    <div class="card-header"><h3 class="text-center font-weight-light my-4">Create Account</h3></div>
-                                    <div class="card-body">
-                                        <form method="POST">
-                                            {% csrf_token %}
-                                            <div class="form-floating mb-3 text-center">
-                                                <input class="form-control" id="inputFirstName" type="text" name="first_name" placeholder="First Name" required>
-                                                <label for="inputFirstName">First Name</label>
-                                            </div>
-                                            <div class="form-floating mb-3 text-center">
-                                                <input class="form-control" id="inputLastName" type="text" name="last_name" placeholder="Last Name" required>
-                                                <label for="inputLastName">Last Name</label>
-                                            </div>
-                                            <div class="form-floating mb-3 text-center">
-                                                <input class="form-control" id="inputEmail" type="email" name="email" placeholder="name@example.com" required>
-                                                <label for="inputEmail">Email address</label>
-                                            </div>
-                                            <div class="form-floating mb-3 text-center">
-                                                <input class="form-control" id="inputUsername" type="text" name="username" placeholder="Username" required>
-                                                <label for="inputUsername">Username</label>
-                                            </div>
-                                            <div class="row mb-3 text-center">
-                                                <div class="col-md-6">
-                                                    <div class="form-floating mb-3 mb-md-0">
-                                                        <input class="form-control" id="inputPassword" type="password" name="password1" placeholder="Password" required>
-                                                        <label for="inputPassword">Password</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="form-floating mb-3 mb-md-0">
-                                                        <input class="form-control" id="inputPasswordConfirm" type="password" name="password2" placeholder="Confirm Password" required>
-                                                        <label for="inputPasswordConfirm">Confirm Password</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary btn-block">Create Account</button>
-                                            <a href="{% url 'login' %}">Already have an account? Go to login</a>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="{% static 'js/scripts.js' %}"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="{% static 'js/toastr-settings.js' %}"></script>
-   
-    <script>
-    $.ajax({
-            type: "POST",
-            url: "/signup/",
-            data: { /* your form data */ },
-            headers: { "X-CSRFToken": getCookie("csrftoken") }, // Ensure this function gets the token
-            success: function(response) {
-                // handle success
-            },
-            error: function(error) {
-                // handle error
-            }
-        });
-</script>  
-</body>
-</html>
+{% block styles %}
+
+<style>
+	html, body { height: 100%; }
+	body {
+		background-color: #e6e6e6; /* light gray */
+		color: #0f172a;
+		-webkit-font-smoothing:antialiased;
+		-moz-osx-font-smoothing:grayscale;
+		padding: 18px 12px; /* reduced top/bottom padding to bring card closer to navbar */
+		font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+	}
+
+	.signup-page-wrapper { display:flex; align-items:flex-start; justify-content:center; min-height: calc(100vh - 80px); padding-top: 8px; }
+
+	/* subtle gradient card */
+	.signup-card { max-width: 680px; margin: 0 auto; background: linear-gradient(180deg,#ffffff 0%, #fbfdff 100%); border-radius: 14px; box-shadow: 0 10px 30px rgba(15,23,42,0.08); padding: 32px; border: 1px solid rgba(15,23,42,0.04); }
+	.signup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+	.signup-field { display:flex; flex-direction:column; margin-bottom:12px; }
+	.signup-field label { font-weight:600; margin-bottom:6px; color:#0f172a; }
+	.signup-field input { padding:10px 12px; border:1px solid #e6eef8; border-radius:8px; font-size:14px; background: #fcfeff }
+	.full { grid-column: 1 / -1; }
+	/* Ensure this color overrides other theme styles */
+	.signup-card .btn-primary, button.btn-primary, .btn-primary {
+		background: rgb(57,189,180) !important;
+		color: #ffffff !important;
+		border: none !important;
+		padding: 10px 16px !important;
+		border-radius: 10px !important;
+		cursor: pointer !important;
+		font-weight: 600 !important;
+		box-shadow: 0 8px 22px rgba(57,189,180,0.14) !important;
+		transition: transform .08s ease, box-shadow .12s ease !important;
+	}
+	.signup-card .btn-primary:hover, button.btn-primary:hover, .btn-primary:hover {
+		transform: translateY(-1px) !important;
+		box-shadow: 0 12px 28px rgba(57,189,180,0.16) !important;
+	}
+	.signup-card .btn-primary:active, button.btn-primary:active, .btn-primary:active {
+		transform: translateY(0) !important;
+		box-shadow: 0 6px 16px rgba(57,189,180,0.12) !important;
+	}
+	.signup-card .btn-primary:focus, button.btn-primary:focus, .btn-primary:focus {
+		outline: 3px solid rgba(57,189,180,0.18) !important;
+		outline-offset: 2px !important;
+	}
+	.hint { font-size:13px; color:#6b7280 }
+	.error { color:#b91c1c; font-size:13px; margin-top:6px }
+
+	@media (max-width: 1000px){
+		.signup-grid { grid-template-columns: 1fr; display:block !important; }
+		/* reduce top padding below navbar only on small screens */
+		body { padding-top: 0px !important; padding-left: 10px !important; padding-right: 10px !important; padding-bottom: 18px !important; }
+		.signup-page-wrapper { padding-top: 4px !important; }
+		.signup-card { padding:16px !important; margin: 0 12px !important; max-width: 680px !important; width: calc(100% - 24px) !important; }
+		.signup-field { width:100% !important; display:block !important; }
+		.signup-field input { width: 100% !important; box-sizing: border-box; display:block !important; }
+		.signup-field .hint { max-width: 100%; }
+		.signup-card .btn-primary { width: 100%; display:block; }
+	}
+</style>
+
+{% endblock %}
+
+{% block content %}
+<div class="signup-page-wrapper">
+	<div class="signup-card">
+	<h2 style="margin:0 0 8px 0">Start your free trial now!</h2>
+	<p class="hint" style="margin-bottom:18px">No payment information required</p>
+
+	<form id="signupForm" method="post" novalidate>
+		{% csrf_token %}
+
+		{# Show server-side validation errors if present #}
+		{% if form %}
+		  {% if form.non_field_errors %}
+		    <div class="error">{{ form.non_field_errors.as_text }}</div>
+		  {% endif %}
+		{% endif %}
+		<div class="signup-grid">
+			<!-- username will be set to email on submit; hidden input retained for backend compatibility -->
+			<input type="hidden" id="id_username" name="username">
+
+			<div class="signup-field">
+				<label for="id_email">Email</label>
+				<input id="id_email" name="email" type="email" autocomplete="email" required value="{% if form and form.email.value %}{{ form.email.value }}{% endif %}">
+				<div class="error" id="err-email">
+				  {% if form and form.email.errors %}{{ form.email.errors.0 }}{% endif %}
+				</div>
+			</div>
+
+			<div class="signup-field">
+				<label for="id_email2">Confirm email</label>
+				<input id="id_email2" name="email2" type="email" autocomplete="email" required>
+				<div class="error" id="err-email2"></div>
+			</div>
+
+			<div class="signup-field">
+				<label for="id_first_name">First name</label>
+				<input id="id_first_name" name="first_name" autocomplete="given-name" required value="{% if form and form.first_name.value %}{{ form.first_name.value }}{% endif %}">
+				<div class="error">{% if form and form.first_name.errors %}{{ form.first_name.errors.0 }}{% endif %}</div>
+			</div>
+
+			<div class="signup-field">
+				<label for="id_last_name">Last name</label>
+				<input id="id_last_name" name="last_name" autocomplete="family-name" required value="{% if form and form.last_name.value %}{{ form.last_name.value }}{% endif %}">
+				<div class="error">{% if form and form.last_name.errors %}{{ form.last_name.errors.0 }}{% endif %}</div>
+			</div>
+
+			<div class="signup-field full">
+				<label for="id_company">Company name (optional)</label>
+				<input id="id_company" name="company_name" autocomplete="organization">
+			</div>
+
+			<div class="signup-field">
+				<label for="id_phone">Phone (optional)</label>
+				<input id="id_phone" name="phone_number" autocomplete="tel">
+			</div>
+
+			<div class="signup-field">
+				<label for="id_address">Address (optional)</label>
+				<input id="id_address" name="address" autocomplete="street-address">
+			</div>
+
+			<div class="signup-field">
+				<label for="id_password1">Password</label>
+				<input id="id_password1" name="password1" type="password" autocomplete="new-password" required>
+				<div class="hint">Minimum 8 characters recommended.</div>
+				<div class="error">{% if form and form.password1.errors %}{{ form.password1.errors.0 }}{% endif %}</div>
+			</div>
+
+			<div class="signup-field">
+				<label for="id_password2">Confirm password</label>
+				<input id="id_password2" name="password2" type="password" autocomplete="new-password" required>
+				<div class="error" id="err-pass">{% if form and form.password2.errors %}{{ form.password2.errors.0 }}{% endif %}</div>
+			</div>
+
+			<!-- optional hidden flags — backend must support these to take effect -->
+			<input type="hidden" name="can_switch" value="false">
+			<input type="hidden" name="is_account_owner" value="true">
+		</div>
+
+		<div style="margin-top:14px; display:flex; gap:8px; align-items:center">
+			<button id="submitBtn" type="submit" class="btn-primary">Create account</button>
+		</div>
+	</form>
+	<div id="server-error" class="error" style="margin-top:12px"></div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+	(function(){
+		const form = document.getElementById('signupForm');
+		const pass1 = document.getElementById('id_password1');
+		const pass2 = document.getElementById('id_password2');
+		const errPass = document.getElementById('err-pass');
+		const errUsername = document.getElementById('err-username');
+		const errEmail = document.getElementById('err-email');
+		const serverErr = document.getElementById('server-error');
+
+		function clearErrors(){
+			if(errPass) errPass.textContent = '';
+			if(errUsername) errUsername.textContent = '';
+			if(errEmail) errEmail.textContent = '';
+			serverErr.textContent = '';
+		}
+
+		function validate(){
+			clearErrors();
+			let ok = true;
+			if(pass1.value.length < 8){
+				if(errPass) errPass.textContent = 'Password should be at least 8 characters.';
+				ok = false;
+			}
+			if(pass1.value !== pass2.value){
+				if(errPass) errPass.textContent = 'Passwords do not match.';
+				ok = false;
+			}
+			const email = document.getElementById('id_email').value.trim();
+			if(!email){ if(errEmail) errEmail.textContent = 'Email is required.'; ok = false }
+			return ok;
+		}
+
+		form.addEventListener('submit', function(e){
+			e.preventDefault();
+			clearErrors();
+			// check email match
+			const email = document.getElementById('id_email').value.trim();
+			const email2 = document.getElementById('id_email2').value.trim();
+			if(!email || !email2){
+				if(!email) document.getElementById('err-email').textContent = 'Email is required.';
+				if(!email2) document.getElementById('err-email2').textContent = 'Please confirm your email.';
+				return;
+			}
+			if(email.toLowerCase() !== email2.toLowerCase()){
+				document.getElementById('err-email2').textContent = 'Emails do not match.';
+				return;
+			}
+
+			if(!validate()) return;
+
+			// set hidden username to the email before submitting
+			document.getElementById('id_username').value = email;
+
+			// submit the form normally so Django handles validation and redirects
+			form.submit();
+		});
+	})();
+</script>
+
+{% endblock %}

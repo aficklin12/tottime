@@ -881,6 +881,31 @@ table thead {
 .delete-visible .delete-column {
     display: table-cell;
 }
+
+/* Header action areas - default hidden, show on wide screens */
+.left-header-action,
+.right-header-actions { display: none; gap: 8px; align-items: center; }
+.left-header-action .sync-icon,
+.right-header-actions .create-icon,
+.right-header-actions .header-trash {
+    background: transparent; border: none; color: #ffffff; cursor: pointer;
+    padding: 6px; font-size: 1rem; border-radius: 6px;
+}
+.left-header-action .sync-icon:hover,
+.right-header-actions .create-icon:hover,
+.right-header-actions .header-trash:hover { background: rgba(255,255,255,0.06); }
+
+/* sync icon coloring */
+.left-header-action .sync-icon { color: rgb(57,189,180); }
+
+@media (min-width: 1000px) {
+    /* hide the original top controls on desktop (we'll show header actions instead) */
+    .inventory-top-controls { display: none !important; }
+    .left-header-action { display: inline-flex !important; margin-right: 12px; }
+    .right-header-actions { display: inline-flex !important; justify-content: flex-end; gap: 6px; }
+    th.quantity-header { position: relative; }
+    .right-header-actions { position: absolute; right: 8px; top: 6px; }
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -990,7 +1015,12 @@ table thead {
                 <tr>
                     <th class="item-header">
                         <!-- Desktop: static label -->
-                        <span class="d-none d-md-inline">Item</span>
+                        <span class="d-none d-md-inline">Update Inventory</span>
+
+                                        <!-- Desktop left header action: sync (visible only on >=1000px) -->
+                                        <div class="left-header-action" aria-hidden="false" style="display:none;">
+                                            <button type="button" id="headerUpdateInventory" class="sync-icon" title="Update Inventory"><i class="fas fa-sync"></i></button>
+                                        </div>
 
                        <!-- Mobile: category dropdown becomes the header -->
                         <div class="d-block d-md-none mobile-select-wrap">
@@ -1005,7 +1035,13 @@ table thead {
                             <span class="mobile-dropdown-indicator" aria-hidden="true"></span>
                         </div>
                     </th>
-                    <th class="quantity-header">Qty</th>
+                    <th class="quantity-header">Qty
+                        <!-- Desktop right header actions: plus + white trash (shown to right of Qty on >=1000px) -->
+                        <div class="right-header-actions" style="display:none;">
+                            <button type="button" id="headerCreateInventory" class="create-icon" data-bs-toggle="modal" data-bs-target="#addItemModal" title="Add Item"><i class="fas fa-plus"></i></button>
+                            <button type="button" id="headerToggleDeleteInventory" class="header-trash" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </th>
                     <th class="delete-item-header delete-column" id="deleteColumnHeader"><i class="fas fa-trash-alt" style="color: white;"></i></th>
                 </tr>
             </thead>
@@ -1450,10 +1486,19 @@ document.addEventListener('DOMContentLoaded', function() {
        // Toggle visibility of delete columns by toggling container classes
 function toggleDeleteColumn() {
     var container = document.getElementById('categoryTabContent') || document.querySelector('.tab-content') || document.body;
-
     // Toggle both classes — default start state is `delete-hidden`
     container.classList.toggle('delete-visible');
     container.classList.toggle('delete-hidden');
+
+    // When delete column is visible, hide the header-level toggle button
+    var headerToggle = document.getElementById('headerToggleDeleteInventory');
+    if (headerToggle) {
+        if (container.classList.contains('delete-visible')) {
+            headerToggle.style.display = 'none';
+        } else {
+            headerToggle.style.display = '';
+        }
+    }
 }
 
         let isSubmitting = false; // Flag to prevent duplicate submissions
@@ -1728,6 +1773,49 @@ function launchBarcodeScanner(onDetectedCallback) {
         }
     });
 }
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Wire header create icon to open Add Item modal and header trash to toggle delete column
+    const headerCreate = document.getElementById('headerCreateInventory');
+    const headerTrash = document.getElementById('headerToggleDeleteInventory');
+
+    if (headerCreate) {
+        headerCreate.addEventListener('click', function (e) {
+            const sel = this.getAttribute('data-bs-target');
+            const el = document.querySelector(sel);
+            if (el) {
+                try { new bootstrap.Modal(el).show(); }
+                catch (err) { document.querySelector(sel)?.click(); }
+            }
+        });
+    }
+
+    if (headerTrash) {
+        headerTrash.addEventListener('click', function () {
+            // reuse existing top toggle function if present
+            if (typeof toggleDeleteColumn === 'function') toggleDeleteColumn();
+            else document.getElementById('toggleDeleteColumn')?.click();
+        });
+    }
+
+    // Allow clicking the delete-column header itself to hide the delete column when visible
+    const deleteColHeader = document.getElementById('deleteColumnHeader');
+    if (deleteColHeader) {
+        deleteColHeader.style.cursor = 'pointer';
+        deleteColHeader.addEventListener('click', function () {
+            const container = document.getElementById('categoryTabContent') || document.querySelector('.tab-content') || document.body;
+            const isVisible = container.classList.contains('delete-visible');
+            if (isVisible) {
+                if (typeof toggleDeleteColumn === 'function') toggleDeleteColumn();
+                else document.getElementById('toggleDeleteColumn')?.click();
+            }
+        });
+    }
+
+    const headerSync = document.getElementById('headerUpdateInventory');
+    if (headerSync) headerSync.addEventListener('click', function () { if (typeof updateInventory === 'function') updateInventory(); });
+});
 </script>
 <!-- Add this to your inventory_list.html (or the remote template at https://tot-time.com/inventory_list) -->
 <script>

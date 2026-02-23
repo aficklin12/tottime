@@ -21,6 +21,42 @@
     border-top-right-radius: 10px;
 }
 
+/* Replace only the table fragment by fetching the current page HTML and extracting #weeklyMenuTable */
+async function reloadTableFragment() {
+    try {
+        const url = window.location.href.split('#')[0];
+        const sep = url.indexOf('?') === -1 ? '?' : '&';
+        const fetchUrl = url + sep + '_fragment_reload=' + Date.now();
+        const res = await fetch(fetchUrl, { cache: 'no-store', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        const html = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newTable = doc.querySelector('#weeklyMenuTable');
+        if (!newTable) {
+            console.warn('reloadTableFragment: #weeklyMenuTable not found in fetched HTML, falling back to full reload');
+            try { location.reload(); } catch (e) { console.warn('full reload failed', e); }
+            return;
+        }
+        const oldTable = document.querySelector('#weeklyMenuTable');
+        if (oldTable) {
+            oldTable.replaceWith(newTable.cloneNode(true));
+            window.__menuFragmentReloaded = true;
+        } else {
+            const container = document.getElementById('printableTable') || document.querySelector('.table') || document.body;
+            container.appendChild(newTable.cloneNode(true));
+            window.__menuFragmentReloaded = true;
+        }
+        clearInventoryRulesCache();
+        await applyGradientsToCells();
+        await ensureDailyWG();
+        toggleAMSnackVisibility();
+        await buildRulesLegendFromCache();
+    } catch (err) {
+        console.warn('reloadTableFragment failed', err);
+        try { location.reload(); } catch (e) { console.warn('full reload failed', e); }
+    }
+}
+
 /* AM Snack toggle button - hidden by default, shown only on mobile */
 .am-snack-toggle-btn {
     display: none;
@@ -1084,7 +1120,7 @@ h1.mt-4 {
                                     <i class="fas fa-plus" id="amSnackToggleIcon"></i>
                                 </button>
                             </td>
-                            <td>Choose 2 of these 5: Fluid Milk</td>
+                            <td>Fluid Milk or Water</td>
                             <td id="mondaychoose1" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdaychoose1" style="text-align: center;" data-day="tuesday"></td>
                             <td id="wednesdaychoose1" style="text-align: center;" data-day="wednesday"></td>
@@ -1174,7 +1210,7 @@ h1.mt-4 {
                         </tr>
                         <tr> 
                             <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">PM Snack</td>
-                            <td>Choose 2 of these 5: Fluid Milk</td>
+                            <td>Fluid Milk or Water</td>
                             <td id="mondaychoose2" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdaychoose2" style="text-align: center;" data-day="tuesday"></td>
                             <td id="wednesdaychoose2" style="text-align: center;" data-day="wednesday"></td>
@@ -1430,8 +1466,10 @@ const norm = s => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
 async function fetchInventoryRules() {
     if (inventoryRulesCache) return inventoryRulesCache;
     try {
-        const response = await fetch('/api/fetch_inventory_rules/', {
+        const url = '/api/fetch_inventory_rules/?_=' + Date.now();
+        const response = await fetch(url, {
             method: 'GET',
+            cache: 'no-store',
             headers: { 'X-CSRFToken': getCookie('csrftoken') }
         });
         const data = await response.json();
@@ -1516,11 +1554,13 @@ async function applyGradientsToCells() {
             cell.style.color = s.text_color;
             cell.dataset.ruleApplied = 'true';
             cell.dataset.ruleLabel = 'Whole Grain';
+            matchCount++;
         }
     });
 
     // Build/rebuild legend after rules are available
     try { await buildRulesLegendFromCache(); } catch(e) { console.warn('legend build failed', e); }
+    return matchCount;
 }
 
 /* Clear inventory rules cache (useful when rules are updated) */
@@ -2008,6 +2048,18 @@ $(document).ready(function() {
         $btn.prop('disabled', true).addClass('disabled');
         showLoading('Generating menu…');
 
+        // Determine whether the table already has cached/menu data.
+        // If the table is non-empty (user generated previously), we'll reload the fragment
+        // after generation. For a fresh generation (empty table) we won't reload.
+        let hadCachedTableData = false;
+        try {
+            const ids = getColorableCellIds();
+            for (let i = 0; i < ids.length; i++) {
+                const el = document.getElementById(ids[i]);
+                if (el && el.innerText && el.innerText.trim().length > 0) { hadCachedTableData = true; break; }
+            }
+        } catch (e) { console.warn('cache check failed', e); }
+
         // Clear previous colors before regenerating
         clearAllMenuCellStyles();
         clearInventoryRulesCache();
@@ -2015,8 +2067,6 @@ $(document).ready(function() {
         const calls = [
             ajaxPost('/generate_menu/').done(resp => updateTable(resp)).fail(() => toastr.error('Failed generating lunch menu')).always(saveMenuProgressToLocalStorage),
             ajaxPost('/generate_am_menu/').done(resp => updateAMTable(resp)).fail(() => toastr.error('Failed generating AM snack')).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_fruit_menu/').done(resp => updateFruitTable(resp)).fail(() => toastr.error('Failed generating fruits')).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_vegetable_menu/').done(resp => updateVegetableTable(resp)).fail(() => toastr.error('Failed generating vegetables')).always(saveMenuProgressToLocalStorage),
             ajaxPost('/generate_pm_menu/').done(resp => updatePMTable(resp)).fail(() => toastr.error('Failed generating PM snack')).always(saveMenuProgressToLocalStorage),
             ajaxPost('/generate_breakfast_menu/').done(resp => { updateBreakfastTable(resp); }).fail(() => toastr.error('Failed generating breakfast')).always(saveMenuProgressToLocalStorage)
         ];
@@ -2045,14 +2095,48 @@ $(document).ready(function() {
                 enableEditablesForAllCells();
                 {% endif %}
 
-                // Recolor then ensure WG in sequence
-                await applyGradientsToCells();
+                // Recolor then ensure WG in sequence. Retry a few times if no rules applied,
+                // and fall back to a full reload to pick up server-side changes.
+                let matchCount = await applyGradientsToCells();
+                if (!matchCount) {
+                    for (let attempt = 1; attempt <= 3 && !matchCount; attempt++) {
+                        await new Promise(r => setTimeout(r, 200 * attempt));
+                        clearInventoryRulesCache();
+                        matchCount = await applyGradientsToCells();
+                    }
+                }
+                if (!matchCount) {
+                    // If still no matches, only reload the fragment when we detected
+                    // pre-existing table data (cached). For fresh generations do not reload.
+                    if (hadCachedTableData) {
+                        try { await reloadTableFragment(); return; } catch (e) { console.warn('fragment reload failed', e); try { location.reload(); return; } catch (er) { console.warn('reload failed', er); } }
+                    } else {
+                        // Fresh generation: continue without reloading (styles already attempted)
+                    }
+                }
                 await ensureDailyWG();
                 toggleAMSnackVisibility();
                 await buildRulesLegendFromCache();
             } finally {
-                hideLoading();
                 setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 200);
+                // Start a delayed fragment reload and keep the loading overlay active
+                setTimeout(function(){
+                    (async function(){
+                        try {
+                            if (hadCachedTableData) {
+                                if (!window.__menuFragmentReloaded) await reloadTableFragment();
+                            } else {
+                                // No cached data: don't reload fragment; ensure gradients applied
+                                try { await applyGradientsToCells(); await buildRulesLegendFromCache(); } catch(e) { console.warn('apply after fresh gen failed', e); }
+                            }
+                        } catch (e) {
+                            console.warn('fragment reload failed', e);
+                            try { location.reload(); return; } catch (er) { console.warn('reload failed', er); }
+                        } finally {
+                            hideLoading();
+                        }
+                    })();
+                }, 500);
             }
         });
     });
