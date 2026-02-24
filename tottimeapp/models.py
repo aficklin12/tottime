@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import  AbstractUser, Group, Permission
+from django.utils.crypto import salted_hmac
 from django.utils import timezone
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -644,6 +645,9 @@ class MainUser(AbstractUser):
         blank=True,
         related_name='linked_users'
     )
+    # Stable token used for session auth hash — never changes on login,
+    # so logging in on one device does NOT invalidate other devices' sessions.
+    session_token = models.UUIDField(default=uuid.uuid4, editable=False)
 
     def __str__(self):
         if self.is_account_owner:
@@ -651,6 +655,12 @@ class MainUser(AbstractUser):
         elif self.main_account_owner:
             return f"{self.first_name} {self.last_name} - Linked to {self.main_account_owner.first_name} {self.main_account_owner.last_name}"
         return f"{self.first_name} {self.last_name} - Regular User"
+
+    def get_session_auth_hash(self):
+        """Use a stable token instead of the password field so that Django's
+        automatic password hash upgrades do not invalidate other devices' sessions."""
+        key_salt = "tottimeapp.MainUser.get_session_auth_hash"
+        return salted_hmac(key_salt, str(self.session_token), algorithm="sha256").hexdigest()
 
     def save(self, *args, **kwargs):
         # Ensure that a user cannot be both an account owner and linked to another account owner
