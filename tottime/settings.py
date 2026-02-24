@@ -6,7 +6,7 @@ import stripe
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*")
 DEBUG = True
 ALLOWED_HOSTS = ['44.209.83.215', 'localhost', '127.0.0.1', 'tot-time.com', 'www.tot-time.com']
 
@@ -147,6 +147,15 @@ SECURE_SSL_REDIRECT = False
 
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
+
+# Session settings — allows concurrent logins from multiple devices.
+# Each device gets its own session cookie; logging in on one device
+# does NOT invalidate other devices' sessions.
+SESSION_COOKIE_AGE = 1209600          # 2 weeks (in seconds)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep sessions alive after browser close
+SESSION_SAVE_EVERY_REQUEST = True     # Extends session expiry on each request (keeps active sessions alive)
+SESSION_COOKIE_SAMESITE = 'Lax'       # Required for PWA / cross-origin requests
+# SESSION_COOKIE_SECURE = True        # Uncomment when using HTTPS in production
 
 
 # Static files for PWA
