@@ -322,7 +322,16 @@ input[type="time"].sign-out-time:focus {
   
   /* Add top padding to tables so they start below sticky switcher */
   table.attendance-table {
-    padding-top: 50px !important;  /* Height of classroom switcher + margin */
+    padding-top: 0 !important;
+  }
+  /* Non-switch: margin pushes active table below sticky switcher (height ~44px) */
+  table.attendance-table.is-active {
+    margin-top: 48px !important;
+  }
+  /* Switch-location users: fixed location bar (44px) + sticky switcher (44px) = 88px extra.
+     Increase margin so column headers clear both. */
+  main[style*="padding-top: 100px"] table.attendance-table.is-active {
+    margin-top: 94px !important;
   }
   #classroomSwitchContainer .form-select {
     border: none !important;
@@ -361,11 +370,6 @@ input[type="time"].sign-out-time:focus {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
     /* ...existing table mobile rules... */
-  }
-  
-  /* Add margin to active table so it starts below the sticky switcher */
-  table.attendance-table.is-active {
-    margin-top: 48px !important;  /* space for sticky switcher bar */
   }
   
   /* Only one classroom table visible at a time */
@@ -477,6 +481,16 @@ input[type="time"].sign-out-time:focus {
   display: none !important;
 }
 
+/* Hide assigned teachers row on mobile by default; show only when toggle is active */
+@media (max-width: 999px) {
+  .attendance-table .assigned-teachers-row {
+    display: none !important;
+  }
+  .attendance-table.delete-visible .assigned-teachers-row {
+    display: table-row !important;
+  }
+}
+
 /* Delete column: consistent width + perfectly centered button */
 .attendance-table.delete-visible th.delete-column,
 .attendance-table.delete-visible td.delete-column {
@@ -586,7 +600,7 @@ input[type="time"].sign-out-time:focus {
             </th>
         </tr>
         <!-- Third Row: Assigned Teachers -->
-        <tr>
+        <tr class="assigned-teachers-row">
             <th colspan="5" class="assigned-teachers-header">
                 <div id="assignedTeachers-{{ classroom.id }}" class="teacher-row assigned-teachers">
                     {% for teacher in assigned_teachers|get_item:classroom.id %}
