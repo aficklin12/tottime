@@ -531,6 +531,18 @@ input[type="time"].sign-out-time:focus {
   border-radius: 6px;
   box-shadow: none;
 }
+
+/* When the Select2 dropdown is open, hide the outer placeholder text
+   so only the search box placeholder is visible (less visual clutter). */
+#manualSignInModal .select2-container--open .select2-selection__placeholder {
+  color: transparent !important;
+}
+
+/* Playful preschool-style font for student names in the manual sign-in */
+#manualSignInModal .select2-container--default .select2-selection--single .select2-selection__rendered,
+#manualSignInModal .select2-container--default .select2-results__option {
+  font-family: 'Comic Sans MS', 'Comic Sans', 'Marker Felt', cursive;
+}
 </style>
 {% endblock %}
 
@@ -732,6 +744,10 @@ input[type="time"].sign-out-time:focus {
     // Reset select2 on modal open
     $('#manualSignInModal').on('show.bs.modal', function () {
       $('#studentSelect').val(null).trigger('change');
+    });
+    // Add placeholder text to the Select2 search input
+    $('#studentSelect').on('select2:open', function () {
+      $('.select2-search__field').attr('placeholder', 'Search Student Name');
     });
   });
 </script>

@@ -191,6 +191,12 @@ class Recipe(models.Model):
     last_used = models.DateTimeField(auto_now=True) 
     # Recipe type/category
     recipe_type = models.CharField(max_length=20, choices=RECIPE_TYPE_CHOICES, default='lunch', help_text='Category of recipe')
+    # Meal period availability flags
+    populate_breakfast = models.BooleanField(default=False, help_text='Can be used in breakfast menu')
+    populate_am_snack = models.BooleanField(default=False, help_text='Can be used in AM snack menu')
+    populate_lunch = models.BooleanField(default=False, help_text='Can be used in lunch menu')
+    populate_pm_snack = models.BooleanField(default=False, help_text='Can be used in PM snack menu')
+    standalone = models.BooleanField(default=False, help_text='Standalone ingredient rather than a full recipe')
     # Lunch recipe fields
     grain = models.CharField(max_length=100, blank=True, null=True)
     meat_alternate = models.CharField(max_length=100, blank=True, null=True)

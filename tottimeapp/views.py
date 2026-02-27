@@ -4980,64 +4980,219 @@ def meal_count(request):
         **permissions_context,  # Include permission flags dynamically
     })
 
+def assign_rules_to_week(user, days_count=5):
+    """
+    Process all rules at the WEEK level and determine which recipe appears on which day in which meal period.
+    
+    This implements the day-based rule system where:
+    - weekly_qty=5 means "appears on 5 different DAYS" (not 5 total appearances)
+    - For each day needing a rule:
+      1. Randomly pick a recipe with that rule
+      2. Check recipe's populate_* flags
+      3. Randomly pick an eligible meal period for that recipe
+      4. Assign it to that day + meal period
+    
+    Returns:
+        dict {
+            'breakfast': {day_idx: recipe, ...},
+            'am_snack': {day_idx: recipe, ...},
+            'lunch': {day_idx: recipe, ...},
+            'pm_snack': {day_idx: recipe, ...}
+        }
+    """
+    # Get all recipes with rules
+    all_recipes_with_rules = Recipe.objects.filter(user=user).exclude(rule=None)
+    
+    # Group recipes by rule
+    rule_to_recipes = {}
+    for recipe in all_recipes_with_rules:
+        if recipe.rule and recipe.rule.weekly_qty:
+            rule_id = recipe.rule.id
+            if rule_id not in rule_to_recipes:
+                rule_to_recipes[rule_id] = {
+                    'rule': recipe.rule,
+                    'recipes': []
+                }
+            rule_to_recipes[rule_id]['recipes'].append(recipe)
+    
+    # Track which days have been assigned for each rule
+    rule_days_assigned = {rule_id: set() for rule_id in rule_to_recipes.keys()}
+    
+    # Final assignments: {meal_period: {day_idx: recipe}}
+    assignments = {
+        'breakfast': {},
+        'am_snack': {},
+        'lunch': {},
+        'pm_snack': {}
+    }
+    
+    # Process each rule
+    for rule_id, rule_data in rule_to_recipes.items():
+        rule = rule_data['rule']
+        recipes = rule_data['recipes']
+        weekly_qty = rule.weekly_qty
+        daily = rule.daily
+        
+        print(f"DEBUG: Processing rule '{rule.rule}' (weekly_qty={weekly_qty}, daily={daily})")
+        print(f"  Available recipes: {[r.name for r in recipes]}")
+        
+        # Determine which days need this rule
+        if daily:
+            # Daily rules: appear sequentially starting from day 0
+            days_to_assign = list(range(min(weekly_qty, days_count)))
+        else:
+            # Non-daily rules: randomly select days
+            days_to_assign = random.sample(range(days_count), min(weekly_qty, days_count))
+        
+        # For each day, pick a recipe and a meal period
+        for day_idx in days_to_assign:
+            # Shuffle recipes for variety
+            shuffled_recipes = recipes.copy()
+            random.shuffle(shuffled_recipes)
+            
+            # Try each recipe until we find one with an eligible meal period
+            placed = False
+            for recipe in shuffled_recipes:
+                # Determine which meal periods this recipe can go into.
+                # Keep breakfast/lunch behavior broad (any recipe_type is
+                # allowed there as before), but constrain AM/PM snacks so
+                # they only get snack-appropriate recipe_types.
+                eligible_periods = []
+
+                # Breakfast: any recipe explicitly flagged for breakfast
+                if recipe.populate_breakfast:
+                    eligible_periods.append('breakfast')
+
+                # AM snack: only AM-specific, shared AM/PM, or whole-grain
+                # snack items should be assigned to this period.
+                if recipe.populate_am_snack and recipe.recipe_type in ['am_snack', 'am_pm_snack', 'whole_grain']:
+                    eligible_periods.append('am_snack')
+
+                # Lunch: any recipe explicitly flagged for lunch
+                if recipe.populate_lunch:
+                    eligible_periods.append('lunch')
+
+                # PM snack: only PM-specific, shared AM/PM, or whole-grain
+                # snack items should be assigned to this period.
+                if recipe.populate_pm_snack and recipe.recipe_type in ['pm_snack', 'am_pm_snack', 'whole_grain']:
+                    eligible_periods.append('pm_snack')
+                
+                if not eligible_periods:
+                    continue  # Skip this recipe if it has no meal periods enabled
+                
+                # Randomly pick an eligible meal period
+                random.shuffle(eligible_periods)
+                
+                # Try to place in an eligible period that doesn't already have a recipe for this day
+                for period in eligible_periods:
+                    if day_idx not in assignments[period]:
+                        assignments[period][day_idx] = recipe
+                        rule_days_assigned[rule_id].add(day_idx)
+                        print(f"  Assigned '{recipe.name}' to {period} on day {day_idx}")
+                        placed = True
+                        break
+                
+                if placed:
+                    break
+            
+            if not placed:
+                print(f"  WARNING: Could not place any recipe for rule '{rule.rule}' on day {day_idx}")
+    
+    return assignments
+
+def select_recipes_for_meal_period(recipes, meal_period_name, days_count, pre_assignments):
+    """
+    Select recipes for a specific meal period based on pre-assigned day requirements.
+    
+    Args:
+        recipes: List of Recipe objects eligible for this meal period
+        meal_period_name: 'breakfast', 'am_snack', 'lunch', or 'pm_snack'
+        days_count: Number of days (usually 5)
+        pre_assignments: dict {day_idx: recipe} - recipes already assigned by rules
+    
+    Returns:
+        List of selected recipes (one per day, may contain None)
+    """
+    selected_recipes = [None] * days_count
+    
+    # First, apply pre-assignments from rules
+    for day_idx, recipe in pre_assignments.items():
+        selected_recipes[day_idx] = recipe
+    
+    # Fill remaining days with recipes without rules (if any available)
+    recipes_without_rules = [r for r in recipes if not (r.rule and r.rule.weekly_qty)]
+    for day_idx in range(days_count):
+        if selected_recipes[day_idx] is None and recipes_without_rules:
+            selected_recipes[day_idx] = random.choice(recipes_without_rules)
+    
+    return selected_recipes
+
 def select_meals_for_days(recipes, user):
-    """Select available lunch recipes per day, prioritizing daily Whole Grain, and accounting for inventory usage."""
+    """Select available lunch recipes per day, placing them based on recipe_type."""
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     menu_data = {}
 
     # Cache inventory snapshot by Inventory.id
     inventory = {item.id: item for item in Inventory.objects.filter(user=user)}
 
-    # Identify the Whole Grain rule for this user (used for prioritization only)
-    wg_rule = Rule.objects.filter(user=user, rule__iexact="Whole Grain").first()
-    wg_is_daily = bool(wg_rule and wg_rule.daily)
-
+    # Initialize empty menu data
     for day in days_of_week:
-        # Apply stricter availability on Monday/Tuesday (exclude ingredients with quantity == 0)
-        if day in ["Monday", "Tuesday"]:
-            available_meals = [
-                r for r in recipes
-                if check_ingredients_availability(r, user, inventory, exclude_zero_quantity=True)
-            ]
-        else:
-            available_meals = [
-                r for r in recipes
-                if check_ingredients_availability(r, user, inventory)
-            ]
+        menu_data[day] = {
+            'meal_name': '',
+            'grain': '',
+            'meat_alternate': '',
+            'vegetable': '',
+            'fruit3': ''
+        }
 
-        selected_meal = None
-        if available_meals:
-            # Prefer Whole Grain-tagged recipes when rule is daily
-            if wg_is_daily:
-                wg_candidates = [r for r in available_meals if r.rule_id == (wg_rule.id if wg_rule else None)]
-                if wg_candidates:
-                    selected_meal = random.choice(wg_candidates)
-                else:
+    # Use rule-based selection to get recipes for each day
+    selected_recipes = select_recipes_with_rules(recipes, days_count=5)
+    
+    for day_idx, day in enumerate(days_of_week):
+        selected_meal = selected_recipes[day_idx]
+        
+        # Verify ingredient availability for Monday/Tuesday
+        if selected_meal and day in ["Monday", "Tuesday"]:
+            if not check_ingredients_availability(selected_meal, user, inventory, exclude_zero_quantity=True):
+                # Try to find an alternative
+                available_meals = [
+                    r for r in recipes
+                    if r != selected_meal and check_ingredients_availability(r, user, inventory, exclude_zero_quantity=True)
+                ]
+                if available_meals:
                     selected_meal = random.choice(available_meals)
-            else:
-                selected_meal = random.choice(available_meals)
-
-            # Remove chosen recipe from the pool and subtract inventory usage
-            recipes = [r for r in recipes if r != selected_meal]
-            subtract_ingredients_from_inventory(selected_meal, inventory)
-
+                else:
+                    selected_meal = None
+        
+        # Subtract ingredients from inventory
         if selected_meal:
-            menu_data[day] = {
-                'meal_name': selected_meal.name,
-                # IMPORTANT: do not override grain; keep what the recipe defines
-                'grain': selected_meal.grain or "",
-                'meat_alternate': selected_meal.meat_alternate or "",
-                'vegetable': selected_meal.veg or "",
-                'fruit3': selected_meal.fruit or ""  # Use fruit3 for lunch fruit row
-            }
-        else:
-            menu_data[day] = {
-                'meal_name': "No available meal",
-                'grain': "",
-                'meat_alternate': "",
-                'vegetable': "",
-                'fruit3': ""
-            }
+            subtract_ingredients_from_inventory(selected_meal, inventory)
+            
+            # Place recipe based on its type
+            recipe_type = selected_meal.recipe_type
+            
+            if recipe_type == 'lunch':
+                # Main lunch dish
+                menu_data[day]['meal_name'] = selected_meal.name
+                menu_data[day]['grain'] = selected_meal.grain or ""
+                menu_data[day]['meat_alternate'] = selected_meal.meat_alternate or ""
+            elif recipe_type == 'whole_grain':
+                # Goes in grain row
+                if not menu_data[day]['grain']:
+                    menu_data[day]['grain'] = selected_meal.name
+            elif recipe_type == 'vegetable':
+                # Goes in vegetable row
+                if not menu_data[day]['vegetable']:
+                    menu_data[day]['vegetable'] = selected_meal.name
+            elif recipe_type == 'fruit':
+                # Goes in fruit row
+                if not menu_data[day]['fruit3']:
+                    menu_data[day]['fruit3'] = selected_meal.name
+    
+    # Fill empty meal_name cells with default
+    for day in days_of_week:
+        if not menu_data[day]['meal_name']:
+            menu_data[day]['meal_name'] = "No available meal"
 
     return menu_data
 
@@ -5086,77 +5241,679 @@ def get_filtered_recipes(user, model, recent_days=14):
     
     return filtered
 
+@login_required
+def generate_full_menu(request):
+    """
+    Generate ALL meals (breakfast, AM snack, lunch, PM snack) in a single request.
+    Uses day-based rule system where weekly_qty means "appears on N different days".
+    """
+    user = get_user_for_view(request)
+    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    
+    # STEP 1: Assign all rules to days/meal periods at the WEEK level
+    rule_assignments = assign_rules_to_week(user, days_count=5)
+    
+    # STEP 2: Generate each meal period using the pre-assignments
+    
+    # === BREAKFAST GENERATION ===
+    breakfast_data = {}
+    # Track standalone whole-grain items (e.g., Toast) per day so we can
+    # apply them *after* main recipes are chosen and never let them replace
+    # a true breakfast recipe.
+    standalone_breakfast_wg = {day: [] for day in days_of_week}
+    for day in days_of_week:
+        breakfast_data[day] = {'bread': '', 'add1': '', 'fruit': ''}
+    
+    # Get pre-assigned breakfast recipes from rules
+    breakfast_rule_recipes = rule_assignments['breakfast']
+    
+    # Place pre-assigned recipes in appropriate rows based on recipe_type
+    for day_idx, recipe in breakfast_rule_recipes.items():
+        if recipe:
+            day = days_of_week[day_idx]
+            recipe_type = recipe.recipe_type
+            is_standalone = getattr(recipe, 'standalone', False)
+            
+            if recipe_type in ['fruit', 'vegetable']:
+                # Fruit/veg goes in fruit row; standalone items append after existing text
+                if breakfast_data[day]['fruit'] and is_standalone:
+                    breakfast_data[day]['fruit'] += ", " + recipe.name
+                else:
+                    breakfast_data[day]['fruit'] = recipe.name
+            elif recipe_type == 'whole_grain':
+                # Whole grain goes in bread/add1.
+                # Standalone WG items (like Toast) should only be applied *after*
+                # main breakfast recipes are selected so they act as additions,
+                # not replacements. We record them here and place them later.
+                if is_standalone:
+                    standalone_breakfast_wg[day].append(recipe)
+                else:
+                    if not breakfast_data[day]['bread']:
+                        breakfast_data[day]['bread'] = recipe.name
+                    elif not breakfast_data[day]['add1']:
+                        breakfast_data[day]['add1'] = recipe.name
+            elif recipe_type == 'breakfast':
+                # Main breakfast items go in bread row; standalone breakfast items append after
+                if is_standalone and breakfast_data[day]['bread']:
+                    breakfast_data[day]['bread'] += " / " + recipe.name
+                else:
+                    breakfast_data[day]['bread'] = recipe.name
+                    breakfast_data[day]['add1'] = recipe.addfood or ""
+    
+    # Fill remaining empty cells with recipes without rules
+    # 1. Fill empty bread cells with breakfast or whole grain recipes (no rules)
+    breakfast_recipes_no_rules = list(Recipe.objects.filter(
+        user=user, populate_breakfast=True, recipe_type__in=['breakfast', 'whole_grain']
+    ).filter(rule=None))
+
+    # Fallback: if nothing is flagged to populate breakfast, use any breakfast/whole_grain recipes
+    if not breakfast_recipes_no_rules:
+        breakfast_recipes_no_rules = list(Recipe.objects.filter(
+            user=user, recipe_type__in=['breakfast', 'whole_grain']
+        ).filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not breakfast_data[day]['bread'] and breakfast_recipes_no_rules:
+            recipe = random.choice(breakfast_recipes_no_rules)
+            if recipe.recipe_type == 'breakfast':
+                breakfast_data[day]['bread'] = recipe.name
+                breakfast_data[day]['add1'] = recipe.addfood or ""
+            else:  # whole_grain
+                breakfast_data[day]['bread'] = recipe.name
+    
+    # 2. Fill empty fruit cells with fruit/veg recipes (no rules)
+    fruit_veg_no_rules = list(Recipe.objects.filter(
+        user=user, populate_breakfast=True, recipe_type__in=['fruit', 'vegetable']
+    ).filter(rule=None))
+
+    if not fruit_veg_no_rules:
+        fruit_veg_no_rules = list(Recipe.objects.filter(
+            user=user, recipe_type__in=['fruit', 'vegetable']
+        ).filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not breakfast_data[day]['fruit'] and fruit_veg_no_rules:
+            breakfast_data[day]['fruit'] = random.choice(fruit_veg_no_rules).name
+
+    # Apply standalone whole-grain additions (e.g., Toast) now that mains
+    # are in place, so they never block a real breakfast recipe.
+    for day in days_of_week:
+        for recipe in standalone_breakfast_wg.get(day, []):
+            if not breakfast_data[day]['bread']:
+                breakfast_data[day]['bread'] = recipe.name
+            elif not breakfast_data[day]['add1']:
+                breakfast_data[day]['add1'] = recipe.name
+            else:
+                breakfast_data[day]['add1'] += ", " + recipe.name
+
+    # Set default if still empty
+    for day in days_of_week:
+        if not breakfast_data[day]['bread']:
+            breakfast_data[day]['bread'] = "No available breakfast option"
+    
+    # === AM SNACK GENERATION ===
+    am_snack_data = {}
+    # Track standalone snack items (e.g., Toast/Bread) so they can be
+    # applied after main snack recipes and never replace them.
+    standalone_am_wg = {day: [] for day in days_of_week}
+    for day in days_of_week:
+        # add3: Additional Food (Optional) for AM snack
+        am_snack_data[day] = {'choose1': '', 'fruit2': '', 'bread2': '', 'meat1': '', 'add3': ''}
+    
+    am_snack_rule_recipes = rule_assignments['am_snack']
+    
+    # Place pre-assigned snack recipes
+    for day_idx, recipe in am_snack_rule_recipes.items():
+        if recipe:
+            day = days_of_week[day_idx]
+            is_standalone = getattr(recipe, 'standalone', False)
+            is_snack_wg = recipe.recipe_type == 'whole_grain'
+
+            # Any standalone snack items OR whole-grain rule items assigned
+            # to snack are recorded and applied later so they supplement,
+            # not replace, a main snack recipe.
+            if is_standalone or is_snack_wg:
+                standalone_am_wg[day].append(recipe)
+                continue
+
+            # Fluid always overwrites (standalone doesn't change behavior here)
+            am_snack_data[day]['choose1'] = recipe.fluid or ""
+
+            # Bread/meat cells: standalone non-WG items append after existing text
+            if is_standalone and am_snack_data[day]['bread2']:
+                am_snack_data[day]['bread2'] += " / " + recipe.name
+            else:
+                am_snack_data[day]['bread2'] = recipe.name
+
+            if is_standalone and am_snack_data[day]['meat1']:
+                am_snack_data[day]['meat1'] += ", " + (recipe.meat or "")
+            else:
+                am_snack_data[day]['meat1'] = recipe.meat or ""
+
+            if recipe.fruit or recipe.veg:
+                if is_standalone and am_snack_data[day]['fruit2']:
+                    am_snack_data[day]['fruit2'] += ", " + (recipe.fruit or recipe.veg)
+                else:
+                    am_snack_data[day]['fruit2'] = recipe.fruit or recipe.veg
+    
+    # Fill remaining days with snack recipes without rules.
+    # For AM snack, only AM-specific and shared AM/PM snack recipes should
+    # be used (not PM-only recipes).
+    am_snack_no_rules = list(Recipe.objects.filter(
+        user=user,
+        populate_am_snack=True,
+        recipe_type__in=['am_snack', 'am_pm_snack']
+    ).filter(rule=None))
+
+    # Fallback: if nothing is flagged to populate AM snack, use any
+    # AM snack or shared AM/PM snack recipes without rules for this user.
+    if not am_snack_no_rules:
+        am_snack_no_rules = list(Recipe.objects.filter(
+            user=user,
+            recipe_type__in=['am_snack', 'am_pm_snack']
+        ).filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not am_snack_data[day]['bread2'] and am_snack_no_rules:
+            recipe = random.choice(am_snack_no_rules)
+            am_snack_data[day]['choose1'] = recipe.fluid or ""
+            am_snack_data[day]['bread2'] = recipe.name
+            am_snack_data[day]['meat1'] = recipe.meat or ""
+            if recipe.fruit or recipe.veg:
+                am_snack_data[day]['fruit2'] = recipe.fruit or recipe.veg
+
+    # Apply standalone whole-grain snack additions now that mains are set.
+    # These now go into a separate Additional Food cell (add3) so they do
+    # not share the same Bread cell as the main snack recipe.
+    for day in days_of_week:
+        for recipe in standalone_am_wg.get(day, []):
+            if not am_snack_data[day]['add3']:
+                am_snack_data[day]['add3'] = recipe.name
+            else:
+                am_snack_data[day]['add3'] += " / " + recipe.name
+    
+    # === LUNCH GENERATION ===
+    lunch_data = {}
+    # Track standalone whole-grain lunch items so they are applied after
+    # main dishes and never block a real lunch recipe.
+    standalone_lunch_wg = {day: [] for day in days_of_week}
+    for day in days_of_week:
+        lunch_data[day] = {'meal_name': '', 'grain': '', 'meat_alternate': '', 'vegetable': '', 'fruit3': '', 'add2': ''}
+
+    # Pre-resolve main lunch recipes (standalone recipes are excluded from being primary mains)
+    main_lunch_qs = Recipe.objects.filter(
+        user=user,
+        populate_lunch=True,
+        recipe_type='lunch',
+        standalone=False,
+    )
+
+    # Fallback: if no lunch recipes are flagged to populate_lunch, use any
+    # non-standalone lunch recipes for this user so we still get real mains.
+    if not main_lunch_qs.exists():
+        main_lunch_qs = Recipe.objects.filter(
+            user=user,
+            recipe_type='lunch',
+            standalone=False,
+        )
+    all_main_lunch_recipes = list(main_lunch_qs)
+
+    lunch_rule_recipes = rule_assignments['lunch']
+    
+    # Place pre-assigned recipes in appropriate rows based on recipe_type
+    for day_idx, recipe in lunch_rule_recipes.items():
+        if recipe:
+            day = days_of_week[day_idx]
+            recipe_type = recipe.recipe_type
+            is_standalone = getattr(recipe, 'standalone', False)
+            
+            if recipe_type == 'lunch':
+                if is_standalone:
+                    # Standalone lunch items append after any existing main dish
+                    if lunch_data[day]['meal_name']:
+                        lunch_data[day]['meal_name'] += " / " + recipe.name
+                    else:
+                        lunch_data[day]['meal_name'] = recipe.name
+                else:
+                    # Main lunch dish
+                    lunch_data[day]['meal_name'] = recipe.name
+                    lunch_data[day]['grain'] = recipe.grain or ""
+                    lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
+            elif recipe_type == 'whole_grain':
+                # Whole grain goes in grain row. Standalone WG items are recorded
+                # and applied after mains so they act as additions, not replacements.
+                if is_standalone:
+                    standalone_lunch_wg[day].append(recipe)
+                else:
+                    if not lunch_data[day]['grain']:
+                        lunch_data[day]['grain'] = recipe.name
+            elif recipe_type == 'vegetable':
+                # Vegetable goes in vegetable row; standalone items append
+                if is_standalone and lunch_data[day]['vegetable']:
+                    lunch_data[day]['vegetable'] += ", " + recipe.name
+                else:
+                    lunch_data[day]['vegetable'] = recipe.name
+            elif recipe_type == 'fruit':
+                # Fruit goes in fruit row; standalone items append
+                if is_standalone and lunch_data[day]['fruit3']:
+                    lunch_data[day]['fruit3'] += ", " + recipe.name
+                else:
+                    lunch_data[day]['fruit3'] = recipe.name
+    
+    # Fill remaining empty cells with recipes without rules
+    # 1. Main lunch dishes (no rules, non-standalone only)
+    lunch_recipes_no_rules = list(main_lunch_qs.filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not lunch_data[day]['meal_name'] and lunch_recipes_no_rules:
+            recipe = random.choice(lunch_recipes_no_rules)
+            lunch_data[day]['meal_name'] = recipe.name
+            lunch_data[day]['grain'] = recipe.grain or ""
+            lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
+    
+    # 2. Whole grain items (no rules)
+    wg_no_rules = list(Recipe.objects.filter(
+        user=user, populate_lunch=True, recipe_type='whole_grain'
+    ).filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not lunch_data[day]['grain'] and wg_no_rules:
+            lunch_data[day]['grain'] = random.choice(wg_no_rules).name
+    
+    # 3. Vegetable items (no rules)
+    veg_no_rules = list(Recipe.objects.filter(
+        user=user, populate_lunch=True, recipe_type='vegetable'
+    ).filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not lunch_data[day]['vegetable'] and veg_no_rules:
+            lunch_data[day]['vegetable'] = random.choice(veg_no_rules).name
+    
+    # 4. Fruit items (no rules)
+    fruit_no_rules = list(Recipe.objects.filter(
+        user=user, populate_lunch=True, recipe_type='fruit'
+    ).filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not lunch_data[day]['fruit3'] and fruit_no_rules:
+            lunch_data[day]['fruit3'] = random.choice(fruit_no_rules).name
+
+    # Apply standalone whole-grain lunch additions (e.g., Bread) now that mains
+    # and regular sides are set.
+    for day in days_of_week:
+        for recipe in standalone_lunch_wg.get(day, []):
+            if not lunch_data[day]['grain']:
+                lunch_data[day]['grain'] = recipe.name
+            elif not lunch_data[day]['add2']:
+                lunch_data[day]['add2'] = recipe.name
+            else:
+                lunch_data[day]['add2'] += ", " + recipe.name
+
+    # As a final fallback, if any day is still missing a main dish but
+    # there are eligible lunch recipes, fill from the full main_lunch set
+    # (ignoring weekly_qty) so "No available meal" is only used when
+    # there truly are no usable lunch recipes.
+    if all_main_lunch_recipes:
+        for day in days_of_week:
+            if not lunch_data[day]['meal_name']:
+                recipe = random.choice(all_main_lunch_recipes)
+                lunch_data[day]['meal_name'] = recipe.name
+                if not lunch_data[day]['grain']:
+                    lunch_data[day]['grain'] = recipe.grain or ""
+                if not lunch_data[day]['meat_alternate']:
+                    lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
+
+    # Set default if meal_name is still empty
+    for day in days_of_week:
+        if not lunch_data[day]['meal_name']:
+            lunch_data[day]['meal_name'] = "No available meal"
+    
+    # === PM SNACK GENERATION ===
+    pm_snack_data = {}
+    # Track standalone PM snack items so they are applied after main
+    # snack recipes and never replace them.
+    standalone_pm_wg = {day: [] for day in days_of_week}
+    for day in days_of_week:
+        # add4: Additional Food (Optional) for PM snack
+        pm_snack_data[day] = {'choose2': '', 'fruit4': '', 'bread3': '', 'meat3': '', 'add4': ''}
+    
+    pm_snack_rule_recipes = rule_assignments['pm_snack']
+    
+    # Place pre-assigned snack recipes
+    for day_idx, recipe in pm_snack_rule_recipes.items():
+        if recipe:
+            day = days_of_week[day_idx]
+            is_standalone = getattr(recipe, 'standalone', False)
+            is_snack_wg = recipe.recipe_type == 'whole_grain'
+
+            # Any standalone snack items OR whole-grain rule items assigned
+            # to snack are recorded and applied later so they supplement,
+            # not replace, a main snack recipe.
+            if is_standalone or is_snack_wg:
+                standalone_pm_wg[day].append(recipe)
+                continue
+
+            # Fluid always overwrites
+            pm_snack_data[day]['choose2'] = recipe.fluid or ""
+
+            # Bread/meat/fruit: standalone non-WG items append after existing text
+            if is_standalone and pm_snack_data[day]['bread3']:
+                pm_snack_data[day]['bread3'] += " / " + recipe.name
+            else:
+                pm_snack_data[day]['bread3'] = recipe.name
+
+            if is_standalone and pm_snack_data[day]['meat3']:
+                pm_snack_data[day]['meat3'] += ", " + (recipe.meat or "")
+            else:
+                pm_snack_data[day]['meat3'] = recipe.meat or ""
+
+            if recipe.fruit or recipe.veg:
+                if is_standalone and pm_snack_data[day]['fruit4']:
+                    pm_snack_data[day]['fruit4'] += ", " + (recipe.fruit or recipe.veg)
+                else:
+                    pm_snack_data[day]['fruit4'] = recipe.fruit or recipe.veg
+    
+    # Fill remaining days with snack recipes without rules.
+    # For PM snack, only PM-specific and shared AM/PM snack recipes should
+    # be used (not AM-only recipes).
+    pm_snack_no_rules = list(Recipe.objects.filter(
+        user=user,
+        populate_pm_snack=True,
+        recipe_type__in=['pm_snack', 'am_pm_snack']
+    ).filter(rule=None))
+
+    # Fallback: if nothing is flagged to populate PM snack, use any
+    # PM snack or shared AM/PM snack recipes without rules for this user.
+    if not pm_snack_no_rules:
+        pm_snack_no_rules = list(Recipe.objects.filter(
+            user=user,
+            recipe_type__in=['pm_snack', 'am_pm_snack']
+        ).filter(rule=None))
+    
+    for day_idx, day in enumerate(days_of_week):
+        if not pm_snack_data[day]['bread3'] and pm_snack_no_rules:
+            recipe = random.choice(pm_snack_no_rules)
+            pm_snack_data[day]['choose2'] = recipe.fluid or ""
+            pm_snack_data[day]['bread3'] = recipe.name
+            pm_snack_data[day]['meat3'] = recipe.meat or ""
+            if recipe.fruit or recipe.veg:
+                pm_snack_data[day]['fruit4'] = recipe.fruit or recipe.veg
+
+    # Apply standalone whole-grain PM snack additions now that mains are set.
+    # These now go into a separate Additional Food cell (add4) so they do
+    # not share the same Bread cell as the main snack recipe.
+    for day in days_of_week:
+        for recipe in standalone_pm_wg.get(day, []):
+            if not pm_snack_data[day]['add4']:
+                pm_snack_data[day]['add4'] = recipe.name
+            else:
+                pm_snack_data[day]['add4'] += " / " + recipe.name
+    
+    # Return all meal data in a single response
+    return JsonResponse({
+        'breakfast': breakfast_data,
+        'am_snack': am_snack_data,
+        'lunch': lunch_data,
+        'pm_snack': pm_snack_data
+    })
+
 def generate_menu(request):
     user = get_user_for_view(request)  # Get the correct user context
-    recipes = get_filtered_recipes(user, Recipe)
+    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     
-    # Rule-aware selection (prefers daily Whole Grain without overriding grain/meat fields)
-    menu_data = select_meals_for_days(recipes, user)
+    # Initialize global rule tracker in session (shared across all meal generation endpoints)
+    # This ensures weekly_qty is enforced across ALL meal periods
+    if 'menu_generation_rule_tracker' not in request.session:
+        request.session['menu_generation_rule_tracker'] = {}
+    rule_tracker = request.session['menu_generation_rule_tracker']
+    
+    # Initialize empty menu data
+    menu_data = {}
+    for day in days_of_week:
+        menu_data[day] = {
+            'meal_name': '',
+            'grain': '',
+            'meat_alternate': '',
+            'vegetable': '',
+            'fruit3': ''
+        }
+    
+    # Separate recipe selection by type for complete menu coverage
+    # 1. Main lunch dishes
+    lunch_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='lunch'))
+    # Fallback: if nothing is flagged to populate lunch, use any lunch recipes
+    if not lunch_recipes:
+        lunch_recipes = list(Recipe.objects.filter(user=user, recipe_type='lunch'))
+    if lunch_recipes:
+        selected_lunch = select_recipes_with_rules(lunch_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_lunch[day_idx]:
+                recipe = selected_lunch[day_idx]
+                menu_data[day]['meal_name'] = recipe.name
+                menu_data[day]['grain'] = recipe.grain or ""
+                menu_data[day]['meat_alternate'] = recipe.meat_alternate or ""
+    
+    # 2. Whole grain items (fill grain row if not already filled by lunch recipe)
+    wg_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='whole_grain'))
+    if not wg_recipes:
+        wg_recipes = list(Recipe.objects.filter(user=user, recipe_type='whole_grain'))
+    if wg_recipes:
+        selected_wg = select_recipes_with_rules(wg_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_wg[day_idx] and not menu_data[day]['grain']:
+                menu_data[day]['grain'] = selected_wg[day_idx].name
+    
+    # 3. Vegetable items
+    veg_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='vegetable'))
+    if not veg_recipes:
+        veg_recipes = list(Recipe.objects.filter(user=user, recipe_type='vegetable'))
+    if veg_recipes:
+        selected_veg = select_recipes_with_rules(veg_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_veg[day_idx]:
+                menu_data[day]['vegetable'] = selected_veg[day_idx].name
+    
+    # 4. Fruit items
+    fruit_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='fruit'))
+    if not fruit_recipes:
+        fruit_recipes = list(Recipe.objects.filter(user=user, recipe_type='fruit'))
+    if fruit_recipes:
+        selected_fruit = select_recipes_with_rules(fruit_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_fruit[day_idx]:
+                menu_data[day]['fruit3'] = selected_fruit[day_idx].name
+    
+    # Fill empty meal_name cells with default
+    for day in days_of_week:
+        if not menu_data[day]['meal_name']:
+            menu_data[day]['meal_name'] = "No available meal"
+    
+    # Save updated rule tracker back to session
+    request.session['menu_generation_rule_tracker'] = rule_tracker
+    request.session.modified = True
+    request.session.save()  # Force immediate save for sequential requests
     
     return JsonResponse(menu_data)
 
 @login_required
-def generate_snack_menu(request, recipe_type_filter, fluid_key, fruit_key, bread_key, meat_key):
-    user = get_user_for_view(request)  # main user or subuser's main user
+def generate_snack_menu(request, populate_field, fluid_key, fruit_key, bread_key, meat_key):
+    user = get_user_for_view(request)
     snack_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    from django.db.models import Q
     
-    # Build query based on recipe_type_filter (can be single type or list for am_pm_snack)
-    if isinstance(recipe_type_filter, list):
-        query = Q()
-        for rt in recipe_type_filter:
-            query |= Q(recipe_type=rt)
-        recipes = list(Recipe.objects.filter(user=user).filter(query))
-    else:
-        recipes = list(Recipe.objects.filter(user=user, recipe_type=recipe_type_filter))
+    # Get shared rule tracker from session
+    if 'menu_generation_rule_tracker' not in request.session:
+        request.session['menu_generation_rule_tracker'] = {}
+    rule_tracker = request.session['menu_generation_rule_tracker']
     
+    # Initialize empty snack data
     for day in days_of_week:
-        if recipes:
-            selected_recipe = random.choice(recipes)
-            recipes.remove(selected_recipe)
-            # Use fruit or veg field for fruit_key (either can be used for snacks)
-            fruit_veg_value = selected_recipe.fruit or selected_recipe.veg or ""
-            snack_data[day] = {
-                fluid_key: selected_recipe.fluid or "",
-                fruit_key: fruit_veg_value,
-                bread_key: selected_recipe.name,
-                meat_key: selected_recipe.meat or ""
-            }
-        else:
-            snack_data[day] = {
-                fluid_key: "",
-                fruit_key: "",
-                bread_key: "",
-                meat_key: ""
-            }
+        snack_data[day] = {
+            fluid_key: "",
+            fruit_key: "",
+            bread_key: "",
+            meat_key: ""
+        }
+    
+    # 1. Main snack items.
+    # Use different recipe_type pools for AM vs PM snacks so they
+    # don't share the same recipes unless marked as AM/PM shared.
+    if populate_field == 'populate_am_snack':
+        snack_types = ['am_snack', 'am_pm_snack']
+    elif populate_field == 'populate_pm_snack':
+        snack_types = ['pm_snack', 'am_pm_snack']
+    else:
+        snack_types = ['am_snack', 'pm_snack', 'am_pm_snack']
+
+    snack_type_recipes = list(Recipe.objects.filter(
+        user=user,
+        **{populate_field: True},
+        recipe_type__in=snack_types
+    ))
+
+    # Fallback: if no snack recipes are flagged for this period,
+    # use any snack-type recipes for the user in the same pool.
+    if not snack_type_recipes:
+        snack_type_recipes = list(Recipe.objects.filter(
+            user=user,
+            recipe_type__in=snack_types
+        ))
+
+    if snack_type_recipes:
+        selected_snacks = select_recipes_with_rules(snack_type_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_snacks[day_idx]:
+                recipe = selected_snacks[day_idx]
+                snack_data[day][fluid_key] = recipe.fluid or ""
+                snack_data[day][bread_key] = recipe.name
+                snack_data[day][meat_key] = recipe.meat or ""
+                # Also populate fruit if recipe has it
+                if recipe.fruit or recipe.veg:
+                    snack_data[day][fruit_key] = recipe.fruit or recipe.veg
+    
+    # 2. Fruit/vegetable items (fill fruit row if not already filled)
+    fruit_veg_recipes = list(Recipe.objects.filter(
+        user=user,
+        **{populate_field: True},
+        recipe_type__in=['fruit', 'vegetable']
+    ))
+
+    # Fallback: if no fruit/veg are flagged for this snack period,
+    # use any fruit/veg recipes for the user.
+    if not fruit_veg_recipes:
+        fruit_veg_recipes = list(Recipe.objects.filter(
+            user=user,
+            recipe_type__in=['fruit', 'vegetable']
+        ))
+
+    if fruit_veg_recipes:
+        selected_fruit_veg = select_recipes_with_rules(fruit_veg_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_fruit_veg[day_idx] and not snack_data[day][fruit_key]:
+                snack_data[day][fruit_key] = selected_fruit_veg[day_idx].name
+    
+    # 3. Whole grain items (fill bread row if not already filled)
+    wg_recipes = list(Recipe.objects.filter(
+        user=user,
+        **{populate_field: True},
+        recipe_type='whole_grain'
+    ))
+
+    # Fallback: if no whole grains are flagged for this snack period,
+    # use any whole-grain recipes for the user.
+    if not wg_recipes:
+        wg_recipes = list(Recipe.objects.filter(
+            user=user,
+            recipe_type='whole_grain'
+        ))
+
+    if wg_recipes:
+        selected_wg = select_recipes_with_rules(wg_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_wg[day_idx] and not snack_data[day][bread_key]:
+                snack_data[day][bread_key] = selected_wg[day_idx].name
+    
+    # Save updated rule tracker back to session
+    request.session['menu_generation_rule_tracker'] = rule_tracker
+    request.session.modified = True
+    request.session.save()  # Force immediate save for sequential requests
+    
     return JsonResponse(snack_data)
 
 def generate_am_menu(request):
-    return generate_snack_menu(request, ['am_snack', 'am_pm_snack'], 'choose1', 'fruit2', 'bread2', 'meat1')
+    return generate_snack_menu(request, 'populate_am_snack', 'choose1', 'fruit2', 'bread2', 'meat1')
 
 def generate_pm_menu(request):
-    return generate_snack_menu(request, ['pm_snack', 'am_pm_snack'], 'choose2', 'fruit4', 'bread3', 'meat3')
+    return generate_snack_menu(request, 'populate_pm_snack', 'choose2', 'fruit4', 'bread3', 'meat3')
 
 @login_required
 def generate_breakfast_menu(request):
     user = get_user_for_view(request)
     breakfast_data = {}
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    recipes = list(Recipe.objects.filter(user=user, recipe_type='breakfast'))
+    
+    # CLEAR rule tracker at the start of a new menu generation cycle
+    # (breakfast is called first, so we reset here)
+    request.session['menu_generation_rule_tracker'] = {}
+    rule_tracker = request.session['menu_generation_rule_tracker']
+    
+    # Initialize empty breakfast data
     for day in days_of_week:
-        if recipes:
-            selected_recipe = random.choice(recipes)
-            recipes.remove(selected_recipe)
-            # Use fruit or veg field for breakfast fruit/veg row
-            fruit_veg_value = selected_recipe.fruit or selected_recipe.veg or ""
-            breakfast_data[day] = {
-                'bread': selected_recipe.name,
-                'add1': selected_recipe.addfood or "",
-                'fruit': fruit_veg_value
-            }
-        else:
-            breakfast_data[day] = {'bread': "No available breakfast option", 'add1': "", 'fruit': ""}
+        breakfast_data[day] = {'bread': '', 'add1': '', 'fruit': ''}
+    
+    # 1. Main breakfast items
+    breakfast_recipes = list(Recipe.objects.filter(user=user, populate_breakfast=True, recipe_type='breakfast'))
+    # Fallback: if nothing is flagged to populate breakfast, use any breakfast recipes
+    if not breakfast_recipes:
+        breakfast_recipes = list(Recipe.objects.filter(user=user, recipe_type='breakfast'))
+    if breakfast_recipes:
+        selected_breakfast = select_recipes_with_rules(breakfast_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_breakfast[day_idx]:
+                recipe = selected_breakfast[day_idx]
+                breakfast_data[day]['bread'] = recipe.name
+                breakfast_data[day]['add1'] = recipe.addfood or ""
+    
+    # 2. Whole grain items (fill bread row if not already filled, otherwise add1)
+    wg_recipes = list(Recipe.objects.filter(user=user, populate_breakfast=True, recipe_type='whole_grain'))
+    if not wg_recipes:
+        wg_recipes = list(Recipe.objects.filter(user=user, recipe_type='whole_grain'))
+    if wg_recipes:
+        selected_wg = select_recipes_with_rules(wg_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_wg[day_idx]:
+                if not breakfast_data[day]['bread']:
+                    breakfast_data[day]['bread'] = selected_wg[day_idx].name
+                elif not breakfast_data[day]['add1']:
+                    breakfast_data[day]['add1'] = selected_wg[day_idx].name
+    
+    # 3. Fruit/vegetable items
+    fruit_veg_recipes = list(Recipe.objects.filter(
+        user=user, 
+        populate_breakfast=True, 
+        recipe_type__in=['fruit', 'vegetable']
+    ))
+    if not fruit_veg_recipes:
+        fruit_veg_recipes = list(Recipe.objects.filter(
+            user=user,
+            recipe_type__in=['fruit', 'vegetable']
+        ))
+    if fruit_veg_recipes:
+        selected_fruit_veg = select_recipes_with_rules(fruit_veg_recipes, days_count=5, rule_tracker=rule_tracker)
+        for day_idx, day in enumerate(days_of_week):
+            if selected_fruit_veg[day_idx]:
+                breakfast_data[day]['fruit'] = selected_fruit_veg[day_idx].name
+    
+    # Fill empty cells with defaults
+    for day in days_of_week:
+        if not breakfast_data[day]['bread']:
+            breakfast_data[day]['bread'] = "No available breakfast option"
+    
+    # Save updated rule tracker back to session
+    request.session['menu_generation_rule_tracker'] = rule_tracker
+    request.session.modified = True
+    request.session.save()  # Force immediate save for sequential requests
+    
     return JsonResponse(breakfast_data)
 
 @login_required

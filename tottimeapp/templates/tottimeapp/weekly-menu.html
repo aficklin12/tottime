@@ -639,8 +639,8 @@ thead tr:first-child th:last-child {
     margin-top: 1.5rem;
   }
 
-  /* Lunch section */
-  .table tbody tr:nth-child(9)::before {
+    /* Lunch section */
+    .table tbody tr:nth-child(10)::before {
     content: 'Lunch';
     display: block;
     position: absolute;
@@ -657,13 +657,13 @@ thead tr:first-child th:last-child {
     grid-column: 1 / -1;
   }
 
-  .table tbody tr:nth-child(9) {
+    .table tbody tr:nth-child(10) {
     position: relative;
     margin-top: 1.5rem;
   }
 
-  /* PM Snack section */
-  .table tbody tr:nth-child(16)::before {
+    /* PM Snack section */
+    .table tbody tr:nth-child(17)::before {
     content: 'PM Snack';
     display: block;
     position: absolute;
@@ -680,7 +680,7 @@ thead tr:first-child th:last-child {
     grid-column: 1 / -1;
   }
 
-  .table tbody tr:nth-child(16) {
+    .table tbody tr:nth-child(17) {
     position: relative;
     margin-top: 1.5rem;
   }
@@ -1114,7 +1114,7 @@ h1.mt-4 {
                             <td id="fridayadd1" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr class="am-snack-row">
-                            <td class="vertical-header am-snack-header" rowspan="4" style="font-weight: bold; text-align: center;">
+                            <td class="vertical-header am-snack-header" rowspan="5" style="font-weight: bold; text-align: center;">
                                 <span class="am-snack-text">AM Snack</span>
                                 <button type="button" id="amSnackToggleBtn" class="am-snack-toggle-btn" onclick="toggleAMSnackMobile()" aria-label="Toggle AM Snack section">
                                     <i class="fas fa-plus" id="amSnackToggleIcon"></i>
@@ -1150,6 +1150,14 @@ h1.mt-4 {
                             <td id="wednesdaymeat1" style="text-align: center;" data-day="wednesday"></td>
                             <td id="thursdaymeat1" style="text-align: center;" data-day="thursday"></td>
                             <td id="fridaymeat1" style="text-align: center;" data-day="friday"></td>
+                        </tr>
+                        <tr class="am-snack-row">
+                            <td>Additional Food (Optional)</td>
+                            <td id="mondayadd3" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayadd3" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayadd3" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayadd3" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayadd3" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td class="vertical-header" rowspan="7" style="font-weight: bold; text-align: center;">Lunch</td>
@@ -1209,7 +1217,7 @@ h1.mt-4 {
                             <td id="fridayadd2" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr> 
-                            <td class="vertical-header" rowspan="4" style="font-weight: bold; text-align: center;">PM Snack</td>
+                            <td class="vertical-header" rowspan="5" style="font-weight: bold; text-align: center;">PM Snack</td>
                             <td>Fluid Milk or Water</td>
                             <td id="mondaychoose2" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdaychoose2" style="text-align: center;" data-day="tuesday"></td>
@@ -1240,6 +1248,14 @@ h1.mt-4 {
                             <td id="wednesdaymeat3" style="text-align: center;" data-day="wednesday"></td>
                             <td id="thursdaymeat3" style="text-align: center;" data-day="thursday"></td>
                             <td id="fridaymeat3" style="text-align: center;" data-day="friday"></td>
+                        </tr>
+                        <tr>
+                            <td>Additional Food (Optional)</td>
+                            <td id="mondayadd4" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayadd4" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayadd4" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayadd4" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayadd4" style="text-align: center;" data-day="friday"></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1315,6 +1331,8 @@ function getColorableCellIds() {
         'mondayGrain','tuesdayGrain','wednesdayGrain','thursdayGrain','fridayGrain',
         'mondayMeatAlternate','tuesdayMeatAlternate','wednesdayMeatAlternate','thursdayMeatAlternate','fridayMeatAlternate',
         'mondayadd2','tuesdayadd2','wednesdayadd2','thursdayadd2','fridayadd2',
+        'mondayadd3','tuesdayadd3','wednesdayadd3','thursdayadd3','fridayadd3',
+        'mondayadd4','tuesdayadd4','wednesdayadd4','thursdayadd4','fridayadd4',
         'mondaychoose2','tuesdaychoose2','wednesdaychoose2','thursdaychoose2','fridaychoose2',
         'mondayfruit4','tuesdayfruit4','wednesdayfruit4','thursdayfruit4','fridayfruit4',
         'mondaybread3','tuesdaybread3','wednesdaybread3','thursdaybread3','fridaybread3',
@@ -1341,7 +1359,8 @@ function getAMSnackCellIds() {
         'mondaychoose1','tuesdaychoose1','wednesdaychoose1','thursdaychoose1','fridaychoose1',
         'mondayfruit2','tuesdayfruit2','wednesdayfruit2','thursdayfruit2','fridayfruit2',
         'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',
-        'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1'
+        'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1',
+        'mondayadd3','tuesdayadd3','wednesdayadd3','thursdayadd3','fridayadd3'
     ];
 }
 function amSnackHasAnyData() {
@@ -1766,8 +1785,8 @@ const KEY_ID_MAP = {
     'meat_alternate': '{day}MeatAlternate', 'meat': '{day}MeatAlternate',
     'lunch_milk': '{day}LunchMilk', 'fluid_milk': '{day}Milk',
     'bread': '{day}bread', 'add1': '{day}add1',
-    'choose1': '{day}choose1', 'fruit2': '{day}fruit2', 'bread2':'{day}bread2', 'meat1':'{day}meat1',
-    'choose2': '{day}choose2', 'fruit4': '{day}fruit4', 'bread3':'{day}bread3', 'meat3':'{day}meat3',
+    'choose1': '{day}choose1', 'fruit2': '{day}fruit2', 'bread2':'{day}bread2', 'meat1':'{day}meat1', 'add3':'{day}add3',
+    'choose2': '{day}choose2', 'fruit4': '{day}fruit4', 'bread3':'{day}bread3', 'meat3':'{day}meat3', 'add4':'{day}add4',
     'fruit': '{day}fruit', 'fruit3':'{day}fruit3',
     'vegetable': '{day}vege', 'add2':'{day}add2'
 };
@@ -1991,7 +2010,8 @@ $(document).ready(function() {
                 'mondaychoose1','tuesdaychoose1','wednesdaychoose1','thursdaychoose1','fridaychoose1',
                 'mondayfruit2','tuesdayfruit2','wednesdayfruit2','thursdayfruit2','fridayfruit2',
                 'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',
-                'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1'
+                'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1',
+                'mondayadd3','tuesdayadd3','wednesdayadd3','thursdayadd3','fridayadd3'
             ];
             let hasData = false;
             for (let i = 0; i < amSnackIds.length; i++) {
@@ -2064,14 +2084,18 @@ $(document).ready(function() {
         clearAllMenuCellStyles();
         clearInventoryRulesCache();
 
-        const calls = [
-            ajaxPost('/generate_menu/').done(resp => updateTable(resp)).fail(() => toastr.error('Failed generating lunch menu')).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_am_menu/').done(resp => updateAMTable(resp)).fail(() => toastr.error('Failed generating AM snack')).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_pm_menu/').done(resp => updatePMTable(resp)).fail(() => toastr.error('Failed generating PM snack')).always(saveMenuProgressToLocalStorage),
-            ajaxPost('/generate_breakfast_menu/').done(resp => { updateBreakfastTable(resp); }).fail(() => toastr.error('Failed generating breakfast')).always(saveMenuProgressToLocalStorage)
-        ];
-
-        $.when.apply($, calls).always(async function() {
+        // Call the unified full menu generation endpoint (all meals generated in one request with shared rule tracker)
+        ajaxPost('/generate_full_menu/')
+            .done(function(resp) {
+                // Response contains all meal data: breakfast, am_snack, lunch, pm_snack
+                if (resp.breakfast) updateBreakfastTable(resp.breakfast);
+                if (resp.am_snack) updateAMTable(resp.am_snack);
+                if (resp.lunch) updateTable(resp.lunch);
+                if (resp.pm_snack) updatePMTable(resp.pm_snack);
+                saveMenuProgressToLocalStorage();
+            })
+            .fail(() => toastr.error('Failed generating menu'))
+            .always(async function() {
             try {
                 // Preserve any user-selected week (window.nextMondayDate) instead
                 // of recomputing next Monday from today which would overwrite
@@ -2119,24 +2143,12 @@ $(document).ready(function() {
                 await buildRulesLegendFromCache();
             } finally {
                 setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 200);
-                // Start a delayed fragment reload and keep the loading overlay active
-                setTimeout(function(){
-                    (async function(){
-                        try {
-                            if (hadCachedTableData) {
-                                if (!window.__menuFragmentReloaded) await reloadTableFragment();
-                            } else {
-                                // No cached data: don't reload fragment; ensure gradients applied
-                                try { await applyGradientsToCells(); await buildRulesLegendFromCache(); } catch(e) { console.warn('apply after fresh gen failed', e); }
-                            }
-                        } catch (e) {
-                            console.warn('fragment reload failed', e);
-                            try { location.reload(); return; } catch (er) { console.warn('reload failed', er); }
-                        } finally {
-                            hideLoading();
-                        }
-                    })();
-                }, 500);
+                // We already applied gradients, WG checks, and legend updates
+                // against the freshly generated menu above, so avoid reloading
+                // the table fragment here (which could overwrite unsaved
+                // client-side changes like snack additions). Just hide the
+                // loading overlay.
+                hideLoading();
             }
         });
     });

@@ -405,7 +405,7 @@ th {
         background-color: rgba(34, 37, 41, 1);
         border-top: 1px solid #dee2e6;
         z-index: 1200;
-        justify-content: space-around;
+        justify-content: space-between; /* spread left/right buttons into thirds */
         align-items: center;
         padding: 6px 10px;
         box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
@@ -426,6 +426,12 @@ th {
         background: transparent;
         border: none;
     }
+
+    /* Make the non-center buttons occupy left/right thirds visually */
+    #mobileBottomNav .btn:not(.update-btn) {
+        flex: 0 0 33%;
+        justify-content: center;
+    }
     
     #mobileBottomNav .btn i {
         font-size: 1.15rem;
@@ -433,14 +439,24 @@ th {
     
     #mobileBottomNav .btn.update-btn i {
         font-size: 2.3rem;
-        color: rgb(57, 189, 180) !important;
-        margin-bottom: 10px;
-        margin-left: 4px;
+        /* grey icon on blue circle */
+        color: rgba(34, 37, 41, 1) !important;
+
     }
-    
+    #mobileBottomNav .btn.update-btn i.fas.fa-user-plus {
+
+        /* visually center on the person body (icon is right-heavy because of the plus) */
+        margin-bottom: 5px;
+        margin-left: 0;
+        transform: translateX(5px);
+    }
+    /* Floating action button for mobile Sign In */
     #mobileBottomNav .update-btn {
-        position: relative;
-        z-index: 2;
+        position: fixed;
+        bottom: 8px;              /* default centered inside the bottom bar */
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1300;             /* above the bar and content */
     }
     
     #mobileBottomNav .update-btn::before {
@@ -452,8 +468,9 @@ th {
         width: 94px;
         height: 94px;
         border-radius: 50%;
-        background-color: rgba(34, 37, 41, 1);
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.11);
+        /* solid blue/teal circle, no glow */
+        background-color: rgb(57, 189, 180);
+        box-shadow: none;
         pointer-events: none;
         z-index: 1;
     }
@@ -461,6 +478,67 @@ th {
     #mobileBottomNav .update-btn i {
         position: relative;
         z-index: 3;
+    }
+
+    /* Countdown ring for long-press reset */
+    #mobileBottomNav .update-btn::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        /* Full-size ring that hugs the outer edge of the teal circle */
+        transform: translate(-50%, -50%) scale(1);
+        width: 110px;   /* slightly larger than the 94px teal circle */
+        height: 110px;
+        border-radius: 50%;
+        border: 4px solid rgba(57, 189, 180, 0.4);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 0;
+        box-sizing: border-box;
+    }
+
+    #mobileBottomNav .update-btn.countdown-active::after {
+        opacity: 1;
+        border-color: rgba(57, 189, 180, 0.8);
+        /* 2.5s visual countdown (starts after 0.5s hold) */
+        animation: fab-reset-countdown 2.5s linear forwards;
+    }
+
+    @keyframes fab-reset-countdown {
+        0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        100% {
+            /* Slight expansion + fade to give a clear countdown feel */
+            transform: translate(-50%, -50%) scale(1.15);
+            opacity: 0.25;
+        }
+    }
+
+    /* Subtle "vibrate" hint on load: animate the inner teal circle only,
+       so the button's fixed position and centering never shift. */
+    #mobileBottomNav .update-btn.wiggle-once::before {
+        animation: fab-wiggle 0.35s ease-in-out 3;
+    }
+
+    @keyframes fab-wiggle {
+        0% {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        25% {
+            transform: translate(-50%, -50%) scale(1.03);
+        }
+        50% {
+            transform: translate(-50%, -50%) scale(0.97);
+        }
+        75% {
+            transform: translate(-50%, -50%) scale(1.03);
+        }
+        100% {
+            transform: translate(-50%, -50%) scale(1);
+        }
     }
 }
 </style>
@@ -755,6 +833,193 @@ document.addEventListener('click', function(e){
         alert('Error switching location');
     });
 });
+    </script>
+    <script>
+    // Make the center mobile action button (the .update-btn inside #mobileBottomNav)
+    // behave like a draggable floating widget on any page that defines it.
+    document.addEventListener('DOMContentLoaded', function () {
+        const fab = document.querySelector('#mobileBottomNav .btn.update-btn');
+        if (!fab) return;
+
+        // On load, gently wiggle the entire button to hint it can be moved
+        fab.classList.add('wiggle-once');
+        setTimeout(function () {
+            fab.classList.remove('wiggle-once');
+        }, 1200);
+
+        let dragging = false;
+        let pressStart = 0;
+        let resetTimer = null;
+        let didReset = false;
+        let suppressNextClick = false;
+        let startX = 0, startY = 0;
+        let startLeft = 0, startTop = 0;
+        let fabWidth = 0, fabHeight = 0;
+
+        // Restore saved position (per device/browser)
+        try {
+            const saved = localStorage.getItem('tt_mobileSignInPos');
+            if (saved) {
+                const pos = JSON.parse(saved);
+                if (typeof pos.left === 'number' && typeof pos.top === 'number') {
+                    fab.style.left = pos.left + 'px';
+                    fab.style.top = pos.top + 'px';
+                    fab.style.bottom = 'auto';
+                    fab.style.transform = 'none';
+                }
+            }
+        } catch (e) {
+            // ignore malformed storage
+        }
+
+        function resetFabPosition() {
+            fab.style.left = '';
+            fab.style.top = '';
+            fab.style.bottom = '';
+            fab.style.transform = '';
+            try {
+                localStorage.removeItem('tt_mobileSignInPos');
+            } catch (e) {
+                // ignore storage errors
+            }
+        }
+
+        function onPointerDown(e) {
+            const isTouch = e.type === 'touchstart';
+            const point = isTouch ? e.touches[0] : e;
+
+            const rect = fab.getBoundingClientRect();
+            fabWidth = rect.width;
+            fabHeight = rect.height;
+
+            // Convert initial fixed bottom/left to explicit top/left so we can drag freely
+            const currentTop = rect.top;
+            const currentLeft = rect.left;
+            fab.style.top = currentTop + 'px';
+            fab.style.left = currentLeft + 'px';
+            fab.style.bottom = 'auto';
+            fab.style.transform = 'none';
+
+            startX = point.clientX;
+            startY = point.clientY;
+            startLeft = currentLeft;
+            startTop = currentTop;
+            dragging = false;
+
+            pressStart = Date.now();
+            didReset = false;
+
+            // Very long press (3s) with minimal movement: reset to default position
+            // Show the countdown ring immediately on press
+            fab.classList.add('countdown-active');
+            resetTimer = setTimeout(function () {
+                if (!dragging) {
+                    resetFabPosition();
+                    didReset = true;
+                    suppressNextClick = true;
+                    fab.classList.remove('countdown-active');
+                }
+            }, 3000);
+
+            if (isTouch) {
+                document.addEventListener('touchmove', onPointerMove, { passive: false });
+                document.addEventListener('touchend', onPointerUp);
+            } else {
+                document.addEventListener('mousemove', onPointerMove);
+                document.addEventListener('mouseup', onPointerUp);
+            }
+        }
+
+        function onPointerMove(e) {
+            const isTouch = e.type === 'touchmove';
+            const point = isTouch ? e.touches[0] : e;
+
+            const dx = point.clientX - startX;
+            const dy = point.clientY - startY;
+
+            // Small moves still count as a tap
+            if (!dragging && (dx * dx + dy * dy) < 16) {
+                return;
+            }
+            dragging = true;
+            // Once user starts dragging, cancel any reset countdown visual
+            if (resetTimer) {
+                clearTimeout(resetTimer);
+                resetTimer = null;
+            }
+            fab.classList.remove('countdown-active');
+            if (isTouch) e.preventDefault();
+
+            let newLeft = startLeft + dx;
+            let newTop = startTop + dy;
+
+            const maxLeft = window.innerWidth - fabWidth;
+            const maxTop = window.innerHeight - fabHeight;
+
+            newLeft = Math.max(0, Math.min(maxLeft, newLeft));
+            newTop = Math.max(0, Math.min(maxTop, newTop));
+
+            fab.style.left = newLeft + 'px';
+            fab.style.top = newTop + 'px';
+        }
+
+        function onPointerUp(e) {
+            const isTouch = e.type === 'touchend';
+            if (isTouch) {
+                document.removeEventListener('touchmove', onPointerMove);
+                document.removeEventListener('touchend', onPointerUp);
+            } else {
+                document.removeEventListener('mousemove', onPointerMove);
+                document.removeEventListener('mouseup', onPointerUp);
+            }
+
+            if (resetTimer) {
+                clearTimeout(resetTimer);
+                resetTimer = null;
+            }
+            fab.classList.remove('countdown-active');
+
+            const pressDuration = Date.now() - pressStart;
+
+            // If position was reset by long-hold, don't treat this as a normal drag end
+            if (didReset) {
+                return;
+            }
+
+            // If user dragged OR held long, suppress the click that would open the modal
+            if (dragging || pressDuration > 500) {
+                suppressNextClick = true;
+                // Save final position for next visit
+                try {
+                    const rect = fab.getBoundingClientRect();
+                    localStorage.setItem('tt_mobileSignInPos', JSON.stringify({
+                        left: rect.left,
+                        top: rect.top
+                    }));
+                } catch (e) {
+                    // ignore storage errors (e.g., private mode)
+                }
+                e.preventDefault?.();
+                e.stopPropagation?.();
+            }
+        }
+
+        fab.addEventListener('mousedown', onPointerDown);
+        fab.addEventListener('touchstart', onPointerDown, { passive: true });
+
+        // Block the actual click event if the last interaction
+        // was a drag or long-press move, so the modal won't open.
+        fab.addEventListener('click', function (e) {
+            if (!suppressNextClick) return;
+            suppressNextClick = false;
+            e.preventDefault();
+            if (typeof e.stopImmediatePropagation === 'function') {
+                e.stopImmediatePropagation();
+            } else {
+                e.stopPropagation();
+            }
+        }, true); // use capture to intercept before other handlers
+    });
     </script>
     {% block scripts %}{% endblock %}
 </body>

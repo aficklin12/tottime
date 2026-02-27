@@ -110,6 +110,7 @@ urlpatterns = [
     path('update_milk_count/', login_required(views.update_milk_count), name='update_milk_count'),
     path('milk-count/', login_required(views.milk_count_view), name='milk_count'),
     path('meal_count/', login_required(views.meal_count), name='meal_count'),
+    path('generate_full_menu/', login_required(views.generate_full_menu), name='generate_full_menu'),
     path('generate_breakfast_menu/', login_required(views.generate_breakfast_menu), name='generate_breakfast_menu'),
     path('generate_pm_menu/', login_required(views.generate_pm_menu), name='generate_pm_menu'),
     path('generate_am_menu/', login_required(views.generate_am_menu), name='generate_am_menu'),
