@@ -156,6 +156,8 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep sessions alive after browser clo
 SESSION_SAVE_EVERY_REQUEST = True     # Extends session expiry on each request (keeps active sessions alive)
 SESSION_COOKIE_SAMESITE = 'None'      # Required for Cordova/Capacitor WebView (cross-origin file:// -> https://)
 SESSION_COOKIE_SECURE = True          # Required when SameSite=None; safe since site uses HTTPS
+CSRF_COOKIE_SAMESITE = 'None'         # Required so CSRF token is sent from Cordova WebView
+CSRF_COOKIE_SECURE = True             # Required when SameSite=None
 
 
 # Static files for PWA
