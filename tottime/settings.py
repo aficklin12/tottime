@@ -148,16 +148,10 @@ SECURE_SSL_REDIRECT = False
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
-# Session settings — allows concurrent logins from multiple devices.
-# Each device gets its own session cookie; logging in on one device
-# does NOT invalidate other devices' sessions.
-SESSION_COOKIE_AGE = 1209600          # 2 weeks (in seconds)
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep sessions alive after browser close
-SESSION_SAVE_EVERY_REQUEST = True     # Extends session expiry on each request (keeps active sessions alive)
-SESSION_COOKIE_SAMESITE = 'None'      # Required for Cordova/Capacitor WebView (cross-origin file:// -> https://)
-SESSION_COOKIE_SECURE = True          # Required when SameSite=None; safe since site uses HTTPS
-CSRF_COOKIE_SAMESITE = 'None'         # Required so CSRF token is sent from Cordova WebView
-CSRF_COOKIE_SECURE = True             # Required when SameSite=None
+# Session settings — keeps users logged in, allows concurrent logins from multiple devices.
+SESSION_COOKIE_AGE = 1209600         # 2 weeks (in seconds)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
 
 
 # Static files for PWA
