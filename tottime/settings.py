@@ -7,6 +7,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*")
+# Allows Django to still read sessions/cookies signed with the old key after key rotation
+SECRET_KEY_FALLBACKS = [
+    "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*",
+]
 DEBUG = True
 ALLOWED_HOSTS = ['44.209.83.215', 'localhost', '127.0.0.1', 'tot-time.com', 'www.tot-time.com']
 
