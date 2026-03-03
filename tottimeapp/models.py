@@ -199,16 +199,21 @@ class Recipe(models.Model):
     standalone = models.BooleanField(default=False, help_text='Standalone ingredient rather than a full recipe')
     # Lunch recipe fields
     grain = models.CharField(max_length=100, blank=True, null=True)
+    grain_rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True, related_name='grain_recipes')
     meat_alternate = models.CharField(max_length=100, blank=True, null=True)
     # Breakfast recipe fields
     addfood = models.CharField(max_length=100, blank=True, null=True, help_text='Additional food for breakfast')
+    addfood_rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True, related_name='breakfast_addfood_recipes')
     # AM/PM Snack recipe fields
     fluid = models.CharField(max_length=100, blank=True, null=True)
+    fluid_rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True, related_name='fluid_recipes')
     veg = models.CharField(max_length=100, blank=True, null=True)
+    veg_rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True, related_name='veg_recipes')
     fruit = models.CharField(max_length=100, blank=True, null=True)
+    fruit_rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True, related_name='fruit_recipes')
     meat = models.CharField(max_length=100, blank=True, null=True)
+    meat_rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True, related_name='meat_recipes')
     # Common fields
-    rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
     pdf_url = models.URLField(max_length=500, blank=True, null=True)
 

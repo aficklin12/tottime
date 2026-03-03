@@ -51,6 +51,7 @@ async function reloadTableFragment() {
         await ensureDailyWG();
         toggleAMSnackVisibility();
         await buildRulesLegendFromCache();
+        await displayMissingRules();
     } catch (err) {
         console.warn('reloadTableFragment failed', err);
         try { location.reload(); } catch (e) { console.warn('full reload failed', e); }
@@ -895,6 +896,30 @@ h1.mt-4 {
 
 @media print {
     .rules-legend { display: none !important; }
+    #missingRulesAlert { display: none !important; }
+}
+
+/* Missing Rules Alert Styles */
+#missingRulesAlert {
+    display: none;
+}
+
+@media (min-width: 1001px) {
+    #missingRulesAlert {
+        margin-left: 6px;
+        margin-right: 6px;
+    }
+}
+
+@media (max-width: 1000px) {
+    #missingRulesAlert {
+        margin-left: 20px;
+        margin-right: 20px;
+        font-size: 0.9rem;
+    }
+    #missingRulesAlert span {
+        font-size: 0.85rem !important;
+    }
 }
 
 .loading-dialog {
@@ -1483,9 +1508,17 @@ const norm = s => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
 
 /* Fetch inventory rules from server */
 async function fetchInventoryRules() {
-    if (inventoryRulesCache) return inventoryRulesCache;
+    if (inventoryRulesCache) {
+        console.log('📦 Using CACHED inventory rules, count:', Object.keys(inventoryRulesCache).length);
+        // Log specific important items from cache
+        if (inventoryRulesCache['Bread']) console.log('  ├─ Bread rule found in cache:', inventoryRulesCache['Bread']);
+        if (inventoryRulesCache['Toast']) console.log('  ├─ Toast rule found in cache:', inventoryRulesCache['Toast']);
+        if (inventoryRulesCache['Bean']) console.log('  └─ Bean rule found in cache:', inventoryRulesCache['Bean']);
+        return inventoryRulesCache;
+    }
     try {
         const url = '/api/fetch_inventory_rules/?_=' + Date.now();
+        console.log('🌐 Fetching FRESH inventory rules from server:', url);
         const response = await fetch(url, {
             method: 'GET',
             cache: 'no-store',
@@ -1493,9 +1526,15 @@ async function fetchInventoryRules() {
         });
         const data = await response.json();
         inventoryRulesCache = data.item_rules || {};
+        console.log('✅ Fresh rules fetched, total count:', Object.keys(inventoryRulesCache).length);
+        console.log('  Sample rule keys:', Object.keys(inventoryRulesCache).slice(0, 15));
+        // Log specific important items
+        if (inventoryRulesCache['Bread']) console.log('  ├─ Bread rule:', inventoryRulesCache['Bread']);
+        if (inventoryRulesCache['Toast']) console.log('  ├─ Toast rule:', inventoryRulesCache['Toast']);
+        if (inventoryRulesCache['Bean']) console.log('  └─ Bean rule:', inventoryRulesCache['Bean']);
         return inventoryRulesCache;
     } catch (error) {
-        console.error('Error fetching inventory rules:', error);
+        console.error('❌ Error fetching inventory rules:', error);
         return {};
     }
 }
@@ -1522,7 +1561,18 @@ function isWGText(text) { return WG_NAME_RX.test(text || ""); }
 
 /* Apply gradient styling to cells based on inventory rules (and mark WG by rule_label or name) */
 async function applyGradientsToCells() {
+    console.log('\n🎨 === applyGradientsToCells called ===');
     const itemRules = await fetchInventoryRules();
+    console.log('📋 Rules available for matching, count:', Object.keys(itemRules || {}).length);
+    
+    // Debug: Verify specific rules are present
+    const testItems = ['Bread', 'Toast', 'Bean', 'bread', 'toast', 'bean'];
+    testItems.forEach(item => {
+        if (itemRules[item]) {
+            console.log(`  ✓ Rule found for "${item}":`, itemRules[item].rule_label);
+        }
+    });
+    
     // Try to fetch rules list (for assigned rule ids)
     let ruleList = null;
     try {
@@ -1531,8 +1581,8 @@ async function applyGradientsToCells() {
         ruleList = Array.isArray(rdata) ? rdata : (rdata.rules || []);
     } catch (e) { ruleList = null; }
 
-    // Always start from a clean slate
-    clearAllMenuCellStyles();
+    // Don't clear here - caller should clear before calling this function
+    // This prevents clearing colors multiple times if function is called repeatedly
 
     const cellIds = getColorableCellIds();
     let matchCount = 0;
@@ -1560,25 +1610,77 @@ async function applyGradientsToCells() {
         }
         if (!text) return;
 
-        const rule = itemRules[text];
+        // Debug: Log what we're trying to match
+        const isInteresting = ['bread', 'toast', 'bean'].some(keyword => text.toLowerCase().includes(keyword));
+        if (isInteresting) {
+            console.log(`\n🔍 Processing cell ${cellId}: "${text}"`);
+        }
+
+        // Try exact match first
+        let rule = itemRules[text];
+        if (rule && isInteresting) {
+            console.log(`  ✓ Exact match found for "${text}"`);
+        }
+        
+        // If no exact match, try case-insensitive match
+        if (!rule) {
+            const lowerText = text.toLowerCase();
+            for (const [key, value] of Object.entries(itemRules)) {
+                if (key.toLowerCase() === lowerText) {
+                    rule = value;
+                    if (isInteresting) {
+                        console.log(`  ✓ Case-insensitive match: "${text}" matched "${key}"`);
+                    }
+                    break;
+                }
+            }
+        }
+        
         if (rule) {
+            if (isInteresting) {
+                console.log(`  🎨 Applying rule:`, rule.rule_label, 'Colors:', rule.gradient_start, '->', rule.gradient_end);
+            }
             cell.style.background = `linear-gradient(135deg, ${rule.gradient_start}, ${rule.gradient_end})`;
             cell.style.color = rule.text_color;
             cell.dataset.ruleApplied = 'true';
             if (rule.rule_label) cell.dataset.ruleLabel = rule.rule_label;
+            
+            // Verify style was applied
+            if (isInteresting) {
+                const appliedBg = cell.style.background;
+                const appliedColor = cell.style.color;
+                console.log(`  ✅ Style applied and verified - bg: ${appliedBg.substring(0, 50)}..., color: ${appliedColor}`);
+            }
             matchCount++;
-        } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i.test(text)) {
+        } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat|bread|toast)\b/i.test(text)) {
+            // Fallback for whole grain keywords (including bread/toast)
+            if (isInteresting) {
+                console.log(`  🌾 Applying WG fallback to ${cellId}: "${text}"`);
+            }
             const s = WG_DEFAULT_STYLE;
             cell.style.background = `linear-gradient(135deg, ${s.gradient_start}, ${s.gradient_end})`;
             cell.style.color = s.text_color;
             cell.dataset.ruleApplied = 'true';
             cell.dataset.ruleLabel = 'Whole Grain';
+            
+            // Verify style was applied
+            if (isInteresting) {
+                console.log(`  ✅ WG fallback applied - bg: ${cell.style.background.substring(0, 50)}...`);
+            }
             matchCount++;
+        } else {
+            // Log cells that didn't get colored for debugging
+            if (isInteresting) {
+                console.log(`  ❌ No rule match found for ${cellId}: "${text}"`);
+            }
         }
     });
 
     // Build/rebuild legend after rules are available
-    try { await buildRulesLegendFromCache(); } catch(e) { console.warn('legend build failed', e); }
+    try { 
+        await buildRulesLegendFromCache(); 
+        await displayMissingRules();
+    } catch(e) { console.warn('legend build failed', e); }
     return matchCount;
 }
 
@@ -2000,7 +2102,10 @@ $(document).ready(function() {
     initializeDaySelector();
     updateDropdownWithDates();
     // Initial legend build (in case rules are already cached server-side)
-    setTimeout(() => { buildRulesLegendFromCache(); }, 100);
+    setTimeout(() => { 
+        buildRulesLegendFromCache(); 
+        displayMissingRules();
+    }, 100);
     // By default, hide AM Snack on desktop, show on mobile
     setTimeout(() => {
         if (window.matchMedia('(min-width: 1001px)').matches) {
@@ -2082,7 +2187,6 @@ $(document).ready(function() {
 
         // Clear previous colors before regenerating
         clearAllMenuCellStyles();
-        clearInventoryRulesCache();
 
         // Call the unified full menu generation endpoint (all meals generated in one request with shared rule tracker)
         ajaxPost('/generate_full_menu/')
@@ -2119,28 +2223,58 @@ $(document).ready(function() {
                 enableEditablesForAllCells();
                 {% endif %}
 
-                // Recolor then ensure WG in sequence. Retry a few times if no rules applied,
-                // and fall back to a full reload to pick up server-side changes.
+                // Wait a moment for table updates to complete
+                await new Promise(r => setTimeout(r, 100));
+                
+                // Force fresh fetch of inventory rules before applying colors
+                // This ensures we have the latest rule mappings for newly generated recipes
+                console.log('=== Starting color application after menu generation ===');
+                console.log('Clearing cache and fetching fresh rules...');
+                inventoryRulesCache = null; // Clear cache to force fresh fetch
+                const freshRules = await fetchInventoryRules();
+                console.log('Fresh rules fetched from server, count:', Object.keys(freshRules || {}).length);
+                
+                if (Object.keys(freshRules || {}).length > 0) {
+                    console.log('Sample of fetched rules:', Object.keys(freshRules).slice(0, 20));
+                } else {
+                    console.warn('WARNING: No rules fetched from server!');
+                }
+                
+                // Apply colors with the fresh rules (note: clearAllMenuCellStyles already called before generation)
+                console.log('🚀 STARTING COLOR APPLICATION - this should be visible!');
+                console.log('Applying colors to cells...');
                 let matchCount = await applyGradientsToCells();
-                if (!matchCount) {
-                    for (let attempt = 1; attempt <= 3 && !matchCount; attempt++) {
-                        await new Promise(r => setTimeout(r, 200 * attempt));
-                        clearInventoryRulesCache();
-                        matchCount = await applyGradientsToCells();
-                    }
+                console.log('✅ Initial gradient application completed, matchCount:', matchCount);
+                console.log('🎯 Color application finished. Check cells for colors.');
+                
+                // If no matches, retry ONCE with a small delay
+                if (matchCount === 0) {
+                    console.log('⚠️ No color matches found on first attempt, retrying after delay...');
+                    await new Promise(r => setTimeout(r, 500));
+                    // Re-fetch in case of timing issue
+                    inventoryRulesCache = null;
+                    await fetchInventoryRules();
+                    matchCount = await applyGradientsToCells();
+                    console.log('Retry gradient application completed, matchCount:', matchCount);
                 }
-                if (!matchCount) {
-                    // If still no matches, only reload the fragment when we detected
-                    // pre-existing table data (cached). For fresh generations do not reload.
-                    if (hadCachedTableData) {
-                        try { await reloadTableFragment(); return; } catch (e) { console.warn('fragment reload failed', e); try { location.reload(); return; } catch (er) { console.warn('reload failed', er); } }
-                    } else {
-                        // Fresh generation: continue without reloading (styles already attempted)
+                
+                // Verification: Check if any cells actually have styles applied
+                console.log('\\n🔬 Verification - checking if styles persisted in DOM:');
+                const testCellIds = getColorableCellIds().slice(0, 10);
+                let stylesFound = 0;
+                testCellIds.forEach(cellId => {
+                    const cell = document.getElementById(cellId);
+                    if (cell && cell.style.background) {
+                        console.log(`  ✓ ${cellId}: HAS background style - "${cell.innerText}" has color`);
+                        stylesFound++;
                     }
-                }
+                });
+                console.log(`📊 Verification complete: ${stylesFound}/${testCellIds.length} tested cells have background styles\\n`);
+                
                 await ensureDailyWG();
                 toggleAMSnackVisibility();
                 await buildRulesLegendFromCache();
+                await displayMissingRules();
             } finally {
                 setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 200);
                 // We already applied gradients, WG checks, and legend updates
@@ -2194,6 +2328,58 @@ async function buildRulesLegendFromCache() {
     const existingIcon = container.querySelector('.saved-menus-icon');
     const existingIconHtml = existingIcon ? existingIcon.outerHTML : '';
     container.innerHTML = existingIconHtml + html;
+}
+
+/* Display missing rules (rules without recipes) */
+async function displayMissingRules() {
+    try {
+        const response = await fetch('/api/check_missing_rules/', {
+            method: 'GET',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await response.json();
+        
+        // Create or get the missing rules container after the legend
+        let missingContainer = document.getElementById('missingRulesAlert');
+        if (!missingContainer) {
+            const legend = document.getElementById('rulesLegend');
+            if (!legend) return;
+            
+            missingContainer = document.createElement('div');
+            missingContainer.id = 'missingRulesAlert';
+            missingContainer.style.cssText = 'margin: 12px 0; padding: 12px 16px; border-radius: 8px; background: rgba(255, 193, 7, 0.15); border-left: 4px solid #ffc107;';
+            legend.parentNode.insertBefore(missingContainer, legend.nextSibling);
+        }
+        
+        // If there are missing rules, display them
+        if (data.missing_rules && data.missing_rules.length > 0) {
+            const rulesList = data.missing_rules.map(rule => 
+                `<span style="display: inline-block; padding: 4px 8px; margin: 2px 4px; background: rgba(255,152,0,0.2); border-radius: 4px; font-weight: 600;">${rule.rule} (${rule.weekly_qty}x/week)</span>`
+            ).join('');
+            
+            missingContainer.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                    <i class="fas fa-exclamation-triangle" style="color: #ff9800; margin-top: 2px; font-size: 18px;" aria-hidden="true"></i>
+                    <div style="flex: 1;">
+                        <strong style="color: #f57c00; display: block; margin-bottom: 6px;">Missing Recipes for Rules</strong>
+                        <p style="margin: 4px 0 8px 0; font-size: 0.95rem; color: #555;">
+                            The following rules cannot be fulfilled because no recipes are assigned to them:
+                        </p>
+                        <div>${rulesList}</div>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9rem; color: #666;">
+                            <em>Add recipes with these rules to include them in the menu generation.</em>
+                        </p>
+                    </div>
+                </div>
+            `;
+            missingContainer.style.display = 'block';
+        } else {
+            // Hide the container if all rules are fulfilled
+            missingContainer.style.display = 'none';
+        }
+    } catch (error) {
+        console.warn('Error checking missing rules:', error);
+    }
 }
 
 /* Save menu to database */
@@ -2865,6 +3051,9 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
         const [y, m, d] = parts;
         return new Date(y, m - 1, d);
     }
+    
+    // Make function globally accessible for generate menu handler
+    window.parseISO = parseISO;
 
     function getMondayOf(date) {
         const d = new Date(date);
@@ -2889,6 +3078,9 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
         window.nextMondayDate = monday;
         try { updateDropdownWithDates(); saveMenuProgressToLocalStorage(); } catch(e){}
     }
+    
+    // Make function globally accessible for generate menu handler
+    window.updateWeekDatesFromMonday = updateWeekDatesFromMonday;
 
     header.style.cursor = 'pointer';
     header.title = 'Click to edit week start date (Mon–Fri)';

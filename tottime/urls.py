@@ -71,6 +71,7 @@ urlpatterns = [
     path('fetch-rules/', login_required(views.fetch_rules), name='fetch_rules'),
     path('api/get_wg_candidates/', login_required(views.get_wg_candidates), name='get_wg_candidates'),
     path('api/list_rules/', login_required(views.list_rules), name='list_rules'),
+    path('api/check_missing_rules/', login_required(views.check_missing_rules), name='check_missing_rules'),
     path('save-menu/', login_required(views.save_menu), name='save-menu'),  
     path('get-recipe/<int:recipe_id>/', login_required(views.get_recipe), name='get_recipe'),  
     path('delete-recipe/<str:category>/<int:recipe_id>/', views.delete_recipe, name='delete_recipe'),

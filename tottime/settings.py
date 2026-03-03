@@ -154,8 +154,8 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 SESSION_COOKIE_AGE = 1209600          # 2 weeks (in seconds)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep sessions alive after browser close
 SESSION_SAVE_EVERY_REQUEST = True     # Extends session expiry on each request (keeps active sessions alive)
-SESSION_COOKIE_SAMESITE = 'Lax'       # Required for PWA / cross-origin requests
-# SESSION_COOKIE_SECURE = True        # Uncomment when using HTTPS in production
+SESSION_COOKIE_SAMESITE = 'None'      # Required for Cordova/Capacitor WebView (cross-origin file:// -> https://)
+SESSION_COOKIE_SECURE = True          # Required when SameSite=None; safe since site uses HTTPS
 
 
 # Static files for PWA
