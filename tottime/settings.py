@@ -156,6 +156,15 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 SESSION_COOKIE_AGE = 1209600         # 2 weeks (in seconds)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_SECURE = True  # Required for HTTPS (tot-time.com uses HTTPS)
+SESSION_COOKIE_HTTPONLY = True  # Prevents JavaScript access for security
+SESSION_COOKIE_SAMESITE = 'None'  # Allows cookies in Cordova WebView context
+SESSION_COOKIE_NAME = 'tottime_sessionid'  # Custom name to avoid conflicts
+
+# CSRF settings for Cordova app compatibility
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_TRUSTED_ORIGINS = ['https://tot-time.com', 'https://www.tot-time.com']
 
 
 # Static files for PWA
