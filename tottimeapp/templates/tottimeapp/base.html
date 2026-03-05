@@ -851,21 +851,51 @@ document.addEventListener('click', function(e){
     
     <!-- Cordova Cookie Persistence -->
     <script>
-        // Ensure cookies persist in Cordova app
+        // Enhanced cookie persistence for Cordova
         document.addEventListener('deviceready', function() {
+            console.log('Device ready - initializing cookie persistence');
+            
             if (window.cookieMaster) {
-                console.log('CookieMaster plugin loaded - cookies will persist');
+                window.cookieMaster.getCookieValue('https://tot-time.com', 'tottime_sessionid', 
+                    function(data) {
+                        console.log('Session cookie found:', data ? 'Yes' : 'No');
+                    },
+                    function(error) {
+                        console.log('Error reading cookie:', error);
+                    }
+                );
+            }
+            
+            // Also store session indicator in localStorage as backup
+            const isLoggedIn = document.body.classList.contains('logged-in') || 
+                              document.querySelector('[data-user-authenticated]') !== null;
+            if (isLoggedIn) {
+                localStorage.setItem('tottime_session_active', 'true');
+                localStorage.setItem('tottime_last_active', new Date().toISOString());
             }
         }, false);
         
-        // Prevent session loss on pause/resume
+        // Save cookies when app goes to background
         document.addEventListener('pause', function() {
-            console.log('App paused - session should persist');
+            console.log('App paused - persisting session data');
+            if (window.cookieMaster) {
+                window.cookieMaster.flush();
+            }
         }, false);
         
+        // Check session when app resumes
         document.addEventListener('resume', function() {
-            console.log('App resumed - checking session');
+            console.log('App resumed - verifying session');
+            const sessionActive = localStorage.getItem('tottime_session_active');
+            console.log('Session should be active:', sessionActive === 'true');
         }, false);
+        
+        // Log when page is about to unload
+        window.addEventListener('beforeunload', function() {
+            if (window.cookieMaster) {
+                window.cookieMaster.flush();
+            }
+        });
     </script>
 </body>
 </html>

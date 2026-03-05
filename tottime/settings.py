@@ -153,17 +153,20 @@ SECURE_SSL_REDIRECT = False
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
 # Session settings — keeps users logged in, allows concurrent logins from multiple devices.
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Explicitly use database sessions
 SESSION_COOKIE_AGE = 1209600         # 2 weeks (in seconds)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_COOKIE_SECURE = True  # Required for HTTPS (tot-time.com uses HTTPS)
-SESSION_COOKIE_HTTPONLY = True  # Prevents JavaScript access for security
-SESSION_COOKIE_SAMESITE = 'None'  # Allows cookies in Cordova WebView context
+SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for Cordova cookie persistence plugin
+SESSION_COOKIE_SAMESITE = 'Lax'  # First-party cookies (app loads tot-time.com directly)
 SESSION_COOKIE_NAME = 'tottime_sessionid'  # Custom name to avoid conflicts
+SESSION_COOKIE_DOMAIN = '.tot-time.com'  # Ensure cookie works for both www and non-www
 
 # CSRF settings for Cordova app compatibility
 CSRF_COOKIE_SECURE = True
-CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access for Cordova
+CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = ['https://tot-time.com', 'https://www.tot-time.com']
 
 
