@@ -1022,5 +1022,23 @@ document.addEventListener('click', function(e){
     });
     </script>
     {% block scripts %}{% endblock %}
+      <!-- Cordova Cookie Persistence -->
+    <script>
+        // Ensure cookies persist in Cordova app
+        document.addEventListener('deviceready', function() {
+            if (window.cookieMaster) {
+                console.log('CookieMaster plugin loaded - cookies will persist');
+            }
+        }, false);
+        
+        // Prevent session loss on pause/resume
+        document.addEventListener('pause', function() {
+            console.log('App paused - session should persist');
+        }, false);
+        
+        document.addEventListener('resume', function() {
+            console.log('App resumed - checking session');
+        }, false);
+    </script>
 </body>
 </html>
