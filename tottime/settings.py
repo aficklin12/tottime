@@ -5,8 +5,7 @@ import stripe
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*")
+SECRET_KEY = "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*"
 # Allows Django to still read sessions/cookies signed with the old key after key rotation
 SECRET_KEY_FALLBACKS = [
     "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*",
@@ -152,16 +151,6 @@ SECURE_SSL_REDIRECT = False
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
-# Session settings — keeps users logged in, allows concurrent logins from multiple devices.
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Explicitly use database sessions
-SESSION_COOKIE_AGE = 1209600         # 2 weeks (in seconds)
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False
-SESSION_SAVE_EVERY_REQUEST = True
-SESSION_COOKIE_SECURE = True  # Required for HTTPS (tot-time.com uses HTTPS)
-SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for Cordova cookie persistence plugin
-SESSION_COOKIE_SAMESITE = 'Lax'  # First-party cookies (app loads tot-time.com directly)
-SESSION_COOKIE_NAME = 'tottime_sessionid'  # Custom name to avoid conflicts
-SESSION_COOKIE_DOMAIN = '.tot-time.com'  # Ensure cookie works for both www and non-www
 
 # CSRF settings for Cordova app compatibility
 CSRF_COOKIE_SECURE = True

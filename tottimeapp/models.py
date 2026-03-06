@@ -667,12 +667,6 @@ class MainUser(AbstractUser):
             return f"{self.first_name} {self.last_name} - Linked to {self.main_account_owner.first_name} {self.main_account_owner.last_name}"
         return f"{self.first_name} {self.last_name} - Regular User"
 
-    def get_session_auth_hash(self):
-        """Use a stable token instead of the password field so that Django's
-        automatic password hash upgrades do not invalidate other devices' sessions."""
-        key_salt = "tottimeapp.MainUser.get_session_auth_hash"
-        return salted_hmac(key_salt, str(self.session_token), algorithm="sha256").hexdigest()
-
     def save(self, *args, **kwargs):
         # Ensure that a user cannot be both an account owner and linked to another account owner
         if self.is_account_owner and self.main_account_owner:
