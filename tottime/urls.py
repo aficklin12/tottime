@@ -44,7 +44,8 @@ urlpatterns = [
         template_name='tottimeapp/password_reset_complete.html'
     ), name='password_reset_complete'),
     path('signup/', views.user_signup, name='signup'),  # Unprotected view
-    path('logout/', login_required(views.logout_view), name='logout'),  
+    path('logout/', login_required(views.logout_view), name='logout'),  \
+    path('api/auto-login/', views.auto_login_view, name='auto_login'),
     path('inventory/', login_required(views.inventory_list), name='inventory_list'),  
     path('app/', include('tottimeapp.urls')),  
     path('recipes/', login_required(views.recipes), name='recipes'),  

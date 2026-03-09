@@ -378,6 +378,36 @@
 
 {% block scripts %}
 <script>
+// Add inside the existing {% block scripts %} in homepage.html, after the s3-fallback script
+(function () {
+    var token = null;
+    try { token = localStorage.getItem('tt_remember_token'); } catch (e) {}
+    if (!token) return;
+
+    var csrf = null;
+    if (document.cookie) {
+        document.cookie.split(';').forEach(function (c) {
+            c = c.trim();
+            if (c.startsWith('csrftoken=')) csrf = decodeURIComponent(c.substring(10));
+        });
+    }
+
+    fetch('/api/auto-login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+        body: JSON.stringify({ token: token })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+        if (data.success) {
+            window.location.href = '/index.html';
+        } else {
+            try { localStorage.removeItem('tt_remember_token'); } catch (e) {}
+        }
+    })
+    .catch(function () {});
+})();
+
 // Attempt multiple possible S3 paths for images when the initial src 404s/403s.
 document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('img.s3-fallback').forEach(function(img){

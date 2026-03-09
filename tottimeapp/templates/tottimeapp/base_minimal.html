@@ -672,6 +672,46 @@ th {
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.6/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+(function () {
+    var IS_AUTH = {% if user.is_authenticated %}true{% else %}false{% endif %};
+    var REMEMBER_TOKEN = {% if user.is_authenticated %}'{{ user.session_token }}'{% else %}null{% endif %};
+
+    // On any authenticated page: keep localStorage in sync with the current token
+    if (IS_AUTH && REMEMBER_TOKEN) {
+        try { localStorage.setItem('tt_remember_token', REMEMBER_TOKEN); } catch (e) {}
+    }
+
+    // On any unauthenticated page: try to auto-login using the stored token
+    if (!IS_AUTH) {
+        var token = null;
+        try { token = localStorage.getItem('tt_remember_token'); } catch (e) {}
+        if (token) {
+            var csrf = null;
+            if (document.cookie) {
+                document.cookie.split(';').forEach(function (c) {
+                    c = c.trim();
+                    if (c.startsWith('csrftoken=')) csrf = decodeURIComponent(c.substring(10));
+                });
+            }
+            fetch('/api/auto-login/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+                body: JSON.stringify({ token: token })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    try { localStorage.removeItem('tt_remember_token'); } catch (e) {}
+                }
+            })
+            .catch(function () {});
+        }
+    }
+})();
+</script>
   <script>
 (function(){
     function applyToastrPosition(){
@@ -1022,194 +1062,6 @@ document.addEventListener('click', function(e){
     });
     </script>
     {% block scripts %}{% endblock %}
- <!-- Cordova Cookie Persistence with Debug Logging -->
-    <script>
-        // Debug logging helper
-        function debugLog(message, data) {
-            const timestamp = new Date().toISOString();
-            const logMsg = `[${timestamp}] TOTTIME DEBUG: ${message}`;
-            console.log(logMsg, data || '');
-            
-            // Store logs in localStorage for inspection
-            try {
-                const logs = JSON.parse(localStorage.getItem('tottime_debug_logs') || '[]');
-                logs.push({timestamp, message, data});
-                // Keep only last 50 logs
-                if (logs.length > 50) logs.shift();
-                localStorage.setItem('tottime_debug_logs', JSON.stringify(logs));
-            } catch(e) {}
-        }
-        
-        // Get all cookies
-        function getAllCookies() {
-            return document.cookie.split(';').reduce((cookies, cookie) => {
-                const [name, value] = cookie.split('=').map(c => c.trim());
-                cookies[name] = value;
-                return cookies;
-            }, {});
-        }
-        
-        // Check if running in Cordova
-        const isCordova = !!window.cordova;
-        debugLog('Environment Check', {
-            isCordova: isCordova,
-            userAgent: navigator.userAgent,
-            cookieMasterAvailable: !!window.cookieMaster
-        });
-        
-        // Check cookies on page load
-        debugLog('Page Load - Cookies', getAllCookies());
-        debugLog('Page Load - LocalStorage', {
-            session_active: localStorage.getItem('tottime_session_active'),
-            last_active: localStorage.getItem('tottime_last_active')
-        });
-        
-        if (isCordova) {
-            // Cordova-specific handling
-            document.addEventListener('deviceready', function() {
-                debugLog('Device Ready Event Fired');
-                
-                if (window.cookieMaster) {
-                    debugLog('CookieMaster Plugin Available');
-                    
-                    // Check for session cookie
-                    window.cookieMaster.getCookieValue('https://tot-time.com', 'tottime_sessionid', 
-                        function(data) {
-                            debugLog('CookieMaster - Session Cookie Value', {
-                                found: !!data,
-                                value: data ? data.substring(0, 10) + '...' : null
-                            });
-                        },
-                        function(error) {
-                            debugLog('CookieMaster - Error Reading Cookie', error);
-                        }
-                    );
-                    
-                    // Check all cookies
-                    window.cookieMaster.getCookies('https://tot-time.com',
-                        function(cookies) {
-                            debugLog('CookieMaster - All Cookies', cookies);
-                        },
-                        function(error) {
-                            debugLog('CookieMaster - Error Reading All Cookies', error);
-                        }
-                    );
-                } else {
-                    debugLog('CookieMaster Plugin NOT Available - Cookies will not persist!');
-                    alert('WARNING: Cookie persistence plugin not loaded. Sessions will not persist.');
-                }
-                
-                // Track login state
-                const isLoggedIn = document.body.classList.contains('logged-in') || 
-                                  document.querySelector('[data-user-authenticated]') !== null ||
-                                  document.querySelector('.user-profile') !== null ||
-                                  !!document.cookie.match(/tottime_sessionid/);
-                
-                debugLog('Login State Detection', {
-                    isLoggedIn: isLoggedIn,
-                    hasCookieInDocument: !!document.cookie.match(/tottime_sessionid/),
-                    documentCookies: document.cookie
-                });
-                
-                if (isLoggedIn) {
-                    localStorage.setItem('tottime_session_active', 'true');
-                    localStorage.setItem('tottime_last_active', new Date().toISOString());
-                    debugLog('Session State Saved to LocalStorage');
-                }
-            }, false);
-            
-            // Save cookies when app goes to background
-            document.addEventListener('pause', function() {
-                debugLog('App PAUSE Event');
-                debugLog('Cookies at Pause', getAllCookies());
-                
-                if (window.cookieMaster) {
-                    window.cookieMaster.flush(
-                        function() {
-                            debugLog('CookieMaster - Flush SUCCESS');
-                        },
-                        function(error) {
-                            debugLog('CookieMaster - Flush ERROR', error);
-                        }
-                    );
-                }
-            }, false);
-            
-            // Check session when app resumes
-            document.addEventListener('resume', function() {
-                debugLog('App RESUME Event');
-                
-                setTimeout(function() {
-                    debugLog('Cookies After Resume', getAllCookies());
-                    
-                    const sessionActive = localStorage.getItem('tottime_session_active');
-                    const lastActive = localStorage.getItem('tottime_last_active');
-                    
-                    debugLog('Session Check After Resume', {
-                        shouldBeActive: sessionActive === 'true',
-                        lastActive: lastActive,
-                        currentCookies: document.cookie
-                    });
-                    
-                    if (window.cookieMaster) {
-                        window.cookieMaster.getCookieValue('https://tot-time.com', 'tottime_sessionid',
-                            function(data) {
-                                debugLog('CookieMaster After Resume - Session Cookie', {
-                                    found: !!data,
-                                    value: data ? data.substring(0, 10) + '...' : null
-                                });
-                                
-                                if (!data && sessionActive === 'true') {
-                                    debugLog('ERROR: Session cookie lost after resume!');
-                                    alert('DEBUG: Session cookie was lost. Check console logs.');
-                                }
-                            },
-                            function(error) {
-                                debugLog('CookieMaster After Resume - Error', error);
-                            }
-                        );
-                    }
-                }, 100);
-            }, false);
-            
-            // Log when page is about to unload
-            window.addEventListener('beforeunload', function() {
-                debugLog('Before Unload Event');
-                if (window.cookieMaster) {
-                    window.cookieMaster.flush();
-                }
-            });
-        }
-        
-        // Log successful login
-        window.addEventListener('load', function() {
-            if (window.location.pathname === '/' || window.location.pathname.includes('index')) {
-                const hasCookie = !!document.cookie.match(/tottime_sessionid/);
-                if (hasCookie) {
-                    debugLog('User appears to be logged in', {
-                        path: window.location.pathname,
-                        cookies: getAllCookies()
-                    });
-                }
-            }
-        });
-    </script>
-    
-    <!-- Debug Console Display (visible in app) -->
-    <div id="debug-console" style="display:none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.9); color: #0f0; padding: 10px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 10px; z-index: 99999;"></div>
-    <button onclick="
-        const debugDiv = document.getElementById('debug-console');
-        const isVisible = debugDiv.style.display !== 'none';
-        if (isVisible) {
-            debugDiv.style.display = 'none';
-        } else {
-            debugDiv.style.display = 'block';
-            const logs = JSON.parse(localStorage.getItem('tottime_debug_logs') || '[]');
-            debugDiv.innerHTML = '<h4>Debug Logs (Tap to hide)</h4>' + logs.map(l => 
-                `<div><strong>${l.timestamp}</strong>: ${l.message} ${JSON.stringify(l.data || '')}</div>`
-            ).join('');
-        }
-    " style="position: fixed; bottom: 10px; right: 10px; z-index: 99998; background: #f00; color: #fff; border: none; padding: 10px; border-radius: 50%; width: 50px; height: 50px; font-size: 12px;">🐛</button>
-
+ 
 </body>
 </html>

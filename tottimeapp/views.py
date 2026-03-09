@@ -1881,10 +1881,34 @@ def forgot_username(request):
     return render(request, 'tottimeapp/forgot_username.html', {'form': form})
 
 def logout_view(request):
+    if request.user.is_authenticated:
+        user = request.user
+        user.session_token = uuid.uuid4()
+        user.save(update_fields=['session_token'])
     logout(request)
-    # Redirect to the homepage or any other desired page
     return redirect('index')
 
+def auto_login_view(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False}, status=405)
+    try:
+        data = json.loads(request.body)
+        token = str(data.get('token', '')).strip()
+    except (ValueError, KeyError):
+        return JsonResponse({'success': False}, status=400)
+
+    if not token:
+        return JsonResponse({'success': False}, status=400)
+
+    User = get_user_model()
+    try:
+        user = User.objects.get(session_token=token)
+    except (User.DoesNotExist, ValueError):
+        return JsonResponse({'success': False})
+
+    login(request, user)
+    return JsonResponse({'success': True})
+    
 @login_required
 def inventory_list(request):
     # Check permissions for the specific page
