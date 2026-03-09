@@ -1906,9 +1906,9 @@ def auto_login_view(request):
     except (User.DoesNotExist, ValueError):
         return JsonResponse({'success': False})
 
-    login(request, user)
+    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
     return JsonResponse({'success': True})
-    
+
 @login_required
 def inventory_list(request):
     # Check permissions for the specific page
