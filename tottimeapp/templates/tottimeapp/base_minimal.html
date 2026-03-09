@@ -677,9 +677,11 @@ th {
     var IS_AUTH = {% if user.is_authenticated %}true{% else %}false{% endif %};
     var REMEMBER_TOKEN = {% if user.is_authenticated %}'{{ user.session_token }}'{% else %}null{% endif %};
 
-    // On any authenticated page: keep localStorage in sync with the current token
+    // On any authenticated page: keep localStorage and cookie in sync with the current token
     if (IS_AUTH && REMEMBER_TOKEN) {
         try { localStorage.setItem('tt_remember_token', REMEMBER_TOKEN); } catch (e) {}
+        // Persist as a cookie so the server can redirect without any HTML flash
+        document.cookie = 'tt_remember_token=' + REMEMBER_TOKEN + '; max-age=31536000; path=/; SameSite=Lax';
     }
 
     // On any unauthenticated page: try to auto-login using the stored token

@@ -80,6 +80,21 @@ def public_or_login_required(view_func):
 
 def homepage(request):
     """Public homepage view for anonymous visitors."""
+    if request.user.is_authenticated:
+        return redirect('index')
+    # Server-side remember-me: if a valid token cookie exists, log in and redirect immediately
+    # so the homepage never renders for returning app users (eliminates the flash).
+    token = request.COOKIES.get('tt_remember_token', '').strip()
+    if token:
+        User = get_user_model()
+        try:
+            user = User.objects.get(session_token=token)
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            return redirect('index')
+        except (User.DoesNotExist, ValueError):
+            response = render(request, 'tottimeapp/homepage.html', {})
+            response.delete_cookie('tt_remember_token')
+            return response
     return render(request, 'tottimeapp/homepage.html', {})
 
 def get_user_for_view(request):
