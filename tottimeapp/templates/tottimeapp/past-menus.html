@@ -1833,17 +1833,11 @@ document.addEventListener('DOMContentLoaded', function () {
             parentTd.style.color = rule.text_color || WG_DEFAULT_STYLE.text_color;
             textarea.style.color = rule.text_color || WG_DEFAULT_STYLE.text_color;
           }
-        } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i.test(text)) {
-          const s = WG_DEFAULT_STYLE;
-          if (!existingColor) {
-            parentTd.style.color = s.text_color;
-            textarea.style.color = s.text_color;
-          }
         }
         return; // preserve manual background
       }
 
-      // No manual background — apply rule or WG default as before
+      // No manual background — apply rule from server assignment or text match
       if (assignedRule) {
         // Apply server-assigned rule regardless of text matching
         parentTd.style.background = `linear-gradient(135deg, ${assignedRule.gradient_start}, ${assignedRule.gradient_end})`;
@@ -1857,12 +1851,6 @@ document.addEventListener('DOMContentLoaded', function () {
         textarea.style.background = 'transparent';
         textarea.style.color = rule.text_color;
         parentTd.dataset.ruleId = rule.id || '';
-      } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i.test(text)) {
-        const s = WG_DEFAULT_STYLE;
-        parentTd.style.background = `linear-gradient(135deg, ${s.gradient_start}, ${s.gradient_end})`;
-        parentTd.style.color = s.text_color;
-        textarea.style.background = 'transparent';
-        textarea.style.color = s.text_color;
       }
     });
   }

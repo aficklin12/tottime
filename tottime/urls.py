@@ -242,6 +242,8 @@ urlpatterns = [
     path('curriculum/theme/<int:theme_id>/', login_required(views.theme_activities), name='theme_activities_default'),
 
     path('meal_calculator/', login_required(views.meal_calculator), name='meal_calculator'),
+    path('todays-menu/', login_required(views.todays_menu), name='todays_menu'),
+    path('api/shopping_list/', login_required(views.shopping_list), name='shopping_list'),
 
     path('recipe/breakfast/<int:recipe_id>/', login_required(views.breakfast_recipe_detail), name='breakfast_recipe_detail'),
     path('update-breakfast-recipe/<int:recipe_id>/', login_required(views.update_breakfast_recipe), name='update_breakfast_recipe'),

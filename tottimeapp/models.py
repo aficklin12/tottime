@@ -68,7 +68,15 @@ class Inventory(models.Model):
         default='all',
         help_text='Specify when this item can be used in the menu'
     )
-
+    is_side_dish = models.BooleanField(
+        default=False,
+        help_text='Indicates if this item is a side dish'
+    )
+    populate_breakfast = models.BooleanField(default=False, help_text='Can be used in breakfast menu')
+    populate_am_snack = models.BooleanField(default=False, help_text='Can be used in AM snack menu')
+    populate_lunch = models.BooleanField(default=False, help_text='Can be used in lunch menu')
+    populate_pm_snack = models.BooleanField(default=False, help_text='Can be used in PM snack menu')
+    
     def __str__(self):
         return self.item
 
@@ -179,6 +187,7 @@ class Recipe(models.Model):
         ('am_snack', 'AM Snack Recipe'),
         ('pm_snack', 'PM Snack Recipe'),
         ('am_pm_snack', 'AM and PM Snack Recipe'),
+        ('fluid', 'Fluid Recipe'),
     ]
     
     YES_NO_CHOICES = [(True, 'Yes'), (False, 'No')]
@@ -197,6 +206,7 @@ class Recipe(models.Model):
     populate_lunch = models.BooleanField(default=False, help_text='Can be used in lunch menu')
     populate_pm_snack = models.BooleanField(default=False, help_text='Can be used in PM snack menu')
     standalone = models.BooleanField(default=False, help_text='Standalone ingredient rather than a full recipe')
+    ignore_inventory = models.BooleanField(default=False, help_text='Ignore inventory tracking for this recipe')
     # Lunch recipe fields
     grain = models.CharField(max_length=100, blank=True, null=True)
     grain_rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True, related_name='grain_recipes')

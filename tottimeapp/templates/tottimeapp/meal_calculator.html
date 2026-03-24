@@ -11,6 +11,91 @@
         padding: 20px;
     }
     
+    .date-shopping-section {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .date-selector {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .date-selector label {
+        font-weight: 600;
+        font-size: 16px;
+        color: #272630;
+    }
+    
+    .date-selector input[type="date"] {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+        min-width: 200px;
+    }
+    
+    .shopping-list {
+        margin-top: 15px;
+    }
+    
+    .shopping-list h3 {
+        font-size: 18px;
+        color: #272630;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .shopping-list-content {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        min-height: 100px;
+    }
+    
+    .shopping-list-empty {
+        color: #6c757d;
+        font-style: italic;
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .shopping-list-cell {
+        background: #f8f9fa;
+        padding: 15px;
+        vertical-align: top;
+        min-width: 250px;
+    }
+    
+    .shopping-item {
+        padding: 8px 12px;
+        background: white;
+        border-left: 4px solid #ff5722;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .shopping-item-name {
+        font-weight: 500;
+        color: #272630;
+    }
+    
+    .shopping-item-needed {
+        color: #d84315;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
     .age-group-inputs {
         background: #f8f9fa;
         padding: 20px;
@@ -315,10 +400,13 @@
 
 <div class="meal-calculator">
     
-    
     <div class="age-group-inputs">
         <h3>Number of Children by Age Group</h3>
         <div class="input-row">
+            <div class="input-group">
+                <label for="menu-date">Menu Date:</label>
+                <input type="date" id="menu-date" name="menu-date">
+            </div>
             <div class="input-group">
                 <label for="ages-1-2">Ages 1-2</label>
                 <input type="number" id="ages-1-2" min="0" value="0">
@@ -336,7 +424,6 @@
                 <input type="number" id="ages-13-18" min="0" value="0">
             </div>
         </div>
-        <button class="calculate-btn desktop-only" onclick="calculateMeals()">Calculate Meal Requirements</button>
     </div>
     
     <div class="meal-type-tabs">
@@ -352,11 +439,12 @@
                 <tr>
                     <th>Food Component & Food Items</th>
                     <th>Total Amount Needed</th>
+                    <th>Shopping List (Missing Ingredients)</th>
                 </tr>
             </thead>
             <tbody id="breakfast-tbody">
                 <tr>
-                    <td colspan="2" class="no-results">Enter number of children and click Calculate</td>
+                    <td colspan="3" class="no-results">Enter number of children to see calculations</td>
                 </tr>
             </tbody>
         </table>
@@ -368,11 +456,12 @@
                 <tr>
                     <th>Food Component & Food Items</th>
                     <th>Total Amount Needed</th>
+                    <th>Shopping List (Missing Ingredients)</th>
                 </tr>
             </thead>
             <tbody id="lunch-tbody">
                 <tr>
-                    <td colspan="2" class="no-results">Enter number of children and click Calculate</td>
+                    <td colspan="3" class="no-results">Enter number of children to see calculations</td>
                 </tr>
             </tbody>
         </table>
@@ -384,19 +473,20 @@
                 <tr>
                     <th>Food Component & Food Items</th>
                     <th>Total Amount Needed</th>
+                    <th>Shopping List (Missing Ingredients)</th>
                 </tr>
             </thead>
             <tbody id="snack-tbody">
                 <tr>
-                    <td colspan="2" class="no-results">Enter number of children and click Calculate</td>
+                    <td colspan="3" class="no-results">Enter number of children to see calculations</td>
                 </tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- Mobile bottom nav: center button runs calculateMeals() -->
-<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Meal calculator actions">
+<!-- Mobile bottom nav: optional manual recalculate if needed -->
+<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Meal calculator actions" style="display: none;">
     <button id="mobileCalculateBtn" class="btn update-btn" type="button" title="Calculate">
         <i class="fas fa-calculator" aria-hidden="true"></i>
     </button>
@@ -788,7 +878,11 @@ function calculateMeals() {
     const totalChildren = Object.values(counts).reduce((a, b) => a + b, 0);
     
     if (totalChildren === 0) {
-        alert('Please enter at least one child in any age group');
+        // Reset tables to empty state
+        ['breakfast', 'lunch', 'snack'].forEach(mealType => {
+            const tbody = document.getElementById(mealType + '-tbody');
+            tbody.innerHTML = '<tr><td colspan="3" class="no-results">Enter number of children to see calculations</td></tr>';
+        });
         return;
     }
     
@@ -798,47 +892,62 @@ function calculateMeals() {
         tbody.innerHTML = '';
         
         const pattern = mealPatterns[mealType];
+        const allRows = [];
         
         for (let [component, data] of Object.entries(pattern)) {
             if (data.subItems) {
                 // Component with sub-items
-                const componentRow = document.createElement('tr');
-                componentRow.innerHTML = `<td class="food-component" colspan="2">${component}</td>`;
-                tbody.appendChild(componentRow);
+                allRows.push({
+                    type: 'component',
+                    html: `<td class="food-component" colspan="2">${component}</td>`
+                });
                 
-                processSubItems(data.subItems, counts, tbody, 1);
+                collectSubItems(data.subItems, counts, allRows, 1);
             } else {
                 // Simple component
                 const total = calculateTotal(data, counts);
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="food-component">${component}</td>
-                    <td class="total-amount">${formatAmount(total, data.unit)}</td>
-                `;
-                tbody.appendChild(row);
+                allRows.push({
+                    type: 'simple',
+                    html: `<td class="food-component">${component}</td><td class="total-amount">${formatAmount(total, data.unit)}</td>`
+                });
             }
         }
+        
+        // Create all rows
+        allRows.forEach((rowData, index) => {
+            const row = document.createElement('tr');
+            if (index === 0) {
+                // First row gets shopping list cell with rowspan for all rows
+                row.innerHTML = rowData.html + `<td class="shopping-list-cell" id="${mealType}-shopping-cell" rowspan="${allRows.length}"></td>`;
+            } else {
+                // Other rows just get their content
+                row.innerHTML = rowData.html;
+            }
+            tbody.appendChild(row);
+        });
+        
+        // Load shopping list after table is populated
+        loadShoppingList(mealType);
     });
 }
 
-function processSubItems(subItems, counts, tbody, level) {
+function collectSubItems(subItems, counts, allRows, level) {
     for (let [itemName, itemData] of Object.entries(subItems)) {
         if (itemData.subItems) {
             // Nested sub-item
-            const row = document.createElement('tr');
-            row.innerHTML = `<td class="sub-item" style="padding-left: ${level * 20}px" colspan="2">${itemName}</td>`;
-            tbody.appendChild(row);
+            allRows.push({
+                type: 'subheader',
+                html: `<td class="sub-item" style="padding-left: ${level * 20}px" colspan="2">${itemName}</td>`
+            });
             
-            processSubItems(itemData.subItems, counts, tbody, level + 1);
+            collectSubItems(itemData.subItems, counts, allRows, level + 1);
         } else {
             // Regular sub-item
             const total = calculateTotal(itemData, counts);
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="sub-item" style="padding-left: ${level * 20}px">${itemName}</td>
-                <td class="total-amount">${formatAmount(total, itemData.unit)}</td>
-            `;
-            tbody.appendChild(row);
+            allRows.push({
+                type: 'subitem',
+                html: `<td class="sub-item" style="padding-left: ${level * 20}px">${itemName}</td><td class="total-amount">${formatAmount(total, itemData.unit)}</td>`
+            });
         }
     }
 }
@@ -875,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Wire mobile bottom-bar calculate button
+// Wire mobile bottom-bar calculate button (hidden by default, kept for potential manual recalc)
 document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('mobileCalculateBtn')?.addEventListener('click', function () {
         calculateMeals();
@@ -903,5 +1012,121 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', () => { dd.value = btn.dataset.meal; });
     });
 });
+
+/* Date Selector and Shopping List Functionality */
+document.addEventListener('DOMContentLoaded', function () {
+    const dateInput = document.getElementById('menu-date');
+    const ageInputs = document.querySelectorAll('#ages-1-2, #ages-3-5, #ages-6-12, #ages-13-18');
+    
+    // Set today's date as default
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    
+    dateInput.value = todayStr;
+    
+    // Auto-calculate when date changes
+    dateInput.addEventListener('change', function() {
+        calculateMeals();
+    });
+    
+    // Auto-calculate when age inputs change (with slight debounce)
+    let debounceTimer;
+    ageInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const totalChildren = Array.from(ageInputs).reduce((sum, inp) => sum + (parseInt(inp.value) || 0), 0);
+                if (totalChildren > 0) {
+                    calculateMeals();
+                }
+            }, 300); // Wait 300ms after user stops typing
+        });
+    });
+});
+
+async function loadShoppingList(mealType) {
+    const cell = document.getElementById(`${mealType}-shopping-cell`);
+    if (!cell) return;
+    
+    // Get age group counts
+    const counts = {
+        '1-2': parseInt(document.getElementById('ages-1-2').value) || 0,
+        '3-5': parseInt(document.getElementById('ages-3-5').value) || 0,
+        '6-12': parseInt(document.getElementById('ages-6-12').value) || 0,
+        '13-18': parseInt(document.getElementById('ages-13-18').value) || 0
+    };
+    
+    const totalChildren = Object.values(counts).reduce((a, b) => a + b, 0);
+    
+    if (totalChildren === 0) {
+        cell.innerHTML = `<div class="shopping-list-empty">Enter children count</div>`;
+        return;
+    }
+    
+    // Get selected date from the single date input
+    const dateInput = document.getElementById('menu-date');
+    const date = dateInput ? dateInput.value : '';
+    
+    if (!date) {
+        cell.innerHTML = `<div class="shopping-list-empty">Select date</div>`;
+        return;
+    }
+    
+    // Show loading state
+    cell.innerHTML = `<div class="shopping-list-empty"><i class="fas fa-spinner fa-spin"></i> Loading...</div>`;
+    
+    try {
+        // Build query parameters with age counts
+        const params = new URLSearchParams({
+            date: date,
+            meal_type: mealType,
+            ages_1_2: counts['1-2'],
+            ages_3_5: counts['3-5'],
+            ages_6_12: counts['6-12'],
+            ages_13_18: counts['13-18']
+        });
+        
+        const response = await fetch(`/api/shopping_list/?${params}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load shopping list');
+        }
+        
+        const data = await response.json();
+        
+        if (data.missing_ingredients && data.missing_ingredients.length > 0) {
+            let html = '';
+            data.missing_ingredients.forEach(item => {
+                html += `
+                    <div class="shopping-item">
+                        <span class="shopping-item-name">${item.name}</span>
+                        <span class="shopping-item-needed">Need: ${item.needed} ${item.unit}</span>
+                    </div>
+                `;
+            });
+            cell.innerHTML = html;
+        } else if (data.message) {
+            cell.innerHTML = `<div class="shopping-list-empty">${data.message}</div>`;
+        } else {
+            cell.innerHTML = `<div class="shopping-list-empty">All ingredients in stock!</div>`;
+        }
+    } catch (error) {
+        console.error('Error loading shopping list:', error);
+        cell.innerHTML = `
+            <div class="shopping-list-empty" style="color: #d84315;">
+                <i class="fas fa-exclamation-triangle" aria-hidden="true"></i> 
+                Error loading shopping list
+            </div>
+        `;
+    }
+}
 </script>
 {% endblock %}

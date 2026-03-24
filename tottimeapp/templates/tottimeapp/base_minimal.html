@@ -672,48 +672,6 @@ th {
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.6/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script>
-(function () {
-    var IS_AUTH = {% if user.is_authenticated %}true{% else %}false{% endif %};
-    var REMEMBER_TOKEN = {% if user.is_authenticated %}'{{ user.session_token }}'{% else %}null{% endif %};
-
-    // On any authenticated page: keep localStorage and cookie in sync with the current token
-    if (IS_AUTH && REMEMBER_TOKEN) {
-        try { localStorage.setItem('tt_remember_token', REMEMBER_TOKEN); } catch (e) {}
-        // Persist as a cookie so the server can redirect without any HTML flash
-        document.cookie = 'tt_remember_token=' + REMEMBER_TOKEN + '; max-age=31536000; path=/; SameSite=Lax';
-    }
-
-    // On any unauthenticated page: try to auto-login using the stored token
-    if (!IS_AUTH) {
-        var token = null;
-        try { token = localStorage.getItem('tt_remember_token'); } catch (e) {}
-        if (token) {
-            var csrf = null;
-            if (document.cookie) {
-                document.cookie.split(';').forEach(function (c) {
-                    c = c.trim();
-                    if (c.startsWith('csrftoken=')) csrf = decodeURIComponent(c.substring(10));
-                });
-            }
-            fetch('/api/auto-login/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
-                body: JSON.stringify({ token: token })
-            })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    try { localStorage.removeItem('tt_remember_token'); } catch (e) {}
-                }
-            })
-            .catch(function () {});
-        }
-    }
-})();
-</script>
   <script>
 (function(){
     function applyToastrPosition(){

@@ -55,13 +55,13 @@
     }
 
     .clickable-name {
-        cursor: pointer; /* Change cursor to indicate clickability */
-        text-decoration: none; /* Remove underline */
+        cursor: pointer;
+        text-decoration: none;
     }
 
     .clickable-name:hover {
         color: rgb(57, 189, 180);
-        text-decoration: underline; /* Add underline on hover */
+        text-decoration: underline;
     }
 
     table {
@@ -71,7 +71,6 @@
         max-width: 1400px;
     }
 
-    /* Table header actions (plus icons) */
     .table-header { display: flex; justify-content: space-between; align-items: center; }
     .table-header-actions { display: inline-flex; align-items: center; gap: 6px; }
     .table-header-actions .create-icon {
@@ -80,259 +79,165 @@
     }
     .table-header-actions .create-icon:hover { background: rgba(255,255,255,0.06); }
 
-    /* show only the active tab's create icon on wide screens */
     @media (min-width: 1000px) {
         .table-header-actions .create-icon.active { display: inline-block !important; }
     }
-    /* header trash button (white) */
+    
     .table-header-actions .header-trash {
         background: transparent; border: none; color: #ffffff; cursor: pointer;
         padding: 6px; font-size: 1rem; border-radius: 6px; display: none;
     }
     .table-header-actions .header-trash:hover { background: rgba(255,255,255,0.06); }
     @media (min-width: 1000px) {
-        .table-header-actions .header-trash.active { display: inline-block !important; }
+        .table-header-actions .header-trash.active { display: inline-block !important;}
     }
 
     .delete-column {
-        display: none; /* Hide delete column by default */
-        width: 50px; /* Set a smaller width for the delete column */
-        text-align: center; /* Center-align the content */
-    }
-     /* Hide additional ingredient containers by default */
-    #mainIngredient2Container,
-    #mainIngredient3Container,
-    #mainIngredient4Container,
-    #mainIngredient5Container,
-    #breakfastMainIngredient2Container,
-    #breakfastMainIngredient3Container,
-    #breakfastMainIngredient4Container,
-    #breakfastMainIngredient5Container,
-    #amIngredient2Container,
-    #amIngredient3Container,
-    #amIngredient4Container,
-    #amIngredient5Container,
-    #pmIngredient2Container,
-    #pmIngredient3Container,
-    #pmIngredient4Container,
-    #pmIngredient5Container {
         display: none;
-    }
-    @media (max-width: 999px) {
-    .tabs { display: none !important; }
-
-    /* flush container so dropdown/header can be full-bleed */
-    .container.mt-4 {
-        margin-top: 0 !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
+        width: 50px;
+        text-align: center;
     }
 
-    /* Mobile dropdown bar */
-    #recipeDropdownContainer {
-        display: block !important;
-        position: sticky;
-        top: 56px; /* match navbar height */
-        z-index: 1090;
-        padding: 6px 12px;
-        background-color: rgba(34, 37, 41, 1);
-        border-bottom: 1px solid #1f2125;
-        box-shadow: 0 1px 6px rgba(0,0,0,0.12);
-        width: 100vw;
-        margin-left: calc(50% - 50vw) !important;
-        margin-right: calc(50% - 50vw) !important;
-    }
-
-    #recipeDropdownContainer .mobile-select-wrap { display: inline-flex; align-items: center; gap: 6px; }
-
-    #recipeDropdownContainer .form-select,
-    #recipeDropdownContainer .form-select option,
-    #recipeDropdownContainer .form-select optgroup {
-        display: inline-block;
-        width: auto;
-        padding: 6px 10px;
-        margin: 0;
-        height: auto;
-        line-height: 1.1 !important;
-        font-size: 1rem;
-        border: none !important;
+    .field-group { display: none; }
+    .field-group.active { display: block; }
+    
+    .ingredient-field-group {
+        padding: 12px;
+        border: 1px solid #dee2e6;
         border-radius: 6px;
-        background-color: rgba(34, 37, 41, 0.95) !important;
-        color: #ffffff !important;
-        box-shadow: none !important;
-        -webkit-appearance: none; -moz-appearance: none; appearance: none;
+        background-color: #f8f9fa;
     }
 
-    #recipeDropdownContainer .form-select:focus,
-    #recipeDropdownContainer .form-select:hover,
-    #recipeDropdownContainer .form-select:active {
-        outline: none !important; box-shadow: none !important; background: transparent !important; border: none !important;
-    }
-
-    #recipeDropdownContainer .mobile-dropdown-indicator {
-        display: inline-block; width: 0; height: 0;
-        border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid #ffffff;
-        pointer-events: none; margin-left: -12px;
-    }
-
-    .desktop-only { display: none !important; }
-
-    /* CONTENT: make the list full-bleed and remove table header */
-    .tab-content {
-        width: 100%;
-        padding: 0 !important;
-        margin: 6px 0 0 0 !important; /* small gap under dropdown */
-    }
-    .tab-content table {
-        width: 100% !important;
-        border: none !important;
-        border-radius: 0 !important;
-        margin: 0 !important;
-        table-layout: fixed;
-        background: transparent;
-    }
-    .tab-content table thead { display: none !important; } /* hide header on mobile */
-
-    /* Keep only horizontal row dividers like inventory */
-    .tab-content table th,
-    .tab-content table td {
-        border-left: none !important;
-        border-right: none !important;
-        border-top: none !important;
-        border-bottom: 1px solid #dee2e6 !important;
-        background-clip: padding-box;
-    }
-
-    /* Name column uses most width; delete column stays compact when shown */
-    .tab-content table td:first-child { width: auto; }
-    .tab-content table td.delete-column { width: 48px; text-align: center; }
-
-    /* Optional: subtle background similar to inventory */
-    .tab-content table tbody { background-color: #e8e8e8bd !important; }
-    .tab-content table tbody tr td { background-color: transparent !important; }
-
-    /* Bottom nav spacer */
-    .mobile-nav-spacer { height: 72px; }
-}
-@media (min-width: 1000px) {
-        #recipeDropdownContainer {
-                display: none !important;
+    @media (max-width: 999px) {
+        .tabs { display: none !important; }
+        .container.mt-4 {
+            margin-top: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
         }
-    #recipeTabs.tabs {
-        width: 95% !important;
-        margin: 0 auto !important;
-        padding-left: 8px !important;
-        padding-right: 8px !important;
-        overflow-x: auto;              /* keep horizontal scroll within clipped width */
-        flex-wrap: nowrap;             /* prevent wrapping so scroll appears */
-        scrollbar-width: thin;
-        gap: 6px;
+
+        #recipeDropdownContainer {
+            display: block !important;
+            position: sticky;
+            top: 56px;
+            z-index: 1090;
+            padding: 6px 12px;
+            background-color: rgba(34, 37, 41, 1);
+            border-bottom: 1px solid #1f2125;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+            width: 100vw;
+            margin-left: calc(50% - 50vw) !important;
+            margin-right: calc(50% - 50vw) !important;
+        }
+
+        #recipeDropdownContainer .mobile-select-wrap { display: inline-flex; align-items: center; gap: 6px; }
+
+        #recipeDropdownContainer .form-select {
+            display: inline-block;
+            width: auto;
+            padding: 6px 10px;
+            font-size: 1rem;
+            border: none !important;
+            border-radius: 6px;
+            background-color: rgba(34, 37, 41, 0.95) !important;
+            color: #ffffff !important;
+        }
+
+        #recipeDropdownContainer .mobile-dropdown-indicator {
+            display: inline-block; width: 0; height: 0;
+            border-left: 6px solid transparent; border-right: 6px solid transparent;
+            border-top: 6px solid #ffffff;
+            pointer-events: none; margin-left: -12px;
+        }
+
+        .desktop-only { display: none !important; }
+
+        .tab-content {
+            width: 100%;
+            padding: 0 !important;
+            margin: 6px 0 0 0 !important;
+        }
+        .tab-content table {
+            width: 100% !important;
+            border: none !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            table-layout: fixed;
+            background: transparent;
+        }
+        .tab-content table thead { display: none !important; }
+        .tab-content table th,
+        .tab-content table td {
+            border-left: none !important;
+            border-right: none !important;
+            border-top: none !important;
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+        .tab-content table td:first-child { width: auto; }
+        .tab-content table td.delete-column { width: 48px; text-align: center; }
+        .tab-content table tbody { background-color: #e8e8e8bd !important; }
+        .mobile-nav-spacer { height: 72px; }
+        
+        .modal { 
+            padding-top: 56px !important; 
+            z-index: 3000 !important; 
+        }
+        .modal-backdrop { z-index: 2999 !important; }
+        .modal-dialog {
+            margin: 12px auto !important;
+            width: auto !important;
+            max-width: min(640px, 95vw) !important;
+        }
+        .modal-content {
+            max-height: calc(100vh - 56px - 64px - 24px) !important;
+            overflow-y: auto !important;
+        }
+        .modal-header { padding: 0.5rem 0.9rem !important; }
+        .modal-body   { padding: 0.6rem 0.9rem !important; }
+        .modal-footer { padding: 0.5rem 0.9rem !important; }
     }
-    #recipeTabs .tab { flex-shrink: 0; padding: 6px 10px; font-size: 0.95rem; } /* keep tab size consistent while scrolling */
-    /* reduce left margin for tabs on large screens so they align with table */
-    .tabs { margin-left: 0 !important; margin-bottom: 0 !important; margin-top: 6px !important; }
-    /* remove extra gap between the tabs and the table (override Bootstrap mt- classes) */
-    .tab-content { margin-top: 0 !important; padding-top: 0 !important; }
-    /* make the main container slightly tighter on wide screens */
-    .container.mt-4 { max-width: 1300px; padding-left: 8px; padding-right: 8px; }
-    /* hide the large desktop create buttons (we'll use icons in the table header) */
-    .desktop-only .btn-recipe { display: none !important; }
-    /* ensure table also expands to match tabs width */
-    .tab-content table { width: 95% !important; margin-left: auto !important; margin-right: auto !important; }
-}
 
-/* Mobile modal sizing: fit between navbars */
-@media (max-width: 999px) {
-  /* adjust these if your navbar/bottom bar heights differ */
-  :root {
-    --top-nav-h: 56px;
-    --bottom-nav-h: 64px;
-    --modal-margin: 12px;
-  }
+    @media (min-width: 1000px) {
+        #recipeDropdownContainer { display: none !important; }
+        #recipeTabs.tabs {
+            width: 95% !important;
+            margin: 0 auto !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            scrollbar-width: thin;
+            gap: 6px;
+        }
+        #recipeTabs .tab { flex-shrink: 0; padding: 6px 10px; font-size: 0.95rem; }
+        .tabs { margin-left: 0 !important; margin-bottom: 0 !important; margin-top: 6px !important; }
+        .tab-content { margin-top: 0 !important; padding-top: 0 !important; }
+        .container.mt-4 { max-width: 1300px; padding-left: 8px; padding-right: 8px; }
+        .desktop-only .btn-recipe { display: none !important; }
+        .tab-content table { width: 95% !important; margin-left: auto !important; margin-right: auto !important; }
+    }
 
-  .modal { 
-    padding-top: var(--top-nav-h) !important; 
-    z-index: 3000 !important; 
-  }
-  .modal-backdrop { z-index: 2999 !important; }
-
-  .modal-dialog,
-  .modal-dialog.modal-dialog-centered {
-    /* keep dialog inside viewport */
-    margin: var(--modal-margin) auto !important;
-    width: auto !important;
-    max-width: min(640px, 95vw) !important;
-    align-items: flex-start !important; /* avoid vertical centering overflow */
-  }
-
-  .modal-content {
-    box-sizing: border-box;
-    /* viewport minus top navbar, bottom nav, and a small margin */
-    max-height: calc(100vh - var(--top-nav-h) - var(--bottom-nav-h) - (2 * var(--modal-margin))) !important;
-    overflow-y: auto !important;
-  }
-
-  /* slightly tighter paddings inside the modal for small screens */
-  .modal-header { padding: 0.5rem 0.9rem !important; }
-  .modal-body   { padding: 0.6rem 0.9rem !important; }
-  .modal-footer { padding: 0.5rem 0.9rem !important; }
-}
-
-/* Ensure modals sit below a fixed navbar and above it in stacking context */
-.modal {
-    padding-top: 64px;        /* push modal below navbar height */
-    z-index: 1060;            /* above typical navbar z-index */
-}
-.modal-backdrop {
-    z-index: 1050;
-}
-
-/* Optional: if your navbar has an unusually high z-index, lower it here */
-/* .navbar.fixed-top { z-index: 1030; } */
-
-/* Spacer so content isn’t hidden behind the bottom nav on mobile */
-@media (max-width: 999px) {
-    .mobile-nav-spacer { height: 72px; }
-    .desktop-only { display: none !important; }
-}
+    .modal {
+        padding-top: 64px;
+        z-index: 1060;
+    }
+    .modal-backdrop {
+        z-index: 1050;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1 class="desktop-only">Recipe Lists</h1>
 <div class="container mt-4">
-    <!-- Buttons for creating recipes -->
     <div class="mt-3 d-flex align-items-center desktop-only">
-        <!-- Recipe Buttons -->
         <div>
-            <button type="button" class="btn btn-recipe" id="createBreakfastButton" data-bs-toggle="modal" data-bs-target="#createBreakfastRecipeModal" style="display: block;">
-                Create Breakfast Recipe
-            </button>
-            <button type="button" class="btn btn-recipe" id="createAMButton" data-bs-toggle="modal" data-bs-target="#createAMRecipeModal" style="display: none;">
-                Create AM Snack Recipe
-            </button>
-            <button type="button" class="btn btn-recipe" id="createLunchButton" data-bs-toggle="modal" data-bs-target="#createRecipeModal" style="display: none;">
-                Create Lunch Recipe
-            </button>
-            <button type="button" class="btn btn-recipe" id="createPMButton" data-bs-toggle="modal" data-bs-target="#createPMRecipeModal" style="display: none;">
-                Create PM Snack Recipe
-            </button>
-            <button type="button" class="btn btn-recipe" id="createFruitButton" data-bs-toggle="modal" data-bs-target="#fruitRecipeModal" style="display: none;">
-                Add Fruit to Menu Rules
-            </button>
-            <button type="button" class="btn btn-recipe" id="createVegButton" data-bs-toggle="modal" data-bs-target="#vegRecipeModal" style="display: none;">
-                Add Vegetables to Menu Rules
-            </button>
-            <button type="button" class="btn btn-recipe" id="createWGButton" data-bs-toggle="modal" data-bs-target="#wgRecipeModal" style="display: none;">
-                Add Whole Grains to Menu Rules
+            <button type="button" class="btn btn-recipe" id="createRecipeButton" data-bs-toggle="modal" data-bs-target="#unifiedRecipeModal">
+                Create Recipe
             </button>
         </div>
-
-        <!-- Trash Toggle Button -->
-        <i id="toggleDeleteColumn" class="fas fa-trash-alt" style="color: red; cursor: pointer; margin-left: 15px;" title="Toggle Delete Column"></i>
     </div>
 
-    <!-- Tabs for categories -->
     <div class="tabs" id="recipeTabs" role="tablist">
         <button class="tab active-tab" id="breakfast-tab" data-category="breakfast" role="tab">Breakfast</button>
         <button class="tab" id="am-snack-tab" data-category="am" role="tab">AM Snack</button>
@@ -343,10 +248,9 @@
         <button class="tab" id="wg-tab" data-category="wg" role="tab">Whole Grains</button>
     </div>
 
-    <!-- Mobile Dropdown for recipe categories -->
-    <div class="d-block d-md-none" id="recipeDropdownContainer" role="region" aria-label="Select recipe category">
+    <div class="d-block d-md-none" id="recipeDropdownContainer">
         <div class="mobile-select-wrap">
-            <select class="form-select form-select-sm" id="recipeCategoryDropdown" aria-label="Select recipe category">
+            <select class="form-select form-select-sm" id="recipeCategoryDropdown">
                 <option value="breakfast">Breakfast</option>
                 <option value="am">AM Snack</option>
                 <option value="lunch">Lunch</option>
@@ -355,1356 +259,779 @@
                 <option value="veg">Vegetables</option>
                 <option value="wg">Whole Grains</option>
             </select>
-            <span class="mobile-dropdown-indicator" aria-hidden="true"></span>
+            <span class="mobile-dropdown-indicator"></span>
         </div>
     </div>
 
-    <!-- Table for displaying recipes -->
     <div class="tab-content mt-3">
         <table>
-                    <thead>
-                        <tr>
-                            <th>
-                                <div class="table-header">
-                                    <div class="table-header-title">Name</div>
-                                    <div class="table-header-actions" aria-hidden="false">
-                                        <button type="button" class="create-icon" data-cat="breakfast" data-modal="#createBreakfastRecipeModal" title="Create Breakfast"><i class="fas fa-plus"></i></button>
-                                        <button type="button" class="create-icon" data-cat="am" data-modal="#createAMRecipeModal" title="Create AM Snack"><i class="fas fa-plus"></i></button>
-                                        <button type="button" class="create-icon" data-cat="lunch" data-modal="#createRecipeModal" title="Create Lunch"><i class="fas fa-plus"></i></button>
-                                        <button type="button" class="create-icon" data-cat="pm" data-modal="#createPMRecipeModal" title="Create PM Snack"><i class="fas fa-plus"></i></button>
-                                        <button type="button" class="create-icon" data-cat="fruit" data-modal="#fruitRecipeModal" title="Add Fruit"><i class="fas fa-plus"></i></button>
-                                        <button type="button" class="create-icon" data-cat="veg" data-modal="#vegRecipeModal" title="Add Vegetable"><i class="fas fa-plus"></i></button>
-                                        <button type="button" class="create-icon" data-cat="wg" data-modal="#wgRecipeModal" title="Add Whole Grain"><i class="fas fa-plus"></i></button>
-                                        <button type="button" id="headerToggleDelete" class="header-trash" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
-                                    </div>
-                                </div>
-                            </th>
-                            <th class="delete-column" id="deleteColumnHeader">
-                                <i class="fas fa-trash-alt" style="color: white;"></i>
-                            </th>
-                        </tr>
-                    </thead>
-            <tbody id="recipeTableBody">
-                <!-- Recipes will be dynamically populated here -->
-            </tbody>
+            <thead>
+                <tr>
+                    <th>
+                        <div class="table-header">
+                            <div class="table-header-title">Name</div>
+                            <div class="table-header-actions">
+                                <button type="button" class="create-icon active" id="headerCreateBtn" title="Create Recipe"><i class="fas fa-plus"></i></button>
+                                <button type="button" id="headerToggleDelete" class="header-trash active" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        </div>
+                    </th>
+                    <th class="delete-column" id="deleteColumnHeader" style="cursor: pointer;" title="Hide Delete Column">
+                        <i class="fas fa-trash-alt" style="color: white;"></i>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="recipeTableBody"></tbody>
         </table>
     </div>
 </div>
 
-<!-- Mobile bottom nav (visible <1000px) -->
-<div id="mobileBottomNav" class="d-md-none" role="navigation" aria-label="Recipe actions">
+<div id="mobileBottomNav" class="d-md-none">
     <button id="mobileToggleDeleteBtn" class="btn" type="button" title="Toggle Delete">
-        <i class="fas fa-trash-alt" aria-hidden="true"></i>
+        <i class="fas fa-trash-alt"></i>
     </button>
-    
-    <button id="mobileCreateBtn" class="btn" type="button" title="Create">
-        <i class="fas fa-plus" aria-hidden="true"></i>
+    <button id="mobileCreateBtn" class="btn" type="button" title="Create" data-bs-toggle="modal" data-bs-target="#unifiedRecipeModal">
+        <i class="fas fa-plus"></i>
     </button>
 </div>
 <div class="mobile-nav-spacer d-md-none"></div>
 
-<!-- Modals -->
-<div class="modal fade" id="fruitRecipeModal" tabindex="-1" aria-labelledby="fruitRecipeModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="fruitRecipeModalLabel">Create Fruit Recipe</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="createFruitRecipeForm" method="post" action="{% url 'create_fruit_recipe' %}" enctype="multipart/form-data">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label for="fruitName" class="form-label">Fruit Name</label>
-                                    <input type="text" class="form-control" id="fruitName" name="fruitName">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="fruitMainIngredient1" class="form-label">Main Ingredient #1</label>
-                                    <select class="form-select" id="fruitMainIngredient1" name="fruitMainIngredient1" aria-describedby="fruitIngredientsHelp1">
-                                        <!-- Ingredients will be populated dynamically here -->
-                                    </select>
-                                    <input type="number" class="form-control mt-2" id="fruitQtyMainIngredient1" name="fruitQtyMainIngredient1" min="1" placeholder="Quantity">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="fruitRule" class="form-label">Rule</label>
-                                    <select class="form-select" id="fruitRule" name="fruitRule">
-                                        <!-- Rules will be populated dynamically -->
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="fruitImage" class="form-label">Image</label>
-                                    <input type="file" class="form-control" id="fruitImage" name="image" accept="image/*">
-                                    <a id="fruitImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
-                                    <button type="button" id="fruitImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
-                                </div>
-                                <button type="submit" class="btn btn-primary" id="fruitSubmitBtn">Create Fruit Recipe</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal fade" id="vegRecipeModal" tabindex="-1" aria-labelledby="vegRecipeModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="vegRecipeModalLabel">Create Veg Recipe</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="createVegRecipeForm" method="post" action="{% url 'create_veg_recipe' %}" enctype="multipart/form-data">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label for="vegName" class="form-label">Veg Name</label>
-                                    <input type="text" class="form-control" id="vegName" name="vegName">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="vegMainIngredient1" class="form-label">Main Ingredient #1</label>
-                                    <select class="form-select" id="vegMainIngredient1" name="vegMainIngredient1" aria-describedby="vegIngredientsHelp1">
-                                        <!-- Ingredients will be populated dynamically here -->
-                                    </select>
-                                    <input type="number" class="form-control mt-2" id="vegQtyMainIngredient1" name="vegQtyMainIngredient1" min="1" placeholder="Quantity">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="vegRule" class="form-label">Rule</label>
-                                    <select class="form-select" id="vegRule" name="vegRule">
-                                        <!-- Rules will be populated dynamically -->
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="vegImage" class="form-label">Image</label>
-                                    <input type="file" class="form-control" id="vegImage" name="image" accept="image/*">
-                                    <a id="vegImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
-                                    <button type="button" id="vegImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
-                                </div>
-                                <button type="submit" class="btn btn-primary" id="vegSubmitBtn">Create Veg Recipe</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal fade" id="wgRecipeModal" tabindex="-1" aria-labelledby="wgRecipeModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="wgRecipeModalLabel">Create Wg Recipe</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="createWgRecipeForm" method="post" action="{% url 'create_wg_recipe' %}" enctype="multipart/form-data">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label for="wgName" class="form-label">Wg Name</label>
-                                    <input type="text" class="form-control" id="wgName" name="wgName">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="wgMainIngredient1" class="form-label">Main Ingredient #1</label>
-                                    <select class="form-select" id="wgMainIngredient1" name="wgMainIngredient1" aria-describedby="wgIngredientsHelp1">
-                                        <!-- Ingredients will be populated dynamically here -->
-                                    </select>
-                                    <input type="number" class="form-control mt-2" id="wgQtyMainIngredient1" name="wgQtyMainIngredient1" min="1" placeholder="Quantity">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="wgRule" class="form-label">Rule</label>
-                                    <select class="form-select" id="wgRule" name="wgRule">
-                                        <!-- Rules will be populated dynamically -->
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="wgImage" class="form-label">Image</label>
-                                    <input type="file" class="form-control" id="wgImage" name="image" accept="image/*">
-                                    <a id="wgImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
-                                    <button type="button" id="wgImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
-                                </div>
-                                <button type="submit" class="btn btn-primary" id="wgSubmitBtn">Create Wg Recipe</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-
-            <!-- Modal for creating recipe -->
-<div class="modal fade" id="createRecipeModal" tabindex="-1" aria-labelledby="createRecipeModalLabel" aria-hidden="true">
+<!-- UNIFIED RECIPE MODAL -->
+<div class="modal fade" id="unifiedRecipeModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createRecipeModalLabel">Create Recipe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="unifiedRecipeModalLabel">Create Recipe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="createRecipeForm" method="post" action="{% url 'create_recipe' %}" enctype="multipart/form-data">
+                <form id="unifiedRecipeForm" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
+                    <input type="hidden" id="recipeType" name="recipeType" value="">
+                    
                     <div class="mb-3">
-                        <label for="mealName" class="form-label">Meal Name</label>
-                        <input type="text" class="form-control" id="mealName" name="mealName">
+                        <label for="recipeName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="recipeName" name="recipeName" required>
                     </div>
 
-                    <!-- Input fields for main ingredients and their quantities -->
-                    <div class="mb-3">
-                        <label for="mainIngredient1" class="form-label">Main Ingredient #1</label>
-                        <select class="form-select" id="mainIngredient1" name="mainIngredient1" aria-describedby="ingredientsHelp1">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="qtyMainIngredient1" name="qtyMainIngredient1" min="1" placeholder="Quantity">
-                    </div>
-                    <!-- Repeat this block for mainIngredient2, mainIngredient3, mainIngredient4, and mainIngredient5 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient2">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="mainIngredient2Container">
-                        <!-- Main Ingredient #2 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for Main Ingredient #2 -->
-                        <label for="mainIngredient2" class="form-label">Main Ingredient #2</label>
-                        <select class="form-select" id="mainIngredient2" name="mainIngredient2" aria-describedby="ingredientsHelp2">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="qtyMainIngredient2" name="qtyMainIngredient2" min="1" placeholder="Quantity">
-                    </div>
-                
-                    <!-- Minimize buttons for additional main ingredients -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient3">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="mainIngredient3Container">
-                        <!-- Main Ingredient #3 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for Main Ingredient #3 -->
-                        <label for="mainIngredient3" class="form-label">Main Ingredient #3</label>
-                        <select class="form-select" id="mainIngredient3" name="mainIngredient3" aria-describedby="ingredientsHelp3">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="qtyMainIngredient3" name="qtyMainIngredient3" min="1" placeholder="Quantity">
-                    </div>
-                
-                    <!-- Minimize buttons for additional main ingredients -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient4">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="mainIngredient4Container">
-                        <!-- Main Ingredient #4 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for Main Ingredient #4 -->
-                        <label for="mainIngredient4" class="form-label">Main Ingredient #4</label>
-                        <select class="form-select" id="mainIngredient4" name="mainIngredient4" aria-describedby="ingredientsHelp4">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="qtyMainIngredient4" name="qtyMainIngredient4" min="1" placeholder="Quantity">
-                    </div>
-                
-                    <!-- Minimize buttons for additional main ingredients -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeIngredient5">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="mainIngredient5Container">
-                        <!-- Main Ingredient #5 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for Main Ingredient #5 -->
-                        <label for="mainIngredient5" class="form-label">Main Ingredient #5</label>
-                        <select class="form-select" id="mainIngredient5" name="mainIngredient5" aria-describedby="ingredientsHelp5">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="qtyMainIngredient5" name="qtyMainIngredient5" min="1" placeholder="Quantity">
+                    <!-- Ingredients (all types) -->
+                    <div id="ingredientsContainer">
+                        <!-- Dynamic ingredient fields will be added here -->
                     </div>
                     <div class="mb-3">
-                        <label for="grain" class="form-label">Grain</label>
-                        <input type="text" class="form-control" id="grain" name="grain" placeholder="Grain">
+                        <button type="button" class="btn btn-secondary btn-sm" id="addIngredientBtn">Add Ingredient</button>
                     </div>
-                    
-                    <!-- Input field for Meat/Meat Alternate -->
-                    <div class="mb-3">
-                        <label for="meatAlternate" class="form-label">Meat/Meat Alternate</label>
-                        <input type="text" class="form-control" id="meatAlternate" name="meatAlternate" placeholder="Meat/Meat Alternate">
+
+                    <!-- Lunch-specific fields -->
+                    <div class="field-group" id="lunchFields">
+                        <div class="mb-3">
+                            <label for="grain" class="form-label">Grain</label>
+                            <input type="text" class="form-control" id="grain" name="grain">
+                        </div>
+                        <div class="mb-3">
+                            <label for="meatAlternate" class="form-label">Meat/Meat Alternate</label>
+                            <input type="text" class="form-control" id="meatAlternate" name="meatAlternate">
+                        </div>
                     </div>
-                    <!-- Dropdown for Rule -->
-                    <div class="mb-3">
-                        <label for="rule" class="form-label">Rule</label>
-                        <select class="form-select" id="rule" name="rule">
-                            <!-- Rules will be populated dynamically -->
-                        </select>
+
+                    <!-- Breakfast-specific fields -->
+                    <div class="field-group" id="breakfastFields">
+                        <div class="mb-3">
+                            <label for="additionalFood" class="form-label">Additional Food</label>
+                            <input type="text" class="form-control" id="additionalFood" name="additionalFood">
+                        </div>
                     </div>
-                    <!-- Instructions text area -->
-                    <div class="mb-3">
+
+                    <!-- AM/PM Snack-specific fields -->
+                    <div class="field-group" id="snackFields">
+                        <div class="mb-3">
+                            <label for="fluid" class="form-label">Fluid</label>
+                            <input type="text" class="form-control" id="fluid" name="fluid">
+                        </div>
+                        <div class="mb-3">
+                            <label for="fruitVeg" class="form-label">Fruit/Vegetable</label>
+                            <input type="text" class="form-control" id="fruitVeg" name="fruitVeg">
+                        </div>
+                        <div class="mb-3">
+                            <label for="meat" class="form-label">Meat</label>
+                            <input type="text" class="form-control" id="meat" name="meat">
+                        </div>
+                    </div>
+
+                    <div class="field-group mb-3" id="ruleContainer">
+                        <label for="ruleSelect" class="form-label">Rule</label>
+                        <select class="form-select" id="ruleSelect" name="rule"></select>
+                    </div>
+
+                    <div class="field-group mb-3" id="instructionsContainer">
                         <label for="instructions" class="form-label">Instructions</label>
                         <textarea class="form-control" id="instructions" name="instructions" rows="4"></textarea>
                     </div>
+
+                    <!-- Meal Period Availability -->
+                    <div class="mb-3">
+                        <label class="form-label">Available for Meal Periods</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="populateBreakfast" name="populateBreakfast">
+                            <label class="form-check-label" for="populateBreakfast">Breakfast</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="populateAMSnack" name="populateAMSnack">
+                            <label class="form-check-label" for="populateAMSnack">AM Snack</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="populateLunch" name="populateLunch">
+                            <label class="form-check-label" for="populateLunch">Lunch</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="populatePMSnack" name="populatePMSnack">
+                            <label class="form-check-label" for="populatePMSnack">PM Snack</label>
+                        </div>
+                    </div>
+
+                    <!-- Recipe Options -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="standalone" name="standalone">
+                            <label class="form-check-label" for="standalone">Standalone Rule or Side Dish</label>
+                            <div class="form-text">Check if this recipe is served only as a side dish to satisfy CACFP rules.</div>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="ignoreInventory" name="ignoreInventory">
+                            <label class="form-check-label" for="ignoreInventory">Ignore Inventory</label>
+                            <div class="form-text">Check to skip inventory tracking for this recipe</div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="recipeImage" class="form-label">Image</label>
                         <input type="file" class="form-control" id="recipeImage" name="image" accept="image/*">
                         <a id="recipeImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
                         <button type="button" id="recipeImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
                     </div>
-                    <button type="submit" class="btn btn-primary" id="lunchSubmitBtn">Create Recipe</button>
+
+                    <button type="submit" class="btn btn-primary" id="submitRecipeBtn">Create Recipe</button>
                 </form>
             </div>
         </div>
-    </div>
 </div>
-<div class="modal fade" id="createBreakfastRecipeModal" tabindex="-1" aria-labelledby="createBreakfastRecipeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createBreakfastRecipeModalLabel">Create Breakfast Recipe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createBreakfastRecipeForm" method="post" action="{% url 'create_breakfast_recipe' %}" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="breakfastMealName" class="form-label">Meal Name</label>
-                        <input type="text" class="form-control" id="breakfastMealName" name="breakfastMealName">
-                    </div>
-
-                    <!-- Input fields for main ingredients and their quantities -->
-                    <div class="mb-3">
-                        <label for="breakfastMainIngredient1" class="form-label">Main Ingredient #1</label>
-                        <select class="form-select" id="breakfastMainIngredient1" name="breakfastMainIngredient1" aria-describedby="breakfastIngredientsHelp1">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient1" name="breakfastQtyMainIngredient1" min="1" placeholder="Quantity">
-                    </div>
-                    <!-- Repeat this block for breakfastMainIngredient2, breakfastMainIngredient3, breakfastMainIngredient4, and breakfastMainIngredient5 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient2">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="breakfastMainIngredient2Container">
-                        <!-- breakfastMainIngredient2 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for breakfastMainIngredient2 -->
-                        <label for="breakfastMainIngredient2" class="form-label">Main Ingredient #2</label>
-                        <select class="form-select" id="breakfastMainIngredient2" name="breakfastMainIngredient2" aria-describedby="breakfastIngredientsHelp2">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient2" name="breakfastQtyMainIngredient2" min="1" placeholder="Quantity">
-                    </div>
-                
-                    <!-- Minimize buttons for additional main ingredients -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient3">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="breakfastMainIngredient3Container">
-                        <!-- breakfastMainIngredient3 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for breakfastMainIngredient3 -->
-                        <label for="breakfastMainIngredient3" class="form-label">Main Ingredient #3</label>
-                        <select class="form-select" id="breakfastMainIngredient3" name="breakfastMainIngredient3" aria-describedby="breakfastIngredientsHelp3">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient3" name="breakfastQtyMainIngredient3" min="1" placeholder="Quantity">
-                    </div>
-                
-                    <!-- Minimize buttons for additional main ingredients -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient4">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="breakfastMainIngredient4Container">
-                        <!-- breakfastMainIngredient4 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for breakfastMainIngredient4 -->
-                        <label for="breakfastMainIngredient4" class="form-label">Main Ingredient #4</label>
-                        <select class="form-select" id="breakfastMainIngredient4" name="breakfastMainIngredient4" aria-describedby="breakfastIngredientsHelp4">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient4" name="breakfastQtyMainIngredient4" min="1" placeholder="Quantity">
-                    </div>
-                
-                    <!-- Minimize buttons for additional main ingredients -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="minimizeBreakfastIngredient5">Add Ingredient</button>
-                    </div>
-                
-                    <div class="mb-3" id="breakfastMainIngredient5Container">
-                        <!-- breakfastMainIngredient5 input fields -->
-                        <!-- This block is hidden by default but will be shown if the user clicks on the minimize button -->
-                        <!-- Input fields for breakfastMainIngredient5 -->
-                        <label for="breakfastMainIngredient5" class="form-label">Main Ingredient #5</label>
-                        <select class="form-select" id="breakfastMainIngredient5" name="breakfastMainIngredient5" aria-describedby="breakfastIngredientsHelp5">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="breakfastQtyMainIngredient5" name="breakfastQtyMainIngredient5" min="1" placeholder="Quantity">
-                    </div>
-                    <div class="mb-3">
-                        <label for="additionalFood" class="form-label">Additional Food</label>
-                        <input type="text" class="form-control" id="additionalFood" name="additionalFood">
-                    </div>
-                    
-                    <!-- Rule dropdown -->
-                    <div class="mb-3">
-                        <label for="breakfastRule" class="form-label">Rule</label>
-                        <select class="form-select" id="breakfastRule" name="breakfastRule">
-                            <!-- Rules will be populated dynamically -->
-                        </select>
-                    </div>
-                    <!-- Instructions text area -->
-                    <div class="mb-3">
-                        <label for="breakfastInstructions" class="form-label">Instructions</label>
-                        <textarea class="form-control" id="breakfastInstructions" name="breakfastInstructions" rows="4"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="breakfastImage" class="form-label">Image</label>
-                        <input type="file" class="form-control" id="breakfastImage" name="image" accept="image/*">
-                        <a id="breakfastImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
-                        <button type="button" id="breakfastImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="breakfastSubmitBtn">Create Breakfast Recipe</button>
-                </form>
-            </div>
-        </div>
-    </div>
 </div>
 
-<div class="modal fade" id="createAMRecipeModal" tabindex="-1" aria-labelledby="createAMRecipeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createAMRecipeModalLabel">Create AM Snack Recipe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createAMRecipeForm" method="post" action="{% url 'create_am_recipe' %}" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="amRecipeName" class="form-label">Recipe Name</label>
-                        <input type="text" class="form-control" id="amRecipeName" name="amRecipeName">
-                    </div>
-
-                    <!-- Ingredient #1 -->
-                    <div class="mb-3">
-                        <label for="amIngredient1" class="form-label">Ingredient #1</label>
-                        <select class="form-select" id="amIngredient1" name="amIngredient1">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="amQty1" name="amQty1" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #2 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient2">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="amIngredient2Container" style="display: none;">
-                        <label for="amIngredient2" class="form-label">Ingredient #2</label>
-                        <select class="form-select" id="amIngredient2" name="amIngredient2">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="amQty2" name="amQty2" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #3 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient3">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="amIngredient3Container" style="display: none;">
-                        <label for="amIngredient3" class="form-label">Ingredient #3</label>
-                        <select class="form-select" id="amIngredient3" name="amIngredient3">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="amQty3" name="amQty3" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #4 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient4">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="amIngredient4Container" style="display: none;">
-                        <label for="amIngredient4" class="form-label">Ingredient #4</label>
-                        <select class="form-select" id="amIngredient4" name="amIngredient4">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="amQty4" name="amQty4" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #5 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="toggleAmIngredient5">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="amIngredient5Container" style="display: none;">
-                        <label for="amIngredient5" class="form-label">Ingredient #5</label>
-                        <select class="form-select" id="amIngredient5" name="amIngredient5">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="amQty5" name="amQty5" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Additional Fields -->
-                    <div class="mb-3">
-                        <label for="amFluid" class="form-label">Fluid</label>
-                        <input type="text" class="form-control" id="amFluid" name="amFluid">
-                    </div>
-                    <div class="mb-3">
-                        <label for="amFruitVeg" class="form-label">Fruit/Vegetable</label>
-                        <input type="text" class="form-control" id="amFruitVeg" name="amFruitVeg">
-                    </div>
-                    <div class="mb-3">
-                        <label for="amMeat" class="form-label">Meat</label>
-                        <input type="text" class="form-control" id="amMeat" name="amMeat">
-                    </div>
-                    <div class="mb-3">
-                        <label for="amRule" class="form-label">Rule</label>
-                        <select class="form-select" id="amRule" name="amRule">
-                            <!-- Rules will be populated dynamically here -->
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="amInstructions" class="form-label">Instructions</label>
-                        <textarea class="form-control" id="amInstructions" name="amInstructions" rows="4"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="amImage" class="form-label">Image</label>
-                        <input type="file" class="form-control" id="amImage" name="image" accept="image/*">
-                        <a id="amImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
-                        <button type="button" id="amImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="amSubmitBtn">Create AM Snack Recipe</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="modal fade" id="createPMRecipeModal" tabindex="-1" aria-labelledby="createPMRecipeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createPMRecipeModalLabel">Create PM Snack Recipe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createPMRecipeForm" method="post" action="{% url 'create_pm_recipe' %}" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="pmRecipeName" class="form-label">Recipe Name</label>
-                        <input type="text" class="form-control" id="pmRecipeName" name="pmRecipeName">
-                    </div>
-
-                    <!-- Ingredient #1 -->
-                    <div class="mb-3">
-                        <label for="pmIngredient1" class="form-label">Ingredient #1</label>
-                        <select class="form-select" id="pmIngredient1" name="pmIngredient1">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="pmQty1" name="pmQty1" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #2 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="togglePmIngredient2">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="pmIngredient2Container" style="display: none;">
-                        <label for="pmIngredient2" class="form-label">Ingredient #2</label>
-                        <select class="form-select" id="pmIngredient2" name="pmIngredient2">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="pmQty2" name="pmQty2" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #3 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="togglePmIngredient3">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="pmIngredient3Container" style="display: none;">
-                        <label for="pmIngredient3" class="form-label">Ingredient #3</label>
-                        <select class="form-select" id="pmIngredient3" name="pmIngredient3">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="pmQty3" name="pmQty3" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #4 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="togglePmIngredient4">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="pmIngredient4Container" style="display: none;">
-                        <label for="pmIngredient4" class="form-label">Ingredient #4</label>
-                        <select class="form-select" id="pmIngredient4" name="pmIngredient4">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="pmQty4" name="pmQty4" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Ingredient #5 -->
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-secondary" id="togglePmIngredient5">Add Ingredient</button>
-                    </div>
-                    <div class="mb-3" id="pmIngredient5Container" style="display: none;">
-                        <label for="pmIngredient5" class="form-label">Ingredient #5</label>
-                        <select class="form-select" id="pmIngredient5" name="pmIngredient5">
-                            <!-- Ingredients will be populated dynamically here -->
-                        </select>
-                        <input type="number" class="form-control mt-2" id="pmQty5" name="pmQty5" min="1" placeholder="Quantity">
-                    </div>
-
-                    <!-- Additional Fields -->
-                    <div class="mb-3">
-                        <label for="pmFluid" class="form-label">Fluid</label>
-                        <input type="text" class="form-control" id="pmFluid" name="pmFluid">
-                    </div>
-                    <div class="mb-3">
-                        <label for="pmFruitVeg" class="form-label">Fruit/Vegetable</label>
-                        <input type="text" class="form-control" id="pmFruitVeg" name="pmFruitVeg">
-                    </div>
-                    <div class="mb-3">
-                        <label for="pmMeat" class="form-label">Meat</label>
-                        <input type="text" class="form-control" id="pmMeat" name="pmMeat">
-                    </div>
-                    <div class="mb-3">
-                        <label for="pmRule" class="form-label">Rule</label>
-                        <select class="form-select" id="pmRule" name="pmRule">
-                            <!-- Rules will be populated dynamically -->
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="pmInstructions" class="form-label">Instructions</label>
-                        <textarea class="form-control" id="pmInstructions" name="pmInstructions" rows="4"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="pmImage" class="form-label">Image</label>
-                        <input type="file" class="form-control" id="pmImage" name="image" accept="image/*">
-                        <a id="pmImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
-                        <button type="button" id="pmImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="pmSubmitBtn">Create PM Snack Recipe</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // helper: current category from active tab (or dropdown on mobile)
-    function getCurrentCategory() {
-        const activeTab = document.querySelector('#recipeTabs .active-tab');
-        if (activeTab) return activeTab.getAttribute('data-category');
-        const dd = document.getElementById('recipeCategoryDropdown');
-        return dd ? dd.value : 'breakfast';
-    }
+let INGREDIENTS_CACHE = null;
+let RULES_CACHE = null;
+let CURRENT_RECIPE_CATEGORY = 'breakfast';
+let IS_EDIT_MODE = false;
 
-    // keep mobile create button label/title synced
-    function updateMobileCreateBtn(category) {
-        const map = {
-            breakfast: 'Create Breakfast Recipe',
-            am:        'Create AM Snack Recipe',
-            lunch:     'Create Lunch Recipe',
-            pm:        'Create PM Snack Recipe',
-            fruit:     'Add Fruit to Menu Rules',
-            veg:       'Add Vegetables to Menu Rules',
-            wg:        'Add Whole Grains to Menu Rules'
-        };
-        const btn = document.getElementById('mobileCreateBtn');
-        if (btn) { btn.setAttribute('aria-label', map[category] || 'Create'); btn.title = map[category] || 'Create'; }
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        // wire bottom nav buttons
-        const mobileDelete  = document.getElementById('mobileToggleDeleteBtn');
-        const mobileRefresh = document.getElementById('mobileRefreshBtn');
-        const mobileCreate  = document.getElementById('mobileCreateBtn');
-
-        if (mobileDelete) {
-            mobileDelete.addEventListener('click', function () {
-                // reuse existing top trash toggle
-                document.getElementById('toggleDeleteColumn')?.click();
-            });
-        }
-        if (mobileRefresh) {
-            mobileRefresh.addEventListener('click', function () {
-                const cat = getCurrentCategory();
-                // trigger the tab click to run existing fetch logic
-                const tab = document.querySelector(`#recipeTabs .tab[data-category="${cat}"]`);
-                tab?.click();
-            });
-        }
-        if (mobileCreate) {
-            mobileCreate.addEventListener('click', function () {
-                const cat = getCurrentCategory();
-                const btns = {
-                    breakfast: document.getElementById('createBreakfastButton'),
-                    am:        document.getElementById('createAMButton'),
-                    lunch:     document.getElementById('createLunchButton'),
-                    pm:        document.getElementById('createPMButton'),
-                    fruit:     document.getElementById('createFruitButton'),
-                    veg:       document.getElementById('createVegButton'),
-                    wg:        document.getElementById('createWGButton')
-                };
-                btns[cat]?.click();
-            });
-        }
-
-        // set initial label for mobile create button
-        updateMobileCreateBtn(getCurrentCategory());
-    });
-</script>
-    <script>
-        // wire the header-plus icons to open the correct modal via Bootstrap API
-        document.addEventListener('DOMContentLoaded', function () {
-            const createIcons = Array.from(document.querySelectorAll('.create-icon'));
-
-            function updateHeaderIcons(category) {
-                if (!category) return;
-                createIcons.forEach(btn => {
-                    const cat = btn.getAttribute('data-cat');
-                    if (cat === category) btn.classList.add('active'); else btn.classList.remove('active');
-                });
-                // show header trash for the active category
-                const headerTrash = document.getElementById('headerToggleDelete');
-                if (headerTrash) {
-                    headerTrash.classList.add('active');
-                }
-            }
-
-            // open modal on icon click
-            createIcons.forEach(btn => {
-                btn.addEventListener('click', function (e) {
-                    const sel = btn.getAttribute('data-modal');
-                    if (!sel) return;
-                    const el = document.querySelector(sel);
-                    if (!el) return;
-                    try {
-                        const modal = new bootstrap.Modal(el);
-                        modal.show();
-                    } catch (err) {
-                        const targetId = btn.getAttribute('data-target');
-                        if (targetId) document.getElementById(targetId)?.click();
-                    }
-                });
-            });
-
-                // update icons on tab click and on dropdown change
-                const tabs = document.querySelectorAll('#recipeTabs .tab');
-                tabs.forEach(tab => tab.addEventListener('click', function () { updateHeaderIcons(tab.getAttribute('data-category')); }));
-                const dropdown = document.getElementById('recipeCategoryDropdown');
-                if (dropdown) dropdown.addEventListener('change', function () { updateHeaderIcons(this.value); });
-
-                // wire header trash to reuse existing toggle behavior
-                const headerTrash = document.getElementById('headerToggleDelete');
-                const topTrash = document.getElementById('toggleDeleteColumn');
-                if (headerTrash) {
-                    headerTrash.addEventListener('click', function () {
-                        // reuse existing toggle button logic by triggering the top trash (if present)
-                        if (topTrash) topTrash.click();
-                        else {
-                            // fallback: toggle delete column directly
-                            const deleteCol = document.getElementById('deleteColumnHeader');
-                            const isHidden = deleteCol.style.display === 'none' || deleteCol.style.display === '';
-                            deleteCol.style.display = isHidden ? 'table-cell' : 'none';
-                            document.querySelectorAll('.delete-column').forEach(c => c.style.display = isHidden ? 'table-cell' : 'none');
-                        }
-                    });
-                }
-
-                // hide the original desktop trash (we use header trash instead)
-                if (topTrash) topTrash.style.display = 'none';
-
-            // initial sync
-            try { updateHeaderIcons(getCurrentCategory()); } catch (_) { /* ignore if helper not ready */ }
-        });
-    </script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const recipeTableBody = document.getElementById('recipeTableBody');
-        const deleteColumnHeader = document.getElementById('deleteColumnHeader');
-        const toggleDeleteButton = document.getElementById('toggleDeleteColumn');
-        const tabs = document.querySelectorAll('#recipeTabs .tab');
-        const buttons = {
-            breakfast: document.getElementById('createBreakfastButton'),
-            am: document.getElementById('createAMButton'),
-            lunch: document.getElementById('createLunchButton'),
-            pm: document.getElementById('createPMButton'),
-            fruit: document.getElementById('createFruitButton'),
-            veg: document.getElementById('createVegButton'),
-            wg: document.getElementById('createWGButton')
-        };
-        const dropdown = document.getElementById('recipeCategoryDropdown');
-
-        // Initially hide the delete column
-        deleteColumnHeader.style.display = 'none';
-
-        // allow clicking the visible delete-column header to hide the delete column
-        if (deleteColumnHeader) {
-            deleteColumnHeader.style.cursor = 'default';
-            // update cursor/title whenever the column visibility changes via the toggle
-            const updateHeaderUI = function(isVisible) {
-                deleteColumnHeader.style.cursor = isVisible ? 'pointer' : 'default';
-                deleteColumnHeader.title = isVisible ? 'Click to hide delete column' : '';
-            };
-            // initial state (hidden)
-            updateHeaderUI(false);
-
-            // when header is clicked and currently visible, trigger the same toggle
-            deleteColumnHeader.addEventListener('click', function (e) {
-                const isVisible = deleteColumnHeader.style.display !== 'none' && deleteColumnHeader.style.display !== '';
-                if (isVisible) {
-                    // reuse the existing toggle button behavior
-                    toggleDeleteButton?.click();
-                    // reflect UI change
-                    updateHeaderUI(false);
-                }
-            });
-
-            // Also listen for the top toggle to update header UI accordingly
-            if (toggleDeleteButton) {
-                toggleDeleteButton.addEventListener('click', function () {
-                    const nowVisible = deleteColumnHeader.style.display === 'none' || deleteColumnHeader.style.display === '' ? true : false;
-                    // After existing toggle handler runs, the display will flip; compute expected visibility
-                    // If it was hidden, clicking the top toggle will show it (nowVisible === true)
-                    updateHeaderUI(nowVisible);
-                });
-            }
-        }
-
-        // Existing top trash icon toggle
-        toggleDeleteButton.addEventListener('click', function () {
-            const isHidden = deleteColumnHeader.style.display === 'none' || deleteColumnHeader.style.display === '';
-            deleteColumnHeader.style.display = isHidden ? 'table-cell' : 'none';
-            const deleteColumns = document.querySelectorAll('.delete-column');
-            deleteColumns.forEach(column => {
-                column.style.display = isHidden ? 'table-cell' : 'none';
-            });
-            // Hide the header-only trash button while the delete column is visible,
-            // and show it again when the column is hidden.
-            const headerOnlyTrash = document.getElementById('headerToggleDelete');
-            if (headerOnlyTrash) headerOnlyTrash.classList.toggle('active', !isHidden);
-        });
-
-        function fetchRecipes(category) {
-            let endpoint = '';
-            switch (category) {
-                case 'breakfast': endpoint = '/fetch-breakfast-recipes/'; break;
-                case 'am':        endpoint = '/fetch-am-recipes/';        break;
-                case 'lunch':     endpoint = '/fetch-recipes/';           break;
-                case 'pm':        endpoint = '/fetch-pm-recipes/';        break;
-                case 'fruit':     endpoint = '/fetch-fruit-recipes/';     break;
-                case 'veg':       endpoint = '/fetch-veg-recipes/';       break;
-                case 'wg':        endpoint = '/fetch-wg-recipes/';        break;
-                default: return;
-            }
-
-            fetch(endpoint)
-              .then(r => r.json())
-              .then(data => {
-                  recipeTableBody.innerHTML = '';
-                  const recipes = data.recipes || [];
-                  recipes.forEach(recipe => {
-                      const row = document.createElement('tr');
-                      row.innerHTML = `
-                          <td class="clickable-name" onclick="viewRecipe(${recipe.id}, '${category}')">${recipe.name}</td>
-                          <td class="delete-column" style="display: none;">
-                              <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${category}" style="color: red; cursor: pointer;"></i>
-                          </td>
-                      `;
-                      recipeTableBody.appendChild(row);
-                  });
-
-                  // Add event listeners for delete icons
-                  const deleteIcons = document.querySelectorAll('.delete-record');
-                  deleteIcons.forEach(icon => {
-                      icon.addEventListener('click', function () {
-                          const recipeId = this.getAttribute('data-id');
-                          const category = this.getAttribute('data-category');
-                          if (confirm('Are you sure you want to delete this recipe?')) {
-                              deleteRecipe(recipeId, category);
-                            }
-                        });
-                    });
-
-                    // Synchronize delete column visibility
-                    const isDeleteColumnVisible = deleteColumnHeader.style.display === 'table-cell';
-                    const deleteColumns = document.querySelectorAll('.delete-column');
-                    deleteColumns.forEach(column => {
-                        column.style.display = isDeleteColumnVisible ? 'table-cell' : 'none';
-                    });
-                })
-                .catch(err => console.error('Error fetching recipes:', err));
-        }
-
-        function deleteRecipe(recipeId, category) {
-            fetch(`/delete-recipe/${category}/${recipeId}/`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            })
-            .then(response => {
-                if (response.ok) {
-                    toastr.success(`${category.charAt(0).toUpperCase() + category.slice(1)} recipe deleted successfully.`);
-                    fetchRecipes(document.querySelector('.active-tab').getAttribute('data-category'));
-                } else {
-                    toastr.error('Failed to delete recipe.');
-                }
-            })
-            .catch(error => {
-                console.error('Error deleting recipe:', error);
-                toastr.error('An error occurred while deleting the recipe.');
-            });
-        }
-
-        function toggleButtons(category) {
-            Object.keys(buttons).forEach(key => {
-                buttons[key].style.display = key === category ? 'block' : 'none';
-            });
-            // Keep mobile create button title in sync
-            updateMobileCreateBtn(category);
-        }
-
-        function updateActiveTab(clickedTab) {
-            tabs.forEach(tab => tab.classList.remove('active-tab'));
-            clickedTab.classList.add('active-tab');
-        }
-
-        // Tab clicks
-        tabs.forEach(tab => {
-            tab.addEventListener('click', function () {
-                const category = this.getAttribute('data-category');
-                fetchRecipes(category);
-                toggleButtons(category);
-                updateActiveTab(this);
-                if (dropdown) dropdown.value = category;
-                updateMobileCreateBtn(category);
-            });
-        });
-
-        // Mobile dropdown
-        if (dropdown) {
-            const activeTab = document.querySelector('#recipeTabs .active-tab');
-            if (activeTab) dropdown.value = activeTab.getAttribute('data-category');
-            dropdown.addEventListener('change', function () {
-                const category = this.value;
-                fetchRecipes(category);
-                toggleButtons(category);
-                tabs.forEach(tab => {
-                    tab.classList.remove('active-tab');
-                    if (tab.getAttribute('data-category') === category) {
-                        tab.classList.add('active-tab');
-                    }
-                });
-                updateMobileCreateBtn(category);
-            });
-        }
-
-        // Initial load
-        fetchRecipes('breakfast');
-        toggleButtons('breakfast');
-        updateActiveTab(document.querySelector('#breakfast-tab'));
-        updateMobileCreateBtn('breakfast');
-    });
-
-    // Cached lookups to avoid repeated network calls
-    let INGREDIENTS_CACHE = null;
-    let RULES_CACHE = null;
-
-    function getIngredients() {
-        if (INGREDIENTS_CACHE) return Promise.resolve(INGREDIENTS_CACHE);
-        return $.get('/fetch-ingredients/').then(r => {
-            INGREDIENTS_CACHE = (r.ingredients || []);
-            return INGREDIENTS_CACHE;
-        });
-    }
-    function getRules() {
-        if (RULES_CACHE) return Promise.resolve(RULES_CACHE);
-        return $.get('/fetch-rules/').then(r => {
-            RULES_CACHE = (r.rules || []);
-            return RULES_CACHE;
-        });
-    }
-    function populateIngredientsDropdown(selectId, selectedValue) {
-        return getIngredients().then(items => {
-            const dropdown = $('#' + selectId);
-            dropdown.empty().append('<option value="">Select Ingredient</option>');
-            items.forEach(i => dropdown.append(`<option value="${i.id}">${i.item}</option>`));
-            if (selectedValue) dropdown.val(String(selectedValue));
-        });
-    }
-    function populateRulesDropdown(selectId, selectedValue) {
-        return getRules().then(items => {
-            const dropdown = $('#' + selectId);
-            dropdown.empty().append('<option value="">Select Rule</option>');
-            items.forEach(r => dropdown.append(`<option value="${r.id}">${r.rule}</option>`));
-            if (selectedValue) dropdown.val(String(selectedValue));
-        });
-    }
-
-    // Helper: swap modal title and submit button text
-    function setModalUI(titleSelector, submitBtnSelector, titleText, submitText) {
-        $(titleSelector).text(titleText);
-        $(submitBtnSelector).text(submitText);
-    }
-
-    // NEW: helpers to show/hide the “View current image” button
-    // Helper to normalize image value from the API
-function extractImagePath(data) {
-    if (!data) return null;
-    if (typeof data.image === 'string' && data.image.trim()) return data.image;          // "recipe_pictures/..."
-    if (data.image && typeof data.image.url === 'string') return data.image.url;        // DRF ImageField as object
-    if (typeof data.image_url === 'string' && data.image_url.trim()) return data.image_url; // alternate key
-    if (typeof data.image_path === 'string' && data.image_path.trim()) return data.image_path;
-    return null;
+function getCurrentCategory() {
+    const activeTab = document.querySelector('#recipeTabs .active-tab');
+    if (activeTab) return activeTab.getAttribute('data-category');
+    const dd = document.getElementById('recipeCategoryDropdown');
+    return dd ? dd.value : 'breakfast';
 }
 
-function buildImageUrl(imagePath) {
-    if (!imagePath) return null;
-    if (/^https?:\/\//i.test(imagePath)) return imagePath;     // absolute
-    if (imagePath.startsWith('/')) return imagePath;           // server-relative (e.g., /media/...)
-    return `/media/${imagePath}`;                              // MEDIA_URL fallback
+function getIngredients() {
+    if (INGREDIENTS_CACHE) return Promise.resolve(INGREDIENTS_CACHE);
+    return $.get('/fetch-ingredients/').then(r => {
+        INGREDIENTS_CACHE = (r.ingredients || []);
+        return INGREDIENTS_CACHE;
+    });
 }
 
-function setImageView(anchorId, imagePath) {
-    const el = document.getElementById(anchorId);
-    if (!el) return;
-    const url = buildImageUrl(imagePath);
-    if (url) {
-        el.href = url;
-        el.style.display = 'inline-block';
-        el.textContent = 'View current image';
+function getRules() {
+    if (RULES_CACHE) return Promise.resolve(RULES_CACHE);
+    return $.get('/fetch-rules/').then(r => {
+        RULES_CACHE = (r.rules || []);
+        return RULES_CACHE;
+    });
+}
+
+function populateIngredientsDropdown(selectId, selectedValue) {
+    return getIngredients().then(items => {
+        const dropdown = $('#' + selectId);
+        dropdown.empty().append('<option value="">Select Ingredient</option>');
+        items.forEach(i => dropdown.append(`<option value="${i.id}">${i.item}</option>`));
+        if (selectedValue) dropdown.val(String(selectedValue));
+    });
+}
+
+function populateRulesDropdown(selectId, selectedValue) {
+    return getRules().then(items => {
+        const dropdown = $('#' + selectId);
+        dropdown.empty().append('<option value="">Select Rule</option>');
+        items.forEach(r => dropdown.append(`<option value="${r.id}">${r.rule}</option>`));
+        if (selectedValue) dropdown.val(String(selectedValue));
+    });
+}
+
+// Get category configuration
+function getCategoryConfig(category) {
+    const configs = {
+        breakfast: {
+            ingredientPrefix: 'breakfastMainIngredient',
+            qtyPrefix: 'breakfastQtyMainIngredient',
+        },
+        am: {
+            ingredientPrefix: 'amIngredient',
+            qtyPrefix: 'amQty',
+        },
+        pm: {
+            ingredientPrefix: 'pmIngredient',
+            qtyPrefix: 'pmQty',
+        },
+        lunch: {
+            ingredientPrefix: 'mainIngredient',
+            qtyPrefix: 'qtyMainIngredient',
+        },
+        fruit: {
+            ingredientPrefix: 'fruitMainIngredient',
+            qtyPrefix: 'fruitQtyMainIngredient',
+        },
+        veg: {
+            ingredientPrefix: 'vegMainIngredient',
+            qtyPrefix: 'vegQtyMainIngredient',
+        },
+        wg: {
+            ingredientPrefix: 'wgMainIngredient',
+            qtyPrefix: 'wgQtyMainIngredient',
+        }
+    };
+    return configs[category];
+}
+
+// Dynamic ingredient fields
+let ingredientCounter = 0;
+
+function addIngredientField(ingredientId = null, quantity = null) {
+    ingredientCounter++;
+    const container = document.getElementById('ingredientsContainer');
+    if (!container) {
+        console.error('ingredientsContainer not found');
+        return null;
+    }
+    
+    const fieldGroup = document.createElement('div');
+    fieldGroup.className = 'mb-3 ingredient-field-group';
+    fieldGroup.dataset.index = ingredientCounter;
+    
+    fieldGroup.innerHTML = `
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <label class="form-label mb-0" style="flex: 0 0 auto;">Ingredient #${ingredientCounter}</label>
+            <button type="button" class="btn btn-sm btn-danger ms-auto" onclick="removeIngredientField(${ingredientCounter})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <select class="form-select ingredient-select" id="ingredient${ingredientCounter}" name="ingredient${ingredientCounter}"></select>
+        <input type="number" class="form-control mt-2" id="qty${ingredientCounter}" name="qty${ingredientCounter}" min="1" placeholder="Quantity" value="${quantity || ''}">
+    `;
+    
+    container.appendChild(fieldGroup);
+    
+    // Populate dropdown
+    populateIngredientsDropdown('ingredient' + ingredientCounter, ingredientId);
+    
+    // Update field names based on current category
+    updateIngredientFieldNames();
+    
+    return ingredientCounter;
+}
+
+function removeIngredientField(index) {
+    const fieldGroup = document.querySelector(`.ingredient-field-group[data-index="${index}"]`);
+    if (fieldGroup) {
+        fieldGroup.remove();
+        renumberIngredientFields();
+    }
+}
+
+function renumberIngredientFields() {
+    const fieldGroups = document.querySelectorAll('.ingredient-field-group');
+    ingredientCounter = 0;
+    
+    fieldGroups.forEach((group, idx) => {
+        ingredientCounter++;
+        group.dataset.index = ingredientCounter;
+        group.querySelector('label').textContent = `Ingredient #${ingredientCounter}`;
+        group.querySelector('.btn-danger').setAttribute('onclick', `removeIngredientField(${ingredientCounter})`);
+        group.querySelector('.ingredient-select').id = `ingredient${ingredientCounter}`;
+        group.querySelector('.ingredient-select').name = `ingredient${ingredientCounter}`;
+        group.querySelector('input[type="number"]').id = `qty${ingredientCounter}`;
+        group.querySelector('input[type="number"]').name = `qty${ingredientCounter}`;
+    });
+    
+    updateIngredientFieldNames();
+}
+
+function clearAllIngredients() {
+    const container = document.getElementById('ingredientsContainer');
+    if (container) {
+        container.innerHTML = '';
+    }
+    ingredientCounter = 0;
+}
+
+function updateIngredientFieldNames() {
+    if (!CURRENT_RECIPE_CATEGORY) return;
+    
+    const config = getCategoryConfig(CURRENT_RECIPE_CATEGORY);
+    if (!config) return;
+    
+    const fieldGroups = document.querySelectorAll('.ingredient-field-group');
+    fieldGroups.forEach((group, idx) => {
+        const index = idx + 1;
+        const ingredientSelect = group.querySelector('.ingredient-select');
+        const qtyInput = group.querySelector('input[type="number"]');
+        
+        if (ingredientSelect) {
+            ingredientSelect.setAttribute('name', config.ingredientPrefix + index);
+        }
+        if (qtyInput) {
+            qtyInput.setAttribute('name', config.qtyPrefix + index);
+        }
+    });
+}
+
+// Configure modal for specific recipe type
+function configureModalForType(category, isEdit = false) {
+    CURRENT_RECIPE_CATEGORY = category;
+    IS_EDIT_MODE = isEdit;
+    
+    // Set form field name prefixes and action URL based on category
+    const config = {
+        breakfast: {
+            title: isEdit ? 'Update Breakfast Recipe' : 'Create Breakfast Recipe',
+            createUrl: '{% url "create_breakfast_recipe" %}',
+            updateUrl: '/update-breakfast-recipe/',
+            nameField: 'breakfastMealName',
+            ingredientPrefix: 'breakfastMainIngredient',
+            qtyPrefix: 'breakfastQtyMainIngredient',
+            ruleField: 'breakfastRule',
+            instructionsField: 'breakfastInstructions',
+            showFields: ['breakfastFields', 'instructionsContainer'],
+            hideFields: ['lunchFields', 'snackFields'],
+            maxIngredients: 5,
+            checkboxPrefix: 'breakfast',
+            defaultChecked: 'populateBreakfast'
+        },
+        am: {
+            title: isEdit ? 'Update AM Snack Recipe' : 'Create AM Snack Recipe',
+            createUrl: '{% url "create_am_recipe" %}',
+            updateUrl: '/update-am-recipe/',
+            nameField: 'amRecipeName',
+            ingredientPrefix: 'amIngredient',
+            qtyPrefix: 'amQty',
+            ruleField: 'amRule',
+            instructionsField: 'amInstructions',
+            showFields: ['snackFields', 'instructionsContainer'],
+            hideFields: ['lunchFields', 'breakfastFields'],
+            maxIngredients: 5,
+            checkboxPrefix: 'am',
+            defaultChecked: 'populateAMSnack'
+        },
+        pm: {
+            title: isEdit ? 'Update PM Snack Recipe' : 'Create PM Snack Recipe',
+            createUrl: '{% url "create_pm_recipe" %}',
+            updateUrl: '/update-pm-recipe/',
+            nameField: 'pmRecipeName',
+            ingredientPrefix: 'pmIngredient',
+            qtyPrefix: 'pmQty',
+            ruleField: 'pmRule',
+            instructionsField: 'pmInstructions',
+            showFields: ['snackFields', 'instructionsContainer'],
+            hideFields: ['lunchFields', 'breakfastFields'],
+            maxIngredients: 5,
+            checkboxPrefix: 'pm',
+            defaultChecked: 'populatePMSnack'
+        },
+        lunch: {
+            title: isEdit ? 'Update Recipe' : 'Create Recipe',
+            createUrl: '{% url "create_recipe" %}',
+            updateUrl: '/update-recipe/',
+            nameField: 'mealName',
+            ingredientPrefix: 'mainIngredient',
+            qtyPrefix: 'qtyMainIngredient',
+            ruleField: 'rule',
+            instructionsField: 'instructions',
+            showFields: ['lunchFields', 'instructionsContainer'],
+            hideFields: ['breakfastFields', 'snackFields'],
+            maxIngredients: 5,
+            checkboxPrefix: '',
+            defaultChecked: 'populateLunch'
+        },
+        fruit: {
+            title: isEdit ? 'Update Fruit Recipe' : 'Create Fruit Recipe',
+            createUrl: '{% url "create_fruit_recipe" %}',
+            updateUrl: '/update-fruit-recipe/',
+            nameField: 'fruitName',
+            ingredientPrefix: 'fruitMainIngredient',
+            qtyPrefix: 'fruitQtyMainIngredient',
+            ruleField: 'fruitRule',
+            showFields: ['ruleContainer'],
+            hideFields: ['lunchFields', 'breakfastFields', 'snackFields', 'instructionsContainer'],
+            maxIngredients: 1,
+            checkboxPrefix: 'fruit',
+            defaultChecked: 'standalone'
+        },
+        veg: {
+            title: isEdit ? 'Update Vegetable Recipe' : 'Create Vegetable Recipe',
+            createUrl: '{% url "create_veg_recipe" %}',
+            updateUrl: '/update-veg-recipe/',
+            nameField: 'vegName',
+            ingredientPrefix: 'vegMainIngredient',
+            qtyPrefix: 'vegQtyMainIngredient',
+            ruleField: 'vegRule',
+            showFields: ['ruleContainer'],
+            hideFields: ['lunchFields', 'breakfastFields', 'snackFields', 'instructionsContainer'],
+            maxIngredients: 1,
+            checkboxPrefix: 'veg',
+            defaultChecked: 'standalone'
+        },
+        wg: {
+            title: isEdit ? 'Update Whole Grain Recipe' : 'Create Whole Grain Recipe',
+            createUrl: '{% url "create_wg_recipe" %}',
+            updateUrl: '/update-wg-recipe/',
+            nameField: 'wgName',
+            ingredientPrefix: 'wgMainIngredient',
+            qtyPrefix: 'wgQtyMainIngredient',
+            ruleField: 'wgRule',
+            showFields: ['ruleContainer'],
+            hideFields: ['lunchFields', 'breakfastFields', 'snackFields', 'instructionsContainer'],
+            maxIngredients: 1,
+            checkboxPrefix: 'wg',
+            defaultChecked: 'standalone'
+        }
+    };
+
+    const cfg = config[category];
+    if (!cfg) return;
+
+    // Update modal titles
+    $('#unifiedRecipeModalLabel').text(cfg.title);
+    $('#submitRecipeBtn').text(cfg.title);
+
+    // Show/hide field groups
+    $('.field-group').removeClass('active');
+    cfg.showFields.forEach(id => $('#' + id).addClass('active'));
+
+    // Update form field names
+    $('#recipeName').attr('name', cfg.nameField);
+    $('#ruleSelect').attr('name', cfg.ruleField);
+    $('#instructions').attr('name', cfg.instructionsField);
+    
+    // Update dynamic ingredient field names
+    updateIngredientFieldNames();
+
+    // Update checkbox name prefixes
+    const checkboxes = ['populateBreakfast', 'populateAMSnack', 'populateLunch', 'populatePMSnack', 'standalone', 'ignoreInventory'];
+    checkboxes.forEach(cb => {
+        const el = document.getElementById(cb);
+        if (el && cfg.checkboxPrefix) {
+            el.setAttribute('name', cfg.checkboxPrefix + cb.charAt(0).toUpperCase() + cb.slice(1));
+        } else if (el) {
+            el.setAttribute('name', cb);
+        }
+    });
+
+    // Set form action
+    $('#recipeType').val(category);
+    if (isEdit) {
+        // Action will be set when we load specific recipe data  
     } else {
-        el.removeAttribute('href');
-        el.style.display = 'none';
+        $('#unifiedRecipeForm').attr('action', cfg.createUrl);
     }
-}
 
-function setImageUI(prefix, imagePath) {
-    const input = document.getElementById(prefix + 'Image');
-    const view  = document.getElementById(prefix + 'ImageView');
-    const btn   = document.getElementById(prefix + 'ImageReplace');
-    const hasImage = !!imagePath;
-
-    setImageView(prefix + 'ImageView', imagePath);
-
-    if (hasImage) {
-        if (input) { input.style.display = 'none'; input.value = ''; }
-        if (view)  { view.style.display = view.href ? 'inline-block' : 'none'; }
-        if (btn)   { btn.style.display = 'inline-block'; btn.textContent = 'Replace image'; btn.removeAttribute('data-replace'); }
-    } else {
-        if (input) { input.style.display = 'block'; }
-        if (view)  { view.style.display = 'none'; }
-        if (btn)   { btn.style.display = 'none'; }
-    }
-    if (btn) btn.disabled = false; // re-enable after loading
-}
-
-// NEW: show buttons immediately while data loads
-function setImageLoading(prefix) {
-    const input = document.getElementById(prefix + 'Image');
-    const view  = document.getElementById(prefix + 'ImageView');
-    const btn   = document.getElementById(prefix + 'ImageReplace');
-
-    if (input) { input.style.display = 'none'; input.value = ''; }
-    if (view)  { view.style.display = 'inline-block'; view.textContent = 'Loading image…'; view.removeAttribute('href'); }
-    if (btn)   { btn.style.display = 'inline-block'; btn.textContent = 'Replace image'; btn.disabled = true; btn.removeAttribute('data-replace'); }
-}
-
-// NEW: toggle handler so "Replace image" shows/hides the file input
-function registerReplaceToggle(prefix) {
-    const btn = document.getElementById(prefix + 'ImageReplace');
-    const input = document.getElementById(prefix + 'Image');
-    const view = document.getElementById(prefix + 'ImageView');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-        const replacing = this.getAttribute('data-replace') === 'true';
-        if (replacing) {
-            this.removeAttribute('data-replace');
-            this.textContent = 'Replace image';
-            if (input) { input.value = ''; input.style.display = 'none'; }
-            if (view)  { view.style.display = view.href ? 'inline-block' : 'none'; }
-        } else {
-            this.setAttribute('data-replace', 'true');
-            this.textContent = 'Cancel replace';
-            if (view)  { view.style.display = 'none'; }
-            if (input) { input.style.display = 'block'; }
-        }
+    // Set default checked state
+    checkboxes.forEach(cb => {
+        document.getElementById(cb).checked = (cb === cfg.defaultChecked);
     });
 }
 
-// helper: show ingredient container if data exists
-function showContainer(id) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'block';
+// Reset modal to create mode
+function resetModalForCreate(category) {
+    configureModalForType(category, false);
+    
+    // Clear all inputs
+    $('#recipeName').val('');
+    $('#grain, #meatAlternate, #additionalFood, #fluid, #fruitVeg, #meat, #instructions').val('');
+    $('#ruleSelect').val('');
+    $('#recipeImage').val('').show();
+    $('#recipeImageView, #recipeImageReplace').hide();
+    
+    // Clear dynamic ingredients and add first field
+    clearAllIngredients();
+    addIngredientField();
+    
+    // Reset rule dropdown  
+    populateRulesDropdown('ruleSelect', null);
 }
 
-// --- POPULATE HELPERS ---
-function valOrEmpty(v) { return (v === null || v === undefined) ? '' : v; }
-function chooseId(objOrId) {
-    if (!objOrId) return null;
-    if (typeof objOrId === 'object' && objOrId.id) return objOrId.id;
-    return objOrId;
-}
-
-// --- Populate per category ---
-function populateBreakfast(data) {
-    $('#breakfastMealName').val(valOrEmpty(data.name));
-    $('#additionalFood').val(valOrEmpty(data.addfood || data.additional_food || data.additionalFood));
-    $('#breakfastInstructions').val(valOrEmpty(data.instructions));
-    populateRulesDropdown('breakfastRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
-
-    // ingredient 1..5
-    for (let n = 1; n <= 5; n++) {
-        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
-        const qty   = data[`qty${n}`];
-        if (n > 1 && (ingId || qty)) showContainer(`breakfastMainIngredient${n}Container`);
-        populateIngredientsDropdown(`breakfastMainIngredient${n}`, ingId);
-        $(`#breakfastQtyMainIngredient${n}`).val(valOrEmpty(qty));
-    }
-}
-
-function populateLunch(data) {
-    $('#mealName').val(valOrEmpty(data.name));
-    $('#instructions').val(valOrEmpty(data.instructions));
-    $('#grain').val(valOrEmpty(data.grain));
-    $('#meatAlternate').val(valOrEmpty(data.meat_alternate || data.meatAlternate));
-    populateRulesDropdown('rule', chooseId(data.rule_id || (data.rule && data.rule.id)));
-
-    for (let n = 1; n <= 5; n++) {
-        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
-        const qty   = data[`qty${n}`];
-        if (n > 1 && (ingId || qty)) showContainer(`mainIngredient${n}Container`);
-        populateIngredientsDropdown(`mainIngredient${n}`, ingId);
-        $(`#qtyMainIngredient${n}`).val(valOrEmpty(qty));
-    }
-}
-
-function populateAM(data) {
-    $('#amRecipeName').val(valOrEmpty(data.name));
-    $('#amInstructions').val(valOrEmpty(data.instructions));
-    $('#amFluid').val(valOrEmpty(data.fluid));
-    $('#amFruitVeg').val(valOrEmpty(data.fruitveg || data.fruit_veg));
-    $('#amMeat').val(valOrEmpty(data.meat));
-    populateRulesDropdown('amRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
-
-    for (let n = 1; n <= 5; n++) {
-        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
-        const qty   = data[`qty${n}`];
-        if (n > 1 && (ingId || qty)) showContainer(`amIngredient${n}Container`);
-        populateIngredientsDropdown(`amIngredient${n}`, ingId);
-        $(`#amQty${n}`).val(valOrEmpty(qty));
-    }
-}
-
-function populatePM(data) {
-    $('#pmRecipeName').val(valOrEmpty(data.name));
-    $('#pmInstructions').val(valOrEmpty(data.instructions));
-    $('#pmFluid').val(valOrEmpty(data.fluid));
-    $('#pmFruitVeg').val(valOrEmpty(data.fruitveg || data.fruit_veg));
-    $('#pmMeat').val(valOrEmpty(data.meat));
-    populateRulesDropdown('pmRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
-
-    for (let n = 1; n <= 5; n++) {
-        const ingId = chooseId(data[`ingredient${n}_id`] || (data[`ingredient${n}`] && data[`ingredient${n}`].id));
-        const qty   = data[`qty${n}`];
-        if (n > 1 && (ingId || qty)) showContainer(`pmIngredient${n}Container`);
-        populateIngredientsDropdown(`pmIngredient${n}`, ingId);
-        $(`#pmQty${n}`).val(valOrEmpty(qty));
-    }
-}
-
-function populateFruit(data) {
-    $('#fruitName').val(valOrEmpty(data.name));
-    populateRulesDropdown('fruitRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
-    populateIngredientsDropdown('fruitMainIngredient1', chooseId(data.ingredient1_id || (data.ingredient1 && data.ingredient1.id)));
-    $('#fruitQtyMainIngredient1').val(valOrEmpty(data.qty1));
-}
-
-function populateVeg(data) {
-    $('#vegName').val(valOrEmpty(data.name));
-    populateRulesDropdown('vegRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
-    populateIngredientsDropdown('vegMainIngredient1', chooseId(data.ingredient1_id || (data.ingredient1 && data.ingredient1.id)));
-    $('#vegQtyMainIngredient1').val(valOrEmpty(data.qty1));
-}
-
-function populateWg(data) {
-    $('#wgName').val(valOrEmpty(data.name));
-    populateRulesDropdown('wgRule', chooseId(data.rule_id || (data.rule && data.rule.id)));
-    populateIngredientsDropdown('wgMainIngredient1', chooseId(data.ingredient1_id || (data.ingredient1 && data.ingredient1.id)));
-    $('#wgQtyMainIngredient1').val(valOrEmpty(data.qty1));
-}
-
-// Open modal in edit mode immediately, then fetch and populate fully
+// Load recipe for editing
 async function viewRecipe(id, category) {
-    // show modal + instant image placeholders
-    if (category === 'breakfast') {
-        setModalUI('#createBreakfastRecipeModalLabel', '#breakfastSubmitBtn', 'Update Breakfast Recipe', 'Update Breakfast Recipe');
-        $('#createBreakfastRecipeForm').attr('action', `/update-breakfast-recipe/${id}/`);
-        $('#createBreakfastRecipeModal').modal('show');
-        setImageLoading('breakfast');
-    } else if (category === 'am') {
-        setModalUI('#createAMRecipeModalLabel', '#amSubmitBtn', 'Update AM Snack Recipe', 'Update AM Snack Recipe');
-        $('#createAMRecipeForm').attr('action', `/update-am-recipe/${id}/`);
-        $('#createAMRecipeModal').modal('show');
-        setImageLoading('am');
-    } else if (category === 'pm') {
-        setModalUI('#createPMRecipeModalLabel', '#pmSubmitBtn', 'Update PM Snack Recipe', 'Update PM Snack Recipe');
-        $('#createPMRecipeForm').attr('action', `/update-pm-recipe/${id}/`);
-        $('#createPMRecipeModal').modal('show');
-        setImageLoading('pm');
-    } else if (category === 'lunch') {
-        setModalUI('#createRecipeModalLabel', '#lunchSubmitBtn', 'Update Recipe', 'Update Recipe');
-        $('#createRecipeForm').attr('action', `/update-recipe/${id}/`);
-        $('#createRecipeModal').modal('show');
-        setImageLoading('recipe');
-    } else if (category === 'fruit') {
-        setModalUI('#fruitRecipeModalLabel', '#fruitSubmitBtn', 'Update Fruit Recipe', 'Update Fruit Recipe');
-        $('#createFruitRecipeForm').attr('action', `/update-fruit-recipe/${id}/`);
-        $('#fruitRecipeModal').modal('show');
-        setImageLoading('fruit');
-    } else if (category === 'veg') {
-        setModalUI('#vegRecipeModalLabel', '#vegSubmitBtn', 'Update Veg Recipe', 'Update Veg Recipe');
-        $('#createVegRecipeForm').attr('action', `/update-veg-recipe/${id}/`);
-        $('#vegRecipeModal').modal('show');
-        setImageLoading('veg');
-    } else if (category === 'wg') {
-        setModalUI('#wgRecipeModalLabel', '#wgSubmitBtn', 'Update Wg Recipe', 'Update Wg Recipe');
-        $('#createWgRecipeForm').attr('action', `/update-wg-recipe/${id}/`);
-        $('#wgRecipeModal').modal('show');
-        setImageLoading('wg');
-    }
+    configureModalForType(category, true);
+    
+    const config = {
+        breakfast: 'breakfastMealName',
+        am: 'amRecipeName',
+        pm: 'pmRecipeName',
+        lunch: 'mealName',
+        fruit: 'fruitName',
+        veg: 'vegName',
+        wg: 'wgName'
+    };
+
+    // Set update URL
+    const updateUrls = {
+        breakfast: '/update-breakfast-recipe/',
+        am: '/update-am-recipe/',
+        pm: '/update-pm-recipe/',
+        lunch: '/update-recipe/',
+        fruit: '/update-fruit-recipe/',
+        veg: '/update-veg-recipe/',
+        wg: '/update-wg-recipe/'
+    };
+    $('#unifiedRecipeForm').attr('action', updateUrls[category] + id + '/');
+    
+    $('#unifiedRecipeModal').modal('show');
 
     try {
         const res = await fetch(`/recipe/${category}/${id}/`);
         const data = await res.json();
 
-        // populate fields per category
+        // Populate name
+        $('#recipeName').val(data.name || '');
+
+        // Populate type-specific fields
         if (category === 'breakfast') {
-            populateBreakfast(data);
-            setImageUI('breakfast', extractImagePath(data));
-        } else if (category === 'am') {
-            populateAM(data);
-            setImageUI('am', extractImagePath(data));
-        } else if (category === 'pm') {
-            populatePM(data);
-            setImageUI('pm', extractImagePath(data));
+            $('#additionalFood').val(data.addfood || '');
+        } else if (category === 'am' || category === 'pm') {
+            $('#fluid').val(data.fluid || '');
+            $('#fruitVeg').val(data.fruit || data.veg || '');
+            $('#meat').val(data.meat || '');
         } else if (category === 'lunch') {
-            populateLunch(data);
-            setImageUI('recipe', extractImagePath(data));
-        } else if (category === 'fruit') {
-            populateFruit(data);
-            setImageUI('fruit', extractImagePath(data));
-        } else if (category === 'veg') {
-            populateVeg(data);
-            setImageUI('veg', extractImagePath(data));
-        } else if (category === 'wg') {
-            populateWg(data);
-            setImageUI('wg', extractImagePath(data));
+            $('#grain').val(data.grain || '');
+            $('#meatAlternate').val(data.meat_alternate || '');
         }
+
+        $('#instructions').val(data.instructions || '');
+
+        // Clear and populate ingredients dynamically
+        clearAllIngredients();
+        
+        // Loop through all possible ingredients (check up to 20 to be safe)
+        for (let i = 1; i <= 20; i++) {
+            const ingId = data[`ingredient${i}_id`];
+            const qty = data[`qty${i}`];
+            if (ingId || qty) {
+                addIngredientField(ingId, qty);
+            } else if (i > 5) {
+                // Stop checking after we've gone past typical range without finding any
+                break;
+            }
+        }
+        
+        // If no ingredients, add one empty field
+        if (ingredientCounter === 0) {
+            addIngredientField();
+        }
+
+        // Populate rule
+        const ruleId = data.rule_id || (data.rule && data.rule.id);
+        await populateRulesDropdown('ruleSelect', ruleId);
+
+        // Populate checkboxes
+        document.getElementById('populateBreakfast').checked = !!data.populate_breakfast;
+        document.getElementById('populateAMSnack').checked = !!data.populate_am_snack;
+        document.getElementById('populateLunch').checked = !!data.populate_lunch;
+        document.getElementById('populatePMSnack').checked = !!data.populate_pm_snack;
+        document.getElementById('standalone').checked = !!data.standalone;
+        document.getElementById('ignoreInventory').checked = !!data.ignore_inventory;
+
+        // Handle image
+        const imagePath = data.image || data.image_url;
+        if (imagePath) {
+            const url = imagePath.startsWith('http') ? imagePath : `/media/${imagePath}`;
+            $('#recipeImageView').attr('href', url).show();
+            $('#recipeImage').hide();
+            $('#recipeImageReplace').show();
+        }
+
     } catch (e) {
-        console.error('Failed to open recipe for edit:', e);
+        console.error('Failed to load recipe:', e);
         toastr.error('Unable to load recipe.');
     }
 }
 
-// Register image toggles once DOM is ready
+// Initialize
 document.addEventListener('DOMContentLoaded', function () {
-    ['recipe','breakfast','am','pm','fruit','veg','wg'].forEach(registerReplaceToggle);
-});
-</script>
-<script>
-$(document).ready(function () {
-    function hideImageViews() {
-        // Reset to "create" UI: show only file inputs
-        ['recipe','breakfast','am','pm','fruit','veg','wg'].forEach(function (p) {
-            const v = document.getElementById(p + 'ImageView');
-            const b = document.getElementById(p + 'ImageReplace');
-            const i = document.getElementById(p + 'Image');
-            if (v) { v.style.display = 'none'; v.removeAttribute('href'); }
-            if (b) { b.style.display = 'none'; b.textContent = 'Replace image'; b.removeAttribute('data-replace'); b.disabled = false; }
-            if (i) { i.style.display = 'block'; i.value = ''; }
+    const tabs = document.querySelectorAll('#recipeTabs .tab');
+    const dropdown = document.getElementById('recipeCategoryDropdown');
+    const recipeTableBody = document.getElementById('recipeTableBody');
+    const deleteColumnHeader = document.getElementById('deleteColumnHeader');
+    const headerToggleDelete = document.getElementById('headerToggleDelete');
+    const mobileToggleDelete = document.getElementById('mobileToggleDeleteBtn');
+
+    // Hide delete column initially
+    deleteColumnHeader.style.display = 'none';
+
+    // Toggle delete column function
+    function toggleDeleteColumn() {
+        const isHidden = deleteColumnHeader.style.display === 'none';
+        deleteColumnHeader.style.display = isHidden ? 'table-cell' : 'none';
+        document.querySelectorAll('.delete-column').forEach(col => {
+            col.style.display = isHidden ? 'table-cell' : 'none';
+        });
+        
+        // Toggle button visibility (hide button when delete column is shown)
+        if (headerToggleDelete) {
+            if (isHidden) {
+                // Showing delete column, hide button
+                headerToggleDelete.classList.remove('active');
+            } else {
+                // Hiding delete column, show button
+                headerToggleDelete.classList.add('active');
+            }
+        }
+    }
+
+    // Header toggle delete button - shows delete column
+    if (headerToggleDelete) {
+        headerToggleDelete.addEventListener('click', toggleDeleteColumn);
+    }
+
+    // Delete column header - hides delete column
+    if (deleteColumnHeader) {
+        deleteColumnHeader.addEventListener('click', toggleDeleteColumn);
+    }
+
+    // Mobile toggle delete
+    if (mobileToggleDelete) {
+        mobileToggleDelete.addEventListener('click', toggleDeleteColumn);
+    }
+
+    // Fetch recipes
+    function fetchRecipes(category) {
+        const endpoints = {
+            breakfast: '/fetch-breakfast-recipes/',
+            am: '/fetch-am-recipes/',
+            lunch: '/fetch-recipes/',
+            pm: '/fetch-pm-recipes/',
+            fruit: '/fetch-fruit-recipes/',
+            veg: '/fetch-veg-recipes/',
+            wg: '/fetch-wg-recipes/'
+        };
+
+        fetch(endpoints[category])
+            .then(r => r.json())
+            .then(data => {
+                recipeTableBody.innerHTML = '';
+                (data.recipes || []).forEach(recipe => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="clickable-name" onclick="viewRecipe(${recipe.id}, '${category}')">${recipe.name}</td>
+                        <td class="delete-column" style="display: none;">
+                            <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${category}" style="color: red; cursor: pointer;"></i>
+                        </td>
+                    `;
+                    recipeTableBody.appendChild(row);
+                });
+
+                // Add delete listeners
+                document.querySelectorAll('.delete-record').forEach(icon => {
+                    icon.addEventListener('click', function () {
+                        const recipeId = this.getAttribute('data-id');
+                        const cat = this.getAttribute('data-category');
+                        if (confirm('Are you sure you want to delete this recipe?')) {
+                            fetch(`/delete-recipe/${cat}/${recipeId}/`, {
+                                method: 'DELETE',
+                                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+                            }).then(r => {
+                                if (r.ok) {
+                                    toastr.success('Recipe deleted successfully.');
+                                    fetchRecipes(getCurrentCategory());
+                                } else {
+                                    toastr.error('Failed to delete recipe.');
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // Sync delete column visibility
+                const isVisible = deleteColumnHeader.style.display === 'table-cell';
+                document.querySelectorAll('.delete-column').forEach(col => {
+                    col.style.display = isVisible ? 'table-cell' : 'none';
+                });
+            });
+    }
+
+    // Tab clicks
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const category = this.getAttribute('data-category');
+            tabs.forEach(t => t.classList.remove('active-tab'));
+            this.classList.add('active-tab');
+            if (dropdown) dropdown.value = category;
+            fetchRecipes(category);
+        });
+    });
+
+    // Dropdown
+    if (dropdown) {
+        dropdown.addEventListener('change', function () {
+            const category = this.value;
+            tabs.forEach(t => {
+                t.classList.remove('active-tab');
+                if (t.getAttribute('data-category') === category) {
+                    t.classList.add('active-tab');
+                }
+            });
+            fetchRecipes(category);
         });
     }
 
-    // cache original form actions so we can restore them for create
-    const initialActions = {
-        breakfast: $('#createBreakfastRecipeForm').attr('action'),
-        am:        $('#createAMRecipeForm').attr('action'),
-        lunch:     $('#createRecipeForm').attr('action'),
-        pm:        $('#createPMRecipeForm').attr('action'),
-        fruit:     $('#createFruitRecipeForm').attr('action'),
-        veg:       $('#createVegRecipeForm').attr('action'),
-        wg:        $('#createWgRecipeForm').attr('action')
-    };
+    // Create button clicks - configure modal based on current category
+    document.getElementById('createRecipeButton').addEventListener('click', function () {
+        resetModalForCreate(getCurrentCategory());
+    });
 
-    // generic helpers
-    function resetSelects(selectIds) {
-        selectIds.forEach(id => populateIngredientsDropdown(id, null));
+    document.getElementById('headerCreateBtn').addEventListener('click', function () {
+        resetModalForCreate(getCurrentCategory());
+        $('#unifiedRecipeModal').modal('show');
+    });
+
+    document.getElementById('mobileCreateBtn').addEventListener('click', function () {
+        resetModalForCreate(getCurrentCategory());
+    });
+
+    // Add ingredient button event listener
+    const addIngredientBtn = document.getElementById('addIngredientBtn');
+    if (addIngredientBtn) {
+        addIngredientBtn.addEventListener('click', function () {
+            addIngredientField();
+        });
     }
-    function resetRules(ruleId) {
-        populateRulesDropdown(ruleId, null);
-    }
 
-    // CREATE handlers (force create UI, clear data, populate lists, show only file input)
-    $('#createBreakfastButton').on('click', function () {
-        setModalUI('#createBreakfastRecipeModalLabel', '#breakfastSubmitBtn', 'Create Breakfast Recipe', 'Create Breakfast Recipe');
-        $('#createBreakfastRecipeForm').attr('action', initialActions.breakfast);
-        $('#breakfastMealName,#additionalFood,#breakfastInstructions').val('');
-        ['#breakfastMainIngredient2Container','#breakfastMainIngredient3Container','#breakfastMainIngredient4Container','#breakfastMainIngredient5Container'].forEach(s => $(s).hide());
-        ['#breakfastQtyMainIngredient1','#breakfastQtyMainIngredient2','#breakfastQtyMainIngredient3','#breakfastQtyMainIngredient4','#breakfastQtyMainIngredient5'].forEach(s => $(s).val(''));
-        resetSelects(['breakfastMainIngredient1','breakfastMainIngredient2','breakfastMainIngredient3','breakfastMainIngredient4','breakfastMainIngredient5']);
-        resetRules('breakfastRule');
-        hideImageViews();
+    // Image replace toggle
+    document.getElementById('recipeImageReplace').addEventListener('click', function () {
+        const isReplacing = this.getAttribute('data-replace') === 'true';
+        if (isReplacing) {
+            this.removeAttribute('data-replace');
+            this.textContent = 'Replace image';
+            $('#recipeImage').val('').hide();
+            $('#recipeImageView').show();
+        } else {
+            this.setAttribute('data-replace', 'true');
+            this.textContent = 'Cancel replace';
+            $('#recipeImageView').hide();
+            $('#recipeImage').show();
+        }
     });
 
-    $('#createAMButton').on('click', function () {
-        setModalUI('#createAMRecipeModalLabel', '#amSubmitBtn', 'Create AM Snack Recipe', 'Create AM Snack Recipe');
-        $('#createAMRecipeForm').attr('action', initialActions.am);
-        $('#amRecipeName,#amFluid,#amFruitVeg,#amMeat,#amInstructions').val('');
-        ['#amIngredient2Container','#amIngredient3Container','#amIngredient4Container','#amIngredient5Container'].forEach(s => $(s).hide());
-        ['#amQty1','#amQty2','#amQty3','#amQty4','#amQty5'].forEach(s => $(s).val(''));
-        resetSelects(['amIngredient1','amIngredient2','amIngredient3','amIngredient4','amIngredient5']);
-        resetRules('amRule');
-        hideImageViews();
-    });
-
-    $('#createLunchButton').on('click', function () {
-        setModalUI('#createRecipeModalLabel', '#lunchSubmitBtn', 'Create Recipe', 'Create Recipe');
-        $('#createRecipeForm').attr('action', initialActions.lunch);
-        $('#mealName,#grain,#meatAlternate,#instructions').val('');
-        ['#mainIngredient2Container','#mainIngredient3Container','#mainIngredient4Container','#mainIngredient5Container'].forEach(s => $(s).hide());
-        ['#qtyMainIngredient1','#qtyMainIngredient2','#qtyMainIngredient3','#qtyMainIngredient4','#qtyMainIngredient5'].forEach(s => $(s).val(''));
-        resetSelects(['mainIngredient1','mainIngredient2','mainIngredient3','mainIngredient4','mainIngredient5']);
-        resetRules('rule');
-        hideImageViews();
-    });
-
-    $('#createPMButton').on('click', function () {
-        setModalUI('#createPMRecipeModalLabel', '#pmSubmitBtn', 'Create PM Snack Recipe', 'Create PM Snack Recipe');
-        $('#createPMRecipeForm').attr('action', initialActions.pm);
-        $('#pmRecipeName,#pmFluid,#pmFruitVeg,#pmMeat,#pmInstructions').val('');
-        ['#pmIngredient2Container','#pmIngredient3Container','#pmIngredient4Container','#pmIngredient5Container'].forEach(s => $(s).hide());
-        ['#pmQty1','#pmQty2','#pmQty3','#pmQty4','#pmQty5'].forEach(s => $(s).val(''));
-        resetSelects(['pmIngredient1','pmIngredient2','pmIngredient3','pmIngredient4','pmIngredient5']);
-        resetRules('pmRule');
-        hideImageViews();
-    });
-
-    $('#createFruitButton').on('click', function () {
-        setModalUI('#fruitRecipeModalLabel', '#fruitSubmitBtn', 'Create Fruit Recipe', 'Create Fruit Recipe');
-        $('#createFruitRecipeForm').attr('action', initialActions.fruit);
-        $('#fruitName,#fruitQtyMainIngredient1').val('');
-        resetSelects(['fruitMainIngredient1']);
-        resetRules('fruitRule');
-        hideImageViews();
-    });
-
-    $('#createVegButton').on('click', function () {
-        setModalUI('#vegRecipeModalLabel', '#vegSubmitBtn', 'Create Veg Recipe', 'Create Veg Recipe');
-        $('#createVegRecipeForm').attr('action', initialActions.veg);
-        $('#vegName,#vegQtyMainIngredient1').val('');
-        resetSelects(['vegMainIngredient1']);
-        resetRules('vegRule');
-        hideImageViews();
-    });
-
-    $('#createWGButton').on('click', function () {
-        setModalUI('#wgRecipeModalLabel', '#wgSubmitBtn', 'Create Wg Recipe', 'Create Wg Recipe');
-        $('#createWgRecipeForm').attr('action', initialActions.wg);
-        $('#wgName,#wgQtyMainIngredient1').val('');
-        resetSelects(['wgMainIngredient1']);
-        resetRules('wgRule');
-        hideImageViews();
-    });
+    // Initial load
+    fetchRecipes('breakfast');
 });
 </script>
 {% endblock %}

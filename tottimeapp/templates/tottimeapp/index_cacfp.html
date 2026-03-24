@@ -29,29 +29,26 @@
         /* Grid & larger square button styles (solid color: rgb(57,189,180)) */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* bigger tiles */
+            grid-template-columns: repeat(2, 1fr); /* fixed 2 columns */
             gap: 18px;
             width: 100%;
-            max-width: 960px; /* allow more columns and larger tiles */
+            max-width: 600px; /* optimized for 2 columns */
             margin: 18px auto;
-            align-items: center;
-            justify-items: center;
             padding: 12px;
         }
 
         .btn-square {
             width: 100%;
-            max-width: 220px;          /* much bigger square size */
             aspect-ratio: 1 / 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 16px;             /* more breathing room */
+            padding: 16px;
             border-radius: 14px;
             color: #ffffff;
-            font-weight: 600;          /* less bold */
+            font-weight: 600;
             text-align: center;
             text-decoration: none;
             transition: transform .14s ease, box-shadow .14s ease;
@@ -103,15 +100,30 @@
             text-shadow: none;
         }
 
-        @media (min-width: 1200px) {
+        @media (min-width: 1000px) {
             .dashboard-grid {
+                grid-template-columns: repeat(3, 1fr); /* 3 columns on wide screens */
                 gap: 24px;
-            }
-            .btn-square {
-                max-width: 220px;
+                max-width: 900px; /* optimized for 3 columns */
             }
             .btn-square .label {
                 font-size: 1.35rem;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .dashboard-grid {
+                gap: 12px;
+                padding: 8px;
+            }
+            .btn-square {
+                padding: 12px;
+            }
+            .btn-square .sb-nav-link-icon i {
+                font-size: 1.4rem;
+            }
+            .btn-square .label {
+                font-size: 1.1rem;
             }
         }
 
@@ -133,6 +145,11 @@
                    <span class="label">Inventory</span>
                </a>
 
+               <a href="{% url 'todays_menu' %}" class="btn btn-primary btn-square" aria-label="Today's Menu">
+                   <div class="sb-nav-link-icon"><i class="fas fa-clipboard-list"></i></div>
+                   <span class="label">Today's Menu</span>
+               </a>
+
                <a href="{% url 'menu' %}" class="btn btn-primary btn-square" aria-label="Weekly Menu">
                    <div class="sb-nav-link-icon"><i class="fas fa-calendar-alt"></i></div>
                    <span class="label">Weekly Menu</span>
@@ -146,6 +163,11 @@
                <a href="{% url 'meal_calculator' %}" class="btn btn-primary btn-square" aria-label="Meal Calculator">
                    <div class="sb-nav-link-icon"><i class="fas fa-calculator"></i></div>
                    <span class="label">Meal Calculator</span>
+               </a>
+
+               <a href="{% url 'account_settings' %}" class="btn btn-primary btn-square" aria-label="Account Settings">
+                   <div class="sb-nav-link-icon"><i class="fas fa-user-cog"></i></div>
+                   <span class="label">Account Settings</span>
                </a>
         </div>
         {% endif %}

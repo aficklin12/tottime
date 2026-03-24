@@ -1,0 +1,407 @@
+{% extends 'tottimeapp/base_dynamic.html' %}
+{% load static %}
+
+{% block title %}Today's Menu{% endblock %}
+
+{% block styles %}
+<style>
+    .todays-menu-container {
+        max-width: 1400px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    
+    .no-menu-message {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #856404;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .meal-period {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .meal-period-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #39bdb4;
+    }
+    
+    .meal-period-icon {
+        font-size: 32px;
+        color: #39bdb4;
+    }
+    
+    .meal-period-title {
+        font-size: 26px;
+        font-weight: bold;
+        color: #272630;
+        margin: 0;
+    }
+    
+    .recipe-card {
+        background: #f8f9fa;
+        border-left: 4px solid #39bdb4;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+    }
+    
+    .recipe-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 15px;
+    }
+    
+    .recipe-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #272630;
+        margin: 0 0 5px 0;
+    }
+    
+    .recipe-field-label {
+        font-size: 14px;
+        color: #666;
+        font-style: italic;
+    }
+    
+    .recipe-image {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .recipe-instructions {
+        background: white;
+        border-radius: 6px;
+        margin: 15px 0;
+        overflow: hidden;
+    }
+    
+    .recipe-instructions h4 {
+        color: #39bdb4;
+        margin: 0;
+        font-size: 16px;
+    }
+    
+    .recipe-instructions p {
+        color: #555;
+        line-height: 1.6;
+        margin: 0;
+    }
+    
+    .ingredients-section {
+        background: white;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .ingredients-section h4 {
+        color: #39bdb4;
+        margin: 0;
+        font-size: 16px;
+    }
+    
+    .toggle-header {
+        padding: 15px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+        transition: background 0.2s;
+    }
+    
+    .toggle-header:hover {
+        background: #f8f9fa;
+    }
+    
+    .toggle-arrow {
+        font-size: 14px;
+        transition: transform 0.3s;
+        color: #39bdb4;
+    }
+    
+    .toggle-arrow.open {
+        transform: rotate(180deg);
+    }
+    
+    .toggle-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        padding: 0 15px;
+    }
+    
+    .toggle-content.open {
+        max-height: 2000px;
+        padding: 0 15px 15px 15px;
+    }
+    
+    .ingredients-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .ingredient-item {
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .ingredient-name {
+        font-weight: 500;
+        color: #272630;
+    }
+    
+    .ingredient-quantity {
+        color: #39bdb4;
+        font-weight: 600;
+    }
+    
+    .shopping-list-section {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-top: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .shopping-list-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #ff5722;
+    }
+    
+    .shopping-list-icon {
+        font-size: 32px;
+        color: #ff5722;
+    }
+    
+    .shopping-list-title {
+        font-size: 26px;
+        font-weight: bold;
+        color: #272630;
+        margin: 0;
+    }
+    
+    .shopping-item {
+        padding: 12px 15px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        border-left: 4px solid #ff5722;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .shopping-item-name {
+        font-weight: 600;
+        color: #272630;
+        font-size: 16px;
+    }
+    
+    .shopping-item-details {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+    }
+    
+    .shopping-item-needed {
+        color: #d84315;
+        font-weight: 600;
+    }
+    
+    .shopping-item-stock {
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .no-recipes {
+        text-align: center;
+        padding: 20px;
+        color: #999;
+        font-style: italic;
+    }
+    
+    @media (max-width: 768px) {
+        .recipe-header {
+            flex-direction: column;
+        }
+        
+        .recipe-image {
+            width: 100%;
+            height: 200px;
+            margin-top: 15px;
+        }
+        
+        .shopping-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="desktop-only">Today's Menu - {{ today|date:"l, F j, Y" }}</h1>
+
+<div class="todays-menu-container">
+
+    {% if not menu %}
+        <div class="no-menu-message">
+            <i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 10px;"></i>
+            <p style="font-size: 18px; margin: 10px 0 0 0;">No menu found for today. Please generate or create a menu for {{ today|date:"F j, Y" }}.</p>
+        </div>
+    {% else %}
+        {% if meal_periods %}
+            {% for period_name, recipes in meal_periods.items %}
+                {% if recipes %}
+                    <div class="meal-period">
+                        <div class="meal-period-header">
+                            <div class="meal-period-icon">
+                                {% if period_name == 'Breakfast' %}
+                                    <i class="fas fa-coffee"></i>
+                                {% elif period_name == 'AM Snack' %}
+                                    <i class="fas fa-apple-alt"></i>
+                                {% elif period_name == 'Lunch' %}
+                                    <i class="fas fa-utensils"></i>
+                                {% elif period_name == 'PM Snack' %}
+                                    <i class="fas fa-cookie-bite"></i>
+                                {% endif %}
+                            </div>
+                            <h2 class="meal-period-title">{{ period_name }}</h2>
+                        </div>
+                        
+                        {% for recipe_data in recipes %}
+                            <div class="recipe-card">
+                                <div class="recipe-header">
+                                    <div>
+                                        <h3 class="recipe-title">
+                                            {% if recipe_data.recipe %}
+                                                {{ recipe_data.recipe.name }}
+                                            {% else %}
+                                                {{ recipe_data.recipe_name }}
+                                            {% endif %}
+                                        </h3>
+                                        <div class="recipe-field-label">{{ recipe_data.field_label }}</div>
+                                    </div>
+                                    {% if recipe_data.recipe and recipe_data.recipe.image %}
+                                        <img src="{{ recipe_data.recipe.image.url }}" alt="{{ recipe_data.recipe.name }}" class="recipe-image">
+                                    {% endif %}
+                                </div>
+                                
+                                {% if recipe_data.recipe %}
+                                    {% if recipe_data.recipe.instructions %}
+                                        <div class="recipe-instructions">
+                                            <div class="toggle-header" onclick="toggleSection(this)">
+                                                <h4><i class="fas fa-clipboard-list"></i> Instructions</h4>
+                                                <i class="fas fa-chevron-down toggle-arrow"></i>
+                                            </div>
+                                            <div class="toggle-content">
+                                                <p>{{ recipe_data.recipe.instructions|linebreaks }}</p>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if recipe_data.ingredients %}
+                                        <div class="ingredients-section">
+                                            <div class="toggle-header" onclick="toggleSection(this)">
+                                                <h4><i class="fas fa-list-ul"></i> Ingredients</h4>
+                                                <i class="fas fa-chevron-down toggle-arrow"></i>
+                                            </div>
+                                            <div class="toggle-content">
+                                                <ul class="ingredients-list">
+                                                    {% for ingredient in recipe_data.ingredients %}
+                                                        {% if ingredient.ingredient %}
+                                                            <li class="ingredient-item">
+                                                                <span class="ingredient-name">{{ ingredient.ingredient.item }}</span>
+                                                                <span class="ingredient-quantity">
+                                                                    {{ ingredient.quantity }} {{ ingredient.ingredient.units }}
+                                                                </span>
+                                                            </li>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        
+        {% if all_ingredients %}
+            <div class="shopping-list-section">
+                <div class="shopping-list-header">
+                    <div class="shopping-list-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <h2 class="shopping-list-title">All Ingredients Needed Today</h2>
+                </div>
+                
+                {% for item_name, item_data in all_ingredients.items %}
+                    <div class="shopping-item">
+                        <span class="shopping-item-name">{{ item_name }}</span>
+                        <div class="shopping-item-details">
+                            <span class="shopping-item-needed">
+                                Need: {{ item_data.quantity|floatformat:2 }} {{ item_data.units }}
+                            </span>
+                            <span class="shopping-item-stock">
+                                In Stock: {{ item_data.current_stock|floatformat:2 }} {{ item_data.units }}
+                            </span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSection(header) {
+    const content = header.nextElementSibling;
+    const arrow = header.querySelector('.toggle-arrow');
+    
+    if (content.classList.contains('open')) {
+        content.classList.remove('open');
+        arrow.classList.remove('open');
+    } else {
+        content.classList.add('open');
+        arrow.classList.add('open');
+    }
+}
+
+console.log('Today\'s Menu loaded successfully');
+</script>
+{% endblock %}

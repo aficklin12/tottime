@@ -896,28 +896,33 @@ h1.mt-4 {
 
 @media print {
     .rules-legend { display: none !important; }
-    #missingRulesAlert { display: none !important; }
+    #missingRulesAlert,
+    #missingInventoryRulesAlert { display: none !important; }
 }
 
 /* Missing Rules Alert Styles */
-#missingRulesAlert {
+#missingRulesAlert,
+#missingInventoryRulesAlert {
     display: none;
 }
 
 @media (min-width: 1001px) {
-    #missingRulesAlert {
+    #missingRulesAlert,
+    #missingInventoryRulesAlert {
         margin-left: 6px;
         margin-right: 6px;
     }
 }
 
 @media (max-width: 1000px) {
-    #missingRulesAlert {
+    #missingRulesAlert,
+    #missingInventoryRulesAlert {
         margin-left: 20px;
         margin-right: 20px;
         font-size: 0.9rem;
     }
-    #missingRulesAlert span {
+    #missingRulesAlert span,
+    #missingInventoryRulesAlert span {
         font-size: 0.85rem !important;
     }
 }
@@ -957,6 +962,47 @@ h1.mt-4 {
 .loading-active .container {
     filter: blur(2px) brightness(0.6) saturate(0.9);
     transition: filter 160ms ease;
+}
+
+/* Inventory Warning Toastr Styling */
+.toastr-inventory-warning {
+    width: 500px !important;
+    max-width: 90vw !important;
+}
+
+.toastr-inventory-warning .toast-message {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.toastr-inventory-warning ul {
+    font-size: 13px;
+}
+
+.toastr-inventory-warning .btn {
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toastr-inventory-warning .btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.toastr-inventory-warning .btn-success:hover {
+    background: #218838;
+}
+
+.toastr-inventory-warning .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.toastr-inventory-warning .btn-secondary:hover {
+    background: #5a6268;
 }
 
 </style>
@@ -1349,7 +1395,7 @@ function getColorableCellIds() {
         'mondayfruit2','tuesdayfruit2','wednesdayfruit2','thursdayfruit2','fridayfruit2',
         'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',
         'mondaymeat1','tuesdaymeat1','wednesdaymeat1','thursdaymeat1','fridaymeat1',
-        'mondayMeals','tuesdayMeals','wednesdayMeals','thursdayMeals','fridayMeals',
+        // EXCLUDED: Main dish cells (mondayMeals, etc.) should NOT be colored by rules
         'mondayLunchMilk','tuesdayLunchMilk','wednesdayLunchMilk','thursdayLunchMilk','fridayLunchMilk',
         'mondayvege','tuesdayvege','wednesdayvege','thursdayvege','fridayvege',
         'mondayfruit3','tuesdayfruit3','wednesdayfruit3','thursdayfruit3','fridayfruit3',
@@ -1506,19 +1552,72 @@ const DAY_FULL = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
 const WG_NAME_RX = /\b(wg|ww|whole\s*grain|whole\s*wheat)\b/i;
 const norm = s => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
 
+const OUT_OF_STOCK_TEXT = '❌ Out of stock ❌';
+const MISSING_OPTION_RX = /^no available .* option$/i;
+const OUT_OF_STOCK_RX = /^(?:❌\s*)?out of stock(?:\s*❌)?$/i;
+
+function isMissingMenuValue(text) {
+    const value = (text || '').trim();
+    if (!value) return true;
+    return MISSING_OPTION_RX.test(value) || OUT_OF_STOCK_RX.test(value);
+}
+
+function isMeaningfulMenuValue(text) {
+    const value = (text || '').trim();
+    if (!value) return false;
+    return !isMissingMenuValue(value);
+}
+
+function getSectionCellIds() {
+    const suffixes = {
+        breakfast: ['Milk', 'fruit', 'bread', 'add1'],
+        am_snack: ['choose1', 'fruit2', 'bread2', 'meat1', 'add3'],
+        lunch: ['Meals', 'LunchMilk', 'vege', 'fruit3', 'Grain', 'MeatAlternate', 'add2'],
+        pm_snack: ['choose2', 'fruit4', 'bread3', 'meat3', 'add4']
+    };
+
+    const sectionIds = {};
+    Object.entries(suffixes).forEach(([section, sectionSuffixes]) => {
+        sectionIds[section] = DAYS.flatMap(day => sectionSuffixes.map(suffix => `${day}${suffix}`));
+    });
+    return sectionIds;
+}
+
+function normalizeMissingMenuText() {
+    const sectionIds = getSectionCellIds();
+    const targetIdsBySection = {
+        breakfast: DAYS.map(day => `${day}bread`),
+        am_snack: DAYS.map(day => `${day}bread2`),
+        lunch: DAYS.map(day => `${day}Meals`),
+        pm_snack: DAYS.map(day => `${day}bread3`)
+    };
+
+    Object.entries(targetIdsBySection).forEach(([section, ids]) => {
+        const scopeIds = sectionIds[section] || ids;
+        const hasAnyRecipeInSection = scopeIds.some(id => {
+            const el = document.getElementById(id);
+            return el && isMeaningfulMenuValue(el.innerText);
+        });
+
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            const current = (el.innerText || '').trim();
+            if (!isMissingMenuValue(current)) return;
+
+            el.innerText = hasAnyRecipeInSection ? OUT_OF_STOCK_TEXT : '';
+        });
+    });
+}
+
 /* Fetch inventory rules from server */
 async function fetchInventoryRules() {
     if (inventoryRulesCache) {
-        console.log('📦 Using CACHED inventory rules, count:', Object.keys(inventoryRulesCache).length);
-        // Log specific important items from cache
-        if (inventoryRulesCache['Bread']) console.log('  ├─ Bread rule found in cache:', inventoryRulesCache['Bread']);
-        if (inventoryRulesCache['Toast']) console.log('  ├─ Toast rule found in cache:', inventoryRulesCache['Toast']);
-        if (inventoryRulesCache['Bean']) console.log('  └─ Bean rule found in cache:', inventoryRulesCache['Bean']);
         return inventoryRulesCache;
     }
     try {
         const url = '/api/fetch_inventory_rules/?_=' + Date.now();
-        console.log('🌐 Fetching FRESH inventory rules from server:', url);
         const response = await fetch(url, {
             method: 'GET',
             cache: 'no-store',
@@ -1526,12 +1625,6 @@ async function fetchInventoryRules() {
         });
         const data = await response.json();
         inventoryRulesCache = data.item_rules || {};
-        console.log('✅ Fresh rules fetched, total count:', Object.keys(inventoryRulesCache).length);
-        console.log('  Sample rule keys:', Object.keys(inventoryRulesCache).slice(0, 15));
-        // Log specific important items
-        if (inventoryRulesCache['Bread']) console.log('  ├─ Bread rule:', inventoryRulesCache['Bread']);
-        if (inventoryRulesCache['Toast']) console.log('  ├─ Toast rule:', inventoryRulesCache['Toast']);
-        if (inventoryRulesCache['Bean']) console.log('  └─ Bean rule:', inventoryRulesCache['Bean']);
         return inventoryRulesCache;
     } catch (error) {
         console.error('❌ Error fetching inventory rules:', error);
@@ -1561,17 +1654,7 @@ function isWGText(text) { return WG_NAME_RX.test(text || ""); }
 
 /* Apply gradient styling to cells based on inventory rules (and mark WG by rule_label or name) */
 async function applyGradientsToCells() {
-    console.log('\n🎨 === applyGradientsToCells called ===');
     const itemRules = await fetchInventoryRules();
-    console.log('📋 Rules available for matching, count:', Object.keys(itemRules || {}).length);
-    
-    // Debug: Verify specific rules are present
-    const testItems = ['Bread', 'Toast', 'Bean', 'bread', 'toast', 'bean'];
-    testItems.forEach(item => {
-        if (itemRules[item]) {
-            console.log(`  ✓ Rule found for "${item}":`, itemRules[item].rule_label);
-        }
-    });
     
     // Try to fetch rules list (for assigned rule ids)
     let ruleList = null;
@@ -1610,17 +1693,8 @@ async function applyGradientsToCells() {
         }
         if (!text) return;
 
-        // Debug: Log what we're trying to match
-        const isInteresting = ['bread', 'toast', 'bean'].some(keyword => text.toLowerCase().includes(keyword));
-        if (isInteresting) {
-            console.log(`\n🔍 Processing cell ${cellId}: "${text}"`);
-        }
-
         // Try exact match first
         let rule = itemRules[text];
-        if (rule && isInteresting) {
-            console.log(`  ✓ Exact match found for "${text}"`);
-        }
         
         // If no exact match, try case-insensitive match
         if (!rule) {
@@ -1628,51 +1702,17 @@ async function applyGradientsToCells() {
             for (const [key, value] of Object.entries(itemRules)) {
                 if (key.toLowerCase() === lowerText) {
                     rule = value;
-                    if (isInteresting) {
-                        console.log(`  ✓ Case-insensitive match: "${text}" matched "${key}"`);
-                    }
                     break;
                 }
             }
         }
         
         if (rule) {
-            if (isInteresting) {
-                console.log(`  🎨 Applying rule:`, rule.rule_label, 'Colors:', rule.gradient_start, '->', rule.gradient_end);
-            }
             cell.style.background = `linear-gradient(135deg, ${rule.gradient_start}, ${rule.gradient_end})`;
             cell.style.color = rule.text_color;
             cell.dataset.ruleApplied = 'true';
             if (rule.rule_label) cell.dataset.ruleLabel = rule.rule_label;
-            
-            // Verify style was applied
-            if (isInteresting) {
-                const appliedBg = cell.style.background;
-                const appliedColor = cell.style.color;
-                console.log(`  ✅ Style applied and verified - bg: ${appliedBg.substring(0, 50)}..., color: ${appliedColor}`);
-            }
             matchCount++;
-        } else if (/\b(wg|ww|whole\s*grain|whole\s*wheat|bread|toast)\b/i.test(text)) {
-            // Fallback for whole grain keywords (including bread/toast)
-            if (isInteresting) {
-                console.log(`  🌾 Applying WG fallback to ${cellId}: "${text}"`);
-            }
-            const s = WG_DEFAULT_STYLE;
-            cell.style.background = `linear-gradient(135deg, ${s.gradient_start}, ${s.gradient_end})`;
-            cell.style.color = s.text_color;
-            cell.dataset.ruleApplied = 'true';
-            cell.dataset.ruleLabel = 'Whole Grain';
-            
-            // Verify style was applied
-            if (isInteresting) {
-                console.log(`  ✅ WG fallback applied - bg: ${cell.style.background.substring(0, 50)}...`);
-            }
-            matchCount++;
-        } else {
-            // Log cells that didn't get colored for debugging
-            if (isInteresting) {
-                console.log(`  ❌ No rule match found for ${cellId}: "${text}"`);
-            }
         }
     });
 
@@ -2072,10 +2112,6 @@ function getCookie(name) {
 /* The table updaters used by AJAX success handlers */
 function updateTable(response){
     populateFromResponse(response);
-    DAYS.forEach(day => {
-        safeSetText(day + 'Milk', '1% w.milk (unflavored)');
-        safeSetText(day + 'LunchMilk', '1% w.milk (unflavored)');
-    });
     {% if not use_inventory_selectors %}
     enableEditablesForAllCells();
     {% endif %}
@@ -2084,7 +2120,6 @@ function updateAMTable(response){ populateFromResponse(response); {% if not use_
 function updatePMTable(response){ populateFromResponse(response); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} }
 function updateBreakfastTable(response){
     populateFromResponse(response);
-    DAYS.forEach(day => { safeSetText(day + 'Milk', '1% w.milk (unflavored)'); });
     {% if not use_inventory_selectors %}
     enableEditablesForAllCells();
     {% endif %}
@@ -2096,6 +2131,7 @@ function updateVegetableTable(response){ populateFromResponse(response); {% if n
 
 $(document).ready(function() {
     restoreMenuProgressFromLocalStorage();
+    normalizeMissingMenuText();
     {% if not use_inventory_selectors %}
     enableEditablesForAllCells();
     {% endif %}
@@ -2147,8 +2183,8 @@ $(document).ready(function() {
     });
     $(document).on('blur', '.input-box', function(){ setTimeout(() => { saveMenuProgressToLocalStorage(); toggleAMSnackVisibility(); }, 80); });
 
-    function ajaxPost(url) {
-        return $.ajax({ url, type: 'POST', data: {}, beforeSend: function(xhr){ xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken')); } });
+    function ajaxPost(url, data = {}) {
+        return $.ajax({ url, type: 'POST', data: data, beforeSend: function(xhr){ xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken')); } });
     }
 
     // Lightweight loading overlay controls
@@ -2189,18 +2225,126 @@ $(document).ready(function() {
         clearAllMenuCellStyles();
 
         // Call the unified full menu generation endpoint (all meals generated in one request with shared rule tracker)
-        ajaxPost('/generate_full_menu/')
+        // Include week_start so backend uses the correct date for 2-week cooldown calculation
+        ajaxPost('/generate_full_menu/', {
+            week_start: (window.nextMondayDate ? (new Date(window.nextMondayDate)).toISOString().split('T')[0] : null),
+            ignore_inventory: (window.confirmedIgnoreInventory ? 'true' : 'false')
+        })
             .done(function(resp) {
-                // Response contains all meal data: breakfast, am_snack, lunch, pm_snack
+                // DEBUG: Log what we received
+                console.log('🔍 RESPONSE RECEIVED:', {
+                    has_out_of_stock_items: !!(resp.out_of_stock_items && resp.out_of_stock_items.length > 0),
+                    out_of_stock_count: resp.out_of_stock_items ? resp.out_of_stock_items.length : 0,
+                    confirmedIgnoreInventory: window.confirmedIgnoreInventory,
+                    breakfast_monday_bread: resp.breakfast ? resp.breakfast.Monday.bread || '(empty)' : '(no breakfast data)'
+                });
+                
+                // Check if there are out-of-stock items and user hasn't confirmed yet
+                if (resp.out_of_stock_items && resp.out_of_stock_items.length > 0 && !window.confirmedIgnoreInventory) {
+                    // Build a simplified list showing day/meal combinations (deduplicated)
+                    const dayAbbr = {'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed', 'Thursday': 'Thu', 'Friday': 'Fri'};
+                    const uniqueCombos = new Set();
+                    resp.out_of_stock_items.forEach(item => {
+                        const abbr = dayAbbr[item.day] || item.day;
+                        uniqueCombos.add(`${abbr} ${item.meal}`);
+                    });
+                    const itemsList = Array.from(uniqueCombos).join(', ');
+                    
+                    const uniqueId = Date.now();
+                    toastr.warning(
+                        `<div style="margin-bottom: 10px;"><strong>Recipes out of stock for the following:</strong></div>
+                         <div style="margin: 10px 0; font-weight: 600;">${itemsList}</div>
+                         <div style="margin: 15px 0 10px 0;">Ignore out-of-stock items and continue generating?</div>
+                         <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button type="button" class="btn btn-success inventory-bypass-yes-btn" style="padding: 8px 20px;">Yes, Ignore Inventory's Stock</button>
+                            <button type="button" class="btn btn-secondary inventory-bypass-no-btn" style="padding: 8px 20px;">No, Leave As Is</button>
+                         </div>
+                         <span style="display:none;" data-unique="${uniqueId}"></span>`,
+                        'Inventory Shortage',
+                        {
+                            closeButton: false,
+                            timeOut: 0,
+                            extendedTimeOut: 0,
+                            tapToDismiss: false,
+                            positionClass: 'toast-top-center',
+                            toastClass: 'toastr-inventory-warning',
+                            escapeHtml: false,
+                            preventDuplicates: false,
+                            onShown: function() {
+                                $('.inventory-bypass-yes-btn').off('click').on('click', function() {
+                                    $('.toastr-inventory-warning').fadeOut(200, function(){ $(this).remove(); });
+                                    // User confirmed - regenerate with ignore_inventory flag
+                                    window.confirmedIgnoreInventory = true;
+                                    // Re-trigger generation immediately
+                                    setTimeout(() => $btn.click(), 100);
+                                });
+                                $('.inventory-bypass-no-btn').off('click').on('click', async function() {
+                                    $('.toastr-inventory-warning').fadeOut(200, function(){ $(this).remove(); });
+                                    // User declined - continue with out of stock markers
+                                    window.confirmedIgnoreInventory = false;
+                                    // Process response with out of stock markers
+                                    if (resp.breakfast) updateBreakfastTable(resp.breakfast);
+                                    if (resp.am_snack) updateAMTable(resp.am_snack);
+                                    if (resp.lunch) updateTable(resp.lunch);
+                                    if (resp.pm_snack) updatePMTable(resp.pm_snack);
+                                    normalizeMissingMenuText();
+                                    if (resp.missing_rules) {
+                                        displayMissingRulesFromData(resp.missing_rules);
+                                    }
+                                    saveMenuProgressToLocalStorage();
+                                    
+                                    // Apply colors and rebuild legend after table updates
+                                    await new Promise(r => setTimeout(r, 100));
+                                    clearAllMenuCellStyles();
+                                    inventoryRulesCache = null;
+                                    await fetchInventoryRules();
+                                    await applyGradientsToCells();
+                                    await ensureDailyWG();
+                                    toggleAMSnackVisibility();
+                                    await buildRulesLegendFromCache();
+                                    await displayMissingRules();
+                                    
+                                    // Re-enable button and hide loading
+                                    setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 200);
+                                    hideLoading();
+                                });
+                            }
+                        }
+                    );
+                    return; // Don't process response yet, wait for user choice
+                }
+                
+                // Response contains all meal data: breakfast, am_snack, lunch, pm_snack, missing_rules
                 if (resp.breakfast) updateBreakfastTable(resp.breakfast);
                 if (resp.am_snack) updateAMTable(resp.am_snack);
                 if (resp.lunch) updateTable(resp.lunch);
                 if (resp.pm_snack) updatePMTable(resp.pm_snack);
+                
+                // Only normalize (convert empties to "Out of stock") when NOT bypassing inventory
+                if (!window.confirmedIgnoreInventory) {
+                    normalizeMissingMenuText();
+                } else {
+                    // Reset flag after successful bypass generation
+                    // (Next generation will check inventory again)
+                    window.confirmedIgnoreInventory = false;
+                }
+                
+                // Display missing rules (inventory shortages) above table
+                if (resp.missing_rules) {
+                    displayMissingRulesFromData(resp.missing_rules);
+                }
+                
                 saveMenuProgressToLocalStorage();
             })
             .fail(() => toastr.error('Failed generating menu'))
             .always(async function() {
             try {
+                // If we triggered a regeneration, don't do post-processing yet
+                if (window.confirmedIgnoreInventory === true) {
+                    // The regeneration will handle everything
+                    return;
+                }
+                
                 // Preserve any user-selected week (window.nextMondayDate) instead
                 // of recomputing next Monday from today which would overwrite
                 // an edited/saved week. If no preserved week exists, fall back
@@ -2214,10 +2358,6 @@ $(document).ready(function() {
                 } else {
                     updateDates();
                 }
-                DAYS.forEach(day => {
-                    safeSetText(day + 'Milk', document.getElementById(day + 'Milk')?.innerText || '1% w.milk (unflavored)');
-                    safeSetText(day + 'LunchMilk', document.getElementById(day + 'LunchMilk')?.innerText || '1% w.milk (unflavored)');
-                });
                 saveMenuProgressToLocalStorage();
                 {% if not use_inventory_selectors %}
                 enableEditablesForAllCells();
@@ -2226,50 +2366,30 @@ $(document).ready(function() {
                 // Wait a moment for table updates to complete
                 await new Promise(r => setTimeout(r, 100));
                 
+                // IMPORTANT: Clear previous colors again before applying new ones
+                // This prevents race conditions when user regenerates menu multiple times
+                clearAllMenuCellStyles();
+                
                 // Force fresh fetch of inventory rules before applying colors
                 // This ensures we have the latest rule mappings for newly generated recipes
-                console.log('=== Starting color application after menu generation ===');
-                console.log('Clearing cache and fetching fresh rules...');
                 inventoryRulesCache = null; // Clear cache to force fresh fetch
                 const freshRules = await fetchInventoryRules();
-                console.log('Fresh rules fetched from server, count:', Object.keys(freshRules || {}).length);
                 
-                if (Object.keys(freshRules || {}).length > 0) {
-                    console.log('Sample of fetched rules:', Object.keys(freshRules).slice(0, 20));
-                } else {
+                if (Object.keys(freshRules || {}).length === 0) {
                     console.warn('WARNING: No rules fetched from server!');
                 }
                 
                 // Apply colors with the fresh rules (note: clearAllMenuCellStyles already called before generation)
-                console.log('🚀 STARTING COLOR APPLICATION - this should be visible!');
-                console.log('Applying colors to cells...');
                 let matchCount = await applyGradientsToCells();
-                console.log('✅ Initial gradient application completed, matchCount:', matchCount);
-                console.log('🎯 Color application finished. Check cells for colors.');
                 
                 // If no matches, retry ONCE with a small delay
                 if (matchCount === 0) {
-                    console.log('⚠️ No color matches found on first attempt, retrying after delay...');
                     await new Promise(r => setTimeout(r, 500));
                     // Re-fetch in case of timing issue
                     inventoryRulesCache = null;
                     await fetchInventoryRules();
                     matchCount = await applyGradientsToCells();
-                    console.log('Retry gradient application completed, matchCount:', matchCount);
                 }
-                
-                // Verification: Check if any cells actually have styles applied
-                console.log('\\n🔬 Verification - checking if styles persisted in DOM:');
-                const testCellIds = getColorableCellIds().slice(0, 10);
-                let stylesFound = 0;
-                testCellIds.forEach(cellId => {
-                    const cell = document.getElementById(cellId);
-                    if (cell && cell.style.background) {
-                        console.log(`  ✓ ${cellId}: HAS background style - "${cell.innerText}" has color`);
-                        stylesFound++;
-                    }
-                });
-                console.log(`📊 Verification complete: ${stylesFound}/${testCellIds.length} tested cells have background styles\\n`);
                 
                 await ensureDailyWG();
                 toggleAMSnackVisibility();
@@ -2287,7 +2407,7 @@ $(document).ready(function() {
         });
     });
 
-    $(document).on('click', '#generateMenuBtn', function (e) { console.log('delegated generate handler (fallback)'); });
+    $(document).on('click', '#generateMenuBtn', function (e) { /* delegated generate handler (fallback) */ });
 
     $('#saveMenuBtn').off('click').on('click', function (e) {
         e.preventDefault();
@@ -2379,6 +2499,52 @@ async function displayMissingRules() {
         }
     } catch (error) {
         console.warn('Error checking missing rules:', error);
+    }
+}
+
+/* Display missing rules from direct data (inventory shortage alert) */
+function displayMissingRulesFromData(missingRules) {
+    // Keep inventory-shortage alert separate so it is not overwritten by recipe-missing checks.
+    let missingContainer = document.getElementById('missingInventoryRulesAlert');
+    if (!missingContainer) {
+        const table = document.getElementById('weeklyMenuTable');
+        const legend = document.getElementById('rulesLegend');
+        const mobileSelector = document.getElementById('mobileDaySelector');
+        const anchor = table || legend || mobileSelector;
+        if (!anchor || !anchor.parentNode) return;
+        
+        missingContainer = document.createElement('div');
+        missingContainer.id = 'missingInventoryRulesAlert';
+        missingContainer.className = 'alert alert-warning';
+        missingContainer.style.cssText = 'margin: 12px 0; padding: 14px 18px; border-radius: 8px; background: rgba(255, 87, 34, 0.1); border-left: 4px solid #ff5722;';
+        anchor.parentNode.insertBefore(missingContainer, anchor);
+    }
+    
+    // If there are missing rules, display them
+    if (missingRules && missingRules.length > 0) {
+        const rulesList = missingRules.map(rule => 
+            `<span style="display: inline-block; padding: 5px 10px; margin: 3px 5px; background: rgba(255,87,34,0.15); border-radius: 6px; font-weight: 600; color: #d84315; border: 1px solid rgba(216,67,21,0.3);">${rule.rule} (${rule.current}/${rule.required} days)</span>`
+        ).join('');
+        
+        missingContainer.innerHTML = `
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <i class="fas fa-exclamation-circle" style="color: #ff5722; margin-top: 2px; font-size: 20px;" aria-hidden="true"></i>
+                <div style="flex: 1;">
+                    <strong style="color: #d84315; display: block; margin-bottom: 8px; font-size: 1.05rem;">⚠️ Insufficient Inventory for Rules</strong>
+                    <p style="margin: 4px 0 10px 0; font-size: 0.95rem; color: #555;">
+                        The following rules couldn't be fully satisfied due to insufficient inventory:
+                    </p>
+                    <div style="margin: 10px 0;">${rulesList}</div>
+                    <p style="margin: 10px 0 0 0; font-size: 0.9rem; color: #666; font-style: italic;">
+                       Update your inventory to ensure sufficient ingredients are available.
+                    </p>
+                </div>
+            </div>
+        `;
+        missingContainer.style.display = 'block';
+    } else {
+        // Hide the container if all rules are fulfilled
+        missingContainer.style.display = 'none';
     }
 }
 
@@ -2750,39 +2916,135 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
 <script>
 // Autocomplete selector for menu cells
 (function(){
-    // Inventory items passed from view
+    // Data passed from view
     const INVENTORY_ITEMS = {{ inventory_items_json|safe }} || [];
+    const MAIN_DISH_RECIPES = {{ main_dish_recipes_json|safe }} || [];
+    const OTHER_ITEMS = {{ other_items_json|safe }} || [];
+    
+    // Main dish cell IDs (standalone=False recipes only)
+    const MAIN_DISH_CELLS = [
+        'mondayMeals','tuesdayMeals','wednesdayMeals','thursdayMeals','fridayMeals',  // Main Dish row
+        'mondaybread','tuesdaybread','wednesdaybread','thursdaybread','fridaybread',  // Breakfast bread
+        'mondaybread2','tuesdaybread2','wednesdaybread2','thursdaybread2','fridaybread2',  // AM Snack bread
+        'mondaybread3','tuesdaybread3','wednesdaybread3','thursdaybread3','fridaybread3'  // PM Snack bread
+    ];
 
     // Build dropdown container
     const dropdown = document.createElement('div');
     dropdown.id = 'inventory-autocomplete-popup';
     Object.assign(dropdown.style, {
         position: 'absolute', zIndex: 2000, background: '#fff', border: '1px solid #ccc',
-        minWidth: '220px', maxHeight: '260px', overflowY: 'auto', boxShadow: '0 6px 18px rgba(0,0,0,0.15)', display: 'none'
+        minWidth: '280px', maxHeight: '260px', overflowY: 'auto', boxShadow: '0 6px 18px rgba(0,0,0,0.15)', display: 'none',
+        borderRadius: '6px'
+    });
+
+    // Close dropdown button (top-right corner)
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.setAttribute('aria-label', 'Close dropdown');
+    closeBtn.title = 'Close';
+    Object.assign(closeBtn.style, {
+        position: 'absolute', top: '4px', right: '4px', background: '#f0f0f0',
+        border: '1px solid #ccc', fontSize: '20px', lineHeight: '1', padding: '4px 8px',
+        cursor: 'pointer', color: '#666', zIndex: '10', borderRadius: '4px', fontWeight: 'bold'
+    });
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePopup();
+    });
+    closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#e0e0e0'; closeBtn.style.color = '#000'; });
+    closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = '#f0f0f0'; closeBtn.style.color = '#666'; });
+
+    // Search input wrapper for positioning clear button
+    const searchWrapper = document.createElement('div');
+    Object.assign(searchWrapper.style, {
+        position: 'relative', borderBottom: '1px solid #e0e0e0', paddingRight: '40px'
     });
 
     const searchInput = document.createElement('input');
-    searchInput.type = 'search';
-    searchInput.setAttribute('aria-label','Search inventory items');
-    Object.assign(searchInput.style, { width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: 'none', outline: 'none' });
+    searchInput.type = 'text';
+    searchInput.setAttribute('aria-label','Search items');
+    searchInput.placeholder = 'Search...';
+    Object.assign(searchInput.style, { 
+        width: '100%', boxSizing: 'border-box', padding: '10px 35px 10px 10px', 
+        border: 'none', outline: 'none', borderTopLeftRadius: '6px', borderTopRightRadius: '6px',
+        fontSize: '14px'
+    });
+
+    // Clear text button (inside search input area)
+    const clearTextBtn = document.createElement('button');
+    clearTextBtn.type = 'button';
+    clearTextBtn.innerHTML = '&#8634;';  // ↺ backward loop arrow
+    clearTextBtn.setAttribute('aria-label', 'Clear search');
+    clearTextBtn.title = 'Clear text';
+    Object.assign(clearTextBtn.style, {
+        position: 'absolute', top: '50%', right: '45px', transform: 'translateY(-50%)',
+        background: 'transparent', border: 'none', fontSize: '18px', lineHeight: '1',
+        padding: '2px 6px', cursor: 'pointer', color: '#999', display: 'none'
+    });
+    clearTextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        searchInput.value = '';
+        clearTextBtn.style.display = 'none';
+        renderList('');
+        searchInput.focus();
+    });
+    clearTextBtn.addEventListener('mouseenter', () => clearTextBtn.style.color = '#333');
+    clearTextBtn.addEventListener('mouseleave', () => clearTextBtn.style.color = '#999');
+
+    // Show/hide clear button based on input content
+    searchInput.addEventListener('input', () => {
+        clearTextBtn.style.display = searchInput.value.trim() ? 'block' : 'none';
+    });
+
+    searchWrapper.appendChild(searchInput);
+    searchWrapper.appendChild(clearTextBtn);
 
     const list = document.createElement('div');
     list.style.padding = '6px';
 
-    dropdown.appendChild(searchInput);
+    dropdown.appendChild(closeBtn);
+    dropdown.appendChild(searchWrapper);
     dropdown.appendChild(list);
     document.body.appendChild(dropdown);
 
     let activeCell = null;
     let actionCell = null;
+    let currentItemPool = INVENTORY_ITEMS;  // Track which pool is currently being used
+
+    // Get appropriate item pool for a cell
+    function getItemPoolForCell(cell) {
+        if (!cell || !cell.id) return INVENTORY_ITEMS;
+        return MAIN_DISH_CELLS.includes(cell.id) ? MAIN_DISH_RECIPES : OTHER_ITEMS;
+    }
 
     // Action popup: offers Edit Item or Edit Rule for the clicked cell
     const actionPopup = document.createElement('div');
     actionPopup.id = 'inventory-action-popup';
     Object.assign(actionPopup.style, {
         position: 'absolute', zIndex: 2100, background: '#fff', border: '1px solid #ccc',
-        padding: '6px', borderRadius: '6px', boxShadow: '0 6px 18px rgba(0,0,0,0.12)', display: 'none'
+        padding: '6px', paddingTop: '36px', paddingRight: '8px', borderRadius: '6px', 
+        boxShadow: '0 6px 18px rgba(0,0,0,0.12)', display: 'none', minWidth: '200px'
     });
+    
+    // Close button for action popup
+    const actionCloseBtn = document.createElement('button');
+    actionCloseBtn.type = 'button';
+    actionCloseBtn.innerHTML = '&times;';
+    actionCloseBtn.setAttribute('aria-label', 'Close');
+    Object.assign(actionCloseBtn.style, {
+        position: 'absolute', top: '4px', right: '4px', background: '#f0f0f0',
+        border: '1px solid #ccc', fontSize: '18px', lineHeight: '1', padding: '2px 6px',
+        cursor: 'pointer', color: '#666', zIndex: '10', borderRadius: '3px'
+    });
+    actionCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeActionPopup();
+    });
+    actionCloseBtn.addEventListener('mouseenter', () => { actionCloseBtn.style.background = '#e0e0e0'; actionCloseBtn.style.color = '#000'; });
+    actionCloseBtn.addEventListener('mouseleave', () => { actionCloseBtn.style.background = '#f0f0f0'; actionCloseBtn.style.color = '#666'; });
+    
     const itemBtn = document.createElement('button');
     itemBtn.type = 'button';
     itemBtn.textContent = 'Edit Item';
@@ -2793,6 +3055,7 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
     ruleBtn.textContent = 'Edit Rule';
     ruleBtn.className = 'btn btn-primary btn-sm';
     Object.assign(ruleBtn.style, { padding: '6px 8px', cursor: 'pointer' });
+    actionPopup.appendChild(actionCloseBtn);
     actionPopup.appendChild(itemBtn);
     actionPopup.appendChild(ruleBtn);
     document.body.appendChild(actionPopup);
@@ -2802,8 +3065,27 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
     rulesMenu.id = 'inventory-rules-menu';
     Object.assign(rulesMenu.style, {
         position: 'absolute', zIndex: 2200, background: '#fff', border: '1px solid #ccc',
-        minWidth: '220px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 6px 18px rgba(0,0,0,0.15)', display: 'none', padding: '6px'
+        minWidth: '220px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 6px 18px rgba(0,0,0,0.15)', display: 'none', padding: '6px', borderRadius: '6px'
     });
+    
+    // Close button for rules menu
+    const rulesCloseBtn = document.createElement('button');
+    rulesCloseBtn.type = 'button';
+    rulesCloseBtn.innerHTML = '&times;';
+    rulesCloseBtn.setAttribute('aria-label', 'Close');
+    Object.assign(rulesCloseBtn.style, {
+        position: 'sticky', top: '0', left: '100%', background: '#fff',
+        border: 'none', fontSize: '20px', lineHeight: '1', padding: '2px 6px',
+        cursor: 'pointer', color: '#666', zIndex: '10', float: 'right', marginBottom: '4px'
+    });
+    rulesCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        rulesMenu.style.display = 'none';
+    });
+    rulesCloseBtn.addEventListener('mouseenter', () => rulesCloseBtn.style.color = '#000');
+    rulesCloseBtn.addEventListener('mouseleave', () => rulesCloseBtn.style.color = '#666');
+    rulesMenu.appendChild(rulesCloseBtn);
+    
     document.body.appendChild(rulesMenu);
     let rulesCache = null;
 
@@ -2832,7 +3114,10 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
         rulesMenu.style.top = '0px';
         rulesMenu.style.visibility = 'hidden';
         rulesMenu.style.display = 'block';
+        // Preserve close button when showing loading state
+        const closeBtn = rulesMenu.querySelector('button[aria-label="Close"]');
         rulesMenu.innerHTML = '<div style="padding:6px;font-style:italic;color:#666">Loading rules…</div>';
+        if (closeBtn) rulesMenu.insertBefore(closeBtn, rulesMenu.firstChild);
         // allow layout to update then measure
         requestAnimationFrame(() => {
             const menuW = rulesMenu.offsetWidth || 240;
@@ -2853,7 +3138,11 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
         });
 
         function renderRules(list){
+            // Clear content but preserve the close button
+            const closeBtn = rulesMenu.querySelector('button[aria-label="Close"]');
             rulesMenu.innerHTML = '';
+            if (closeBtn) rulesMenu.appendChild(closeBtn);
+            
             const clearRow = document.createElement('div');
             clearRow.textContent = 'Clear rule';
             Object.assign(clearRow.style, { padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', fontWeight: '600' });
@@ -2922,12 +3211,14 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
     function showPopupForCell(cell){
         if (!cell) return;
         activeCell = cell;
+        currentItemPool = getItemPoolForCell(cell);  // Set the pool based on the cell
         searchInput.value = cell.innerText.trim();
+        clearTextBtn.style.display = searchInput.value.trim() ? 'block' : 'none';
         renderList(searchInput.value || '');
         const rect = cell.getBoundingClientRect();
         dropdown.style.left = (window.scrollX + rect.left) + 'px';
         dropdown.style.top = (window.scrollY + rect.bottom + 6) + 'px';
-        dropdown.style.minWidth = Math.max(220, rect.width) + 'px';
+        dropdown.style.minWidth = Math.max(280, rect.width) + 'px';
         dropdown.style.display = 'block';
         searchInput.focus();
         searchInput.select();
@@ -2938,8 +3229,8 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
     function renderList(filter){
         const q = (filter || '').toLowerCase().trim();
         list.innerHTML = '';
-        const matches = INVENTORY_ITEMS.filter(it => it.toLowerCase().indexOf(q) !== -1);
-        const toShow = q === '' ? INVENTORY_ITEMS.slice(0,100) : matches.slice(0,100);
+        const matches = currentItemPool.filter(it => it.toLowerCase().indexOf(q) !== -1);
+        const toShow = q === '' ? currentItemPool.slice(0,100) : matches.slice(0,100);
 
         toShow.forEach(item => {
             const row = document.createElement('div');
@@ -3004,10 +3295,22 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
         });
     }
 
-    searchInput.addEventListener('input', () => renderList(searchInput.value));
+    searchInput.addEventListener('input', () => {
+        clearTextBtn.style.display = searchInput.value.trim() ? 'block' : 'none';
+        renderList(searchInput.value);
+    });
     searchInput.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Escape') { closePopup(); }
+        if (ev.key === 'Escape') { closePopup(); closeActionPopup(); }
         if (ev.key === 'Enter') { const first = list.firstElementChild; if (first) { first.click(); ev.preventDefault(); } }
+    });
+
+    // Global escape key handler for all popups
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') {
+            if (dropdown.style.display === 'block') closePopup();
+            if (actionPopup.style.display === 'block') closeActionPopup();
+            if (rulesMenu.style.display === 'block') rulesMenu.style.display = 'none';
+        }
     });
 
     document.addEventListener('click', (ev) => {
@@ -3016,9 +3319,17 @@ $(document).on('click', '#toggleAMSnackDesktopBtn', function(e) {
         if (!rulesMenu.contains(ev.target)) rulesMenu.style.display = 'none';
     });
     window.addEventListener('resize', closePopup);
-    window.addEventListener('scroll', closePopup, true);
+    window.addEventListener('scroll', (ev) => {
+        // Don't close if scrolling inside the dropdown itself
+        if (dropdown.contains(ev.target)) return;
+        closePopup();
+    }, true);
     window.addEventListener('resize', () => { rulesMenu.style.display = 'none'; });
-    window.addEventListener('scroll', () => { rulesMenu.style.display = 'none'; }, true);
+    window.addEventListener('scroll', (ev) => {
+        // Don't close if scrolling inside the rules menu itself
+        if (rulesMenu.contains(ev.target)) return;
+        rulesMenu.style.display = 'none';
+    }, true);
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attachHandlers);
     else attachHandlers();

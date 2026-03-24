@@ -122,19 +122,16 @@
         /* Mobile dashboard grid + squares (adapted from index_cacfp) */
         .mobile-dashboard .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            grid-template-columns: repeat(2, 1fr); /* fixed 2 columns */
             gap: 18px;
             width: 100%;
-            max-width: 960px;
+            max-width: 600px; /* optimized for 2 columns */
             margin: 18px auto;
-            align-items: center;
-            justify-items: center;
             padding: 12px;
         }
 
         .mobile-dashboard .btn-square {
             width: 100%;
-            max-width: 220px;
             aspect-ratio: 1 / 1;
             display: flex;
             flex-direction: column;
@@ -193,11 +190,31 @@
             text-shadow: none;
         }
 
-        @media (min-width: 1200px) {
-            .mobile-dashboard .dashboard-grid { gap: 24px; }
-            .mobile-dashboard .btn-square { max-width: 220px; }
+        @media (min-width: 1000px) {
+            .mobile-dashboard .dashboard-grid { 
+                grid-template-columns: repeat(3, 1fr); /* 3 columns on wide screens */
+                gap: 24px;
+                max-width: 900px; /* optimized for 3 columns */
+            }
             .mobile-dashboard .btn-square .label { font-size: 1.35rem; }
         }
+        
+        @media (max-width: 600px) {
+            .mobile-dashboard .dashboard-grid {
+                gap: 12px;
+                padding: 8px;
+            }
+            .mobile-dashboard .btn-square {
+                padding: 12px;
+            }
+            .mobile-dashboard .sb-nav-link-icon i {
+                font-size: 1.4rem;
+            }
+            .mobile-dashboard .label {
+                font-size: 1.1rem;
+            }
+        }
+        
         /* Hide subgrids by default (override grid display) */
         .mobile-dashboard .mobile-subgrid,
         .mobile-dashboard .dashboard-grid.mobile-subgrid { display: none; }
@@ -308,6 +325,12 @@
                 <a href="{% url 'inventory_list' %}" class="btn btn-primary btn-square" aria-label="Inventory">
                     <div class="sb-nav-link-icon"><i class="fas fa-list"></i></div>
                     <span class="label">Inventory</span>
+                </a>
+                {% endif %}
+                {% if show_todays_menu %}
+                <a href="{% url 'todays_menu' %}" class="btn btn-primary btn-square" aria-label="Today's Menu">
+                    <div class="sb-nav-link-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <span class="label">Today's Menu</span>
                 </a>
                 {% endif %}
                 {% if show_weekly_menu %}
@@ -446,6 +469,10 @@
                     <span class="label">Payment Set-Up</span>
                 </a>
                 {% endif %}
+                <a href="{% url 'account_settings' %}" class="btn btn-primary btn-square" aria-label="Account Settings">
+                    <div class="sb-nav-link-icon"><i class="fas fa-user-cog"></i></div>
+                    <span class="label">Account Settings</span>
+                </a>
             </div>
             {% endif %}
         </div>
