@@ -162,14 +162,14 @@
 
         .mobile-dashboard .sb-nav-link-icon {
             display: block;
-            font-size: 1.6rem;
+            font-size: 2.6rem; /* increased from 2.2rem */
             line-height: 1;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             transform-origin: center;
         }
         .mobile-dashboard .sb-nav-link-icon i {
             color: #ffffff;
-            font-size: 1.6rem;
+            font-size: 2.6rem; /* increased from 2.2rem */
             width: 1.9em;
             height: 1.9em;
             display: inline-block;
@@ -183,11 +183,15 @@
         .mobile-dashboard .label {
             display: block;
             padding: 0 8px;
-            line-height: 1;
-            font-size: 1.25rem;
+            line-height: 1.2;
+            font-size: clamp(1.2rem, 4.5vw, 1.7rem); /* increased from 1.1-1.5rem */
             color: #ffffff;
             font-weight: 600;
             text-shadow: none;
+            white-space: nowrap; /* prevent wrapping */
+            overflow: hidden;
+            text-overflow: ellipsis; /* add ... if text too long */
+            max-width: 100%;
         }
 
         @media (min-width: 1000px) {
@@ -196,7 +200,12 @@
                 gap: 24px;
                 max-width: 900px; /* optimized for 3 columns */
             }
-            .mobile-dashboard .btn-square .label { font-size: 1.35rem; }
+            .mobile-dashboard .btn-square .label { 
+                font-size: clamp(1.4rem, 2.2vw, 1.8rem); /* increased from 1.25-1.6rem */
+            }
+            .mobile-dashboard .sb-nav-link-icon i {
+                font-size: 2.8rem; /* increased from 2.4rem */
+            }
         }
         
         @media (max-width: 600px) {
@@ -208,10 +217,10 @@
                 padding: 12px;
             }
             .mobile-dashboard .sb-nav-link-icon i {
-                font-size: 1.4rem;
+                font-size: 2rem; /* increased from 1.8rem */
             }
             .mobile-dashboard .label {
-                font-size: 1.1rem;
+                font-size: clamp(1.1rem, 5vw, 1.4rem); /* increased from 1-1.25rem */
             }
         }
         
