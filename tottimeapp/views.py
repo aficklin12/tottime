@@ -90,13 +90,18 @@ def homepage(request):
     if token:
         User = get_user_model()
         try:
-            user = User.objects.get(session_token=token)
-            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            return redirect('index')
-        except (User.DoesNotExist, ValueError):
-            response = render(request, 'tottimeapp/homepage.html', {})
-            response.delete_cookie('tt_remember_token')
-            return response
+            matching_users = User.objects.filter(session_token=token)
+            if matching_users.count() == 1:
+                user = matching_users.first()
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                return redirect('index')
+        except ValueError:
+            pass
+
+        # Invalid or non-unique token: clear cookie and render homepage safely.
+        response = render(request, 'tottimeapp/homepage.html', {})
+        response.delete_cookie('tt_remember_token')
+        return response
     return render(request, 'tottimeapp/homepage.html', {})
 
 def get_user_for_view(request):
@@ -1949,8 +1954,11 @@ def auto_login_view(request):
 
     User = get_user_model()
     try:
-        user = User.objects.get(session_token=token)
-    except (User.DoesNotExist, ValueError):
+        matching_users = User.objects.filter(session_token=token)
+        if matching_users.count() != 1:
+            return JsonResponse({'success': False})
+        user = matching_users.first()
+    except ValueError:
         return JsonResponse({'success': False})
 
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
