@@ -20,6 +20,80 @@
         text-align: center;
         margin: 20px 0;
     }
+
+    .students-control-card {
+        background: white;
+        border-radius: 10px;
+        padding: 18px 22px;
+        margin-bottom: 22px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #39bdb4;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .students-control-menu-title {
+        color: #272630;
+        font-size: 30px;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .students-control-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        margin-left: auto;
+    }
+
+    .students-control-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: #272630;
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .students-control-title i {
+        color: #39bdb4;
+        font-size: 24px;
+    }
+
+    .students-control-input-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .students-control-label {
+        color: #666;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .students-control-input {
+        width: 90px;
+        height: 38px;
+        border: 1px solid #cfd8dc;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #272630;
+        text-align: right;
+        padding: 0 10px;
+        background: #f8f9fa;
+    }
+
+    .students-control-input:focus {
+        outline: none;
+        border-color: #39bdb4;
+        box-shadow: 0 0 0 2px rgba(57,189,180,0.2);
+    }
     
     .meal-period {
         background: white;
@@ -249,6 +323,20 @@
     }
     
     @media (max-width: 768px) {
+        .students-control-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .students-control-menu-title {
+            font-size: 24px;
+        }
+
+        .students-control-right {
+            width: 100%;
+            justify-content: space-between;
+        }
+
         .recipe-header {
             flex-direction: column;
         }
@@ -269,9 +357,25 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="desktop-only">Today's Menu - {{ today|date:"l, F j, Y" }}</h1>
-
 <div class="todays-menu-container">
+
+    <div class="students-control-card">
+        <h2 class="students-control-menu-title">Today's Menu - {{ today|date:"l, F j, Y" }}</h2>
+        <div class="students-control-right">
+            <h2 class="students-control-title"><i class="fas fa-user-graduate"></i> Students:</h2>
+            <div class="students-control-input-wrap">
+                <input
+                    type="number"
+                    id="todayStudentCountInput"
+                    class="students-control-input"
+                    min="1"
+                    step="1"
+                    value="25"
+                    data-user-id="{{ request.user.id|default:'anon' }}"
+                >
+            </div>
+        </div>
+    </div>
 
     {% if not menu %}
         <div class="no-menu-message">
@@ -316,8 +420,8 @@
                                     {% endif %}
                                 </div>
                                 
-                                {% if recipe_data.recipe %}
-                                    {% if recipe_data.recipe.instructions %}
+                                {% if recipe_data.has_visible_instructions or recipe_data.has_visible_ingredients %}
+                                    {% if recipe_data.has_visible_instructions %}
                                         <div class="recipe-instructions">
                                             <div class="toggle-header" onclick="toggleSection(this)">
                                                 <h4><i class="fas fa-clipboard-list"></i> Instructions</h4>
@@ -328,8 +432,8 @@
                                             </div>
                                         </div>
                                     {% endif %}
-                                    
-                                    {% if recipe_data.ingredients %}
+
+                                    {% if recipe_data.has_visible_ingredients %}
                                         <div class="ingredients-section">
                                             <div class="toggle-header" onclick="toggleSection(this)">
                                                 <h4><i class="fas fa-list-ul"></i> Ingredients</h4>
@@ -342,7 +446,8 @@
                                                             <li class="ingredient-item">
                                                                 <span class="ingredient-name">{{ ingredient.ingredient.item }}</span>
                                                                 <span class="ingredient-quantity">
-                                                                    {{ ingredient.quantity }} {{ ingredient.ingredient.units }}
+                                                                    <span class="js-scaled-qty" data-base-qty="{{ ingredient.quantity|default:'0' }}" data-unit="{{ ingredient.display_unit|default:'' }}">{{ ingredient.quantity }}</span>
+                                                                    <span class="js-scaled-unit">{{ ingredient.display_unit }}</span>
                                                                 </span>
                                                             </li>
                                                         {% endif %}
@@ -373,7 +478,7 @@
                         <span class="shopping-item-name">{{ item_name }}</span>
                         <div class="shopping-item-details">
                             <span class="shopping-item-needed">
-                                Need: {{ item_data.quantity|floatformat:2 }} {{ item_data.units }}
+                                Need: <span class="js-scaled-qty" data-base-qty="{{ item_data.quantity|default:'0' }}" data-unit="{{ item_data.units|default:'' }}">{{ item_data.quantity|floatformat:2 }}</span> <span class="js-scaled-unit">{{ item_data.units }}</span>
                             </span>
                             <span class="shopping-item-stock">
                                 In Stock: {{ item_data.current_stock|floatformat:2 }} {{ item_data.units }}
@@ -389,6 +494,207 @@
 
 {% block scripts %}
 <script>
+const TODAY_UNIT_DEFINITIONS = {
+    volume_metric: [
+        { canonical: 'ml', factorToBase: 1, label: 'mL' },
+        { canonical: 'l', factorToBase: 1000, label: 'L' },
+    ],
+    volume_us: [
+        { canonical: 'tsp', factorToBase: 1, label: 'tsp' },
+        { canonical: 'tbsp', factorToBase: 3, label: 'tbsp' },
+        { canonical: 'floz', factorToBase: 6, label: 'fl oz' },
+        { canonical: 'cup', factorToBase: 48, label: 'cup' },
+        { canonical: 'pint', factorToBase: 96, label: 'pt' },
+        { canonical: 'quart', factorToBase: 192, label: 'qt' },
+        { canonical: 'gallon', factorToBase: 768, label: 'gal' },
+    ],
+    mass_metric: [
+        { canonical: 'mg', factorToBase: 1, label: 'mg' },
+        { canonical: 'g', factorToBase: 1000, label: 'g' },
+        { canonical: 'kg', factorToBase: 1000000, label: 'kg' },
+    ],
+    mass_us: [
+        { canonical: 'oz', factorToBase: 1, label: 'oz' },
+        { canonical: 'lb', factorToBase: 16, label: 'lb' },
+    ],
+};
+
+const TODAY_UNIT_ALIASES = {
+    ml: 'ml',
+    milliliter: 'ml',
+    milliliters: 'ml',
+    millilitre: 'ml',
+    millilitres: 'ml',
+    l: 'l',
+    liter: 'l',
+    liters: 'l',
+    litre: 'l',
+    litres: 'l',
+    tsp: 'tsp',
+    tsps: 'tsp',
+    teaspoon: 'tsp',
+    teaspoons: 'tsp',
+    tbsp: 'tbsp',
+    tbsps: 'tbsp',
+    tbs: 'tbsp',
+    tbl: 'tbsp',
+    tablespoon: 'tbsp',
+    tablespoons: 'tbsp',
+    floz: 'floz',
+    'fl oz': 'floz',
+    fluidounce: 'floz',
+    fluidounces: 'floz',
+    cup: 'cup',
+    cups: 'cup',
+    pt: 'pint',
+    pts: 'pint',
+    pint: 'pint',
+    pints: 'pint',
+    qt: 'quart',
+    qts: 'quart',
+    quart: 'quart',
+    quarts: 'quart',
+    gal: 'gallon',
+    gals: 'gallon',
+    gallon: 'gallon',
+    gallons: 'gallon',
+    mg: 'mg',
+    milligram: 'mg',
+    milligrams: 'mg',
+    g: 'g',
+    gram: 'g',
+    grams: 'g',
+    kg: 'kg',
+    kilogram: 'kg',
+    kilograms: 'kg',
+    oz: 'oz',
+    ounce: 'oz',
+    ounces: 'oz',
+    lb: 'lb',
+    lbs: 'lb',
+    pound: 'lb',
+    pounds: 'lb',
+};
+
+const TODAY_UNIT_GROUP_BY_CANONICAL = {};
+const TODAY_UNIT_META_BY_CANONICAL = {};
+
+Object.entries(TODAY_UNIT_DEFINITIONS).forEach(([groupName, units]) => {
+    units.forEach((unitDef) => {
+        TODAY_UNIT_GROUP_BY_CANONICAL[unitDef.canonical] = groupName;
+        TODAY_UNIT_META_BY_CANONICAL[unitDef.canonical] = unitDef;
+    });
+});
+
+function getTodayStudentStorageKey() {
+    const input = document.getElementById('todayStudentCountInput');
+    const userId = input ? (input.getAttribute('data-user-id') || 'anon') : 'anon';
+    return `todaysMenu.studentCount.${userId}`;
+}
+
+function getTodayStudentCount() {
+    const input = document.getElementById('todayStudentCountInput');
+    if (!input) return 25;
+    const parsed = Number.parseInt(input.value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return 25;
+    return parsed;
+}
+
+function loadTodayStudentPreference() {
+    const input = document.getElementById('todayStudentCountInput');
+    if (!input) return;
+    try {
+        const saved = localStorage.getItem(getTodayStudentStorageKey());
+        if (saved == null) return;
+        const parsed = Number.parseInt(saved, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            input.value = String(parsed);
+        }
+    } catch (e) {
+        // Ignore storage failures.
+    }
+}
+
+function saveTodayStudentPreference() {
+    const input = document.getElementById('todayStudentCountInput');
+    if (!input) return;
+    const parsed = Number.parseInt(input.value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return;
+    try {
+        localStorage.setItem(getTodayStudentStorageKey(), String(parsed));
+    } catch (e) {
+        // Ignore storage failures.
+    }
+}
+
+function normalizeTodayUnit(rawUnit) {
+    if (!rawUnit) return null;
+    const compact = String(rawUnit)
+        .trim()
+        .toLowerCase()
+        .replace(/\./g, '')
+        .replace(/\s+/g, ' ');
+    const normalizedKey = compact.replace(/\s+/g, '');
+    return TODAY_UNIT_ALIASES[compact] || TODAY_UNIT_ALIASES[normalizedKey] || null;
+}
+
+function formatTodayQuantity(value) {
+    if (!Number.isFinite(value)) return '0';
+    if (Math.abs(value) < 0.000001) return '0';
+    const fixed = value >= 1000 ? value.toFixed(1) : value.toFixed(2);
+    return fixed.replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+}
+
+function convertTodayScaledQuantity(quantity, rawUnit) {
+    const canonical = normalizeTodayUnit(rawUnit);
+    if (!canonical) {
+        return {
+            quantity,
+            unitLabel: rawUnit || '',
+        };
+    }
+
+    const groupName = TODAY_UNIT_GROUP_BY_CANONICAL[canonical];
+    const unitMeta = TODAY_UNIT_META_BY_CANONICAL[canonical];
+    if (!groupName || !unitMeta) {
+        return {
+            quantity,
+            unitLabel: rawUnit || canonical,
+        };
+    }
+
+    const baseValue = quantity * unitMeta.factorToBase;
+    const candidates = [...TODAY_UNIT_DEFINITIONS[groupName]].sort((a, b) => b.factorToBase - a.factorToBase);
+
+    let selected = candidates[candidates.length - 1];
+    for (const candidate of candidates) {
+        if (baseValue >= candidate.factorToBase) {
+            selected = candidate;
+            break;
+        }
+    }
+
+    return {
+        quantity: baseValue / selected.factorToBase,
+        unitLabel: selected.label,
+    };
+}
+
+function applyTodayStudentScaling() {
+    const studentCount = getTodayStudentCount();
+    document.querySelectorAll('.js-scaled-qty').forEach((qtyEl) => {
+        const baseQty = Number.parseFloat(qtyEl.getAttribute('data-base-qty') || '0');
+        const unit = qtyEl.getAttribute('data-unit') || '';
+        const converted = convertTodayScaledQuantity((Number.isFinite(baseQty) ? baseQty : 0) * studentCount, unit);
+        qtyEl.textContent = formatTodayQuantity(converted.quantity);
+
+        const unitEl = qtyEl.parentElement.querySelector('.js-scaled-unit');
+        if (unitEl) {
+            unitEl.textContent = converted.unitLabel || unit;
+        }
+    });
+}
+
 function toggleSection(header) {
     const content = header.nextElementSibling;
     const arrow = header.querySelector('.toggle-arrow');
@@ -401,6 +707,30 @@ function toggleSection(header) {
         arrow.classList.add('open');
     }
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const studentInput = document.getElementById('todayStudentCountInput');
+    loadTodayStudentPreference();
+    applyTodayStudentScaling();
+
+    if (studentInput) {
+        studentInput.addEventListener('input', function () {
+            const parsed = Number.parseInt(this.value, 10);
+            if (!Number.isFinite(parsed) || parsed < 1) return;
+            saveTodayStudentPreference();
+            applyTodayStudentScaling();
+        });
+
+        studentInput.addEventListener('blur', function () {
+            const parsed = Number.parseInt(this.value, 10);
+            if (!Number.isFinite(parsed) || parsed < 1) {
+                this.value = '25';
+            }
+            saveTodayStudentPreference();
+            applyTodayStudentScaling();
+        });
+    }
+});
 
 console.log('Today\'s Menu loaded successfully');
 </script>

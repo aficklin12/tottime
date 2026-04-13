@@ -71,8 +71,71 @@
         max-width: 1400px;
     }
 
-    .table-header { display: flex; justify-content: space-between; align-items: center; }
-    .table-header-actions { display: inline-flex; align-items: center; gap: 6px; }
+    #recipeTableBody tr:nth-child(even) td {
+        background-color: #f3f3f349;
+    }
+
+    #recipeTableBody tr:nth-child(odd) td {
+        background-color: #ffffff;
+    }
+
+    #recipeTableBody td {
+        transition: background-color 0.15s ease-in-out;
+    }
+
+    #recipeTableBody tr:hover td {
+        background-color: #e6ecec;
+    }
+
+    .table-header {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    .table-header-title { color: #ffffff; }
+    .students-calculator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #ffffff;
+        font-size: 0.9rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .students-calculator input {
+        width: 74px;
+        height: 30px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+        padding: 0 8px;
+        text-align: right;
+    }
+    .students-calculator input:focus {
+        outline: none;
+        border-color: rgba(57, 189, 180, 0.85);
+        box-shadow: 0 0 0 2px rgba(57, 189, 180, 0.25);
+    }
+    .students-calculator input::-webkit-outer-spin-button,
+    .students-calculator input::-webkit-inner-spin-button {
+        margin: 0;
+    }
+    .students-calculator-centered {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .table-header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+    }
     .table-header-actions .create-icon {
         background: transparent; border: none; color: #ffffff; cursor: pointer;
         padding: 6px; font-size: 1rem; border-radius: 6px; display: none;
@@ -224,6 +287,11 @@
     .modal-backdrop {
         z-index: 1050;
     }
+
+    /* Avoid deprecated overflow behavior on media elements. */
+    img, video, canvas {
+        overflow: clip;
+    }
 </style>
 {% endblock %}
 
@@ -270,6 +338,10 @@
                     <th>
                         <div class="table-header">
                             <div class="table-header-title">Name</div>
+                            <label class="students-calculator students-calculator-centered" for="studentCountInput">
+                                <span>Students:</span>
+                                <input type="number" id="studentCountInput" min="1" step="1" value="25" data-user-id="{{ request.user.id|default:'anon' }}">
+                            </label>
                             <div class="table-header-actions">
                                 <button type="button" class="create-icon active" id="headerCreateBtn" title="Create Recipe"><i class="fas fa-plus"></i></button>
                                 <button type="button" id="headerToggleDelete" class="header-trash active" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
@@ -307,110 +379,192 @@
             <div class="modal-body">
                 <form id="unifiedRecipeForm" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <input type="hidden" id="recipeType" name="recipeType" value="">
                     
-                    <div class="mb-3">
-                        <label for="recipeName" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="recipeName" name="recipeName" required>
+                    <!-- Multi-step Recipe Flow in correct order (step-1 to step-12) -->
+                    <div class="recipe-step" id="step-1">
+                        <label for="recipeName" class="form-label">What is the Recipe Name?</label>
+                        <input type="text" class="form-control mb-2" id="recipeName" name="recipeName" required>
+                        <label for="recipeType" class="form-label mt-2">Recipe Type</label>
+                        <select class="form-select" id="recipeType" name="recipeType" required>
+                            <option value="lunch">Lunch Recipe</option>
+                            <option value="breakfast">Breakfast Recipe</option>
+                            <option value="am_snack">AM Snack Recipe</option>
+                            <option value="pm_snack">PM Snack Recipe</option>
+                            <option value="am_pm_snack">AM and PM Snack Recipe</option>
+                            <option value="vegetable">Vegetable Side Dish Recipe</option>
+                            <option value="fruit">Fruit Side Dish Recipe</option>
+                            <option value="whole_grain">Whole Grain Side Dish Recipe</option>
+                            <option value="fluid">Drink Recipe</option>
+                            <option value="multiple">Multiple (manual selection)</option>
+                        </select>
+                        <div id="recipeTypeModeHint" class="form-text mt-1"></div>
+                        <div id="manualPopulateWrap" class="mt-2" style="display:none;">
+                            <label class="form-label" for="populateBreakfast">This recipe is available during:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="populateBreakfast" name="populateBreakfast">
+                                <label class="form-check-label" for="populateBreakfast">Breakfast</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="populateAMSnack" name="populateAMSnack">
+                                <label class="form-check-label" for="populateAMSnack">AM Snack</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="populateLunch" name="populateLunch">
+                                <label class="form-check-label" for="populateLunch">Lunch</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="populatePMSnack" name="populatePMSnack">
+                                <label class="form-check-label" for="populatePMSnack">PM Snack</label>
+                            </div>
+                        </div>
                     </div>
-
-                    <!-- Ingredients (all types) -->
-                    <div id="ingredientsContainer">
-                        <!-- Dynamic ingredient fields will be added here -->
-                    </div>
-                    <div class="mb-3">
+                    <div class="recipe-step" id="step-2" style="display:none;">
+                        <label class="form-label" for="addIngredientBtn">What are the ingredients for this recipe?</label>
+                        <div id="ingredientsContainer"></div>
                         <button type="button" class="btn btn-secondary btn-sm" id="addIngredientBtn">Add Ingredient</button>
                     </div>
-
-                    <!-- Lunch-specific fields -->
-                    <div class="field-group" id="lunchFields">
-                        <div class="mb-3">
-                            <label for="grain" class="form-label">Grain</label>
-                            <input type="text" class="form-control" id="grain" name="grain">
+                    <div class="recipe-step" id="step-3" style="display:none;">
+                        <label class="form-label" for="fruitYesBtn">Does this recipe have a Fruit?</label>
+                        <div id="fruitYesNoBtns" class="mb-2">
+                            <button type="button" class="btn btn-outline-success btn-sm me-2" id="fruitYesBtn">Yes</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="fruitNoBtn">No (Skip)</button>
                         </div>
-                        <div class="mb-3">
-                            <label for="meatAlternate" class="form-label">Meat/Meat Alternate</label>
-                            <input type="text" class="form-control" id="meatAlternate" name="meatAlternate">
-                        </div>
-                    </div>
-
-                    <!-- Breakfast-specific fields -->
-                    <div class="field-group" id="breakfastFields">
-                        <div class="mb-3">
-                            <label for="additionalFood" class="form-label">Additional Food</label>
-                            <input type="text" class="form-control" id="additionalFood" name="additionalFood">
-                        </div>
-                    </div>
-
-                    <!-- AM/PM Snack-specific fields -->
-                    <div class="field-group" id="snackFields">
-                        <div class="mb-3">
-                            <label for="fluid" class="form-label">Fluid</label>
-                            <input type="text" class="form-control" id="fluid" name="fluid">
-                        </div>
-                        <div class="mb-3">
-                            <label for="fruitVeg" class="form-label">Fruit/Vegetable</label>
-                            <input type="text" class="form-control" id="fruitVeg" name="fruitVeg">
-                        </div>
-                        <div class="mb-3">
-                            <label for="meat" class="form-label">Meat</label>
-                            <input type="text" class="form-control" id="meat" name="meat">
+                        <div id="fruitInputSection" style="display:none;">
+                            <input type="text" class="form-control mb-2" id="fruit" name="fruit">
+                            <label class="form-label" for="fruitCACFPYesBtn">Does this fruit satisfy a CACFP rule?</label>
+                            <div id="fruitCACFPBtns" class="mb-2">
+                                <button type="button" class="btn btn-outline-success btn-sm me-2" id="fruitCACFPYesBtn">Yes</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="fruitCACFPNoBtn">No</button>
+                            </div>
+                            <div id="fruitRuleSection" style="display:none;">
+                                <label for="fruitRule" class="form-label mt-2">Fruit Rule</label>
+                                <select class="form-select" id="fruitRule" name="fruit_rule"></select>
+                            </div>
                         </div>
                     </div>
-
-                    <div class="field-group mb-3" id="ruleContainer">
-                        <label for="ruleSelect" class="form-label">Rule</label>
-                        <select class="form-select" id="ruleSelect" name="rule"></select>
+                    <div class="recipe-step" id="step-4" style="display:none;">
+                        <label class="form-label" for="vegYesBtn">Does this recipe have a Vegetable?</label>
+                        <div id="vegYesNoBtns" class="mb-2">
+                            <button type="button" class="btn btn-outline-success btn-sm me-2" id="vegYesBtn">Yes</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="vegNoBtn">No (Skip)</button>
+                        </div>
+                        <div id="vegInputSection" style="display:none;">
+                            <input type="text" class="form-control mb-2" id="veg" name="veg">
+                            <label class="form-label" for="vegCACFPYesBtn">Does this vegetable satisfy a CACFP rule?</label>
+                            <div id="vegCACFPBtns" class="mb-2">
+                                <button type="button" class="btn btn-outline-success btn-sm me-2" id="vegCACFPYesBtn">Yes</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="vegCACFPNoBtn">No</button>
+                            </div>
+                            <div id="vegRuleSection" style="display:none;">
+                                <label for="vegRule" class="form-label mt-2">Vegetable Rule</label>
+                                <select class="form-select" id="vegRule" name="veg_rule"></select>
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="field-group mb-3" id="instructionsContainer">
+                    <div class="recipe-step" id="step-5" style="display:none;">
+                        <label class="form-label" for="meatYesBtn">Does this recipe have a Meat or Meat Alternate?</label>
+                        <div id="meatYesNoBtns" class="mb-2">
+                            <button type="button" class="btn btn-outline-success btn-sm me-2" id="meatYesBtn">Yes</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="meatNoBtn">No (Skip)</button>
+                        </div>
+                        <div id="meatInputSection" style="display:none;">
+                            <input type="text" class="form-control mb-2" id="meat" name="meat">
+                            <label class="form-label" for="meatCACFPYesBtn">Does this meat satisfy a CACFP rule?</label>
+                            <div id="meatCACFPBtns" class="mb-2">
+                                <button type="button" class="btn btn-outline-success btn-sm me-2" id="meatCACFPYesBtn">Yes</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="meatCACFPNoBtn">No</button>
+                            </div>
+                            <div id="meatRuleSection" style="display:none;">
+                                <label for="meatRule" class="form-label mt-2">Meat Rule</label>
+                                <select class="form-select" id="meatRule" name="meat_rule"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="recipe-step" id="step-6" style="display:none;">
+                        <label class="form-label" for="grainYesBtn">Does this recipe have a Grain?</label>
+                        <div id="grainYesNoBtns" class="mb-2">
+                            <button type="button" class="btn btn-outline-success btn-sm me-2" id="grainYesBtn">Yes</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="grainNoBtn">No (Skip)</button>
+                        </div>
+                        <div id="grainInputSection" style="display:none;">
+                            <input type="text" class="form-control mb-2" id="grain" name="grain">
+                            <label class="form-label" for="grainCACFPYesBtn">Does this grain satisfy a CACFP rule?</label>
+                            <div id="grainCACFPBtns" class="mb-2">
+                                <button type="button" class="btn btn-outline-success btn-sm me-2" id="grainCACFPYesBtn">Yes</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="grainCACFPNoBtn">No</button>
+                            </div>
+                            <div id="grainRuleSection" style="display:none;">
+                                <label for="grainRule" class="form-label mt-2">Grain Rule</label>
+                                <select class="form-select" id="grainRule" name="grain_rule"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="recipe-step" id="step-7" style="display:none;">
+                        <label class="form-label" for="addfoodYesBtn">Does this recipe have Additional Food?</label>
+                        <div id="addfoodYesNoBtns" class="mb-2">
+                            <button type="button" class="btn btn-outline-success btn-sm me-2" id="addfoodYesBtn">Yes</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="addfoodNoBtn">No (Skip)</button>
+                        </div>
+                        <div id="addfoodInputSection" style="display:none;">
+                            <input type="text" class="form-control mb-2" id="addfood" name="addfood">
+                            <label class="form-label" for="addfoodCACFPYesBtn">Does this additional food satisfy a CACFP rule?</label>
+                            <div id="addfoodCACFPBtns" class="mb-2">
+                                <button type="button" class="btn btn-outline-success btn-sm me-2" id="addfoodCACFPYesBtn">Yes</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="addfoodCACFPNoBtn">No</button>
+                            </div>
+                            <div id="addfoodRuleSection" style="display:none;">
+                                <label for="addfoodRule" class="form-label mt-2">Addfood Rule</label>
+                                <select class="form-select" id="addfoodRule" name="addfood_rule"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="recipe-step" id="step-8" style="display:none;">
+                        <label class="form-label" for="fluidYesBtn">Does this recipe have a Fluid? (Instead of Milk)</label>
+                        <div id="fluidYesNoBtns" class="mb-2">
+                            <button type="button" class="btn btn-outline-success btn-sm me-2" id="fluidYesBtn">Yes</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="fluidNoBtn">No (Skip)</button>
+                        </div>
+                        <div id="fluidInputSection" style="display:none;">
+                            <input type="text" class="form-control mb-2" id="fluid" name="fluid">
+                            <label class="form-label" for="fluidCACFPYesBtn">Does this fluid satisfy a CACFP rule?</label>
+                            <div id="fluidCACFPBtns" class="mb-2">
+                                <button type="button" class="btn btn-outline-success btn-sm me-2" id="fluidCACFPYesBtn">Yes</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="fluidCACFPNoBtn">No</button>
+                            </div>
+                            <div id="fluidRuleSection" style="display:none;">
+                                <label for="fluidRule" class="form-label mt-2">Fluid Rule</label>
+                                <select class="form-select" id="fluidRule" name="fluid_rule"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="recipe-step" id="step-9" style="display:none;">
                         <label for="instructions" class="form-label">Instructions</label>
-                        <textarea class="form-control" id="instructions" name="instructions" rows="4"></textarea>
+                        <textarea class="form-control" id="instructions" name="instructions" rows="8"></textarea>
                     </div>
-
-                    <!-- Meal Period Availability -->
-                    <div class="mb-3">
-                        <label class="form-label">Available for Meal Periods</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="populateBreakfast" name="populateBreakfast">
-                            <label class="form-check-label" for="populateBreakfast">Breakfast</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="populateAMSnack" name="populateAMSnack">
-                            <label class="form-check-label" for="populateAMSnack">AM Snack</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="populateLunch" name="populateLunch">
-                            <label class="form-check-label" for="populateLunch">Lunch</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="populatePMSnack" name="populatePMSnack">
-                            <label class="form-check-label" for="populatePMSnack">PM Snack</label>
-                        </div>
-                    </div>
-
-                    <!-- Recipe Options -->
-                    <div class="mb-3">
+                    <div class="recipe-step" id="step-10" style="display:none;"></div>
+                    <div class="recipe-step" id="step-11" style="display:none;">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="standalone" name="standalone">
-                            <label class="form-check-label" for="standalone">Standalone Rule or Side Dish</label>
-                            <div class="form-text">Check if this recipe is served only as a side dish to satisfy CACFP rules.</div>
+                            <label class="form-check-label" for="standalone">This recipe is a Standalone Rule or Side Dish filler.</label>
+                            <div class="form-text">Check if this recipe is served only as a side dish to satisfy CACFP rules. Ex. (Blueberries, Salad, Carrots, Toast)</div>
                         </div>
                         <div class="form-check mt-2">
                             <input class="form-check-input" type="checkbox" id="ignoreInventory" name="ignoreInventory">
-                            <label class="form-check-label" for="ignoreInventory">Ignore Inventory</label>
-                            <div class="form-text">Check to skip inventory tracking for this recipe</div>
+                            <label class="form-check-label" for="ignoreInventory">This recipe will ignore Inventory.</label>
+                            <div class="form-text">If checked, this recipe will generate in menu regardless if the ingredients are out of stock. It's reccomended to have at least one of each CACFP rule (standalone/side dishes) to ignore inventory to ensure menu's compliance.</div>
                         </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label for="recipeImage" class="form-label">Image</label>
+                    <div class="recipe-step" id="step-12" style="display:none;">
+                        <label for="recipeImage" class="form-label">Recipe Labels/Nutrition Facts</label>
                         <input type="file" class="form-control" id="recipeImage" name="image" accept="image/*">
                         <a id="recipeImageView" class="btn btn-outline-info btn-sm mt-2" target="_blank" style="display: none;">View current image</a>
                         <button type="button" id="recipeImageReplace" class="btn btn-outline-secondary btn-sm mt-2" style="display: none;">Replace image</button>
                     </div>
-
-                    <button type="submit" class="btn btn-primary" id="submitRecipeBtn">Create Recipe</button>
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-secondary" id="prevStepBtn" style="display:none;">Back</button>
+                        <button type="button" class="btn btn-primarytwo" id="nextStepBtn">Next</button>
+                        <button type="submit" class="btn btn-success" id="submitRecipeBtn" style="display:none;">Create Recipe</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -421,10 +575,552 @@
 
 {% block scripts %}
 <script>
+// Multi-step modal navigation
+
+// Define the correct step order as it appears in the HTML (now sequential)
+const stepOrder = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12];
+let currentStepIndex = 0;
+const totalSteps = stepOrder.length;
+const RECIPE_TYPE_POPULATE_MAP = {
+    lunch: { populateBreakfast: false, populateAMSnack: false, populateLunch: true,  populatePMSnack: false },
+    breakfast: { populateBreakfast: true,  populateAMSnack: false, populateLunch: false, populatePMSnack: false },
+    am_snack: { populateBreakfast: false, populateAMSnack: true,  populateLunch: false, populatePMSnack: false },
+    pm_snack: { populateBreakfast: false, populateAMSnack: false, populateLunch: false, populatePMSnack: true  },
+    am_pm_snack: { populateBreakfast: false, populateAMSnack: true,  populateLunch: false, populatePMSnack: true  }
+};
+const CATEGORY_TO_RECIPE_TYPE = {
+    breakfast: 'breakfast',
+    am: 'am_snack',
+    lunch: 'lunch',
+    pm: 'pm_snack',
+    fruit: 'fruit',
+    veg: 'vegetable',
+    wg: 'whole_grain'
+};
+const MANUAL_POPULATE_RECIPE_TYPES = ['multiple', 'vegetable', 'fruit', 'whole_grain', 'fluid'];
+const RECIPE_TYPE_PRIORITY = ['populateBreakfast', 'populateAMSnack', 'populateLunch', 'populatePMSnack'];
+let LAST_RECIPE_TYPE_CHANGE = {
+    value: null,
+    at: null,
+};
+let LAST_USER_SELECTED_RECIPE_TYPE = null;
+
+function ensureHiddenInput(form, id, name) {
+    let input = document.getElementById(id);
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.id = id;
+        input.name = name;
+        form.appendChild(input);
+    }
+    return input;
+}
+
+function getPopulateFlagsFromCheckboxes() {
+    return {
+        populateBreakfast: !!document.getElementById('populateBreakfast')?.checked,
+        populateAMSnack: !!document.getElementById('populateAMSnack')?.checked,
+        populateLunch: !!document.getElementById('populateLunch')?.checked,
+        populatePMSnack: !!document.getElementById('populatePMSnack')?.checked,
+    };
+}
+
+function setPopulateCheckboxes(flags, lockSelection) {
+    const map = {
+        populateBreakfast: document.getElementById('populateBreakfast'),
+        populateAMSnack: document.getElementById('populateAMSnack'),
+        populateLunch: document.getElementById('populateLunch'),
+        populatePMSnack: document.getElementById('populatePMSnack'),
+    };
+    Object.keys(map).forEach((key) => {
+        const el = map[key];
+        if (!el) return;
+        if (Object.prototype.hasOwnProperty.call(flags, key)) {
+            el.checked = !!flags[key];
+        }
+        el.disabled = !!lockSelection;
+    });
+}
+
+function deriveRecipeTypeFromFlags(flags) {
+    if (flags.populateBreakfast) return 'breakfast';
+    if (flags.populateAMSnack) return 'am_snack';
+    if (flags.populateLunch) return 'lunch';
+    if (flags.populatePMSnack) return 'pm_snack';
+    return 'lunch';
+}
+
+function applyRecipeTypeBehavior(selectedRecipeType, preserveManualSelections = false) {
+    const hint = document.getElementById('recipeTypeModeHint');
+    const manualWrap = document.getElementById('manualPopulateWrap');
+    if (MANUAL_POPULATE_RECIPE_TYPES.includes(selectedRecipeType)) {
+        if (manualWrap) {
+            manualWrap.style.display = '';
+        }
+        if (!preserveManualSelections) {
+            const flags = getPopulateFlagsFromCheckboxes();
+            if (!flags.populateBreakfast && !flags.populateAMSnack && !flags.populateLunch && !flags.populatePMSnack) {
+                setPopulateCheckboxes({ populateLunch: true }, false);
+            } else {
+                setPopulateCheckboxes(flags, false);
+            }
+        } else {
+            setPopulateCheckboxes(getPopulateFlagsFromCheckboxes(), false);
+        }
+        if (hint) {
+            hint.textContent = selectedRecipeType === 'multiple'
+                ? 'Manual mode: choose one or more meal periods. Recipe type will save as the first selected meal.'
+                : 'Choose one or more meal periods for this recipe type.';
+        }
+        return;
+    }
+
+    if (manualWrap) {
+        manualWrap.style.display = 'none';
+    }
+    const mappedFlags = RECIPE_TYPE_POPULATE_MAP[selectedRecipeType] || RECIPE_TYPE_POPULATE_MAP.lunch;
+    setPopulateCheckboxes(mappedFlags, true);
+    if (hint) {
+        hint.textContent = 'Auto mode: meal-period checkboxes are locked to this recipe type.';
+    }
+}
+
+
+function showStep(stepOrIndex) {
+    // Accept either a step number or an index in stepOrder
+    let stepIndex = typeof stepOrIndex === 'number' && stepOrIndex < totalSteps ? stepOrIndex : stepOrder.indexOf(stepOrIndex);
+    if (stepOrIndex === 'all') {
+        // Show all steps and hide navigation in edit mode
+        for (let i = 0; i < totalSteps; i++) {
+            document.getElementById('step-' + stepOrder[i]).style.display = '';
+        }
+        document.getElementById('prevStepBtn').style.display = 'none';
+        document.getElementById('nextStepBtn').style.display = 'none';
+        document.getElementById('submitRecipeBtn').style.display = '';
+    } else {
+        for (let i = 0; i < totalSteps; i++) {
+            document.getElementById('step-' + stepOrder[i]).style.display = (i === stepIndex) ? '' : 'none';
+        }
+        document.getElementById('prevStepBtn').style.display = (stepIndex > 0) ? '' : 'none';
+        document.getElementById('nextStepBtn').style.display = (stepIndex < totalSteps - 1) ? '' : 'none';
+        document.getElementById('submitRecipeBtn').style.display = (stepIndex === totalSteps - 1) ? '' : 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    window.IS_EDIT_MODE = false;
+                // Helper for Yes/No/CACFP logic for each step
+                function setupStepLogic(prefix, stepNum, inputId, ruleId) {
+                    const yesBtn = document.getElementById(prefix + 'YesBtn');
+                    const noBtn = document.getElementById(prefix + 'NoBtn');
+                    const inputSection = document.getElementById(prefix + 'InputSection');
+                    const cacfpYesBtn = document.getElementById(prefix + 'CACFPYesBtn');
+                    const cacfpNoBtn = document.getElementById(prefix + 'CACFPNoBtn');
+                    const ruleSection = document.getElementById(ruleId + 'Section');
+                    const inputField = document.getElementById(inputId);
+                    const ruleField = document.getElementById(ruleId);
+                    if (yesBtn && noBtn && inputSection) {
+                        yesBtn.addEventListener('click', function () {
+                            inputSection.style.display = '';
+                            yesBtn.classList.add('active');
+                            noBtn.classList.remove('active');
+                        });
+                        noBtn.addEventListener('click', function () {
+                            inputSection.style.display = 'none';
+                            yesBtn.classList.remove('active');
+                            noBtn.classList.add('active');
+                            if (inputField) inputField.value = '';
+                            if (ruleField) ruleField.value = '';
+                            if (ruleSection) ruleSection.style.display = 'none';
+                            // Only advance step if NOT in edit mode
+                            if (!window.IS_EDIT_MODE) {
+                                currentStepIndex = Math.min(currentStepIndex + 1, totalSteps - 1);
+                                showStep(currentStepIndex);
+                                updateModalTitle();
+                            }
+                        });
+                    }
+                    if (cacfpYesBtn && cacfpNoBtn && ruleSection) {
+                        cacfpYesBtn.addEventListener('click', function () {
+                            ruleSection.style.display = '';
+                            cacfpYesBtn.classList.add('active');
+                            cacfpNoBtn.classList.remove('active');
+                        });
+                        cacfpNoBtn.addEventListener('click', function () {
+                            ruleSection.style.display = 'none';
+                            cacfpYesBtn.classList.remove('active');
+                            cacfpNoBtn.classList.add('active');
+                            if (ruleField) ruleField.value = '';
+                        });
+                    }
+                }
+
+        // Grain step logic
+        const grainYesBtn = document.getElementById('grainYesBtn');
+        const grainNoBtn = document.getElementById('grainNoBtn');
+        const grainInputSection = document.getElementById('grainInputSection');
+        const grainCACFPBtns = document.getElementById('grainCACFPBtns');
+        const grainCACFPYesBtn = document.getElementById('grainCACFPYesBtn');
+        const grainCACFPNoBtn = document.getElementById('grainCACFPNoBtn');
+        const grainRuleSection = document.getElementById('grainRuleSection');
+        // Show input and CACFP question if Yes, skip if No
+        if (grainYesBtn && grainNoBtn && grainInputSection) {
+            grainYesBtn.addEventListener('click', function () {
+                grainInputSection.style.display = '';
+                grainYesBtn.classList.add('active');
+                grainNoBtn.classList.remove('active');
+            });
+            grainNoBtn.addEventListener('click', function () {
+                grainInputSection.style.display = 'none';
+                grainYesBtn.classList.remove('active');
+                grainNoBtn.classList.add('active');
+                // Optionally clear input and rule
+                document.getElementById('grain').value = '';
+                document.getElementById('grainRule').value = '';
+                grainRuleSection.style.display = 'none';
+                // Only advance step if NOT in edit mode
+                if (!window.IS_EDIT_MODE) {
+                    currentStep = 4;
+                    showStep(currentStep);
+                    updateModalTitle();
+                }
+            });
+        }
+        // CACFP rule logic
+        if (grainCACFPYesBtn && grainCACFPNoBtn && grainRuleSection) {
+            grainCACFPYesBtn.addEventListener('click', function () {
+                grainRuleSection.style.display = '';
+                grainCACFPYesBtn.classList.add('active');
+                grainCACFPNoBtn.classList.remove('active');
+            });
+            grainCACFPNoBtn.addEventListener('click', function () {
+                grainRuleSection.style.display = 'none';
+                grainCACFPYesBtn.classList.remove('active');
+                grainCACFPNoBtn.classList.add('active');
+                document.getElementById('grainRule').value = '';
+            });
+        }
+
+        // Setup Yes/No/CACFP logic for steps 4–9
+        setupStepLogic('addfood', 5, 'addfood', 'addfoodRule');
+        setupStepLogic('fluid', 6, 'fluid', 'fluidRule');
+        setupStepLogic('veg', 7, 'veg', 'vegRule');
+        setupStepLogic('fruit', 8, 'fruit', 'fruitRule');
+        setupStepLogic('meat', 9, 'meat', 'meatRule');
+    // ...existing code...
+
+    // Multi-step modal navigation
+    currentStepIndex = 0;
+    showStep(currentStepIndex);
+    const modalTitle = document.getElementById('unifiedRecipeModalLabel');
+    const recipeNameInput = document.getElementById('recipeName');
+
+
+    function updateModalTitle() {
+        if (currentStepIndex > 0 && recipeNameInput.value.trim()) {
+            modalTitle.textContent = 'Create Recipe: ' + recipeNameInput.value.trim();
+        } else {
+            modalTitle.textContent = 'Create Recipe';
+        }
+    }
+
+    document.getElementById('nextStepBtn').addEventListener('click', function () {
+        if (currentStepIndex < totalSteps - 1) {
+            currentStepIndex++;
+            showStep(currentStepIndex);
+            updateModalTitle();
+        }
+    });
+    document.getElementById('prevStepBtn').addEventListener('click', function () {
+        if (currentStepIndex > 0) {
+            currentStepIndex--;
+            showStep(currentStepIndex);
+            updateModalTitle();
+        }
+    });
+
+    // Reset to step 1 when opening modal for new recipe
+        function resetModalTitleAndStep() {
+            // Reset grain step UI
+            if (grainInputSection) grainInputSection.style.display = 'none';
+            if (grainYesBtn) grainYesBtn.classList.remove('active');
+            if (grainNoBtn) grainNoBtn.classList.remove('active');
+            if (grainRuleSection) grainRuleSection.style.display = 'none';
+            if (grainCACFPYesBtn) grainCACFPYesBtn.classList.remove('active');
+            if (grainCACFPNoBtn) grainCACFPNoBtn.classList.remove('active');
+            currentStepIndex = 0;
+            showStep(currentStepIndex); // Always use step-by-step for add
+            // Always force the modal title to 'Create Recipe' on open
+            modalTitle.textContent = 'Create Recipe';
+        }
+    document.getElementById('createRecipeButton').addEventListener('click', resetModalTitleAndStep);
+    document.getElementById('headerCreateBtn').addEventListener('click', resetModalTitleAndStep);
+    document.getElementById('mobileCreateBtn').addEventListener('click', resetModalTitleAndStep);
+
+    // Also update title if user edits the name and is past step 1
+    recipeNameInput.addEventListener('input', function () {
+        if (currentStepIndex > 0) updateModalTitle();
+    });
+});
 let INGREDIENTS_CACHE = null;
 let RULES_CACHE = null;
 let CURRENT_RECIPE_CATEGORY = 'breakfast';
 let IS_EDIT_MODE = false;
+let DELETE_CALLBACK = null;
+let CURRENT_RECIPE_BASE_INGREDIENTS = [];
+
+const UNIT_DEFINITIONS = {
+    volume_metric: [
+        { canonical: 'ml', factorToBase: 1, label: 'mL' },
+        { canonical: 'l', factorToBase: 1000, label: 'L' },
+    ],
+    volume_us: [
+        { canonical: 'tsp', factorToBase: 1, label: 'tsp' },
+        { canonical: 'tbsp', factorToBase: 3, label: 'tbsp' },
+        { canonical: 'floz', factorToBase: 6, label: 'fl oz' },
+        { canonical: 'cup', factorToBase: 48, label: 'cup' },
+        { canonical: 'pint', factorToBase: 96, label: 'pt' },
+        { canonical: 'quart', factorToBase: 192, label: 'qt' },
+        { canonical: 'gallon', factorToBase: 768, label: 'gal' },
+    ],
+    mass_metric: [
+        { canonical: 'mg', factorToBase: 1, label: 'mg' },
+        { canonical: 'g', factorToBase: 1000, label: 'g' },
+        { canonical: 'kg', factorToBase: 1000000, label: 'kg' },
+    ],
+    mass_us: [
+        { canonical: 'oz', factorToBase: 1, label: 'oz' },
+        { canonical: 'lb', factorToBase: 16, label: 'lb' },
+    ],
+};
+
+const UNIT_ALIASES = {
+    ml: 'ml',
+    milliliter: 'ml',
+    milliliters: 'ml',
+    millilitre: 'ml',
+    millilitres: 'ml',
+    l: 'l',
+    liter: 'l',
+    liters: 'l',
+    litre: 'l',
+    litres: 'l',
+    tsp: 'tsp',
+    tsps: 'tsp',
+    teaspoon: 'tsp',
+    teaspoons: 'tsp',
+    tbsp: 'tbsp',
+    tbsps: 'tbsp',
+    tbs: 'tbsp',
+    tbl: 'tbsp',
+    tablespoon: 'tbsp',
+    tablespoons: 'tbsp',
+    floz: 'floz',
+    'fl oz': 'floz',
+    fluidounce: 'floz',
+    fluidounces: 'floz',
+    cup: 'cup',
+    cups: 'cup',
+    pt: 'pint',
+    pts: 'pint',
+    pint: 'pint',
+    pints: 'pint',
+    qt: 'quart',
+    qts: 'quart',
+    quart: 'quart',
+    quarts: 'quart',
+    gal: 'gallon',
+    gals: 'gallon',
+    gallon: 'gallon',
+    gallons: 'gallon',
+    mg: 'mg',
+    milligram: 'mg',
+    milligrams: 'mg',
+    g: 'g',
+    gram: 'g',
+    grams: 'g',
+    kg: 'kg',
+    kilogram: 'kg',
+    kilograms: 'kg',
+    oz: 'oz',
+    ounce: 'oz',
+    ounces: 'oz',
+    lb: 'lb',
+    lbs: 'lb',
+    pound: 'lb',
+    pounds: 'lb',
+};
+
+const UNIT_GROUP_BY_CANONICAL = {};
+const UNIT_META_BY_CANONICAL = {};
+
+Object.entries(UNIT_DEFINITIONS).forEach(([groupName, units]) => {
+    units.forEach((unitDef) => {
+        UNIT_GROUP_BY_CANONICAL[unitDef.canonical] = groupName;
+        UNIT_META_BY_CANONICAL[unitDef.canonical] = unitDef;
+    });
+});
+
+function getStudentCount() {
+    const input = document.getElementById('studentCountInput');
+    if (!input) return 25;
+    const parsed = Number.parseInt(input.value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return 25;
+    return parsed;
+}
+
+function getStudentStorageKey() {
+    const input = document.getElementById('studentCountInput');
+    const userId = input ? (input.getAttribute('data-user-id') || 'anon') : 'anon';
+    return `recipes.studentCount.${userId}`;
+}
+
+function loadStudentCountPreference() {
+    const input = document.getElementById('studentCountInput');
+    if (!input) return;
+    try {
+        const saved = localStorage.getItem(getStudentStorageKey());
+        if (saved == null) return;
+        const parsed = Number.parseInt(saved, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            input.value = String(parsed);
+        }
+    } catch (e) {
+        // Ignore storage failures and keep default.
+    }
+}
+
+function saveStudentCountPreference() {
+    const input = document.getElementById('studentCountInput');
+    if (!input) return;
+    const parsed = Number.parseInt(input.value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return;
+    try {
+        localStorage.setItem(getStudentStorageKey(), String(parsed));
+    } catch (e) {
+        // Ignore storage failures.
+    }
+}
+
+function normalizeUnit(rawUnit) {
+    if (!rawUnit) return null;
+    const compact = String(rawUnit)
+        .trim()
+        .toLowerCase()
+        .replace(/\./g, '')
+        .replace(/\s+/g, ' ');
+    const normalizedKey = compact.replace(/\s+/g, '');
+    return UNIT_ALIASES[compact] || UNIT_ALIASES[normalizedKey] || null;
+}
+
+function formatQuantityValue(value) {
+    if (!Number.isFinite(value)) return '';
+    if (Math.abs(value) < 0.000001) return '0';
+    const fixed = value >= 1000 ? value.toFixed(1) : value.toFixed(2);
+    return fixed.replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+}
+
+function convertScaledQuantity(quantity, rawUnit) {
+    const canonical = normalizeUnit(rawUnit);
+    if (!canonical) {
+        return {
+            quantity,
+            unitLabel: rawUnit || '',
+        };
+    }
+
+    const groupName = UNIT_GROUP_BY_CANONICAL[canonical];
+    const unitMeta = UNIT_META_BY_CANONICAL[canonical];
+    if (!groupName || !unitMeta) {
+        return {
+            quantity,
+            unitLabel: rawUnit || canonical,
+        };
+    }
+
+    const baseValue = quantity * unitMeta.factorToBase;
+    const candidates = [...UNIT_DEFINITIONS[groupName]].sort((a, b) => b.factorToBase - a.factorToBase);
+
+    let selected = candidates[candidates.length - 1];
+    for (const candidate of candidates) {
+        if (baseValue >= candidate.factorToBase) {
+            selected = candidate;
+            break;
+        }
+    }
+
+    return {
+        quantity: baseValue / selected.factorToBase,
+        unitLabel: selected.label,
+    };
+}
+
+function applyStudentScalingToModal() {
+    if (!window.IS_EDIT_MODE || !CURRENT_RECIPE_BASE_INGREDIENTS.length) {
+        return;
+    }
+
+    const studentCount = getStudentCount();
+    CURRENT_RECIPE_BASE_INGREDIENTS.forEach((ingredient, index) => {
+        const rowIndex = index + 1;
+        const qtyInput = document.getElementById(`qty${rowIndex}`);
+        const ingredientSelect = document.getElementById(`ingredient${rowIndex}`);
+        const unitsSpan = document.getElementById(`units${rowIndex}`);
+        if (!qtyInput || !ingredientSelect || !unitsSpan) return;
+
+        const selectedOption = ingredientSelect.options[ingredientSelect.selectedIndex];
+        const unitType = selectedOption ? selectedOption.getAttribute('data-units') || '' : (ingredient.unitType || '');
+        const scaledQuantity = Number(ingredient.baseQty) * studentCount;
+        const converted = convertScaledQuantity(scaledQuantity, unitType);
+
+        qtyInput.value = formatQuantityValue(converted.quantity);
+        unitsSpan.textContent = converted.unitLabel || unitType || '';
+        qtyInput.title = `Base per student: ${formatQuantityValue(Number(ingredient.baseQty))} ${unitType || ''}`.trim();
+    });
+}
+
+function confirmDeleteRecipe(recipeId, category) {
+    DELETE_CALLBACK = function() {
+        clearDeleteToast();
+        fetch(`/delete-recipe/${category}/${recipeId}/`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+        }).then(r => {
+            if (r.ok) {
+                toastr.success('Recipe deleted successfully.');
+                setTimeout(function() { location.reload(); }, 600);
+            } else {
+                toastr.error('Failed to delete recipe.');
+            }
+        });
+    };
+
+    toastr.clear();
+    const uniqueId = Date.now() + '-' + Math.floor(Math.random() * 100000);
+    toastr.warning(
+        '<div>Are you sure you want to delete this recipe?</div>' +
+        '<span style="display:none">' + uniqueId + '</span>' +
+        '<br><button type="button" class="btn btn-sm btn-primarytwo" onclick="DELETE_CALLBACK()">OK</button> ' +
+        '<button type="button" class="btn btn-sm btn-secondary" onclick="clearDeleteToast()">Cancel</button>',
+        'Confirm Delete',
+        {
+            allowHtml: true,
+            timeOut: 0,
+            extendedTimeOut: 0,
+            closeButton: true,
+            tapToDismiss: false,
+            positionClass: 'toast-top-center'
+        }
+    );
+}
+
+function clearDeleteToast() {
+    $('.toast').remove();
+    toastr.remove();
+    toastr.clear();
+    DELETE_CALLBACK = null;
+}
 
 function getCurrentCategory() {
     const activeTab = document.querySelector('#recipeTabs .active-tab');
@@ -451,9 +1147,13 @@ function getRules() {
 
 function populateIngredientsDropdown(selectId, selectedValue) {
     return getIngredients().then(items => {
+        // Sort items alphabetically by item name (case-insensitive)
+        items.sort((a, b) => a.item.localeCompare(b.item, undefined, { sensitivity: 'base' }));
         const dropdown = $('#' + selectId);
         dropdown.empty().append('<option value="">Select Ingredient</option>');
-        items.forEach(i => dropdown.append(`<option value="${i.id}">${i.item}</option>`));
+        items.forEach(i => {
+            dropdown.append(`<option value="${i.id}" data-units="${i.unit_type || ''}">${i.item}</option>`);
+        });
         if (selectedValue) dropdown.val(String(selectedValue));
     });
 }
@@ -465,6 +1165,16 @@ function populateRulesDropdown(selectId, selectedValue) {
         items.forEach(r => dropdown.append(`<option value="${r.id}">${r.rule}</option>`));
         if (selectedValue) dropdown.val(String(selectedValue));
     });
+}
+
+// Populate all rule dropdowns for the unified modal
+function populateAllRuleDropdowns(selected) {
+    populateRulesDropdown('grainRule', selected && selected.grain_rule);
+    populateRulesDropdown('addfoodRule', selected && selected.addfood_rule);
+    populateRulesDropdown('fluidRule', selected && selected.fluid_rule);
+    populateRulesDropdown('vegRule', selected && selected.veg_rule);
+    populateRulesDropdown('fruitRule', selected && selected.fruit_rule);
+    populateRulesDropdown('meatRule', selected && selected.meat_rule);
 }
 
 // Get category configuration
@@ -505,38 +1215,64 @@ function getCategoryConfig(category) {
 // Dynamic ingredient fields
 let ingredientCounter = 0;
 
+function updateAllIngredientUnits() {
+    document.querySelectorAll('.ingredient-select').forEach(function(dropdown) {
+        const unitsSpan = dropdown.parentElement.querySelector('.ingredient-units');
+        const selected = dropdown.options[dropdown.selectedIndex];
+        const units = selected ? selected.getAttribute('data-units') || '' : '';
+        if (unitsSpan) unitsSpan.textContent = units;
+    });
+}
+
 function addIngredientField(ingredientId = null, quantity = null) {
-    ingredientCounter++;
-    const container = document.getElementById('ingredientsContainer');
-    if (!container) {
-        console.error('ingredientsContainer not found');
-        return null;
-    }
-    
-    const fieldGroup = document.createElement('div');
-    fieldGroup.className = 'mb-3 ingredient-field-group';
-    fieldGroup.dataset.index = ingredientCounter;
-    
-    fieldGroup.innerHTML = `
-        <div class="d-flex align-items-center gap-2 mb-2">
-            <label class="form-label mb-0" style="flex: 0 0 auto;">Ingredient #${ingredientCounter}</label>
-            <button type="button" class="btn btn-sm btn-danger ms-auto" onclick="removeIngredientField(${ingredientCounter})">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <select class="form-select ingredient-select" id="ingredient${ingredientCounter}" name="ingredient${ingredientCounter}"></select>
-        <input type="number" class="form-control mt-2" id="qty${ingredientCounter}" name="qty${ingredientCounter}" min="1" placeholder="Quantity" value="${quantity || ''}">
-    `;
-    
-    container.appendChild(fieldGroup);
-    
-    // Populate dropdown
-    populateIngredientsDropdown('ingredient' + ingredientCounter, ingredientId);
-    
-    // Update field names based on current category
-    updateIngredientFieldNames();
-    
-    return ingredientCounter;
+    return new Promise((resolve) => {
+        ingredientCounter++;
+        const fieldIndex = ingredientCounter;
+        const container = document.getElementById('ingredientsContainer');
+        if (!container) {
+            console.error('ingredientsContainer not found');
+            resolve();
+            return null;
+        }
+        const fieldGroup = document.createElement('div');
+        fieldGroup.className = 'mb-3 ingredient-field-group';
+        fieldGroup.dataset.index = fieldIndex;
+        fieldGroup.innerHTML = `
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <label class="form-label mb-0" style="flex: 0 0 auto;">Ingredient #${fieldIndex}</label>
+                <button type="button" class="btn btn-sm btn-danger ms-auto" onclick="removeIngredientField(${fieldIndex})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select ingredient-select" id="ingredient${fieldIndex}" name="ingredient${fieldIndex}"></select>
+                <input type="number" step="any" class="form-control" id="qty${fieldIndex}" name="qty${fieldIndex}" min="0" placeholder="Quantity" value="${quantity || ''}">
+                <span class="ingredient-units" id="units${fieldIndex}" style="min-width: 40px;"></span>
+            </div>
+        `;
+        container.appendChild(fieldGroup);
+        // Populate dropdown and handle units
+        populateIngredientsDropdown('ingredient' + fieldIndex, ingredientId).then(() => {
+            const dropdown = document.getElementById('ingredient' + fieldIndex);
+            const unitsSpan = document.getElementById('units' + fieldIndex);
+            if (!dropdown) {
+                resolve();
+                return;
+            }
+            function updateUnits() {
+                const selected = dropdown.options[dropdown.selectedIndex];
+                const units = selected ? selected.getAttribute('data-units') || '' : '';
+                if (unitsSpan) unitsSpan.textContent = units;
+            }
+            // Initial set
+            updateUnits();
+            // On change
+            dropdown.addEventListener('change', updateUnits);
+            // Update field names based on current category
+            updateIngredientFieldNames();
+            resolve();
+        });
+    });
 }
 
 function removeIngredientField(index) {
@@ -571,6 +1307,7 @@ function clearAllIngredients() {
         container.innerHTML = '';
     }
     ingredientCounter = 0;
+    CURRENT_RECIPE_BASE_INGREDIENTS = [];
 }
 
 function updateIngredientFieldNames() {
@@ -597,161 +1334,50 @@ function updateIngredientFieldNames() {
 // Configure modal for specific recipe type
 function configureModalForType(category, isEdit = false) {
     CURRENT_RECIPE_CATEGORY = category;
-    IS_EDIT_MODE = isEdit;
-    
-    // Set form field name prefixes and action URL based on category
-    const config = {
-        breakfast: {
-            title: isEdit ? 'Update Breakfast Recipe' : 'Create Breakfast Recipe',
-            createUrl: '{% url "create_breakfast_recipe" %}',
-            updateUrl: '/update-breakfast-recipe/',
-            nameField: 'breakfastMealName',
-            ingredientPrefix: 'breakfastMainIngredient',
-            qtyPrefix: 'breakfastQtyMainIngredient',
-            ruleField: 'breakfastRule',
-            instructionsField: 'breakfastInstructions',
-            showFields: ['breakfastFields', 'instructionsContainer'],
-            hideFields: ['lunchFields', 'snackFields'],
-            maxIngredients: 5,
-            checkboxPrefix: 'breakfast',
-            defaultChecked: 'populateBreakfast'
-        },
-        am: {
-            title: isEdit ? 'Update AM Snack Recipe' : 'Create AM Snack Recipe',
-            createUrl: '{% url "create_am_recipe" %}',
-            updateUrl: '/update-am-recipe/',
-            nameField: 'amRecipeName',
-            ingredientPrefix: 'amIngredient',
-            qtyPrefix: 'amQty',
-            ruleField: 'amRule',
-            instructionsField: 'amInstructions',
-            showFields: ['snackFields', 'instructionsContainer'],
-            hideFields: ['lunchFields', 'breakfastFields'],
-            maxIngredients: 5,
-            checkboxPrefix: 'am',
-            defaultChecked: 'populateAMSnack'
-        },
-        pm: {
-            title: isEdit ? 'Update PM Snack Recipe' : 'Create PM Snack Recipe',
-            createUrl: '{% url "create_pm_recipe" %}',
-            updateUrl: '/update-pm-recipe/',
-            nameField: 'pmRecipeName',
-            ingredientPrefix: 'pmIngredient',
-            qtyPrefix: 'pmQty',
-            ruleField: 'pmRule',
-            instructionsField: 'pmInstructions',
-            showFields: ['snackFields', 'instructionsContainer'],
-            hideFields: ['lunchFields', 'breakfastFields'],
-            maxIngredients: 5,
-            checkboxPrefix: 'pm',
-            defaultChecked: 'populatePMSnack'
-        },
-        lunch: {
-            title: isEdit ? 'Update Recipe' : 'Create Recipe',
-            createUrl: '{% url "create_recipe" %}',
-            updateUrl: '/update-recipe/',
-            nameField: 'mealName',
-            ingredientPrefix: 'mainIngredient',
-            qtyPrefix: 'qtyMainIngredient',
-            ruleField: 'rule',
-            instructionsField: 'instructions',
-            showFields: ['lunchFields', 'instructionsContainer'],
-            hideFields: ['breakfastFields', 'snackFields'],
-            maxIngredients: 5,
-            checkboxPrefix: '',
-            defaultChecked: 'populateLunch'
-        },
-        fruit: {
-            title: isEdit ? 'Update Fruit Recipe' : 'Create Fruit Recipe',
-            createUrl: '{% url "create_fruit_recipe" %}',
-            updateUrl: '/update-fruit-recipe/',
-            nameField: 'fruitName',
-            ingredientPrefix: 'fruitMainIngredient',
-            qtyPrefix: 'fruitQtyMainIngredient',
-            ruleField: 'fruitRule',
-            showFields: ['ruleContainer'],
-            hideFields: ['lunchFields', 'breakfastFields', 'snackFields', 'instructionsContainer'],
-            maxIngredients: 1,
-            checkboxPrefix: 'fruit',
-            defaultChecked: 'standalone'
-        },
-        veg: {
-            title: isEdit ? 'Update Vegetable Recipe' : 'Create Vegetable Recipe',
-            createUrl: '{% url "create_veg_recipe" %}',
-            updateUrl: '/update-veg-recipe/',
-            nameField: 'vegName',
-            ingredientPrefix: 'vegMainIngredient',
-            qtyPrefix: 'vegQtyMainIngredient',
-            ruleField: 'vegRule',
-            showFields: ['ruleContainer'],
-            hideFields: ['lunchFields', 'breakfastFields', 'snackFields', 'instructionsContainer'],
-            maxIngredients: 1,
-            checkboxPrefix: 'veg',
-            defaultChecked: 'standalone'
-        },
-        wg: {
-            title: isEdit ? 'Update Whole Grain Recipe' : 'Create Whole Grain Recipe',
-            createUrl: '{% url "create_wg_recipe" %}',
-            updateUrl: '/update-wg-recipe/',
-            nameField: 'wgName',
-            ingredientPrefix: 'wgMainIngredient',
-            qtyPrefix: 'wgQtyMainIngredient',
-            ruleField: 'wgRule',
-            showFields: ['ruleContainer'],
-            hideFields: ['lunchFields', 'breakfastFields', 'snackFields', 'instructionsContainer'],
-            maxIngredients: 1,
-            checkboxPrefix: 'wg',
-            defaultChecked: 'standalone'
-        }
-    };
+    window.IS_EDIT_MODE = isEdit;
+    // Only one recipe type now, so always use generic title and config
+    $('#unifiedRecipeModalLabel').text(isEdit ? 'Update Recipe' : 'Create Recipe');
+    $('#submitRecipeBtn').text(isEdit ? 'Update Recipe' : 'Create Recipe');
 
-    const cfg = config[category];
-    if (!cfg) return;
+    // All field groups are always visible in the unified modal
+    $('.field-group').addClass('active');
 
-    // Update modal titles
-    $('#unifiedRecipeModalLabel').text(cfg.title);
-    $('#submitRecipeBtn').text(cfg.title);
+    // Update form field names to generic
+    $('#recipeName').attr('name', 'recipeName');
+    $('#instructions').attr('name', 'instructions');
+    // No ruleSelect in unified modal, rules are per field
 
-    // Show/hide field groups
-    $('.field-group').removeClass('active');
-    cfg.showFields.forEach(id => $('#' + id).addClass('active'));
-
-    // Update form field names
-    $('#recipeName').attr('name', cfg.nameField);
-    $('#ruleSelect').attr('name', cfg.ruleField);
-    $('#instructions').attr('name', cfg.instructionsField);
-    
     // Update dynamic ingredient field names
     updateIngredientFieldNames();
 
-    // Update checkbox name prefixes
+    // Update checkbox name prefixes (no prefix)
     const checkboxes = ['populateBreakfast', 'populateAMSnack', 'populateLunch', 'populatePMSnack', 'standalone', 'ignoreInventory'];
     checkboxes.forEach(cb => {
         const el = document.getElementById(cb);
-        if (el && cfg.checkboxPrefix) {
-            el.setAttribute('name', cfg.checkboxPrefix + cb.charAt(0).toUpperCase() + cb.slice(1));
-        } else if (el) {
+        if (el) {
             el.setAttribute('name', cb);
         }
     });
 
-    // Set form action
-    $('#recipeType').val(category);
+    // Set form action (use generic create endpoint)
+    const recipeTypeSelect = document.getElementById('recipeType');
+    const defaultRecipeType = CATEGORY_TO_RECIPE_TYPE[category] || 'lunch';
+    if (recipeTypeSelect && !isEdit) {
+        recipeTypeSelect.value = defaultRecipeType;
+    }
     if (isEdit) {
         // Action will be set when we load specific recipe data  
     } else {
-        $('#unifiedRecipeForm').attr('action', cfg.createUrl);
+        $('#unifiedRecipeForm').attr('action', '{% url "create_recipe" %}');
     }
 
-    // Set default checked state
-    checkboxes.forEach(cb => {
-        document.getElementById(cb).checked = (cb === cfg.defaultChecked);
-    });
+    applyRecipeTypeBehavior((recipeTypeSelect && recipeTypeSelect.value) ? recipeTypeSelect.value : defaultRecipeType, false);
 }
 
 // Reset modal to create mode
 function resetModalForCreate(category) {
     configureModalForType(category, false);
+    CURRENT_RECIPE_BASE_INGREDIENTS = [];
     
     // Clear all inputs
     $('#recipeName').val('');
@@ -762,16 +1388,16 @@ function resetModalForCreate(category) {
     
     // Clear dynamic ingredients and add first field
     clearAllIngredients();
-    addIngredientField();
-    
-    // Reset rule dropdown  
-    populateRulesDropdown('ruleSelect', null);
+    addIngredientField().then(updateAllIngredientUnits);
+    // Reset all rule dropdowns
+    populateAllRuleDropdowns({});
 }
 
 // Load recipe for editing
 async function viewRecipe(id, category) {
     configureModalForType(category, true);
-    
+    showStep('all'); // Show all steps in edit mode
+
     const config = {
         breakfast: 'breakfastMealName',
         am: 'amRecipeName',
@@ -782,64 +1408,63 @@ async function viewRecipe(id, category) {
         wg: 'wgName'
     };
 
-    // Set update URL
-    const updateUrls = {
-        breakfast: '/update-breakfast-recipe/',
-        am: '/update-am-recipe/',
-        pm: '/update-pm-recipe/',
-        lunch: '/update-recipe/',
-        fruit: '/update-fruit-recipe/',
-        veg: '/update-veg-recipe/',
-        wg: '/update-wg-recipe/'
-    };
-    $('#unifiedRecipeForm').attr('action', updateUrls[category] + id + '/');
-    
+    // Use unified update endpoint so recipe type can be changed across categories.
+    $('#unifiedRecipeForm').attr('action', '/update-recipe/' + id + '/');
+
     $('#unifiedRecipeModal').modal('show');
 
     try {
-        const res = await fetch(`/recipe/${category}/${id}/`);
+        // Always use unified detail endpoint so all optional fields and rule IDs load.
+        const res = await fetch(`/recipe/lunch/${id}/`);
         const data = await res.json();
 
         // Populate name
         $('#recipeName').val(data.name || '');
 
-        // Populate type-specific fields
-        if (category === 'breakfast') {
-            $('#additionalFood').val(data.addfood || '');
-        } else if (category === 'am' || category === 'pm') {
-            $('#fluid').val(data.fluid || '');
-            $('#fruitVeg').val(data.fruit || data.veg || '');
-            $('#meat').val(data.meat || '');
-        } else if (category === 'lunch') {
-            $('#grain').val(data.grain || '');
-            $('#meatAlternate').val(data.meat_alternate || '');
-        }
+        // Populate unified optional fields for any category.
+        $('#grain').val(data.grain || '');
+        $('#veg').val(data.veg || '');
+        $('#fruit').val(data.fruit || '');
+        $('#meat').val(data.meat || '');
+        $('#addfood').val(data.addfood || '');
+        $('#fluid').val(data.fluid || '');
 
         $('#instructions').val(data.instructions || '');
 
         // Clear and populate ingredients dynamically
         clearAllIngredients();
-        
-        // Loop through all possible ingredients (check up to 20 to be safe)
+        CURRENT_RECIPE_BASE_INGREDIENTS = [];
+        let ingredientFieldsToAdd = [];
         for (let i = 1; i <= 20; i++) {
             const ingId = data[`ingredient${i}_id`];
             const qty = data[`qty${i}`];
             if (ingId || qty) {
-                addIngredientField(ingId, qty);
-            } else if (i > 5) {
-                // Stop checking after we've gone past typical range without finding any
-                break;
+                ingredientFieldsToAdd.push([ingId, qty]);
             }
         }
-        
-        // If no ingredients, add one empty field
-        if (ingredientCounter === 0) {
-            addIngredientField();
+        if (ingredientFieldsToAdd.length === 0) {
+            await addIngredientField();
+        } else {
+            for (const [ingId, qty] of ingredientFieldsToAdd) {
+                await addIngredientField(ingId, qty);
+                CURRENT_RECIPE_BASE_INGREDIENTS.push({
+                    ingredientId: ingId,
+                    baseQty: Number(qty) || 0,
+                });
+            }
         }
+        updateAllIngredientUnits();
+        applyStudentScalingToModal();
 
-        // Populate rule
-        const ruleId = data.rule_id || (data.rule && data.rule.id);
-        await populateRulesDropdown('ruleSelect', ruleId);
+        // Populate all rule dropdowns with selected values from data
+        await populateAllRuleDropdowns({
+            grain_rule: data.grain_rule_id || (data.grain_rule && data.grain_rule.id),
+            addfood_rule: data.addfood_rule_id || (data.addfood_rule && data.addfood_rule.id),
+            fluid_rule: data.fluid_rule_id || (data.fluid_rule && data.fluid_rule.id),
+            veg_rule: data.veg_rule_id || (data.veg_rule && data.veg_rule.id),
+            fruit_rule: data.fruit_rule_id || (data.fruit_rule && data.fruit_rule.id),
+            meat_rule: data.meat_rule_id || (data.meat_rule && data.meat_rule.id),
+        });
 
         // Populate checkboxes
         document.getElementById('populateBreakfast').checked = !!data.populate_breakfast;
@@ -848,6 +1473,61 @@ async function viewRecipe(id, category) {
         document.getElementById('populatePMSnack').checked = !!data.populate_pm_snack;
         document.getElementById('standalone').checked = !!data.standalone;
         document.getElementById('ignoreInventory').checked = !!data.ignore_inventory;
+
+        // Auto-expand optional sections if they have pre-loaded data
+        const fieldsToCheck = [
+            { fieldName: 'veg', buttonId: 'vegYesBtn', noButtonId: 'vegNoBtn', sectionId: 'vegInputSection', ruleButtonId: 'vegCACFPYesBtn', ruleNoButtonId: 'vegCACFPNoBtn', ruleSectionId: 'vegRuleSection', ruleFieldId: 'veg_rule_id' },
+            { fieldName: 'fruit', buttonId: 'fruitYesBtn', noButtonId: 'fruitNoBtn', sectionId: 'fruitInputSection', ruleButtonId: 'fruitCACFPYesBtn', ruleNoButtonId: 'fruitCACFPNoBtn', ruleSectionId: 'fruitRuleSection', ruleFieldId: 'fruit_rule_id' },
+            { fieldName: 'meat', buttonId: 'meatYesBtn', noButtonId: 'meatNoBtn', sectionId: 'meatInputSection', ruleButtonId: 'meatCACFPYesBtn', ruleNoButtonId: 'meatCACFPNoBtn', ruleSectionId: 'meatRuleSection', ruleFieldId: 'meat_rule_id' },
+            { fieldName: 'addfood', buttonId: 'addfoodYesBtn', noButtonId: 'addfoodNoBtn', sectionId: 'addfoodInputSection', ruleButtonId: 'addfoodCACFPYesBtn', ruleNoButtonId: 'addfoodCACFPNoBtn', ruleSectionId: 'addfoodRuleSection', ruleFieldId: 'addfood_rule_id' },
+            { fieldName: 'fluid', buttonId: 'fluidYesBtn', noButtonId: 'fluidNoBtn', sectionId: 'fluidInputSection', ruleButtonId: 'fluidCACFPYesBtn', ruleNoButtonId: 'fluidCACFPNoBtn', ruleSectionId: 'fluidRuleSection', ruleFieldId: 'fluid_rule_id' },
+            { fieldName: 'grain', buttonId: 'grainYesBtn', noButtonId: 'grainNoBtn', sectionId: 'grainInputSection', ruleButtonId: 'grainCACFPYesBtn', ruleNoButtonId: 'grainCACFPNoBtn', ruleSectionId: 'grainRuleSection', ruleFieldId: 'grain_rule_id' },
+        ];
+
+        fieldsToCheck.forEach(({ fieldName, buttonId, noButtonId, sectionId, ruleButtonId, ruleNoButtonId, ruleSectionId, ruleFieldId }) => {
+            const yesBtn = document.getElementById(buttonId);
+            const noBtn = document.getElementById(noButtonId);
+            const section = document.getElementById(sectionId);
+            const ruleYesBtn = document.getElementById(ruleButtonId);
+            const ruleNoBtn = document.getElementById(ruleNoButtonId);
+            const ruleSection = document.getElementById(ruleSectionId);
+            
+            // Auto-expand main component section if it has data
+            if (data[fieldName]) {
+                if (yesBtn) yesBtn.classList.add('active');
+                if (noBtn) noBtn.classList.remove('active');
+                if (section) section.style.display = '';
+            } else {
+                // Hide section and mark No as active if no data
+                if (yesBtn) yesBtn.classList.remove('active');
+                if (noBtn) noBtn.classList.add('active');
+                if (section) section.style.display = 'none';
+            }
+            
+            // Auto-expand rule section if it has a rule assigned
+            const ruleId = data[ruleFieldId];
+            if (ruleId) {
+                if (ruleYesBtn) ruleYesBtn.classList.add('active');
+                if (ruleNoBtn) ruleNoBtn.classList.remove('active');
+                if (ruleSection) ruleSection.style.display = '';
+            } else {
+                // Hide rule section and mark No as active if no rule
+                if (ruleYesBtn) ruleYesBtn.classList.remove('active');
+                if (ruleNoBtn) ruleNoBtn.classList.add('active');
+                if (ruleSection) ruleSection.style.display = 'none';
+            }
+        });
+
+        const recipeTypeSelect = document.getElementById('recipeType');
+        const selectedType = data.recipe_type || deriveRecipeTypeFromFlags(getPopulateFlagsFromCheckboxes());
+        if (recipeTypeSelect) {
+            recipeTypeSelect.value = selectedType;
+            applyRecipeTypeBehavior(selectedType, false);
+            LAST_RECIPE_TYPE_CHANGE = {
+                value: selectedType,
+                at: new Date().toISOString(),
+            };
+        }
 
         // Handle image
         const imagePath = data.image || data.image_url;
@@ -866,12 +1546,76 @@ async function viewRecipe(id, category) {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function () {
+    const recipeTypeSelect = document.getElementById('recipeType');
+    const unifiedRecipeForm = document.getElementById('unifiedRecipeForm');
+
+    if (recipeTypeSelect) {
+        applyRecipeTypeBehavior(recipeTypeSelect.value || 'lunch', false);
+        recipeTypeSelect.addEventListener('change', function () {
+            LAST_RECIPE_TYPE_CHANGE = {
+                value: this.value,
+                at: new Date().toISOString(),
+            };
+            LAST_USER_SELECTED_RECIPE_TYPE = this.value;
+            applyRecipeTypeBehavior(this.value, false);
+        });
+    }
+
+    if (unifiedRecipeForm) {
+        unifiedRecipeForm.addEventListener('submit', function (e) {
+            let selectedType = recipeTypeSelect ? recipeTypeSelect.value : 'lunch';
+            const clientRecipeTypeInput = ensureHiddenInput(unifiedRecipeForm, 'recipeTypeClientValueInput', 'recipeTypeClientValue');
+            const clientRecipeTypeChangedAtInput = ensureHiddenInput(unifiedRecipeForm, 'recipeTypeClientChangedAtInput', 'recipeTypeClientChangedAt');
+            const userSelectedRecipeTypeInput = ensureHiddenInput(unifiedRecipeForm, 'recipeTypeUserSelectedInput', 'recipeTypeUserSelected');
+
+            if (LAST_USER_SELECTED_RECIPE_TYPE && recipeTypeSelect && recipeTypeSelect.value !== LAST_USER_SELECTED_RECIPE_TYPE) {
+                // Preserve explicit user intent if the select was reverted by later UI logic.
+                recipeTypeSelect.value = LAST_USER_SELECTED_RECIPE_TYPE;
+                selectedType = LAST_USER_SELECTED_RECIPE_TYPE;
+            }
+
+            clientRecipeTypeInput.value = selectedType;
+            clientRecipeTypeChangedAtInput.value = LAST_RECIPE_TYPE_CHANGE.at || '';
+            userSelectedRecipeTypeInput.value = LAST_USER_SELECTED_RECIPE_TYPE || '';
+
+            if (MANUAL_POPULATE_RECIPE_TYPES.includes(selectedType)) {
+                const flags = getPopulateFlagsFromCheckboxes();
+                const anySelected = Object.values(flags).some(Boolean);
+                if (!anySelected) {
+                    e.preventDefault();
+                    toastr.error('Select at least one meal period for this recipe type.');
+                }
+            }
+        });
+    }
+
     const tabs = document.querySelectorAll('#recipeTabs .tab');
     const dropdown = document.getElementById('recipeCategoryDropdown');
     const recipeTableBody = document.getElementById('recipeTableBody');
     const deleteColumnHeader = document.getElementById('deleteColumnHeader');
     const headerToggleDelete = document.getElementById('headerToggleDelete');
     const mobileToggleDelete = document.getElementById('mobileToggleDeleteBtn');
+    const studentCountInput = document.getElementById('studentCountInput');
+
+    if (studentCountInput) {
+        loadStudentCountPreference();
+        studentCountInput.addEventListener('input', function () {
+            const parsed = Number.parseInt(this.value, 10);
+            if (!Number.isFinite(parsed) || parsed < 1) {
+                return;
+            }
+            saveStudentCountPreference();
+            applyStudentScalingToModal();
+        });
+        studentCountInput.addEventListener('blur', function () {
+            const parsed = Number.parseInt(this.value, 10);
+            if (!Number.isFinite(parsed) || parsed < 1) {
+                this.value = '25';
+            }
+            saveStudentCountPreference();
+            applyStudentScalingToModal();
+        });
+    }
 
     // Hide delete column initially
     deleteColumnHeader.style.display = 'none';
@@ -943,19 +1687,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     icon.addEventListener('click', function () {
                         const recipeId = this.getAttribute('data-id');
                         const cat = this.getAttribute('data-category');
-                        if (confirm('Are you sure you want to delete this recipe?')) {
-                            fetch(`/delete-recipe/${cat}/${recipeId}/`, {
-                                method: 'DELETE',
-                                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
-                            }).then(r => {
-                                if (r.ok) {
-                                    toastr.success('Recipe deleted successfully.');
-                                    fetchRecipes(getCurrentCategory());
-                                } else {
-                                    toastr.error('Failed to delete recipe.');
-                                }
-                            });
-                        }
+                        confirmDeleteRecipe(recipeId, cat);
                     });
                 });
 

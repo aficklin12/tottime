@@ -68,7 +68,28 @@ def template_base(request):
     except (TypeError, ValueError):
         vw = None
 
-    use_minimal = vw is not None and vw < 1000
+    # Force minimal base for CACFP Only users (role/group id 9).
+    force_minimal_for_cacfp = False
+    if request.user.is_authenticated:
+        try:
+            main_group_id = getattr(request.user, 'primary_group_id', None)
+            if main_group_id == 9:
+                force_minimal_for_cacfp = True
+        except Exception:
+            pass
+
+        if not force_minimal_for_cacfp:
+            try:
+                subuser = getattr(request.user, 'subuser', None)
+                if subuser and getattr(subuser, 'group_id_id', None) == 9:
+                    force_minimal_for_cacfp = True
+            except Exception:
+                pass
+
+        if not force_minimal_for_cacfp:
+            force_minimal_for_cacfp = request.user.groups.filter(id=9).exists()
+
+    use_minimal = force_minimal_for_cacfp or (vw is not None and vw < 1000)
     is_public = request.GET.get('public') == 'true'
 
     if use_minimal:

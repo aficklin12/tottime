@@ -45,6 +45,50 @@ class Rule(models.Model):
         return self.rule
 
 class Inventory(models.Model):
+    UNIT_TYPE_CHOICES = [
+        ('each', 'Each'),
+        ('lb', 'Pound (lb)'),
+        ('oz', 'Ounce (oz)'),
+        ('g', 'Gram (g)'),
+        ('ml', 'Milliliter (ml)'),
+        ('l', 'Liter (L)'),
+        ('cup', 'Cup'),
+        ('tbsp', 'Tablespoon'),
+        ('tsp', 'Teaspoon'),
+        ('slice', 'Slice'),
+        ('loaf', 'Loaf'),
+        ('pack', 'Pack'),
+        ('case', 'Case'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    item = models.CharField(max_length=100, unique=True)
+    category = models.CharField(max_length=100)
+    # Standardized unit for inventory (how you buy/store it)
+    unit_type = models.CharField(max_length=20, choices=UNIT_TYPE_CHOICES, null=True, blank=True)
+    # The smallest unit for this item (e.g., 'each', 'slice', 'oz')
+    base_unit = models.CharField(max_length=20, choices=UNIT_TYPE_CHOICES, null=True, blank=True)
+    # How many base units in one inventory unit (e.g., 12 for pack of 12, 1 for lb, etc.)
+    unit_size = models.DecimalField(
+        max_digits=10, decimal_places=2, default=1,
+        help_text="How many base units in one inventory unit (e.g., 12 for pack of 12, 1 for lb, etc.)"
+    )
+    # Optional: custom label for display (e.g., 'pack of 12 tacos')
+    custom_unit_label = models.CharField(
+        max_length=50, blank=True, null=True,
+        help_text="Optional: e.g., 'pack of 12 tacos', overrides default label"
+    )
+    # Quantity in inventory units (e.g., 3 packs, 2 lbs)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    # Automated: how many base units in one inventory unit (for calculations)
+    conversion_to_base = models.DecimalField(
+        max_digits=10, decimal_places=4, default=1,
+        help_text="How many base units in one inventory unit (auto-set for simple units, user-set for custom packs)"
+    )
+    rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
+    resupply = models.DecimalField(max_digits=10, decimal_places=2)
+    total_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)
     MEAL_PERIOD_CHOICES = [
         ('all', 'All Meals'),
         ('breakfast', 'Breakfast'),
@@ -52,16 +96,6 @@ class Inventory(models.Model):
         ('lunch', 'Lunch'),
         ('pm_snack', 'PM Snack'),
     ]
-    
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    item = models.CharField(max_length=100, unique=True)
-    category = models.CharField(max_length=100)
-    units = models.CharField(max_length=50, null=True, blank=True)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    rule = models.ForeignKey(Rule, on_delete=models.CASCADE, null=True, blank=True)
-    resupply = models.DecimalField(max_digits=10, decimal_places=2)
-    total_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)
     meal_period = models.CharField(
         max_length=20,
         choices=MEAL_PERIOD_CHOICES,
@@ -76,7 +110,45 @@ class Inventory(models.Model):
     populate_am_snack = models.BooleanField(default=False, help_text='Can be used in AM snack menu')
     populate_lunch = models.BooleanField(default=False, help_text='Can be used in lunch menu')
     populate_pm_snack = models.BooleanField(default=False, help_text='Can be used in PM snack menu')
-    
+
+    def save(self, *args, **kwargs):
+        # Standard conversions (add more as needed)
+        standard_conversions = {
+            'lb': ('oz', 16),
+            'oz': ('oz', 1),
+            'g': ('g', 1),
+            'ml': ('ml', 1),
+            'l': ('ml', 1000),
+            'cup': ('cup', 1),
+            'tbsp': ('tbsp', 1),
+            'tsp': ('tsp', 1),
+            'slice': ('slice', 1),
+            'loaf': ('slice', self.unit_size if self.unit_size else 1),
+            'pack': ('each', self.unit_size if self.unit_size else 1),
+            'case': ('each', self.unit_size if self.unit_size else 1),
+            'each': ('each', 1),
+        }
+
+        # If base_unit is not set, auto-set it
+        if not self.base_unit:
+            if self.unit_type in standard_conversions:
+                self.base_unit = standard_conversions[self.unit_type][0]
+            else:
+                self.base_unit = self.unit_type  # fallback
+
+        # Set conversion_to_base
+        if self.unit_type in standard_conversions:
+            conv = standard_conversions[self.unit_type][1]
+            # If conversion is based on unit_size (for pack/loaf/case), use that
+            if isinstance(conv, (int, float)):
+                self.conversion_to_base = conv
+            else:
+                self.conversion_to_base = float(self.unit_size) if self.unit_size else 1
+        else:
+            self.conversion_to_base = 1
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.item
 
@@ -235,6 +307,11 @@ class Recipe(models.Model):
             if hasattr(self.image._file, 'size') and self.image._file.size > MAX_IMAGE_SIZE:
                 raise ValidationError(f"Image exceeds {MAX_IMAGE_SIZE / (1024 * 1024)} MB.")
         super(Recipe, self).save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Delete associated RecipeIngredient objects
+        self.ingredients.all().delete()
+        super(Recipe, self).delete(*args, **kwargs)
 
 
 class BreakfastRecipe(models.Model):

@@ -52,6 +52,31 @@
     width: 560px;
 }
 
+/* Editable Item Name */
+.editable-item-name {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.editable-item-name:hover {
+    background-color: rgba(57, 189, 180, 0.1);
+    text-decoration: underline;
+}
+
+.editing-item-name {
+    padding: 2px 6px;
+    border: 2px solid rgb(57, 189, 180);
+    border-radius: 3px;
+    outline: none;
+    font-family: inherit;
+    font-size: inherit;
+    width: auto;
+    min-width: 100px;
+    max-width: 250px;
+}
+
 .btn-primary {
     margin-top: 25px;
     margin-left: 25px !important;
@@ -354,6 +379,22 @@ table tbody tr:last-child td:first-child {
 
 table thead th:nth-child(2) {
     border-top-right-radius: 10px;
+}
+
+#categoryTabContent .tab-pane table tbody tr:nth-child(even) td {
+    background-color: #f3f3f349;
+}
+
+#categoryTabContent .tab-pane table tbody tr:nth-child(odd) td {
+    background-color: #ffffff;
+}
+
+#categoryTabContent .tab-pane table tbody td {
+    transition: background-color 0.15s ease-in-out;
+}
+
+#categoryTabContent .tab-pane table tbody tr:hover td {
+    background-color: #e6ecec;
 }
 
 /* Delete Column Styles */
@@ -906,6 +947,7 @@ table thead {
     th.quantity-header { position: relative; }
     .right-header-actions { position: absolute; right: 8px; top: 6px; }
 }
+
 </style>
 {% endblock %}
 {% block content %}
@@ -922,7 +964,7 @@ table thead {
             <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addItemModal" style="font-weight: bold; font-size: 1em;">
                 <span>+Add</span>
             </button>
-            <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm" style="text-decoration: none; font-weight: bold; font-size: 1.2em;">
+            <button id="toggleDeleteColumn" onclick="toggleDeleteColumn()" class="btn btn-link btn-sm delete-toggle-btn" style="text-decoration: none; font-weight: bold; font-size: 1.2em;">
                 <i class="fas fa-trash-alt" style="color: red;"></i>
             </button>
         </div>
@@ -1039,7 +1081,7 @@ table thead {
                         <!-- Desktop right header actions: plus + white trash (shown to right of Qty on >=1000px) -->
                         <div class="right-header-actions" style="display:none;">
                             <button type="button" id="headerCreateInventory" class="create-icon" data-bs-toggle="modal" data-bs-target="#addItemModal" title="Add Item"><i class="fas fa-plus"></i></button>
-                            <button type="button" id="headerToggleDeleteInventory" class="header-trash" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
+                            <button type="button" class="header-trash header-trash-toggle-{{ category|slugify }}" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </th>
                     <th class="delete-item-header delete-column" id="deleteColumnHeader"><i class="fas fa-trash-alt" style="color: white;"></i></th>
@@ -1050,9 +1092,20 @@ table thead {
                 {% if item.category == category %}
                 <tr>
                     <td style="width: 150px;">
-                        {{ item.item }}
-                        {% if item.units %}
-                        <span style="color: grey; font-size: smaller;"> ({{ item.units }})</span>
+                        <span
+                            class="editable-item-name"
+                            data-item-id="{{ item.id }}"
+                            data-item-name="{{ item.item }}"
+                            data-category="{{ item.category }}"
+                            data-unit-type="{{ item.unit_type|default_if_none:'' }}"
+                            data-rule-id="{{ item.rule_id|default_if_none:'' }}"
+                            data-quantity="{{ item.quantity }}"
+                            data-resupply="{{ item.resupply }}"
+                            title="Click to edit item details">
+                            {{ item.item }}
+                        </span>
+                        {% if item.unit_type %}
+                                <span style="color: grey; font-size: smaller;"> ({% if item.unit_type == 'l' %}L{% else %}{{ item.unit_type }}{% endif %})</span>
                         {% endif %}
                      <!--   {% if "Milk" in item.item %}
                         <div style="color: red; font-size: smaller;">Total received this week:</div>
@@ -1061,9 +1114,9 @@ table thead {
                     <td style="width: 100px;">
                         <form id="updateForm_{{ item.id }}" method="post" action="{% url 'edit_quantity' item.id %}" onsubmit="updateQuantity(event, item.id)">
                             {% csrf_token %}
-                            <input type="number" step="1" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity }}" required style="width: 85px;" data-original-value="{{ item.quantity }}">
+                            <input type="number" step="any" min="0" id="new_quantity_{{ item.id }}" name="new_quantity" value="{{ item.quantity }}" required style="width: 85px;" data-original-value="{{ item.quantity }}">
                         <!--    {% if "Milk" in item.item %}
-                            <input type="number" step="1" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 85px;">
+                            <input type="number" step="any" min="0" id="extra_milk_quantity_{{ item.id }}" name="extra_milk_quantity" placeholder=" +" style="width: 85px;">
                             {% endif %}  -->
                         </form>
                     </td>
@@ -1146,16 +1199,17 @@ table thead {
                         <label for="itemCategory" class="form-label">Category</label>
                         <select class="form-control" id="itemCategory" name="category" required onchange="toggleNewCategoryInput(this)">
                             <option value="" disabled selected>Select category</option>
-                            <option value="Misc.">Misc.</option>
+                            
                             <option value="Meat">Meat</option>
+                            <option value="Dairy">Dairy</option>
+                            <option value="Fruits">Fruits</option>
+                            <option value="Vegetables">Vegetables</option>
+                            <option value="Grains">Grains</option>
                             <option value="Breakfast">Breakfast</option>
                             <option value="Snacks">Snacks</option>
                             <option value="Infants">Infants</option>
-                            <option value="Dairy">Dairy</option>
-                            <option value="Fruits">Fruits</option>
                             <option value="Supplies">Supplies</option>
-                            <option value="Grains">Grains</option>
-                            <option value="Vegetables">Vegetables</option>
+                            <option value="Misc">Misc</option>
                             <!-- <option value="" disabled selected>Select category</option>
                             {% for category in categories %}
                             <option value="{{ category }}">{{ category }}</option>
@@ -1168,16 +1222,48 @@ table thead {
                         <input type="text" class="form-control" id="newCategory" name="new_category" placeholder="Enter new category">
                     </div>
                     <div class="mb-3">
-                        <label for="itemUnits" class="form-label">Units</label>
-                        <input type="text" class="form-control" id="itemUnits" name="units" placeholder="Enter unit (e.g., Indv., Case, etc.)" required>
+
                     </div>
                     <div class="mb-3">
-                        <label for="itemQuantity" class="form-label">Quantity</label>
-                        <input type="number" step="1" min="0" class="form-control" id="itemQuantity" name="quantity" required>
+                        <label for="unitType" class="form-label">Unit Type</label>
+                        <select class="form-control" id="unitType" name="unit_type">
+                            <option value="" disabled selected>Select unit type</option>
+                            <option value="each">Each</option>
+                            <option value="lb">Pound (lb)</option>
+                            <option value="oz">Ounce (oz)</option>
+                            <option value="g">Gram (g)</option>
+                            <option value="ml">Milliliter (ml)</option>
+                            <option value="l">Liter (L)</option>
+                            <option value="cup">Cup</option>
+                            <option value="tbsp">Tablespoon</option>
+                            <option value="tsp">Teaspoon</option>
+                            <option value="slice">Slice</option>
+                            <option value="loaf">Loaf</option>
+                            <option value="pack">Pack</option>
+                            <option value="case">Case</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <!-- base_unit is set automatically in backend; not shown to user -->
+                        <input type="hidden" id="baseUnit" name="base_unit">
+                    </div>
+                    <div class="mb-3">
+                        <div id="unitSizeGroup">
+                            <label for="unitSize" class="form-label">Unit Size</label>
+                            <input type="number" step="any" min="0" class="form-control" id="unitSize" name="unit_size" placeholder="e.g., 16">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <!-- conversion_to_base is set automatically in backend; not shown to user -->
+                        <input type="hidden" id="conversionToBase" name="conversion_to_base">
+                    </div>
+                    <div class="mb-3">
+                        <label for="itemQuantity" class="form-label">Current Quantity</label>
+                        <input type="number" step="any" min="0" class="form-control" id="itemQuantity" name="quantity" required>
                     </div>
                     <div class="mb-3">
                         <label for="itemResupply" class="form-label">Resupply Threshold</label>
-                        <input type="number" step="1" min="0" class="form-control" id="itemResupply" name="resupply" required>
+                        <input type="number" step="any" min="0" class="form-control" id="itemResupply" name="resupply" required>
                     </div>
                     <div class="mb-3">
                         <label for="itemRule" class="form-label">Rule</label>
@@ -1211,6 +1297,88 @@ table thead {
         </div>
     </div>
 </div>
+
+            <!-- Edit Item Modal -->
+            <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editItemModalLabel">Edit Item</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editItemForm" method="post">
+                                {% csrf_token %}
+                                <input type="hidden" id="editItemId" name="item_id">
+
+                                <div class="mb-3">
+                                    <label for="editItemName" class="form-label">Item Name</label>
+                                    <input type="text" class="form-control" id="editItemName" name="item" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="editItemCategory" class="form-label">Category</label>
+                                    <select class="form-control" id="editItemCategory" name="category" required>
+                                        <option value="Meat">Meat</option>
+                                        <option value="Dairy">Dairy</option>
+                                        <option value="Fruits">Fruits</option>
+                                        <option value="Vegetables">Vegetables</option>
+                                        <option value="Grains">Grains</option>
+                                        <option value="Breakfast">Breakfast</option>
+                                        <option value="Snacks">Snacks</option>
+                                        <option value="Infants">Infants</option>
+                                        <option value="Supplies">Supplies</option>
+                                        <option value="Misc">Misc</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="editUnitType" class="form-label">Unit Type</label>
+                                    <select class="form-control" id="editUnitType" name="unit_type">
+                                        <option value="">Select unit type</option>
+                                        <option value="each">Each</option>
+                                        <option value="lb">Pound (lb)</option>
+                                        <option value="oz">Ounce (oz)</option>
+                                        <option value="g">Gram (g)</option>
+                                        <option value="ml">Milliliter (ml)</option>
+                                        <option value="l">Liter (L)</option>
+                                        <option value="cup">Cup</option>
+                                        <option value="tbsp">Tablespoon</option>
+                                        <option value="tsp">Teaspoon</option>
+                                        <option value="slice">Slice</option>
+                                        <option value="loaf">Loaf</option>
+                                        <option value="pack">Pack</option>
+                                        <option value="case">Case</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="editItemQuantity" class="form-label">Current Quantity</label>
+                                    <input type="number" step="any" min="0" class="form-control" id="editItemQuantity" name="quantity" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="editItemResupply" class="form-label">Resupply Threshold</label>
+                                    <input type="number" step="any" min="0" class="form-control" id="editItemResupply" name="resupply" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="editItemRule" class="form-label">Rule</label>
+                                    <select class="form-control" id="editItemRule" name="rule">
+                                        <option value="">No Rule</option>
+                                        {% for rule in rules %}
+                                        <option value="{{ rule.id }}">{{ rule.rule }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <button type="submit" class="btn btn-primarytwo">Save Changes</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 <div id="orderFormOverlay" class="popup-overlay" style="display: none;">
     <div class="popup-form">
         <h2>Add to Shopping List</h2>
@@ -1241,6 +1409,42 @@ table thead {
 {% endblock %}
 {% block scripts %}
 <script>
+// Show/hide Unit Size based on unit_type selection
+document.addEventListener('DOMContentLoaded', function() {
+    var unitTypeSelect = document.getElementById('unitType');
+    var unitSizeGroup = document.getElementById('unitSizeGroup');
+    var unitSizeInput = document.getElementById('unitSize');
+    function updateUnitSizeVisibility() {
+        var val = unitTypeSelect.value;
+        if (val === 'each' || val === 'case' || val === 'pack') {
+            unitSizeGroup.style.display = '';
+            unitSizeInput.disabled = false;
+        } else {
+            unitSizeGroup.style.display = 'none';
+            unitSizeInput.value = '';
+            unitSizeInput.disabled = true;
+        }
+    }
+    if (unitTypeSelect && unitSizeGroup && unitSizeInput) {
+        updateUnitSizeVisibility();
+        unitTypeSelect.addEventListener('change', updateUnitSizeVisibility);
+    }
+});
+// Fix modal backdrop issue - ensure backdrop is removed when modal closes
+document.addEventListener('DOMContentLoaded', function() {
+    const addItemModal = document.getElementById('addItemModal');
+    if (addItemModal) {
+        addItemModal.addEventListener('hidden.bs.modal', function () {
+            // Remove any lingering backdrops
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            // Ensure body classes are reset
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        });
+    }
+});
+
 // Format quantity display on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Format all existing quantity inputs to show decimals only when needed
@@ -1276,6 +1480,79 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Click item name to open full item editor modal
+document.addEventListener('DOMContentLoaded', function() {
+    const editItemModalEl = document.getElementById('editItemModal');
+    const editItemModal = editItemModalEl ? new bootstrap.Modal(editItemModalEl) : null;
+    const editItemForm = document.getElementById('editItemForm');
+    let editItemSubmitting = false;
+
+    document.addEventListener('click', function(e) {
+        const span = e.target.closest('.editable-item-name');
+        if (!span || !editItemModal || !editItemForm) return;
+
+        document.getElementById('editItemId').value = span.dataset.itemId || '';
+        document.getElementById('editItemName').value = span.dataset.itemName || span.textContent.trim();
+        document.getElementById('editItemCategory').value = span.dataset.category || '';
+        document.getElementById('editUnitType').value = span.dataset.unitType || '';
+        document.getElementById('editItemQuantity').value = span.dataset.quantity || '';
+        document.getElementById('editItemResupply').value = span.dataset.resupply || '';
+        document.getElementById('editItemRule').value = span.dataset.ruleId || '';
+
+        editItemModal.show();
+    });
+
+    editItemForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (editItemSubmitting) return;
+        editItemSubmitting = true;
+
+        const itemId = document.getElementById('editItemId').value;
+        const formData = new FormData(editItemForm);
+
+        fetch(`/edit_inventory_item/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message || 'Item updated successfully');
+                editItemModal.hide();
+                setTimeout(() => location.reload(), 500);
+            } else {
+                toastr.error(data.message || 'Failed to update item');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            toastr.error('Failed to update item');
+        })
+        .finally(() => {
+            editItemSubmitting = false;
+        });
+    });
+});
+
+// Helper function to get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 </script>
 <script>
         // Flag to track if there are unsaved changes
@@ -1484,22 +1761,79 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
     
        // Toggle visibility of delete columns by toggling container classes
+
+// Toggle visibility of delete columns by toggling container classes
 function toggleDeleteColumn() {
     var container = document.getElementById('categoryTabContent') || document.querySelector('.tab-content') || document.body;
-    // Toggle both classes — default start state is `delete-hidden`
     container.classList.toggle('delete-visible');
     container.classList.toggle('delete-hidden');
-
-    // When delete column is visible, hide the header-level toggle button
-    var headerToggle = document.getElementById('headerToggleDeleteInventory');
-    if (headerToggle) {
-        if (container.classList.contains('delete-visible')) {
-            headerToggle.style.display = 'none';
-        } else {
-            headerToggle.style.display = '';
-        }
+    // Hide or show the original trash icon toggle button
+    var trashToggleBtn = document.getElementById('toggleDeleteColumn');
+    // Only affect the header trash button in the currently visible tab
+    var activeTab = document.querySelector('.tab-pane.active');
+    var headerTrashBtn = activeTab ? activeTab.querySelector('.header-trash') : null;
+    if (container.classList.contains('delete-visible')) {
+        if (trashToggleBtn) trashToggleBtn.style.display = 'none';
+        if (headerTrashBtn) headerTrashBtn.style.display = 'none';
+    } else {
+        if (trashToggleBtn) trashToggleBtn.style.display = '';
+        if (headerTrashBtn) headerTrashBtn.style.display = '';
     }
 }
+
+// Ensure delete toggle works for all tabs/tables
+document.addEventListener('DOMContentLoaded', function() {
+    // Delegate click for all header delete toggle buttons (right-header-actions)
+    document.querySelectorAll('.header-trash').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleDeleteColumn();
+        });
+    });
+
+    // Also handle the delete column header icon (to hide the column)
+    document.querySelectorAll('.delete-item-header').forEach(function(header) {
+        header.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleDeleteColumn();
+        });
+    });
+
+    // When switching tabs, always hide delete column for a clean state
+    document.querySelectorAll('.table-link').forEach(function(tabBtn) {
+        tabBtn.addEventListener('click', function() {
+            var container = document.getElementById('categoryTabContent');
+            if (container.classList.contains('delete-visible')) {
+                container.classList.remove('delete-visible');
+                container.classList.add('delete-hidden');
+            }
+            // Show the trash icon toggle button again
+            var trashToggleBtn = document.getElementById('toggleDeleteColumn');
+            if (trashToggleBtn) trashToggleBtn.style.display = '';
+            // Show the header trash for the new active tab
+            setTimeout(function() {
+                var activeTab = document.querySelector('.tab-pane.active');
+                var headerTrashBtn = activeTab ? activeTab.querySelector('.header-trash') : null;
+                if (headerTrashBtn) headerTrashBtn.style.display = '';
+            }, 50);
+        });
+    });
+
+    // On page load, ensure the trash icon toggle button and header trash are visible if delete column is hidden
+    var container = document.getElementById('categoryTabContent') || document.querySelector('.tab-content') || document.body;
+    var trashToggleBtn = document.getElementById('toggleDeleteColumn');
+    var activeTab = document.querySelector('.tab-pane.active');
+    var headerTrashBtn = activeTab ? activeTab.querySelector('.header-trash') : null;
+    if (container) {
+        if (container.classList.contains('delete-visible')) {
+            if (trashToggleBtn) trashToggleBtn.style.display = 'none';
+            if (headerTrashBtn) headerTrashBtn.style.display = 'none';
+        } else {
+            if (trashToggleBtn) trashToggleBtn.style.display = '';
+            if (headerTrashBtn) headerTrashBtn.style.display = '';
+        }
+    }
+});
 
         let isSubmitting = false; // Flag to prevent duplicate submissions
 
@@ -1543,17 +1877,14 @@ function toggleDeleteColumn() {
             });
         }
 
-        function handleDeleteItem(event) {
-            event.preventDefault(); // Prevent the default form submission
+        let deleteConfirmOpen = false;
 
-            const form = event.target;
-
-            if (isSubmitting) return; // Prevent duplicate submissions
+        function executeDeleteItem(form) {
+            if (isSubmitting) return;
             isSubmitting = true;
 
-            // Show the Toastr notification immediately
             toastr.info('Deleting item...', 'Please Wait', {
-                timeOut: 2000, // Auto-dismiss after 2 seconds
+                timeOut: 2000,
                 closeButton: true,
                 progressBar: true
             });
@@ -1563,28 +1894,70 @@ function toggleDeleteColumn() {
                 type: form.method,
                 data: $(form).serialize(),
                 success: function(response) {
-                    // Show success message using Toastr
                     toastr.success('Item deleted successfully!', 'Success', {
                         timeOut: 1000,
                         closeButton: true,
                         progressBar: true
                     });
 
-                    // Refresh the page immediately after showing success message
                     setTimeout(() => {
                         location.reload();
-                    }, 500); // Reduced delay to 0.5 seconds
+                    }, 500);
                 },
                 error: function(xhr, status, error) {
-                    // Show error message using Toastr
                     toastr.error('Failed to delete item. Please try again.', 'Error', {
                         timeOut: 5000,
                         closeButton: true,
                         progressBar: true
                     });
-                    isSubmitting = false; // Reset flag on error
+                    isSubmitting = false;
                 }
             });
+        }
+
+        function handleDeleteItem(event) {
+            event.preventDefault(); // Prevent the default form submission
+            const form = event.target;
+
+            if (isSubmitting || deleteConfirmOpen) return;
+            deleteConfirmOpen = true;
+
+            const confirmId = 'delete-item-confirm-' + Date.now();
+            const confirmHtml =
+                '<div>Are you sure you want to delete this item?</div><br>' +
+                '<button type="button" class="btn btn-sm btn-danger me-2" id="' + confirmId + '-yes">Delete</button>' +
+                '<button type="button" class="btn btn-sm btn-secondary" id="' + confirmId + '-no">Cancel</button>';
+
+            toastr.warning(confirmHtml, 'Confirm Delete', {
+                allowHtml: true,
+                timeOut: 0,
+                extendedTimeOut: 0,
+                closeButton: false,
+                tapToDismiss: false,
+                onHidden: function() {
+                    deleteConfirmOpen = false;
+                }
+            });
+
+            function handleConfirmClick(e) {
+                if (!e.target || !e.target.id) return;
+
+                if (e.target.id === confirmId + '-yes') {
+                    document.removeEventListener('click', handleConfirmClick, true);
+                    deleteConfirmOpen = false;
+                    toastr.remove();
+                    executeDeleteItem(form);
+                    return;
+                }
+
+                if (e.target.id === confirmId + '-no') {
+                    document.removeEventListener('click', handleConfirmClick, true);
+                    deleteConfirmOpen = false;
+                    toastr.remove();
+                }
+            }
+
+            document.addEventListener('click', handleConfirmClick, true);
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -1622,14 +1995,15 @@ function toggleDeleteColumn() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
-                    location.reload(); // Reload the page after success
+                    toastr.success(data.message);
+                    setTimeout(() => location.reload(), 1200); // Give user time to see toast
                 } else {
-                    alert(data.message);
+                    toastr.error(data.message);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                toastr.error('An error occurred while adding the item.');
             });
         });
     });

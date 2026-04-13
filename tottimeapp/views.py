@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from .models import Recipe, BreakfastRecipe, AMRecipe, PMRecipe, FruitRecipe, VegRecipe, WgRecipe
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.db.models import Q, Subquery, IntegerField, Count, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
@@ -134,6 +135,19 @@ def get_user_for_view(request):
     
     logger.info(f"Returning original user: {user.id} ({user.username})")
     return user
+
+
+def normalize_inventory_category(category_value):
+    """Normalize inventory category text for consistent tabs and filtering."""
+    cleaned = re.sub(r'\s+', ' ', str(category_value or '')).strip()
+    if not cleaned:
+        return 'Other'
+
+    # Treat common misc variants as one category.
+    if cleaned.casefold().rstrip('.') == 'misc':
+        return 'Misc'
+
+    return cleaned
 
 def get_recipe_ingredients(recipe):
     """
@@ -1952,21 +1966,64 @@ def inventory_list(request):
 
     # Get the user (MainUser) for filtering
     user = get_user_for_view(request)
-    # Retrieve inventory data for the user
-    inventory_items = Inventory.objects.filter(user_id=user.id)
-    # Get unique categories for filtering options
-    categories = Inventory.objects.filter(user_id=user.id).values_list('category', flat=True).distinct()
-    # Retrieve all rules
-    rules = Rule.objects.all()
+    # Retrieve inventory data for the user and normalize categories to avoid duplicate tabs.
+    inventory_items = list(Inventory.objects.filter(user_id=user.id))
+    categories_map = {}
+    for item in inventory_items:
+        normalized_category = normalize_inventory_category(item.category)
+        category_key = normalized_category.casefold()
+        if category_key not in categories_map:
+            categories_map[category_key] = normalized_category
+        item.category = categories_map[category_key]
+    categories = list(categories_map.values())
+    preferred_category_order = [
+        'Meat',
+        'Dairy',
+        'Fruits',
+        'Vegetables',
+        'Grains',
+        'Breakfast',
+        'Snacks',
+        'Infants',
+        'Supplies',
+        'Misc',
+    ]
+    preferred_category_map = {
+        category.casefold(): index
+        for index, category in enumerate(preferred_category_order)
+    }
+    categories.sort(
+        key=lambda category: (
+            0 if category.casefold() in preferred_category_map else 1,
+            preferred_category_map.get(category.casefold(), float('inf')),
+            category.casefold(),
+        )
+    )
+    # Retrieve only rules for the current main user
+    rules = Rule.objects.filter(user=user)
     # Get order items for shopping list and ordered items tabs
     order_items = OrderList.objects.filter(user=user)
 
     # --- Handle AJAX request for category filtering early (no sniffing) ---
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        category_filter = request.GET.get('category')
+        category_filter = normalize_inventory_category(request.GET.get('category'))
+        category_filter_key = category_filter.casefold() if category_filter else ''
+        filtered_items = inventory_items
         if category_filter:
-            inventory_items = inventory_items.filter(category=category_filter)
-        inventory_data = list(inventory_items.values('id', 'item', 'quantity', 'units', 'category'))
+            filtered_items = [
+                item for item in inventory_items
+                if normalize_inventory_category(item.category).casefold() == category_filter_key
+            ]
+        inventory_data = [
+            {
+                'id': item.id,
+                'item': item.item,
+                'quantity': item.quantity,
+                'unit_type': item.unit_type,
+                'category': item.category,
+            }
+            for item in filtered_items
+        ]
         return JsonResponse({'inventory_items': inventory_data})
 
     # --- minimal-base preference sniffing ---
@@ -2201,7 +2258,6 @@ def add_item(request):
         item_name = request.POST.get('item')
         category = request.POST.get('category')
         new_category = request.POST.get('new_category')
-        units = request.POST.get('units')
         quantity = request.POST.get('quantity')
         resupply = request.POST.get('resupply')
         barcode = request.POST.get('barcode')  # Retrieve the scanned barcode
@@ -2209,6 +2265,7 @@ def add_item(request):
         # Use the new category if provided
         if category == 'Other' and new_category:
             category = new_category
+        category = normalize_inventory_category(category)
 
         # Check if the barcode already exists
         if barcode:
@@ -2216,15 +2273,28 @@ def add_item(request):
             if existing_item:
                 return JsonResponse({'success': False, 'message': f'Item with barcode "{barcode}" already exists.'})
 
-        # Create the new inventory item
+        # Get new unit fields from form
+        unit_type = request.POST.get('unit_type')
+        base_unit = request.POST.get('base_unit')
+        unit_size = request.POST.get('unit_size')
+        conversion_to_base = request.POST.get('conversion_to_base')
+        custom_unit_label = request.POST.get('custom_unit_label')
+        rule_id = request.POST.get('rule')
+
+        # Create the new inventory item with all fields
         new_item = Inventory.objects.create(
             user_id=get_user_for_view(request).id,
             item=item_name,
             category=category,
-            units=units,
             quantity=quantity,
             resupply=resupply,
-            barcode=barcode.strip().upper() if barcode else None  # Normalize the barcode
+            barcode=barcode.strip().upper() if barcode else None,  # Normalize the barcode
+            unit_type=unit_type,
+            base_unit=base_unit,
+            unit_size=unit_size if unit_size else 1,
+            conversion_to_base=conversion_to_base if conversion_to_base else 1,
+            custom_unit_label=custom_unit_label,
+            rule_id=rule_id if rule_id else None
         )
         return JsonResponse({'success': True, 'message': 'Item added successfully!'})
 
@@ -2255,6 +2325,72 @@ def update_item_quantity(request):
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 @login_required
+def edit_item_name(request, item_id):
+    if request.method == 'POST':
+        new_name = request.POST.get('new_name', '').strip()
+        if not new_name:
+            return JsonResponse({'success': False, 'message': 'Item name cannot be empty'})
+        try:
+            user = get_user_for_view(request)
+            item = Inventory.objects.get(pk=item_id, user=user)
+            item.item = new_name
+            item.save()
+            return JsonResponse({'success': True, 'message': 'Item name updated successfully'})
+        except Inventory.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Item does not exist'})
+    else:
+        return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+@login_required
+def edit_inventory_item(request, item_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'})
+
+    user = get_user_for_view(request)
+
+    try:
+        item = Inventory.objects.get(pk=item_id, user=user)
+    except Inventory.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Item does not exist'})
+
+    new_name = request.POST.get('item', '').strip()
+    raw_category = request.POST.get('category', '').strip()
+    unit_type = (request.POST.get('unit_type') or '').strip()
+    rule_id = (request.POST.get('rule') or '').strip()
+    quantity = request.POST.get('quantity')
+    resupply = request.POST.get('resupply')
+
+    if not new_name:
+        return JsonResponse({'success': False, 'message': 'Item name cannot be empty'})
+    if not raw_category:
+        return JsonResponse({'success': False, 'message': 'Category is required'})
+    category = normalize_inventory_category(raw_category)
+    if quantity in [None, '']:
+        return JsonResponse({'success': False, 'message': 'Current quantity is required'})
+    if resupply in [None, '']:
+        return JsonResponse({'success': False, 'message': 'Resupply threshold is required'})
+
+    rule_obj = None
+    if rule_id:
+        rule_obj = Rule.objects.filter(id=rule_id, user=user).first()
+        if not rule_obj:
+            return JsonResponse({'success': False, 'message': 'Selected rule is invalid'})
+
+    try:
+        item.item = new_name
+        item.category = category
+        item.unit_type = unit_type or None
+        item.rule = rule_obj
+        item.quantity = quantity
+        item.resupply = resupply
+        item.save()
+        return JsonResponse({'success': True, 'message': 'Inventory item updated successfully'})
+    except IntegrityError:
+        return JsonResponse({'success': False, 'message': 'An item with this name already exists'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Unable to update item: {str(e)}'})
+
+@login_required
 def edit_quantity(request, item_id):
     if request.method == 'POST':
         new_quantity = request.POST.get('new_quantity')
@@ -2273,7 +2409,11 @@ def remove_item(request, item_id):
     inventory_item = get_object_or_404(Inventory, pk=item_id)
     # Perform the deletion
     inventory_item.delete()
-    # Redirect back to the inventory list page
+
+    # If AJAX request, return JSON response
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'message': 'Item deleted successfully'})
+    # Otherwise, redirect back to the inventory list page
     return redirect('inventory_list')
 
 @login_required
@@ -2386,7 +2526,7 @@ def order_soon_items_api(request):
         order_soon_items = Inventory.objects.filter(
             user=user,
             quantity__lte=F('resupply')
-        ).values('item', 'quantity', 'resupply', 'units')
+        ).values('item', 'quantity', 'resupply', 'unit_type')
         
         pass  # print(f"Raw queryset: {list(order_soon_items)}")
         
@@ -2396,7 +2536,7 @@ def order_soon_items_api(request):
                 'name': item['item'],
                 'current_quantity': float(item['quantity']) if item['quantity'] is not None else 0,
                 'resupply_threshold': float(item['resupply']) if item['resupply'] is not None else 0,
-                'units': item['units'] or ''
+                'units': item['unit_type'] or ''
             }
             items_data.append(item_dict)
             pass  # print(f"Item dict: {item_dict}")
@@ -2412,14 +2552,71 @@ def order_soon_items_api(request):
 
 def fetch_ingredients(request):
     user = get_user_for_view(request)
-    ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item')
+    ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item', 'unit_type')
     return JsonResponse({'ingredients': list(ingredients)})
+
+
+def _is_checked(post_data, key):
+    return str(post_data.get(key, '')).lower() in ('on', 'true', '1', 'yes')
+
+
+def resolve_recipe_type_and_populate_flags(post_data):
+    selected_recipe_type = (post_data.get('recipeType') or 'lunch').strip()
+    user_selected_recipe_type = (post_data.get('recipeTypeUserSelected') or '').strip()
+    valid_recipe_types = {choice for choice, _ in Recipe.RECIPE_TYPE_CHOICES}
+    manual_selection_recipe_types = {'multiple', 'vegetable', 'fruit', 'whole_grain', 'fluid'}
+    original_selected_recipe_type = selected_recipe_type
+
+    if user_selected_recipe_type in valid_recipe_types or user_selected_recipe_type == 'multiple':
+        selected_recipe_type = user_selected_recipe_type
+
+    if selected_recipe_type not in valid_recipe_types and selected_recipe_type != 'multiple':
+        selected_recipe_type = 'lunch'
+
+    manual_flags = {
+        'populate_breakfast': _is_checked(post_data, 'populateBreakfast'),
+        'populate_am_snack': _is_checked(post_data, 'populateAMSnack'),
+        'populate_lunch': _is_checked(post_data, 'populateLunch'),
+        'populate_pm_snack': _is_checked(post_data, 'populatePMSnack'),
+    }
+
+    if selected_recipe_type == 'multiple':
+        flags = manual_flags
+        if not any(flags.values()):
+            flags['populate_lunch'] = True
+
+        if flags['populate_breakfast']:
+            resolved_recipe_type = 'breakfast'
+        elif flags['populate_am_snack']:
+            resolved_recipe_type = 'am_snack'
+        elif flags['populate_lunch']:
+            resolved_recipe_type = 'lunch'
+        elif flags['populate_pm_snack']:
+            resolved_recipe_type = 'pm_snack'
+        else:
+            resolved_recipe_type = 'lunch'
+
+        return resolved_recipe_type, flags
+
+    if selected_recipe_type in manual_selection_recipe_types:
+        return selected_recipe_type, manual_flags
+
+    recipe_type_to_populate = {
+        'lunch': {'populate_breakfast': False, 'populate_am_snack': False, 'populate_lunch': True, 'populate_pm_snack': False},
+        'breakfast': {'populate_breakfast': True, 'populate_am_snack': False, 'populate_lunch': False, 'populate_pm_snack': False},
+        'am_snack': {'populate_breakfast': False, 'populate_am_snack': True, 'populate_lunch': False, 'populate_pm_snack': False},
+        'pm_snack': {'populate_breakfast': False, 'populate_am_snack': False, 'populate_lunch': False, 'populate_pm_snack': True},
+        'am_pm_snack': {'populate_breakfast': False, 'populate_am_snack': True, 'populate_lunch': False, 'populate_pm_snack': True},
+    }
+
+    flags = recipe_type_to_populate.get(selected_recipe_type, recipe_type_to_populate['lunch'])
+    return selected_recipe_type, flags
 
 @login_required
 def create_recipe(request):
     if request.method == 'POST':
         # Extract form data
-        recipe_name = request.POST.get('mealName')
+        recipe_name = request.POST.get('recipeName')
         main_ingredient_ids = [
             request.POST.get('mainIngredient1'),
             request.POST.get('mainIngredient2'),
@@ -2437,30 +2634,59 @@ def create_recipe(request):
         instructions = request.POST.get('instructions')
         grain = request.POST.get('grain')
         meat_alternate = request.POST.get('meatAlternate')
-        rule_id = request.POST.get('rule')  # Extract rule from form data
+        # Add missing fields
+        fruit = request.POST.get('fruit')
+        veg = request.POST.get('veg')
+        meat = request.POST.get('meat')
+        addfood = request.POST.get('addfood')
+        fluid = request.POST.get('fluid')
+        # Extract rule IDs for each possible field
+        grain_rule_id = request.POST.get('grain_rule')
+        addfood_rule_id = request.POST.get('addfood_rule')
+        fluid_rule_id = request.POST.get('fluid_rule')
+        veg_rule_id = request.POST.get('veg_rule')
+        fruit_rule_id = request.POST.get('fruit_rule')
+        meat_rule_id = request.POST.get('meat_rule')
         
         # Extract checkbox values for meal period availability and options
-        populate_breakfast = request.POST.get('populateBreakfast') == 'on'
-        populate_am_snack = request.POST.get('populateAMSnack') == 'on'
-        populate_lunch = request.POST.get('populateLunch') == 'on'
-        populate_pm_snack = request.POST.get('populatePMSnack') == 'on'
+        recipe_type, populate_flags = resolve_recipe_type_and_populate_flags(request.POST)
+        populate_breakfast = populate_flags['populate_breakfast']
+        populate_am_snack = populate_flags['populate_am_snack']
+        populate_lunch = populate_flags['populate_lunch']
+        populate_pm_snack = populate_flags['populate_pm_snack']
         standalone = request.POST.get('standalone') == 'on'
         ignore_inventory = request.POST.get('ignoreInventory') == 'on'
 
         # Use get_user_for_view to get the correct user (main user or subuser)
         user = get_user_for_view(request)
 
-        # Get the rule object if rule_id is provided
-        rule = get_object_or_404(Rule, id=rule_id) if rule_id else None
+        # Get Rule objects for each field if provided
+        grain_rule = get_object_or_404(Rule, id=grain_rule_id) if grain_rule_id else None
+        addfood_rule = get_object_or_404(Rule, id=addfood_rule_id) if addfood_rule_id else None
+        fluid_rule = get_object_or_404(Rule, id=fluid_rule_id) if fluid_rule_id else None
+        veg_rule = get_object_or_404(Rule, id=veg_rule_id) if veg_rule_id else None
+        fruit_rule = get_object_or_404(Rule, id=fruit_rule_id) if fruit_rule_id else None
+        meat_rule = get_object_or_404(Rule, id=meat_rule_id) if meat_rule_id else None
 
-        # Create recipe instance
+        # Create recipe instance (add other fields as needed)
         recipe = Recipe.objects.create(
             user=user,
             name=recipe_name,
+            recipe_type=recipe_type,
             instructions=instructions,
             grain=grain,
+            grain_rule=grain_rule,
+            addfood=addfood,
+            addfood_rule=addfood_rule,
+            fluid=fluid,
+            fluid_rule=fluid_rule,
+            veg=veg,
+            veg_rule=veg_rule,
+            fruit=fruit,
+            fruit_rule=fruit_rule,
+            meat=meat,
+            meat_rule=meat_rule,
             meat_alternate=meat_alternate,
-            rule=rule,  # Set rule
             populate_breakfast=populate_breakfast,
             populate_am_snack=populate_am_snack,
             populate_lunch=populate_lunch,
@@ -2472,9 +2698,11 @@ def create_recipe(request):
         # Save main ingredients using helper function
         save_recipe_ingredients(recipe, main_ingredient_ids, quantities)
 
-        return JsonResponse({'success': True})
+        from django.shortcuts import redirect
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        from django.http import HttpResponseNotAllowed
+        return HttpResponseNotAllowed(['POST'])
 
 @login_required
 def create_fruit_recipe(request):
@@ -2524,9 +2752,11 @@ def create_fruit_recipe(request):
         # Save the ingredient using helper function
         save_recipe_ingredients(fruit_recipe, [ingredient_id], [quantity])
 
-        return JsonResponse({'success': True})
+        from django.shortcuts import redirect
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        from django.http import HttpResponseNotAllowed
+        return HttpResponseNotAllowed(['POST'])
 
 @login_required
 def create_veg_recipe(request):
@@ -2576,9 +2806,11 @@ def create_veg_recipe(request):
         # Save the ingredient using helper function
         save_recipe_ingredients(veg_recipe, [ingredient_id], [quantity])
 
-        return JsonResponse({'success': True})
+        from django.shortcuts import redirect
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        from django.http import HttpResponseNotAllowed
+        return HttpResponseNotAllowed(['POST'])
     
 @login_required
 def create_wg_recipe(request):
@@ -2628,9 +2860,11 @@ def create_wg_recipe(request):
         # Save the ingredient using helper function
         save_recipe_ingredients(wg_recipe, [ingredient_id], [quantity])
 
-        return JsonResponse({'success': True})
+        from django.shortcuts import redirect
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        from django.http import HttpResponseNotAllowed
+        return HttpResponseNotAllowed(['POST'])
 
 @login_required
 def create_breakfast_recipe(request):
@@ -2686,7 +2920,8 @@ def create_breakfast_recipe(request):
         # Save main ingredients using helper function
         save_recipe_ingredients(breakfast_recipe, main_ingredient_ids, quantities)
 
-        return JsonResponse({'success': True})  # Or return any relevant data
+        from django.shortcuts import redirect
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     else:
         # If the request method is not POST, return error response
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -2750,7 +2985,8 @@ def create_am_recipe(request):
         # Save main ingredients using helper function
         save_recipe_ingredients(am_recipe, main_ingredient_ids, quantities)
 
-        return JsonResponse({'success': True})  # Or return any relevant data
+        from django.shortcuts import redirect
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     else:
         # If the request method is not POST, return error response
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -2814,7 +3050,8 @@ def create_pm_recipe(request):
         # Save main ingredients using helper function
         save_recipe_ingredients(pm_recipe, main_ingredient_ids, quantities)
 
-        return JsonResponse({'success': True})  # Or return any relevant data
+        from django.shortcuts import redirect
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     else:
         # If the request method is not POST, return error response
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -2824,12 +3061,13 @@ def fetch_recipes(request):
     user = get_user_for_view(request)
 
     # Retrieve only lunch recipes from the database for the identified user
-    recipes = Recipe.objects.filter(user=user, recipe_type='lunch').values('id', 'name')  
+    recipes = Recipe.objects.filter(user=user, recipe_type='lunch').order_by('name').values('id', 'name')  
     return JsonResponse({'recipes': list(recipes)})
 
 @login_required
 def fetch_rules(request):
-    rules = Rule.objects.all()
+    user = get_user_for_view(request)
+    rules = Rule.objects.filter(user=user)
     rule_list = [{'id': rule.id, 'rule': rule.rule} for rule in rules]
     return JsonResponse({'rules': rule_list})
     
@@ -2862,36 +3100,36 @@ def get_recipe(request, recipe_id):
 @login_required
 def fetch_veg_recipes(request):
     user = get_user_for_view(request)
-    veg_recipes = Recipe.objects.filter(user=user, recipe_type='vegetable').values('id', 'name')
+    veg_recipes = Recipe.objects.filter(user=user, recipe_type='vegetable').order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(veg_recipes)})
 
 @login_required
 def fetch_wg_recipes(request):
     user = get_user_for_view(request)
-    wg_recipes = Recipe.objects.filter(user=user, recipe_type='whole_grain').values('id', 'name')
+    wg_recipes = Recipe.objects.filter(user=user, recipe_type='whole_grain').order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(wg_recipes)})
 
 def fetch_fruit_recipes(request):
     user = get_user_for_view(request)
-    fruit_recipes = Recipe.objects.filter(user=user, recipe_type='fruit').values('id', 'name')
+    fruit_recipes = Recipe.objects.filter(user=user, recipe_type='fruit').order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(fruit_recipes)})
 
 def fetch_breakfast_recipes(request):
     user = get_user_for_view(request)
-    breakfast_recipes = Recipe.objects.filter(user=user, recipe_type='breakfast').values('id', 'name')
+    breakfast_recipes = Recipe.objects.filter(user=user, recipe_type='breakfast').order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(breakfast_recipes)})
 
 @login_required
 def fetch_am_recipes(request):
     user = get_user_for_view(request)
     from django.db.models import Q
-    am_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack')).values('id', 'name')
+    am_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack')).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(am_recipes)})
 
 def fetch_pm_recipes(request):
     user = get_user_for_view(request)
     from django.db.models import Q
-    pm_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack')).values('id', 'name')  
+    pm_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack')).order_by('name').values('id', 'name')  
     return JsonResponse({'recipes': list(pm_recipes)})
 
 def check_ingredients_availability(request, recipe):
@@ -3170,23 +3408,31 @@ def save_menu(request):
 @login_required
 def delete_recipe(request, recipe_id, category):
     if request.method == 'DELETE':
-        # Map category to the corresponding model
-        model_mapping = {
-            'lunch': Recipe,
+        user = get_user_for_view(request)
+        # Map category to recipe_type filter — all recipes live in the Recipe model
+        category_filter_map = {
+            'lunch':     {'recipe_type': 'lunch'},
+            'breakfast': {'recipe_type': 'breakfast'},
+            'fruit':     {'recipe_type': 'fruit'},
+            'veg':       {'recipe_type': 'vegetable'},
+            'wg':        {'recipe_type': 'whole_grain'},
         }
-
-        # Get the model based on the category
-        model = model_mapping.get(category)
-        if not model:
+        from django.db.models import Q
+        if category in category_filter_map:
+            filter_kwargs = {'pk': recipe_id, 'user': user, **category_filter_map[category]}
+            recipe = Recipe.objects.filter(**filter_kwargs).first()
+        elif category == 'am':
+            recipe = Recipe.objects.filter(pk=recipe_id, user=user).filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack')).first()
+        elif category == 'pm':
+            recipe = Recipe.objects.filter(pk=recipe_id, user=user).filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack')).first()
+        else:
             return JsonResponse({'status': 'error', 'message': 'Invalid category'}, status=400)
 
-        # Retrieve and delete the recipe
-        try:
-            recipe = get_object_or_404(model, pk=recipe_id)
-            recipe.delete()
-            return JsonResponse({'status': 'success', 'message': f'{category.capitalize()} recipe deleted successfully'})
-        except model.DoesNotExist:
+        if not recipe:
             return JsonResponse({'status': 'error', 'message': f'{category.capitalize()} recipe not found'}, status=404)
+
+        recipe.delete()
+        return JsonResponse({'status': 'success', 'message': f'{category.capitalize()} recipe deleted successfully'})
     else:
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
     
@@ -3254,7 +3500,10 @@ def update_orders(request):
                     defaults={
                         'quantity': order_item.quantity,
                         'category': order_item.category or 'Other',
-                        'units': 'units',
+                        'unit_type': 'each',
+                        'base_unit': 'each',
+                        'unit_size': 1,
+                        'conversion_to_base': 1,
                         'resupply': 5,
                         'total_quantity': order_item.quantity,
                     }
@@ -3760,13 +4009,15 @@ def classroom(request):
         # Sort: signed-in first, then name
         filtered_students.sort(key=lambda s: (-int(bool(s.is_signed_in)), s.last_name, s.first_name))
 
-        inventory_items = Inventory.objects.filter(
-            category='Infants',
-            user=main_user
-        ).exclude(
-            Q(item__icontains='oatmeal') |
-            Q(item__icontains='formula') |
-            Q(item__icontains='snack')
+        inventory_items = list(
+            Inventory.objects.filter(
+                category='Infants',
+                user=main_user
+            ).exclude(
+                Q(item__icontains='oatmeal') |
+                Q(item__icontains='formula') |
+                Q(item__icontains='snack')
+            ).values_list('item', flat=True).order_by('item')
         )
         permissions_context['inventory_items'] = inventory_items
 
@@ -5208,7 +5459,7 @@ def meal_count(request):
         **permissions_context,  # Include permission flags dynamically
     })
 
-def assign_rules_to_week(user, days_count=5, used_main_recipes=None):
+def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_daily_students=1, force_ignore_inventory=False):
     """
     Process all rules at the WEEK level and determine which recipe appears on which day in which meal period.
     
@@ -5249,6 +5500,10 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None):
         Returns True if recipe.ignore_inventory is True or all ingredients are sufficient.
         Returns False if any ingredient is insufficient."""
         try:
+            # Global override from generate_full_menu: skip inventory checks entirely
+            if force_ignore_inventory:
+                return True
+
             # Check if recipe should ignore inventory tracking
             if getattr(recipe, 'ignore_inventory', False):
                 return True
@@ -5262,11 +5517,18 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None):
             # Check each ingredient
             for recipe_ing in ingredients_list:
                 if recipe_ing.ingredient:
-                    required_qty = recipe_ing.quantity if recipe_ing.quantity else 0
-                    available_qty = recipe_ing.ingredient.total_quantity
+                    # Interpret recipe quantity in the ingredient's base unit (smallest unit)
+                    per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+
+                    # Available inventory in base units: total_quantity (inventory units) * conversion_to_base
+                    conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
+                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+
+                    # Required amount in base units for all students
+                    required_base = per_portion_base * estimated_daily_students
                     
                     # If we know the required quantity and it exceeds available, insufficient
-                    if required_qty > 0 and available_qty < required_qty:
+                    if required_base > 0 and available_base < required_base:
                         return False
             
             # All ingredients are sufficient
@@ -5289,13 +5551,15 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None):
             
             for recipe_ing in ingredients_list:
                 if recipe_ing.ingredient:
-                    required_qty = recipe_ing.quantity if recipe_ing.quantity else 0
-                    available_qty = recipe_ing.ingredient.total_quantity
-                    units = recipe_ing.ingredient.units or 'units'
+                    per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+                    conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
+                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+                    required_base = per_portion_base * estimated_daily_students
+                    units = recipe_ing.ingredient.base_unit or 'units'
                     
                     # Check if there's enough inventory
-                    if required_qty > 0:
-                        if available_qty >= required_qty:
+                    if required_base > 0:
+                        if available_base >= required_base:
                             status = "✓"  # Sufficient
                         else:
                             status = "✗"  # Insufficient
@@ -5305,7 +5569,10 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None):
                     
                     ingredient_details.append(
                         f"{recipe_ing.ingredient.item} "
-                        f"[need: {required_qty} {units}, have: {available_qty} {units}] {status}"
+                        f"[per-portion: {per_portion_base} {units}, "
+                        f"students: {estimated_daily_students}, "
+                        f"requires: {required_base} {units}, "
+                        f"current qty: {available_base} {units}] {status}"
                     )
                 else:
                     ingredient_details.append("(Unlinked ingredient)")
@@ -5495,7 +5762,7 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None):
                     
                     # DEBUG: Show ingredients for this recipe
                     ingredients_str = get_recipe_ingredients_debug(recipe)
-                    pass  # print(f"    🥘 INGREDIENTS: {ingredients_str}")
+                    print(f"    🥘 INGREDIENTS: {ingredients_str}")
                     
                     placed = True
                     assignments_made += 1
@@ -5926,13 +6193,26 @@ def generate_full_menu(request):
     
     pass  # print(f"📅 Generating menu for week starting: {week_start_date}")
     
+    # Get estimated daily students for scaling ingredient quantities (per-portion * students)
+    estimated_daily_students_raw = request.POST.get('estimated_daily_students')
+    try:
+        estimated_daily_students = int(estimated_daily_students_raw) if estimated_daily_students_raw is not None else 1
+        if estimated_daily_students <= 0:
+            estimated_daily_students = 1
+    except (TypeError, ValueError):
+        estimated_daily_students = 1
+
     # Check if user wants to ignore inventory constraints
     # This is set when user confirms they want to continue despite out-of-stock warnings
     force_ignore_inventory = request.POST.get('ignore_inventory') == 'true'
-    if force_ignore_inventory:
-        print("⚠️ IGNORING INVENTORY CONSTRAINTS (user override)")
-    else:
-        print(f"📊 Using inventory constraints (ignore_inventory={request.POST.get('ignore_inventory')})")
+
+    # High-level generation debug summary
+    print(
+        f"[MENU DEBUG] Starting full menu generation: "
+        f"week_start={week_start_date}, "
+        f"estimated_daily_students={estimated_daily_students}, "
+        f"ignore_inventory={force_ignore_inventory}"
+    )
     
     # Calculate 2-week cooldown window for recipe filtering (used by all meal periods)
     from datetime import timedelta
@@ -5943,7 +6223,13 @@ def generate_full_menu(request):
     used_main_recipes = set()
     
     # STEP 1: Assign NON-standalone recipes with rules (standalones are skipped)
-    rule_assignments, promoted_recipe_ids, used_main_recipes = assign_rules_to_week(user, days_count=5, used_main_recipes=used_main_recipes)
+    rule_assignments, promoted_recipe_ids, used_main_recipes = assign_rules_to_week(
+        user,
+        days_count=5,
+        used_main_recipes=used_main_recipes,
+        estimated_daily_students=estimated_daily_students,
+        force_ignore_inventory=force_ignore_inventory,
+    )
     
     # STEP 1.5: Query fluid_rule recipes for special mandatory daily placement
     # Fluid rule is special: weekly_qty=10 means minimum 10 instances (5 breakfast + 5 lunch)
@@ -5993,11 +6279,18 @@ def generate_full_menu(request):
             # Check each ingredient
             for recipe_ing in ingredients_list:
                 if recipe_ing.ingredient:
-                    required_qty = recipe_ing.quantity if recipe_ing.quantity else 0
-                    available_qty = recipe_ing.ingredient.total_quantity
+                    # Interpret recipe quantity in the ingredient's base unit (smallest unit)
+                    per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+
+                    # Available inventory in base units: total_quantity (inventory units) * conversion_to_base
+                    conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
+                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+
+                    # Required amount in base units for all students
+                    required_base = per_portion_base * estimated_daily_students
                     
                     # If we know the required quantity and it exceeds available, insufficient
-                    if required_qty > 0 and available_qty < required_qty:
+                    if required_base > 0 and available_base < required_base:
                         return False
             
             # All ingredients are sufficient
@@ -6020,13 +6313,15 @@ def generate_full_menu(request):
             
             for recipe_ing in ingredients_list:
                 if recipe_ing.ingredient:
-                    required_qty = recipe_ing.quantity if recipe_ing.quantity else 0
-                    available_qty = recipe_ing.ingredient.total_quantity
-                    units = recipe_ing.ingredient.units or 'units'
+                    per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+                    conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
+                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+                    required_base = per_portion_base * estimated_daily_students
+                    units = recipe_ing.ingredient.base_unit or 'units'
                     
                     # Check if there's enough inventory
-                    if required_qty > 0:
-                        if available_qty >= required_qty:
+                    if required_base > 0:
+                        if available_base >= required_base:
                             status = "✓"  # Sufficient
                         else:
                             status = "✗"  # Insufficient
@@ -6034,9 +6329,11 @@ def generate_full_menu(request):
                     else:
                         status = "?"  # Unknown requirement
                     
+                    # Debug-style text: "recipe has 1 portion of X but requires X for N students; current qty is X"
                     ingredient_details.append(
                         f"{recipe_ing.ingredient.item} "
-                        f"[need: {required_qty} {units}, have: {available_qty} {units}] {status}"
+                        f"[per-portion: {per_portion_base} {units}, students: {estimated_daily_students}, "
+                        f"requires: {required_base} {units}, current qty: {available_base} {units}] {status}"
                     )
                 else:
                     ingredient_details.append("(Unlinked ingredient)")
@@ -6182,33 +6479,45 @@ def generate_full_menu(request):
     if force_ignore_inventory:
         # When bypassing inventory, include ALL recipes regardless of inventory status
         breakfast_passed_inventory = breakfast_recipes_no_rules
-        pass  # print(f"   🔓 BYPASSING INVENTORY CHECK - using all {len(breakfast_passed_inventory)} recipes")
     else:
         # Normal inventory checking
         for r in breakfast_recipes_no_rules:
             if has_sufficient_inventory(r):
                 breakfast_passed_inventory.append(r)
             else:
-                breakfast_failed_inventory.append(r.name)
-        pass  # print(f"   After inventory check: {len(breakfast_passed_inventory)} recipes available")
+                breakfast_failed_inventory.append(r)
+
         if breakfast_failed_inventory:
-            pass  # print(f"   ⚠️ {len(breakfast_failed_inventory)} recipes failed inventory: {', '.join(breakfast_failed_inventory[:5])}{' ...' if len(breakfast_failed_inventory) > 5 else ''}")
+            print(
+                f"[MENU DEBUG] Breakfast inventory filter: "
+                f"{len(breakfast_failed_inventory)} recipe(s) failed inventory checks; "
+                f"examples: {[r.name for r in breakfast_failed_inventory[:5]]}"
+            )
+            for r in breakfast_failed_inventory[:3]:
+                # Detailed per-ingredient reason for a few failures
+                print(
+                    f"[MENU DEBUG]   Breakfast inventory failure for '{r.name}': "
+                    f"{get_recipe_ingredients_debug(r)}"
+                )
     
     breakfast_recipes_no_rules = breakfast_passed_inventory
     
     for day_idx, day in enumerate(days_of_week):
         if not breakfast_data[day]['bread'] and breakfast_recipes_no_rules:
+            candidate_count = len(breakfast_recipes_no_rules)
             recipe = random.choice(breakfast_recipes_no_rules)
-            pass  # print(f"   📍 Selected '{recipe.name}' for {day} breakfast bread row")
             
-            # DEBUG: Show ingredients for this recipe
-            ingredients_str = get_recipe_ingredients_debug(recipe)
-            pass  # print(f"      🥘 INGREDIENTS: {ingredients_str}")
             # Track this recipe as used
-            print(f"   🔸 BREAKFAST using recipe ID={recipe.id}, type='{recipe.recipe_type}', name='{recipe.name}' for {day}")
             used_main_recipes.add(recipe.id)
             # Remove from available pool to prevent reuse
             breakfast_recipes_no_rules = [r for r in breakfast_recipes_no_rules if r.id != recipe.id]
+            
+            # Decision debug for this day/row
+            print(
+                f"[MENU DEBUG] Breakfast {day} bread: selected recipe '{recipe.name}' "
+                f"(id={recipe.id}, type={recipe.recipe_type}) "
+                f"from {candidate_count} candidate(s) after rules/dedup/inventory filters."
+            )
             
             if recipe.recipe_type == 'breakfast':
                 # Use recipe.name to show actual recipe, not generic grain field
@@ -6229,23 +6538,31 @@ def generate_full_menu(request):
     fruit_veg_all = list(Recipe.objects.filter(
         user=user, populate_breakfast=True, recipe_type__in=['fruit', 'vegetable']
     ).select_related('fruit_rule', 'veg_rule'))
-    fruit_veg_no_rules = [r for r in fruit_veg_all if not has_weekly_rule(r) and not r.standalone]
+    # Allow standalone fruit/veg for breakfast; only filter out recipes with weekly rules here
+    fruit_veg_no_rules = [r for r in fruit_veg_all if not has_weekly_rule(r)]
 
     if not fruit_veg_no_rules:
+        # Fallback: still restrict to populate_breakfast=True so lunch-only sides
+        # like Instant Garlic Mashed Potatoes are not used at breakfast
         fruit_veg_all = list(Recipe.objects.filter(
-            user=user, recipe_type__in=['fruit', 'vegetable']
+            user=user, populate_breakfast=True, recipe_type__in=['fruit', 'vegetable']
         ).select_related('fruit_rule', 'veg_rule'))
-        fruit_veg_no_rules = [r for r in fruit_veg_all if not has_weekly_rule(r) and not r.standalone]
+        fruit_veg_no_rules = [r for r in fruit_veg_all if not has_weekly_rule(r)]
     
     # When bypassing inventory, be more aggressive in filling fruit cells
     if force_ignore_inventory and not fruit_veg_no_rules:
-        # Expand to include recipes with weekly rules if necessary
-        fruit_veg_no_rules = [r for r in fruit_veg_all if not r.standalone]
+        # Expand to include recipes with weekly rules if necessary (still breakfast-tagged)
+        fruit_veg_no_rules = list(fruit_veg_all)
         pass  # print(f"   🔓 Bypassing inventory: expanded to {len(fruit_veg_no_rules)} fruit/veg recipes (includes weekly rules)")
     
     for day_idx, day in enumerate(days_of_week):
         if not breakfast_data[day]['fruit'] and fruit_veg_no_rules:
-            breakfast_data[day]['fruit'] = random.choice(fruit_veg_no_rules).name
+            recipe = random.choice(fruit_veg_no_rules)
+            breakfast_data[day]['fruit'] = recipe.name
+            print(
+                f"[MENU DEBUG] Breakfast {day} fruit: filled with '{recipe.name}' "
+                f"from fruit/veg pool after filters."
+            )
 
     # Set default if still empty (but only when NOT bypassing inventory)
     if not force_ignore_inventory:
@@ -6401,7 +6718,10 @@ def generate_full_menu(request):
     
     # DEDUPLICATION: Filter out already-used main dish recipes
     am_snack_no_rules = [r for r in am_snack_no_rules if r.id not in used_main_recipes]
-    pass  # print(f"\n🍿 AM SNACK PHASE 2: {len(am_snack_no_rules)} recipes available after deduplication")
+    print(
+        f"[MENU DEBUG] AM snack Phase 2: {len(am_snack_no_rules)} recipe(s) "
+        f"available after excluding already-used main recipes."
+    )
     
     # INVENTORY CHECK: Filter out recipes with insufficient inventory
     # NOTE: This can be bypassed when force_ignore_inventory is True (user confirmed override)
@@ -6411,26 +6731,34 @@ def generate_full_menu(request):
     if force_ignore_inventory:
         # When bypassing inventory, include ALL recipes regardless of inventory status
         am_passed_inventory = am_snack_no_rules
-        pass  # print(f"   🔓 BYPASSING INVENTORY CHECK - using all {len(am_passed_inventory)} recipes")
     else:
         # Normal inventory checking
         for r in am_snack_no_rules:
             if has_sufficient_inventory(r):
                 am_passed_inventory.append(r)
             else:
-                am_failed_inventory.append(r.name)
-        pass  # print(f"   After inventory check: {len(am_passed_inventory)} recipes available")
+                am_failed_inventory.append(r)
+
         if am_failed_inventory:
-            pass  # print(f"   ⚠️ {len(am_failed_inventory)} recipes failed inventory: {', '.join(am_failed_inventory[:5])}{' ...' if len(am_failed_inventory) > 5 else ''}")
+            print(
+                f"[MENU DEBUG] AM snack inventory filter: "
+                f"{len(am_failed_inventory)} recipe(s) failed inventory checks; "
+                f"examples: {[r.name for r in am_failed_inventory[:5]]}"
+            )
+            for r in am_failed_inventory[:3]:
+                print(
+                    f"[MENU DEBUG]   AM snack inventory failure for '{r.name}': "
+                    f"{get_recipe_ingredients_debug(r)}"
+                )
     
     am_snack_no_rules = am_passed_inventory
     
     for day_idx, day in enumerate(days_of_week):
         if not am_snack_data[day]['bread2'] and am_snack_no_rules:
+            candidate_count = len(am_snack_no_rules)
             recipe = random.choice(am_snack_no_rules)
             
             # Track this recipe as used
-            print(f"   🔸 AM SNACK using recipe ID={recipe.id}, type='{recipe.recipe_type}', name='{recipe.name}' for {day}")
             used_main_recipes.add(recipe.id)
             # Remove from available pool to prevent reuse
             am_snack_no_rules = [r for r in am_snack_no_rules if r.id != recipe.id]
@@ -6441,11 +6769,12 @@ def generate_full_menu(request):
             am_snack_data[day]['meat1'] = recipe.meat or ""
             if recipe.fruit or recipe.veg:
                 am_snack_data[day]['fruit2'] = recipe.fruit or recipe.veg
-            pass  # print(f"   📍 Selected '{recipe.name}' for {day} AM snack bread2 row")
-            
-            # DEBUG: Show ingredients for this recipe
-            ingredients_str = get_recipe_ingredients_debug(recipe)
-            pass  # print(f"      🥘 INGREDIENTS: {ingredients_str}")
+
+            print(
+                f"[MENU DEBUG] AM snack {day} bread2: selected recipe '{recipe.name}' "
+                f"(id={recipe.id}, type={recipe.recipe_type}) "
+                f"from {candidate_count} candidate(s) after rules/dedup/inventory filters."
+            )
     
     # FLUID RULE PLACEMENT (CONDITIONAL): Place fluid_rule recipes in choose1 ONLY if:
     # - populate_am_snack is True for the fluid recipe
@@ -6631,7 +6960,10 @@ def generate_full_menu(request):
     
     # DEDUPLICATION: Filter out already-used main dish recipes
     lunch_recipes_no_rules = [r for r in lunch_recipes_no_rules if r.id not in used_main_recipes]
-    pass  # print(f"\n🍽️ LUNCH PHASE 2: {len(lunch_recipes_no_rules)} main lunch recipes available after deduplication")
+    print(
+        f"[MENU DEBUG] Lunch Phase 2: {len(lunch_recipes_no_rules)} main lunch recipe(s) "
+        f"available after excluding already-used mains."
+    )
     
     # 2-WEEK COOLDOWN: Filter out recipes used within 2 weeks of the menu week
     # NOTE: This constraint is ALWAYS enforced, even when force_ignore_inventory is True
@@ -6655,27 +6987,34 @@ def generate_full_menu(request):
     if force_ignore_inventory:
         # When bypassing inventory, include ALL recipes regardless of inventory status
         lunch_passed_inventory = lunch_recipes_no_rules
-        pass  # print(f"   🔓 BYPASSING INVENTORY CHECK - using all {len(lunch_passed_inventory)} recipes")
     else:
         # Normal inventory checking
         for r in lunch_recipes_no_rules:
             if has_sufficient_inventory(r):
                 lunch_passed_inventory.append(r)
             else:
-                lunch_failed_inventory.append(r.name)
-        pass  # print(f"   After inventory check: {len(lunch_passed_inventory)} recipes available")
+                lunch_failed_inventory.append(r)
+
         if lunch_failed_inventory:
-            pass  # print(f"   ⚠️ {len(lunch_failed_inventory)} recipes failed inventory: {', '.join(lunch_failed_inventory[:10])}{' ...' if len(lunch_failed_inventory) > 10 else ''}")
+            print(
+                f"[MENU DEBUG] Lunch inventory filter: "
+                f"{len(lunch_failed_inventory)} recipe(s) failed inventory checks; "
+                f"examples: {[r.name for r in lunch_failed_inventory[:5]]}"
+            )
+            for r in lunch_failed_inventory[:3]:
+                print(
+                    f"[MENU DEBUG]   Lunch inventory failure for '{r.name}': "
+                    f"{get_recipe_ingredients_debug(r)}"
+                )
     
     lunch_recipes_no_rules = lunch_passed_inventory
-    pass  # print(f"   After inventory check: {len(lunch_recipes_no_rules)} recipes available")
     
     for day_idx, day in enumerate(days_of_week):
         if not lunch_data[day]['meal_name'] and lunch_recipes_no_rules:
+            candidate_count = len(lunch_recipes_no_rules)
             recipe = random.choice(lunch_recipes_no_rules)
             
             # Track this recipe as used
-            print(f"   🔸 LUNCH using recipe ID={recipe.id}, type='{recipe.recipe_type}', name='{recipe.name}' for {day}")
             used_main_recipes.add(recipe.id)
             # Remove from available pool to prevent reuse
             lunch_recipes_no_rules = [r for r in lunch_recipes_no_rules if r.id != recipe.id]
@@ -6690,12 +7029,12 @@ def generate_full_menu(request):
                 lunch_data[day]['vegetable'] = recipe.veg
             if recipe.fruit and not lunch_data[day]['fruit3']:
                 lunch_data[day]['fruit3'] = recipe.fruit
-            
-            pass  # print(f"   📍 Selected '{recipe.name}' for {day} lunch meal_name row")
-            
-            # DEBUG: Show ingredients for this recipe
-            ingredients_str = get_recipe_ingredients_debug(recipe)
-            pass  # print(f"      🥘 INGREDIENTS: {ingredients_str}")
+
+            print(
+                f"[MENU DEBUG] Lunch {day} main dish: selected recipe '{recipe.name}' "
+                f"(id={recipe.id}, type={recipe.recipe_type}) "
+                f"from {candidate_count} candidate(s) after rules/dedup/cooldown/inventory filters."
+            )
     
     # PASS 2: Process standalone whole_grain recipes NOW that all main dishes are placed
     for day_idx, recipes_list in lunch_rule_recipes.items():
@@ -6789,7 +7128,10 @@ def generate_full_menu(request):
             and (not r.last_used or r.last_used.date() < two_weeks_before or r.last_used.date() > two_weeks_after)
             and has_sufficient_inventory(r)
         ]
-        pass  # print(f"\n🍔 LUNCH FALLBACK: {len(available_lunch_fallback)} recipes available after cooldown & inventory check")
+        print(
+            f"[MENU DEBUG] Lunch fallback pool: {len(available_lunch_fallback)} "
+            f"recipe(s) available after cooldown & inventory checks."
+        )
         
         for day in days_of_week:
             if not lunch_data[day]['meal_name'] and available_lunch_fallback:
@@ -6813,31 +7155,42 @@ def generate_full_menu(request):
                 if recipe.fruit and not lunch_data[day]['fruit3']:
                     lunch_data[day]['fruit3'] = recipe.fruit
                 
-                pass  # print(f"   📍 FALLBACK: Selected '{recipe.name}' for {day} lunch meal_name row")
-                
-                # DEBUG: Show ingredients for this recipe
-                ingredients_str = get_recipe_ingredients_debug(recipe)
-                pass  # print(f"      🥘 INGREDIENTS: {ingredients_str}")
+                print(
+                    f"[MENU DEBUG] Lunch {day} main dish: used FALLBACK recipe '{recipe.name}' "
+                    f"(id={recipe.id}, type={recipe.recipe_type}) after rules/cooldown/inventory left "
+                    f"no primary candidates for this day."
+                )
 
     # Mark any remaining empty main dish cells with out of stock warning
     # BUT only if user hasn't confirmed to ignore inventory (force_ignore_inventory)
-    print(f"🔍 Before marking empty cells - force_ignore_inventory={force_ignore_inventory}")
     if not force_ignore_inventory:
         for day_idx, day in enumerate(days_of_week):
             if not breakfast_data[day]['bread']:
                 breakfast_data[day]['bread'] = "❌ Out of stock"
-                pass  # print(f"   ⚠️ WARNING: No breakfast recipes available for {day} due to insufficient inventory")
+                print(
+                    f"[MENU DEBUG] Breakfast {day} bread: marked OUT OF STOCK – "
+                    f"no breakfast bread recipe remained after rules, deduplication, "
+                    f"and inventory filters."
+                )
         
         for day_idx, day in enumerate(days_of_week):
             if not am_snack_data[day]['bread2']:
                 am_snack_data[day]['bread2'] = "❌ Out of stock"
-                pass  # print(f"   ⚠️ WARNING: No AM snack recipes available for {day} due to insufficient inventory")
+                print(
+                    f"[MENU DEBUG] AM snack {day} bread2: marked OUT OF STOCK – "
+                    f"no AM snack grain recipe remained after rules, deduplication, "
+                    f"and inventory filters."
+                )
         
         # Set default if meal_name is still empty
         for day in days_of_week:
             if not lunch_data[day]['meal_name']:
                 lunch_data[day]['meal_name'] = "❌ Out of stock"
-                pass  # print(f"   ⚠️ WARNING: No lunch recipes available for {day} due to insufficient inventory")
+                print(
+                    f"[MENU DEBUG] Lunch {day} main dish: marked OUT OF STOCK – "
+                    f"no lunch main recipe remained after rules, cooldown, "
+                    f"deduplication, and inventory filters."
+                )
     
     # PHASE 3: Process standalone recipes ONLY in days that have main lunch recipes
     for day_idx, recipes_list in standalone_lunch_recipes.items():
@@ -6989,16 +7342,16 @@ def generate_full_menu(request):
             pm_snack_no_rules = [r for r in pm_snack_all if not has_weekly_rule(r) and not r.standalone]
     
     # DEDUPLICATION: Filter out already-used main dish recipes
-    print(f"\n🍪 PM SNACK BEFORE DEDUPLICATION: {len(pm_snack_no_rules)} recipes")
-    print(f"   PM snack recipe IDs: {[r.id for r in pm_snack_no_rules]}")
-    print(f"   PM snack recipe names: {[r.name for r in pm_snack_no_rules]}")
-    print(f"   Used main recipes (to exclude): {used_main_recipes}")
+    total_pm_candidates = len(pm_snack_no_rules)
     pm_snack_before_dedup = pm_snack_no_rules[:]
     pm_snack_no_rules = [r for r in pm_snack_no_rules if r.id not in used_main_recipes]
     filtered_out = [r for r in pm_snack_before_dedup if r.id in used_main_recipes]
-    if filtered_out:
-        print(f"   ❌ FILTERED OUT by deduplication: {[(r.id, r.name) for r in filtered_out]}")
-    print(f"\n🍪 PM SNACK PHASE 2: {len(pm_snack_no_rules)} recipes available after deduplication")
+
+    print(
+        f"[MENU DEBUG] PM snack Phase 2: {total_pm_candidates} candidate recipe(s) "
+        f"before deduplication; excluded {len(filtered_out)} already-used mains; "
+        f"{len(pm_snack_no_rules)} candidate(s) remain."
+    )
     
     # INVENTORY CHECK: Filter out recipes with insufficient inventory
     # NOTE: This can be bypassed when force_ignore_inventory is True (user confirmed override)
@@ -7008,22 +7361,31 @@ def generate_full_menu(request):
     if force_ignore_inventory:
         # When bypassing inventory, include ALL recipes regardless of inventory status
         pm_passed_inventory = pm_snack_no_rules
-        print(f"   PM SNACK BYPASSING INVENTORY CHECK - using all {len(pm_passed_inventory)} recipes")
     else:
         # Normal inventory checking
         for r in pm_snack_no_rules:
             if has_sufficient_inventory(r):
                 pm_passed_inventory.append(r)
             else:
-                pm_failed_inventory.append(r.name)
-        pass  # print(f"   After inventory check: {len(pm_passed_inventory)} recipes available")
+                pm_failed_inventory.append(r)
+
         if pm_failed_inventory:
-            pass  # print(f"   ⚠️ {len(pm_failed_inventory)} recipes failed inventory: {', '.join(pm_failed_inventory[:5])}{' ...' if len(pm_failed_inventory) > 5 else ''}")
+            print(
+                f"[MENU DEBUG] PM snack inventory filter: "
+                f"{len(pm_failed_inventory)} recipe(s) failed inventory checks; "
+                f"examples: {[r.name for r in pm_failed_inventory[:5]]}"
+            )
+            for r in pm_failed_inventory[:3]:
+                print(
+                    f"[MENU DEBUG]   PM snack inventory failure for '{r.name}': "
+                    f"{get_recipe_ingredients_debug(r)}"
+                )
     
     pm_snack_no_rules = pm_passed_inventory
     
     for day_idx, day in enumerate(days_of_week):
         if not pm_snack_data[day]['bread3'] and pm_snack_no_rules:
+            candidate_count = len(pm_snack_no_rules)
             recipe = random.choice(pm_snack_no_rules)
             
             # Track this recipe as used
@@ -7037,13 +7399,12 @@ def generate_full_menu(request):
             pm_snack_data[day]['meat3'] = recipe.meat or ""
             if recipe.fruit or recipe.veg:
                 pm_snack_data[day]['fruit4'] = recipe.fruit or recipe.veg
-            pass  # print(f"   📍 Selected '{recipe.name}' for {day} PM snack bread3 row")
-            
-            # DEBUG: Show ingredients for this recipe
-            ingredients_str = get_recipe_ingredients_debug(recipe)
-            pass  # print(f"      🥘 INGREDIENTS: {ingredients_str}")
-            if recipe.fruit or recipe.veg:
-                pm_snack_data[day]['fruit4'] = recipe.fruit or recipe.veg
+
+            print(
+                f"[MENU DEBUG] PM snack {day} bread3: selected recipe '{recipe.name}' "
+                f"(id={recipe.id}, type={recipe.recipe_type}) "
+                f"from {candidate_count} candidate(s) after rules/dedup/inventory filters."
+            )
     
     # FLUID RULE PLACEMENT (CONDITIONAL): Place fluid_rule recipes in choose2 ONLY if:
     # - populate_pm_snack is True for the fluid recipe
@@ -12676,7 +13037,7 @@ def shopping_list(request):
                         )
                     else:
                         # New ingredient
-                        unit = getattr(ingredient, 'units', 'units')
+                        unit = getattr(ingredient, 'unit_type', 'units')
                         ingredient_needs[ingredient.id] = (
                             ingredient, 
                             scaled_qty,
@@ -12826,6 +13187,8 @@ def todays_menu(request):
         for field_name, recipe_name in recipe_fields.items():
             if not recipe_name or recipe_name.strip() == '':
                 continue
+
+            normalized_recipe_name = recipe_name.strip()
                 
             # Determine meal period
             if 'Breakfast' in field_name:
@@ -12845,10 +13208,11 @@ def todays_menu(request):
                 if clean_label.startswith(prefix):
                     clean_label = clean_label[len(prefix):]
                     break
-            
+
             # Try to find the recipe
             try:
-                recipe = Recipe.objects.filter(user=user, name=recipe_name).first()
+                # Use robust matching so menu text still resolves to the underlying recipe record.
+                recipe = Recipe.objects.filter(user=user, name__iexact=normalized_recipe_name).first()
                 
                 if recipe:
                     # Get RecipeIngredient objects for this recipe
@@ -12857,11 +13221,32 @@ def todays_menu(request):
                         content_type=content_type,
                         object_id=recipe.id
                     ).select_related('ingredient').filter(ingredient__isnull=False)
+
+                    # Hide trivial self-ingredient rows (e.g., Blueberries recipe with ingredient Blueberries).
+                    recipe_name_normalized = (recipe.name or '').strip().casefold()
+                    visible_ingredients = []
+                    for ri in ingredients:
+                        if not ri.ingredient:
+                            continue
+                        ingredient_name_normalized = (ri.ingredient.item or '').strip().casefold()
+                        if ingredient_name_normalized == recipe_name_normalized:
+                            continue
+                        ri.display_unit = (
+                            getattr(ri.ingredient, 'unit_type', None)
+                            or getattr(ri.ingredient, 'base_unit', '')
+                            or ''
+                        )
+                        visible_ingredients.append(ri)
+
+                    has_visible_instructions = bool((recipe.instructions or '').strip())
+                    has_visible_ingredients = len(visible_ingredients) > 0
                     
                     recipe_data = {
                         'field_label': clean_label,
                         'recipe': recipe,
-                        'ingredients': ingredients
+                        'ingredients': visible_ingredients,
+                        'has_visible_instructions': has_visible_instructions,
+                        'has_visible_ingredients': has_visible_ingredients,
                     }
                     
                     meal_periods[period].append(recipe_data)
@@ -12870,21 +13255,28 @@ def todays_menu(request):
                     for recipe_ingredient in ingredients:
                         if recipe_ingredient.ingredient:
                             item_name = recipe_ingredient.ingredient.item
+                            display_unit = (
+                                getattr(recipe_ingredient.ingredient, 'unit_type', None)
+                                or getattr(recipe_ingredient.ingredient, 'base_unit', '')
+                                or ''
+                            )
                             if item_name in context['all_ingredients']:
                                 context['all_ingredients'][item_name]['quantity'] += float(recipe_ingredient.quantity or 0)
                             else:
                                 context['all_ingredients'][item_name] = {
                                     'quantity': float(recipe_ingredient.quantity or 0),
-                                    'units': recipe_ingredient.ingredient.units or '',
+                                    'units': display_unit,
                                     'current_stock': float(recipe_ingredient.ingredient.quantity or 0)
                                 }
                 else:
                     # Recipe not found, but we have the name
                     recipe_data = {
                         'field_label': clean_label,
-                        'recipe_name': recipe_name,
+                        'recipe_name': normalized_recipe_name,
                         'recipe': None,
-                        'ingredients': []
+                        'ingredients': [],
+                        'has_visible_instructions': False,
+                        'has_visible_ingredients': False,
                     }
                     meal_periods[period].append(recipe_data)
                     
@@ -12913,8 +13305,6 @@ def breakfast_recipe_detail(request, recipe_id):
     for idx, (ing, qty) in enumerate(ingredients, start=1):
         ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
         ingredient_data[f'qty{idx}'] = float(qty) if qty else None
-        if idx == 5:  # Limit to 5 ingredients
-            break
     
     return JsonResponse({
         'id': r.id,
@@ -12936,7 +13326,7 @@ def update_breakfast_recipe(request, recipe_id):
     r = Recipe.objects.filter(id=recipe_id, user=user, recipe_type='breakfast').first()
     if not r:
         return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    r.name = request.POST.get('breakfastMealName') or r.name
+    r.name = request.POST.get('recipeName') or request.POST.get('breakfastMealName') or r.name
     r.addfood = request.POST.get('additionalFood') or r.addfood
     # Update addfood_rule if provided
     rule_id = request.POST.get('breakfastRule')
@@ -12957,23 +13347,12 @@ def update_breakfast_recipe(request, recipe_id):
     r.save()
     
     # Update ingredients
-    ingredient_ids = [
-        request.POST.get('breakfastMainIngredient1'),
-        request.POST.get('breakfastMainIngredient2'),
-        request.POST.get('breakfastMainIngredient3'),
-        request.POST.get('breakfastMainIngredient4'),
-        request.POST.get('breakfastMainIngredient5')
-    ]
-    quantities = [
-        request.POST.get('breakfastQtyMainIngredient1'),
-        request.POST.get('breakfastQtyMainIngredient2'),
-        request.POST.get('breakfastQtyMainIngredient3'),
-        request.POST.get('breakfastQtyMainIngredient4'),
-        request.POST.get('breakfastQtyMainIngredient5')
-    ]
+    ingredient_ids = [request.POST.get(f'breakfastMainIngredient{i}') for i in range(1, 21)]
+    quantities = [request.POST.get(f'breakfastQtyMainIngredient{i}') for i in range(1, 21)]
     save_recipe_ingredients(r, ingredient_ids, quantities)
     
-    return JsonResponse({'success': True})
+    from django.shortcuts import redirect
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_http_methods(["GET"])
 def am_recipe_detail(request, recipe_id):
@@ -12988,8 +13367,6 @@ def am_recipe_detail(request, recipe_id):
     for idx, (ing, qty) in enumerate(ingredients, start=1):
         ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
         ingredient_data[f'qty{idx}'] = float(qty) if qty else None
-        if idx == 5:  # Limit to 5 ingredients
-            break
     
     return JsonResponse({
         'id': r.id, 'name': r.name,
@@ -13011,7 +13388,7 @@ def update_am_recipe(request, recipe_id):
     user = get_user_for_view(request)
     r = Recipe.objects.filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack'), id=recipe_id, user=user).first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    r.name = request.POST.get('amRecipeName') or r.name
+    r.name = request.POST.get('recipeName') or request.POST.get('amRecipeName') or r.name
     r.fluid = request.POST.get('amFluid') or r.fluid
     # Handle fruit/veg as separate fields or combined
     fruit_veg = request.POST.get('amFruitVeg')
@@ -13037,23 +13414,12 @@ def update_am_recipe(request, recipe_id):
     r.save()
     
     # Update ingredients
-    ingredient_ids = [
-        request.POST.get('amIngredient1'),
-        request.POST.get('amIngredient2'),
-        request.POST.get('amIngredient3'),
-        request.POST.get('amIngredient4'),
-        request.POST.get('amIngredient5')
-    ]
-    quantities = [
-        request.POST.get('amQty1'),
-        request.POST.get('amQty2'),
-        request.POST.get('amQty3'),
-        request.POST.get('amQty4'),
-        request.POST.get('amQty5')
-    ]
+    ingredient_ids = [request.POST.get(f'amIngredient{i}') for i in range(1, 21)]
+    quantities = [request.POST.get(f'amQty{i}') for i in range(1, 21)]
     save_recipe_ingredients(r, ingredient_ids, quantities)
     
-    return JsonResponse({'success': True})
+    from django.shortcuts import redirect
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_http_methods(["GET"])
 def pm_recipe_detail(request, recipe_id):
@@ -13068,8 +13434,6 @@ def pm_recipe_detail(request, recipe_id):
     for idx, (ing, qty) in enumerate(ingredients, start=1):
         ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
         ingredient_data[f'qty{idx}'] = float(qty) if qty else None
-        if idx == 5:  # Limit to 5 ingredients
-            break
     
     return JsonResponse({
         'id': r.id, 'name': r.name,
@@ -13091,7 +13455,7 @@ def update_pm_recipe(request, recipe_id):
     user = get_user_for_view(request)
     r = Recipe.objects.filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack'), id=recipe_id, user=user).first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    r.name = request.POST.get('pmRecipeName') or r.name
+    r.name = request.POST.get('recipeName') or request.POST.get('pmRecipeName') or r.name
     r.fluid = request.POST.get('pmFluid') or r.fluid
     # Handle fruit/veg as separate fields or combined
     fruit_veg = request.POST.get('pmFruitVeg')
@@ -13117,23 +13481,12 @@ def update_pm_recipe(request, recipe_id):
     r.save()
     
     # Update ingredients
-    ingredient_ids = [
-        request.POST.get('pmIngredient1'),
-        request.POST.get('pmIngredient2'),
-        request.POST.get('pmIngredient3'),
-        request.POST.get('pmIngredient4'),
-        request.POST.get('pmIngredient5')
-    ]
-    quantities = [
-        request.POST.get('pmQty1'),
-        request.POST.get('pmQty2'),
-        request.POST.get('pmQty3'),
-        request.POST.get('pmQty4'),
-        request.POST.get('pmQty5')
-    ]
+    ingredient_ids = [request.POST.get(f'pmIngredient{i}') for i in range(1, 21)]
+    quantities = [request.POST.get(f'pmQty{i}') for i in range(1, 21)]
     save_recipe_ingredients(r, ingredient_ids, quantities)
     
-    return JsonResponse({'success': True})
+    from django.shortcuts import redirect
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_http_methods(["GET"])
 def recipe_detail(request, recipe_id):
@@ -13147,14 +13500,25 @@ def recipe_detail(request, recipe_id):
     for idx, (ing, qty) in enumerate(ingredients, start=1):
         ingredient_data[f'ingredient{idx}_id'] = ing.id if ing else None
         ingredient_data[f'qty{idx}'] = float(qty) if qty else None
-        if idx == 5:  # Limit to 5 ingredients
-            break
     
     return JsonResponse({
         'id': r.id, 'name': r.name,
         **ingredient_data,
-        'grain': r.grain, 'meat_alternate': r.meat_alternate,
-        'rule_id': r.grain_rule_id if r.grain_rule else None, 'instructions': r.instructions,
+        'recipe_type': r.recipe_type,
+        'grain': r.grain,
+        'meat_alternate': r.meat_alternate,
+        'fruit': r.fruit,
+        'veg': r.veg,
+        'meat': r.meat,
+        'addfood': r.addfood,
+        'fluid': r.fluid,
+        'grain_rule_id': r.grain_rule_id,
+        'addfood_rule_id': r.addfood_rule_id,
+        'fluid_rule_id': r.fluid_rule_id,
+        'veg_rule_id': r.veg_rule_id,
+        'fruit_rule_id': r.fruit_rule_id,
+        'meat_rule_id': r.meat_rule_id,
+        'instructions': r.instructions,
         'image_url': r.image.url if r.image else None,
         'populate_breakfast': r.populate_breakfast,
         'populate_am_snack': r.populate_am_snack,
@@ -13169,44 +13533,88 @@ def update_recipe(request, recipe_id):
     user = get_user_for_view(request)
     r = Recipe.objects.filter(id=recipe_id, user=user).first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    r.name = request.POST.get('mealName') or r.name
-    r.grain = request.POST.get('grain') or r.grain
-    r.meat_alternate = request.POST.get('meatAlternate') or r.meat_alternate
-    # Update grain_rule if provided
-    rule_id = request.POST.get('rule')
-    if rule_id:
-        r.grain_rule_id = rule_id
-    r.instructions = request.POST.get('instructions') or r.instructions
-    if request.FILES.get('image'): r.image = request.FILES['image']
-    
+    initial_name = r.name
+    initial_recipe_type = r.recipe_type
+    r.name = request.POST.get('recipeName') or request.POST.get('mealName') or r.name
+    recipe_type, populate_flags = resolve_recipe_type_and_populate_flags(request.POST)
+    r.recipe_type = recipe_type
+
+    def post_or_existing(key, current_value):
+        if key in request.POST:
+            return request.POST.get(key, '').strip()
+        return current_value
+
+    r.grain = post_or_existing('grain', r.grain)
+    r.meat_alternate = post_or_existing('meatAlternate', r.meat_alternate)
+    r.fruit = post_or_existing('fruit', r.fruit)
+    r.veg = post_or_existing('veg', r.veg)
+    r.meat = post_or_existing('meat', r.meat)
+    r.addfood = post_or_existing('addfood', r.addfood)
+    r.fluid = post_or_existing('fluid', r.fluid)
+    r.instructions = post_or_existing('instructions', r.instructions)
+
+    # Update rule fields; blank selection should clear existing rule.
+    for rule_field in ('grain_rule', 'addfood_rule', 'fluid_rule', 'veg_rule', 'fruit_rule', 'meat_rule'):
+        if rule_field in request.POST:
+            raw_value = (request.POST.get(rule_field) or '').strip()
+            setattr(r, f'{rule_field}_id', raw_value or None)
+
+    if request.FILES.get('image'):
+        r.image = request.FILES['image']
     # Update checkbox fields
-    r.populate_breakfast = request.POST.get('populateBreakfast') == 'on'
-    r.populate_am_snack = request.POST.get('populateAMSnack') == 'on'
-    r.populate_lunch = request.POST.get('populateLunch') == 'on'
-    r.populate_pm_snack = request.POST.get('populatePMSnack') == 'on'
+    r.populate_breakfast = populate_flags['populate_breakfast']
+    r.populate_am_snack = populate_flags['populate_am_snack']
+    r.populate_lunch = populate_flags['populate_lunch']
+    r.populate_pm_snack = populate_flags['populate_pm_snack']
     r.standalone = request.POST.get('standalone') == 'on'
     r.ignore_inventory = request.POST.get('ignoreInventory') == 'on'
-    
     r.save()
     
-    # Update ingredients
-    ingredient_ids = [
-        request.POST.get('mainIngredient1'),
-        request.POST.get('mainIngredient2'),
-        request.POST.get('mainIngredient3'),
-        request.POST.get('mainIngredient4'),
-        request.POST.get('mainIngredient5')
+    # Update ingredients: support both unified and legacy category-specific field prefixes.
+    ingredient_prefixes = [
+        'mainIngredient',
+        'breakfastMainIngredient',
+        'amIngredient',
+        'pmIngredient',
+        'fruitMainIngredient',
+        'vegMainIngredient',
+        'wgMainIngredient',
     ]
-    quantities = [
-        request.POST.get('qtyMainIngredient1'),
-        request.POST.get('qtyMainIngredient2'),
-        request.POST.get('qtyMainIngredient3'),
-        request.POST.get('qtyMainIngredient4'),
-        request.POST.get('qtyMainIngredient5')
+    qty_prefixes = [
+        'qtyMainIngredient',
+        'breakfastQtyMainIngredient',
+        'amQty',
+        'pmQty',
+        'fruitQtyMainIngredient',
+        'vegQtyMainIngredient',
+        'wgQtyMainIngredient',
     ]
+
+    ingredient_ids = []
+    quantities = []
+    for i in range(1, 21):
+        ingredient_value = None
+        qty_value = None
+
+        for prefix in ingredient_prefixes:
+            candidate = request.POST.get(f'{prefix}{i}')
+            if candidate not in (None, ''):
+                ingredient_value = candidate
+                break
+
+        for prefix in qty_prefixes:
+            candidate = request.POST.get(f'{prefix}{i}')
+            if candidate not in (None, ''):
+                qty_value = candidate
+                break
+
+        ingredient_ids.append(ingredient_value)
+        quantities.append(qty_value)
+
     save_recipe_ingredients(r, ingredient_ids, quantities)
     
-    return JsonResponse({'success': True})
+    from django.shortcuts import redirect
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_http_methods(["GET"])
 def fruit_recipe_detail(request, recipe_id):
@@ -13238,7 +13646,7 @@ def update_fruit_recipe(request, recipe_id):
     user = get_user_for_view(request)
     r = Recipe.objects.filter(id=recipe_id, user=user, recipe_type='fruit').first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    r.name = request.POST.get('fruitName') or r.name
+    r.name = request.POST.get('recipeName') or request.POST.get('fruitName') or r.name
     # Update fruit_rule if provided
     rule_id = request.POST.get('fruitRule')
     if rule_id:
@@ -13256,11 +13664,12 @@ def update_fruit_recipe(request, recipe_id):
     r.save()
     
     # Update ingredients
-    ingredient_ids = [request.POST.get('fruitMainIngredient1')]
-    quantities = [request.POST.get('fruitQtyMainIngredient1')]
+    ingredient_ids = [request.POST.get(f'fruitMainIngredient{i}') for i in range(1, 21)]
+    quantities = [request.POST.get(f'fruitQtyMainIngredient{i}') for i in range(1, 21)]
     save_recipe_ingredients(r, ingredient_ids, quantities)
     
-    return JsonResponse({'success': True})
+    from django.shortcuts import redirect
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_http_methods(["GET"])
 def veg_recipe_detail(request, recipe_id):
@@ -13292,7 +13701,7 @@ def update_veg_recipe(request, recipe_id):
     user = get_user_for_view(request)
     r = Recipe.objects.filter(id=recipe_id, user=user, recipe_type='vegetable').first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    r.name = request.POST.get('vegName') or r.name
+    r.name = request.POST.get('recipeName') or request.POST.get('vegName') or r.name
     # Update veg_rule if provided
     rule_id = request.POST.get('vegRule')
     if rule_id:
@@ -13310,11 +13719,12 @@ def update_veg_recipe(request, recipe_id):
     r.save()
     
     # Update ingredients
-    ingredient_ids = [request.POST.get('vegMainIngredient1')]
-    quantities = [request.POST.get('vegQtyMainIngredient1')]
+    ingredient_ids = [request.POST.get(f'vegMainIngredient{i}') for i in range(1, 21)]
+    quantities = [request.POST.get(f'vegQtyMainIngredient{i}') for i in range(1, 21)]
     save_recipe_ingredients(r, ingredient_ids, quantities)
     
-    return JsonResponse({'success': True})
+    from django.shortcuts import redirect
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_http_methods(["GET"])
 def wg_recipe_detail(request, recipe_id):
@@ -13346,7 +13756,7 @@ def update_wg_recipe(request, recipe_id):
     user = get_user_for_view(request)
     r = Recipe.objects.filter(id=recipe_id, user=user, recipe_type='whole_grain').first()
     if not r: return JsonResponse({'success': False, 'error': 'Not found'}, status=404)
-    r.name = request.POST.get('wgName') or r.name
+    r.name = request.POST.get('recipeName') or request.POST.get('wgName') or r.name
     # Update grain_rule if provided (whole grain uses grain_rule)
     rule_id = request.POST.get('wgRule')
     if rule_id:
@@ -13364,8 +13774,9 @@ def update_wg_recipe(request, recipe_id):
     r.save()
     
     # Update ingredients
-    ingredient_ids = [request.POST.get('wgMainIngredient1')]
-    quantities = [request.POST.get('wgQtyMainIngredient1')]
+    ingredient_ids = [request.POST.get(f'wgMainIngredient{i}') for i in range(1, 21)]
+    quantities = [request.POST.get(f'wgQtyMainIngredient{i}') for i in range(1, 21)]
     save_recipe_ingredients(r, ingredient_ids, quantities)
     
-    return JsonResponse({'success': True})
+    from django.shortcuts import redirect
+    return redirect(request.META.get('HTTP_REFERER', '/'))

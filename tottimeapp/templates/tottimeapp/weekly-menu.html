@@ -46,6 +46,7 @@ async function reloadTableFragment() {
             container.appendChild(newTable.cloneNode(true));
             window.__menuFragmentReloaded = true;
         }
+        initEstimatedDailyStudentsControl();
         clearInventoryRulesCache();
         await applyGradientsToCells();
         await ensureDailyWG();
@@ -277,7 +278,7 @@ thead tr:first-child th:last-child {
     position: relative;
     gap: 10px;
     width: 100%;
-    padding-right: 52px; /* reserve space for menu button */
+    padding-right: 52px; /* reserve space for menu button only */
 }
 
 .desktop-menu-wrapper {
@@ -287,6 +288,40 @@ thead tr:first-child th:last-child {
     top: 50%;
     transform: translateY(-50%);
     z-index: 1250;
+}
+
+.desktop-students-wrapper {
+    display: none;
+    position: absolute;
+    right: 52px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1250;
+    align-items: center;
+    gap: 8px;
+}
+
+.weekly-student-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    white-space: nowrap;
+}
+
+.weekly-student-input {
+    width: 72px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 6px;
+    background: #fff;
+    color: #21201f;
+    font-weight: 700;
+    text-align: center;
+    padding: 4px 6px;
+}
+
+.weekly-student-input:focus {
+    outline: 2px solid rgba(57, 189, 180, 0.75);
+    outline-offset: 1px;
 }
 
 /* Left-aligned header icon group (generate + save) */
@@ -817,6 +852,9 @@ thead tr:first-child th:last-child {
     /* show left header icons on desktop */
     .desktop-header-left { display: flex !important; }
 
+    /* show students control on desktop */
+    .desktop-students-wrapper { display: flex !important; }
+
 #weeklyMenuHeader + h1,
 h1.mt-4 {
     margin-top: 1.55rem !important;
@@ -1108,6 +1146,18 @@ h1.mt-4 {
                                         </button>
                                     </div>
                                     <span class="weekly-header-title">Weekly Menu: Date - Date</span>
+                                    <div class="desktop-students-wrapper" aria-label="Estimated daily students">
+                                        <label for="estimatedDailyStudentsInput" class="weekly-student-label">Estimated Daily Students</label>
+                                        <input
+                                            type="number"
+                                            id="estimatedDailyStudentsInput"
+                                            class="weekly-student-input"
+                                            min="1"
+                                            step="1"
+                                            value="25"
+                                            aria-label="Estimated Daily Students"
+                                        />
+                                    </div>
                                     <div class="desktop-menu-wrapper" aria-label="Menu" role="group">
                                         <button type="button" id="desktopMenuBtn" class="desktop-menu-btn" title="Menu" aria-label="Menu Options">
                                             <i class="fas fa-ellipsis-v"></i>
@@ -1372,6 +1422,67 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Local storage key */
 const MENU_PROGRESS_KEY = "weeklyMenuProgress_v1";
 const SELECTED_DAY_KEY = "selectedDay_v1";
+const WEEKLY_STUDENTS_DEFAULT = 25;
+const WEEKLY_STUDENTS_KEY = "weeklyMenuEstimatedStudents_{{ request.user.id|default:'anon' }}";
+
+function normalizeWeeklyStudentsValue(rawValue) {
+    const parsed = parseInt(rawValue, 10);
+    if (!Number.isFinite(parsed) || Number.isNaN(parsed)) return WEEKLY_STUDENTS_DEFAULT;
+    return Math.max(1, Math.min(9999, parsed));
+}
+
+function getEstimatedDailyStudents() {
+    const input = document.getElementById('estimatedDailyStudentsInput');
+    if (input) {
+        return normalizeWeeklyStudentsValue(input.value);
+    }
+    try {
+        return normalizeWeeklyStudentsValue(localStorage.getItem(WEEKLY_STUDENTS_KEY));
+    } catch (e) {
+        return WEEKLY_STUDENTS_DEFAULT;
+    }
+}
+
+function syncEstimatedDailyStudentsUI(value) {
+    const normalized = normalizeWeeklyStudentsValue(value);
+    const input = document.getElementById('estimatedDailyStudentsInput');
+    if (input) input.value = normalized;
+}
+
+function persistEstimatedDailyStudents(value) {
+    const normalized = normalizeWeeklyStudentsValue(value);
+    syncEstimatedDailyStudentsUI(normalized);
+    try {
+        localStorage.setItem(WEEKLY_STUDENTS_KEY, String(normalized));
+    } catch (e) {
+        // Ignore localStorage failures (private mode, quota, etc.)
+    }
+}
+
+function initEstimatedDailyStudentsControl() {
+    const input = document.getElementById('estimatedDailyStudentsInput');
+    if (!input) return;
+
+    let initialValue = WEEKLY_STUDENTS_DEFAULT;
+    try {
+        const saved = localStorage.getItem(WEEKLY_STUDENTS_KEY);
+        if (saved !== null) initialValue = normalizeWeeklyStudentsValue(saved);
+    } catch (e) {
+        initialValue = WEEKLY_STUDENTS_DEFAULT;
+    }
+    syncEstimatedDailyStudentsUI(initialValue);
+
+    if (input.dataset.boundStudentsListener === 'true') return;
+    input.dataset.boundStudentsListener = 'true';
+
+    input.addEventListener('input', function() {
+        persistEstimatedDailyStudents(this.value);
+    });
+
+    input.addEventListener('change', function() {
+        persistEstimatedDailyStudents(this.value);
+    });
+}
 
 /* Global cache for inventory rules (name → {gradient_start, gradient_end, text_color, rule_label?}) */
 let inventoryRulesCache = null;
@@ -2130,6 +2241,7 @@ function updateVegetableTable(response){ populateFromResponse(response); {% if n
 /* Document ready: restore, attach handlers */
 
 $(document).ready(function() {
+    initEstimatedDailyStudentsControl();
     restoreMenuProgressFromLocalStorage();
     normalizeMissingMenuText();
     {% if not use_inventory_selectors %}
@@ -2228,6 +2340,7 @@ $(document).ready(function() {
         // Include week_start so backend uses the correct date for 2-week cooldown calculation
         ajaxPost('/generate_full_menu/', {
             week_start: (window.nextMondayDate ? (new Date(window.nextMondayDate)).toISOString().split('T')[0] : null),
+            estimated_daily_students: getEstimatedDailyStudents(),
             ignore_inventory: (window.confirmedIgnoreInventory ? 'true' : 'false')
         })
             .done(function(resp) {
