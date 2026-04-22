@@ -71,6 +71,7 @@ urlpatterns = [
     path('fetch-fruit-recipes/', login_required(views.fetch_fruit_recipes), name='fetch_fruit_recipes'),  
     path('fetch-veg-recipes/', login_required(views.fetch_veg_recipes), name='fetch_veg_recipes'),  
     path('fetch-wg-recipes/', login_required(views.fetch_wg_recipes), name='fetch_wg_recipes'),  
+    path('fetch-fluid-recipes/', login_required(views.fetch_fluid_recipes), name='fetch_fluid_recipes'),  
     path('fetch-rules/', login_required(views.fetch_rules), name='fetch_rules'),
     path('api/get_wg_candidates/', login_required(views.get_wg_candidates), name='get_wg_candidates'),
     path('api/list_rules/', login_required(views.list_rules), name='list_rules'),
@@ -78,6 +79,9 @@ urlpatterns = [
     path('save-menu/', login_required(views.save_menu), name='save-menu'),  
     path('get-recipe/<int:recipe_id>/', login_required(views.get_recipe), name='get_recipe'),  
     path('delete-recipe/<str:category>/<int:recipe_id>/', views.delete_recipe, name='delete_recipe'),
+    path('archive-recipe/<int:recipe_id>/', login_required(views.archive_recipe), name='archive_recipe'),
+    path('unarchive-recipe/<int:recipe_id>/', login_required(views.unarchive_recipe), name='unarchive_recipe'),
+    path('fetch-archived-recipes/', views.fetch_archived_recipes, name='fetch_archived_recipes'),
     path('classroom_options/', login_required(views.classroom_options), name='classroom_options'),  
     path('classroom_options_teachers/', login_required(views.classroom_options_teachers), name='classroom_options_teachers'),  
     path('classroom_options_parents/', login_required(views.classroom_options_parents), name='classroom_options_parents'),  
@@ -179,6 +183,7 @@ urlpatterns = [
     path('add-feed/', login_required(views.add_feed), name='add_feed'),
     path('feeds-for-student/', login_required(views.feeds_for_student), name='feeds_for_student'),
     path('update_attendance_times/', login_required(views.update_attendance_times), name='update_attendance_times'),
+    path('insert_attendance_record/', login_required(views.insert_attendance_record), name='insert_attendance_record'),
     path('inbox_perms/', login_required(views.inbox_perms), name='inbox_perms'),
     path('get-allowed-receivers/', login_required(views.get_allowed_receivers), name='get_allowed_receivers'),
     path('add-announcement/', login_required(views.add_announcement), name='add_announcement'),
@@ -261,6 +266,11 @@ urlpatterns = [
     path('update-veg-recipe/<int:recipe_id>/', login_required(views.update_veg_recipe), name='update_veg_recipe'),
     path('recipe/wg/<int:recipe_id>/', login_required(views.wg_recipe_detail), name='wg_recipe_detail'),
     path('update-wg-recipe/<int:recipe_id>/', login_required(views.update_wg_recipe), name='update_wg_recipe'),
+
+    path('api/similarity-groups/', login_required(views.similarity_groups_list), name='similarity_groups_list'),
+    path('api/similarity-groups/create/', login_required(views.similarity_group_create), name='similarity_group_create'),
+    path('api/similarity-groups/<int:group_id>/update/', login_required(views.similarity_group_update), name='similarity_group_update'),
+    path('api/similarity-groups/<int:group_id>/delete/', login_required(views.similarity_group_delete), name='similarity_group_delete'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

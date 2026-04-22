@@ -52,6 +52,7 @@ class Inventory(models.Model):
         ('g', 'Gram (g)'),
         ('ml', 'Milliliter (ml)'),
         ('l', 'Liter (L)'),
+        ('gal', 'Gallon (gal)'),
         ('cup', 'Cup'),
         ('tbsp', 'Tablespoon'),
         ('tsp', 'Teaspoon'),
@@ -68,10 +69,10 @@ class Inventory(models.Model):
     unit_type = models.CharField(max_length=20, choices=UNIT_TYPE_CHOICES, null=True, blank=True)
     # The smallest unit for this item (e.g., 'each', 'slice', 'oz')
     base_unit = models.CharField(max_length=20, choices=UNIT_TYPE_CHOICES, null=True, blank=True)
-    # How many base units in one inventory unit (e.g., 12 for pack of 12, 1 for lb, etc.)
+    # Portion size for one student in base units (e.g., 16 for 16 oz milk serving)
     unit_size = models.DecimalField(
         max_digits=10, decimal_places=2, default=1,
-        help_text="How many base units in one inventory unit (e.g., 12 for pack of 12, 1 for lb, etc.)"
+        help_text="Portion size per student in base units"
     )
     # Optional: custom label for display (e.g., 'pack of 12 tacos')
     custom_unit_label = models.CharField(
@@ -119,6 +120,7 @@ class Inventory(models.Model):
             'g': ('g', 1),
             'ml': ('ml', 1),
             'l': ('ml', 1000),
+            'gal': ('oz', 128),
             'cup': ('cup', 1),
             'tbsp': ('tbsp', 1),
             'tsp': ('tsp', 1),
@@ -298,6 +300,8 @@ class Recipe(models.Model):
     # Common fields
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
     pdf_url = models.URLField(max_length=500, blank=True, null=True)
+    archive = models.BooleanField(default=False)
+    
 
     def __str__(self):
         return self.name
@@ -312,6 +316,24 @@ class Recipe(models.Model):
         # Delete associated RecipeIngredient objects
         self.ingredients.all().delete()
         super(Recipe, self).delete(*args, **kwargs)
+
+
+class RecipeSimilarityGroup(models.Model):
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100, help_text='Descriptive group name, e.g. "Fried Chicken Variants"')
+    recipes = models.ManyToManyField(
+        Recipe,
+        related_name='similarity_groups',
+        blank=True,
+        help_text='Recipes that cannot appear in the same week together'
+    )
+
+    class Meta:
+        unique_together = ('user', 'name')
+
+    def __str__(self):
+        return f"{self.name} ({self.user})"
 
 
 class BreakfastRecipe(models.Model):

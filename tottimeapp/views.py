@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Recipe, BreakfastRecipe, AMRecipe, PMRecipe, FruitRecipe, VegRecipe, WgRecipe
+from .models import Recipe, BreakfastRecipe, AMRecipe, PMRecipe, FruitRecipe, VegRecipe, WgRecipe, RecipeSimilarityGroup
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.db.models import Q, Subquery, IntegerField, Count, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
@@ -153,6 +153,74 @@ def normalize_inventory_category(category_value):
         return 'Misc'
 
     return cleaned
+
+
+def parse_checkbox_value(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'on', 'yes'}
+
+
+def build_inventory_side_dish_fields(post_data):
+    is_side_dish = parse_checkbox_value(post_data.get('is_side_dish'))
+    meal_period = (post_data.get('meal_period') or '').strip()
+    valid_periods = {choice for choice, _label in Inventory.MEAL_PERIOD_CHOICES}
+    populate_fields = {
+        'populate_breakfast': False,
+        'populate_am_snack': False,
+        'populate_lunch': False,
+        'populate_pm_snack': False,
+    }
+
+    if not is_side_dish:
+        return {
+            'is_side_dish': False,
+            'meal_period': 'all',
+            **populate_fields,
+        }, None
+
+    if meal_period == 'manual':
+        populate_fields = {
+            'populate_breakfast': parse_checkbox_value(post_data.get('populate_breakfast')),
+            'populate_am_snack': parse_checkbox_value(post_data.get('populate_am_snack')),
+            'populate_lunch': parse_checkbox_value(post_data.get('populate_lunch')),
+            'populate_pm_snack': parse_checkbox_value(post_data.get('populate_pm_snack')),
+        }
+        selected_periods = [
+            period for period in ['breakfast', 'am_snack', 'lunch', 'pm_snack']
+            if populate_fields[f'populate_{period}']
+        ]
+
+        if not selected_periods:
+            return None, 'Select at least one meal period for manual selection.'
+
+        requested_order = [
+            value.strip() for value in (post_data.get('manual_selection_order') or '').split(',')
+            if value.strip() in selected_periods
+        ]
+        ordered_periods = []
+        for period in requested_order + selected_periods:
+            if period not in ordered_periods:
+                ordered_periods.append(period)
+
+        return {
+            'is_side_dish': True,
+            'meal_period': ordered_periods[0],
+            **populate_fields,
+        }, None
+
+    if meal_period not in valid_periods:
+        return None, 'Meal period is required for side dishes.'
+
+    if meal_period == 'all':
+        for key in populate_fields:
+            populate_fields[key] = True
+    else:
+        populate_fields[f'populate_{meal_period}'] = True
+
+    return {
+        'is_side_dish': True,
+        'meal_period': meal_period,
+        **populate_fields,
+    }, None
 
 def get_recipe_ingredients(recipe):
     """
@@ -1992,6 +2060,7 @@ def inventory_list(request):
         'Grains',
         'Breakfast',
         'Snacks',
+        'Juice',
         'Infants',
         'Supplies',
         'Misc',
@@ -2288,6 +2357,30 @@ def add_item(request):
         conversion_to_base = request.POST.get('conversion_to_base')
         custom_unit_label = request.POST.get('custom_unit_label')
         rule_id = request.POST.get('rule')
+        side_dish_fields, side_dish_error = build_inventory_side_dish_fields(request.POST)
+
+        if side_dish_error:
+            return JsonResponse({'success': False, 'message': side_dish_error})
+
+        # Map unit_type to base_unit if not explicitly provided
+        unit_base_map = {
+            'each': 'each',
+            'lb': 'oz',
+            'oz': 'oz',
+            'g': 'g',
+            'ml': 'ml',
+            'l': 'ml',
+            'gal': 'oz',
+            'cup': 'cup',
+            'tbsp': 'tbsp',
+            'tsp': 'tsp',
+            'slice': 'slice',
+            'loaf': 'slice',
+            'pack': 'each',
+            'case': 'each'
+        }
+        if not base_unit and unit_type:
+            base_unit = unit_base_map.get(unit_type, 'each')
 
         # Create the new inventory item with all fields
         new_item = Inventory.objects.create(
@@ -2302,7 +2395,13 @@ def add_item(request):
             unit_size=unit_size if unit_size else 1,
             conversion_to_base=conversion_to_base if conversion_to_base else 1,
             custom_unit_label=custom_unit_label,
-            rule_id=rule_id if rule_id else None
+            rule_id=rule_id if rule_id else None,
+            is_side_dish=side_dish_fields['is_side_dish'],
+            meal_period=side_dish_fields['meal_period'],
+            populate_breakfast=side_dish_fields['populate_breakfast'],
+            populate_am_snack=side_dish_fields['populate_am_snack'],
+            populate_lunch=side_dish_fields['populate_lunch'],
+            populate_pm_snack=side_dish_fields['populate_pm_snack'],
         )
         return JsonResponse({'success': True, 'message': 'Item added successfully!'})
 
@@ -2364,9 +2463,11 @@ def edit_inventory_item(request, item_id):
     new_name = request.POST.get('item', '').strip()
     raw_category = request.POST.get('category', '').strip()
     unit_type = (request.POST.get('unit_type') or '').strip()
+    unit_size = (request.POST.get('unit_size') or '').strip()
     rule_id = (request.POST.get('rule') or '').strip()
     quantity = request.POST.get('quantity')
     resupply = request.POST.get('resupply')
+    side_dish_fields, side_dish_error = build_inventory_side_dish_fields(request.POST)
 
     if not new_name:
         return JsonResponse({'success': False, 'message': 'Item name cannot be empty'})
@@ -2377,6 +2478,8 @@ def edit_inventory_item(request, item_id):
         return JsonResponse({'success': False, 'message': 'Current quantity is required'})
     if resupply in [None, '']:
         return JsonResponse({'success': False, 'message': 'Resupply threshold is required'})
+    if side_dish_error:
+        return JsonResponse({'success': False, 'message': side_dish_error})
 
     rule_obj = None
     if rule_id:
@@ -2384,13 +2487,40 @@ def edit_inventory_item(request, item_id):
         if not rule_obj:
             return JsonResponse({'success': False, 'message': 'Selected rule is invalid'})
 
+    # Map unit_type to base_unit using the same logic as in the add_item view
+    unit_base_map = {
+        'each': 'each',
+        'lb': 'oz',
+        'oz': 'oz',
+        'g': 'g',
+        'ml': 'ml',
+        'l': 'ml',
+        'gal': 'oz',
+        'cup': 'cup',
+        'tbsp': 'tbsp',
+        'tsp': 'tsp',
+        'slice': 'slice',
+        'loaf': 'slice',
+        'pack': 'each',
+        'case': 'each'
+    }
+    base_unit = unit_base_map.get(unit_type, 'each') if unit_type else None
+
     try:
         item.item = new_name
         item.category = category
         item.unit_type = unit_type or None
+        item.base_unit = base_unit
+        item.unit_size = unit_size if unit_size else 1
         item.rule = rule_obj
         item.quantity = quantity
         item.resupply = resupply
+        item.is_side_dish = side_dish_fields['is_side_dish']
+        item.meal_period = side_dish_fields['meal_period']
+        item.populate_breakfast = side_dish_fields['populate_breakfast']
+        item.populate_am_snack = side_dish_fields['populate_am_snack']
+        item.populate_lunch = side_dish_fields['populate_lunch']
+        item.populate_pm_snack = side_dish_fields['populate_pm_snack']
         item.save()
         return JsonResponse({'success': True, 'message': 'Inventory item updated successfully'})
     except IntegrityError:
@@ -2560,7 +2690,7 @@ def order_soon_items_api(request):
 
 def fetch_ingredients(request):
     user = get_user_for_view(request)
-    ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item', 'unit_type')
+    ingredients = Inventory.objects.filter(user_id=user.id).values('id', 'item', 'base_unit', 'unit_type')
     return JsonResponse({'ingredients': list(ingredients)})
 
 
@@ -2625,20 +2755,48 @@ def create_recipe(request):
     if request.method == 'POST':
         # Extract form data
         recipe_name = request.POST.get('recipeName')
-        main_ingredient_ids = [
-            request.POST.get('mainIngredient1'),
-            request.POST.get('mainIngredient2'),
-            request.POST.get('mainIngredient3'),
-            request.POST.get('mainIngredient4'),
-            request.POST.get('mainIngredient5')
+        ingredient_prefixes = [
+            'mainIngredient',
+            'breakfastMainIngredient',
+            'amIngredient',
+            'pmIngredient',
+            'fruitMainIngredient',
+            'vegMainIngredient',
+            'wgMainIngredient',
+            'ingredient',
         ]
-        quantities = [
-            request.POST.get('qtyMainIngredient1'),
-            request.POST.get('qtyMainIngredient2'),
-            request.POST.get('qtyMainIngredient3'),
-            request.POST.get('qtyMainIngredient4'),
-            request.POST.get('qtyMainIngredient5')
+        qty_prefixes = [
+            'qtyMainIngredient',
+            'breakfastQtyMainIngredient',
+            'amQty',
+            'pmQty',
+            'fruitQtyMainIngredient',
+            'vegQtyMainIngredient',
+            'wgQtyMainIngredient',
+            'qty',
         ]
+
+        main_ingredient_ids = []
+        quantities = []
+        for i in range(1, 21):
+            ingredient_value = None
+            qty_value = None
+
+            for prefix in ingredient_prefixes:
+                candidate = request.POST.get(f'{prefix}{i}')
+                if candidate not in (None, ''):
+                    ingredient_value = candidate
+                    break
+
+            for prefix in qty_prefixes:
+                candidate = request.POST.get(f'{prefix}{i}')
+                if candidate not in (None, ''):
+                    qty_value = candidate
+                    break
+
+            main_ingredient_ids.append(ingredient_value)
+            quantities.append(qty_value)
+
         instructions = request.POST.get('instructions')
         grain = request.POST.get('grain')
         meat_alternate = request.POST.get('meatAlternate')
@@ -3069,7 +3227,7 @@ def fetch_recipes(request):
     user = get_user_for_view(request)
 
     # Retrieve only lunch recipes from the database for the identified user
-    recipes = Recipe.objects.filter(user=user, recipe_type='lunch').order_by('name').values('id', 'name')  
+    recipes = Recipe.objects.filter(user=user, recipe_type='lunch', archive=False).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(recipes)})
 
 @login_required
@@ -3108,37 +3266,47 @@ def get_recipe(request, recipe_id):
 @login_required
 def fetch_veg_recipes(request):
     user = get_user_for_view(request)
-    veg_recipes = Recipe.objects.filter(user=user, recipe_type='vegetable').order_by('name').values('id', 'name')
+    veg_recipes = Recipe.objects.filter(user=user, recipe_type='vegetable', archive=False).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(veg_recipes)})
 
 @login_required
 def fetch_wg_recipes(request):
     user = get_user_for_view(request)
-    wg_recipes = Recipe.objects.filter(user=user, recipe_type='whole_grain').order_by('name').values('id', 'name')
+    wg_recipes = Recipe.objects.filter(user=user, recipe_type='whole_grain', archive=False).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(wg_recipes)})
 
 def fetch_fruit_recipes(request):
     user = get_user_for_view(request)
-    fruit_recipes = Recipe.objects.filter(user=user, recipe_type='fruit').order_by('name').values('id', 'name')
+    fruit_recipes = Recipe.objects.filter(user=user, recipe_type='fruit', archive=False).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(fruit_recipes)})
+
+def fetch_fluid_recipes(request):
+    user = get_user_for_view(request)
+    fluid_recipes = Recipe.objects.filter(user=user, recipe_type='fluid', archive=False).order_by('name').values('id', 'name')
+    return JsonResponse({'recipes': list(fluid_recipes)})
 
 def fetch_breakfast_recipes(request):
     user = get_user_for_view(request)
-    breakfast_recipes = Recipe.objects.filter(user=user, recipe_type='breakfast').order_by('name').values('id', 'name')
+    breakfast_recipes = Recipe.objects.filter(user=user, recipe_type='breakfast', archive=False).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(breakfast_recipes)})
 
 @login_required
 def fetch_am_recipes(request):
     user = get_user_for_view(request)
     from django.db.models import Q
-    am_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack')).order_by('name').values('id', 'name')
+    am_recipes = Recipe.objects.filter(user=user, archive=False).filter(Q(recipe_type='am_snack') | Q(recipe_type='am_pm_snack')).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(am_recipes)})
 
 def fetch_pm_recipes(request):
     user = get_user_for_view(request)
     from django.db.models import Q
-    pm_recipes = Recipe.objects.filter(user=user).filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack')).order_by('name').values('id', 'name')  
+    pm_recipes = Recipe.objects.filter(user=user, archive=False).filter(Q(recipe_type='pm_snack') | Q(recipe_type='am_pm_snack')).order_by('name').values('id', 'name')
     return JsonResponse({'recipes': list(pm_recipes)})
+
+def fetch_archived_recipes(request):
+    user = get_user_for_view(request)
+    archived = Recipe.objects.filter(user=user, archive=True).order_by('recipe_type', 'name').values('id', 'name', 'recipe_type')
+    return JsonResponse({'recipes': list(archived)})
 
 def check_ingredients_availability(request, recipe):
     """Check if all ingredients in a recipe are available in sufficient quantities."""
@@ -3414,6 +3582,32 @@ def save_menu(request):
     return JsonResponse({'status': 'fail', 'error': 'Invalid request method'}, status=400)
 
 @login_required
+@login_required
+def archive_recipe(request, recipe_id):
+    if request.method == 'POST':
+        user = get_user_for_view(request)
+        recipe = Recipe.objects.filter(pk=recipe_id, user=user).first()
+        if not recipe:
+            return JsonResponse({'status': 'error', 'message': 'Recipe not found'}, status=404)
+        recipe.archive = True
+        recipe.save(update_fields=['archive'])
+        return JsonResponse({'status': 'success', 'message': f'"{recipe.name}" has been archived.'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+
+@login_required
+def unarchive_recipe(request, recipe_id):
+    if request.method == 'POST':
+        user = get_user_for_view(request)
+        recipe = Recipe.objects.filter(pk=recipe_id, user=user).first()
+        if not recipe:
+            return JsonResponse({'status': 'error', 'message': 'Recipe not found'}, status=404)
+        recipe.archive = False
+        recipe.save(update_fields=['archive'])
+        return JsonResponse({'status': 'success', 'message': f'"{recipe.name}" has been unarchived.'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+
 def delete_recipe(request, recipe_id, category):
     if request.method == 'DELETE':
         user = get_user_for_view(request)
@@ -3658,12 +3852,17 @@ def attendance_record(request):
     
     # Filter attendance records by date
     attendance_records = AttendanceRecord.objects.filter(sign_in_time__date=selected_date)
+
+    # Build student options for manual insert of completely missed records
+    insert_students = Student.objects.filter(main_user=main_user)
     
     # If a classroom is selected, filter by original classroom OR any classroom override
     if selected_classroom:
         try:
             classroom_obj = Classroom.objects.get(id=selected_classroom)
             classroom_name = classroom_obj.name
+
+            insert_students = insert_students.filter(classroom_id=selected_classroom)
             
             attendance_records = attendance_records.filter(
                 Q(classroom_id=selected_classroom) |
@@ -3674,7 +3873,11 @@ def attendance_record(request):
             )
         except Classroom.DoesNotExist:
             # If classroom doesn't exist, just filter by classroom_id
+            insert_students = insert_students.filter(classroom_id=selected_classroom)
             attendance_records = attendance_records.filter(classroom_id=selected_classroom)
+
+    existing_student_ids = attendance_records.values_list('student_id', flat=True)
+    insert_students = insert_students.exclude(id__in=existing_student_ids).order_by('first_name', 'last_name')
     
     # Filter classrooms by main user - try common FK field names
     classrooms = None
@@ -3749,6 +3952,7 @@ def attendance_record(request):
     # Render the attendance record page
     return render(request, 'attendance_record.html', {
         'attendance_records': attendance_records,
+        'insert_students': insert_students,
         'classrooms': classrooms,
         'selected_date': selected_date,
         'selected_classroom': selected_classroom,
@@ -3764,6 +3968,7 @@ def update_attendance_times(request):
     try:
         data = json.loads(request.body)
         updates = data.get('updates', [])
+        main_user = get_user_for_view(request)
         
         for update in updates:
             record_id = update.get('record_id')
@@ -3771,7 +3976,7 @@ def update_attendance_times(request):
             value = update.get('value')
             
             try:
-                record = AttendanceRecord.objects.get(id=record_id, user=request.user)
+                record = AttendanceRecord.objects.get(id=record_id, user=main_user)
                 
                 # Convert empty string to None
                 if value == '':
@@ -3790,6 +3995,67 @@ def update_attendance_times(request):
         
         return JsonResponse({'success': True})
         
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@require_POST
+def insert_attendance_record(request):
+    try:
+        data = json.loads(request.body)
+        main_user = get_user_for_view(request)
+
+        student_id = data.get('student_id')
+        date_str = data.get('date')
+        sign_in_time_str = data.get('sign_in_time')
+        sign_out_time_str = data.get('sign_out_time')
+        classroom_id = data.get('classroom_id')
+
+        if not student_id or not date_str or not sign_in_time_str:
+            return JsonResponse({'success': False, 'error': 'Student, date, and sign-in time are required.'})
+
+        try:
+            student = Student.objects.get(id=student_id, main_user=main_user)
+        except Student.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Student not found for this account.'})
+
+        if AttendanceRecord.objects.filter(student=student, user=main_user, sign_in_time__date=date_str).exists():
+            return JsonResponse({'success': False, 'error': 'Attendance record already exists for this student on the selected date.'})
+
+        try:
+            sign_in_naive = datetime.strptime(f"{date_str} {sign_in_time_str}", "%Y-%m-%d %H:%M")
+            sign_in_dt = timezone.make_aware(sign_in_naive, timezone.get_current_timezone())
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Invalid sign-in time format.'})
+
+        sign_out_dt = None
+        if sign_out_time_str:
+            try:
+                sign_out_naive = datetime.strptime(f"{date_str} {sign_out_time_str}", "%Y-%m-%d %H:%M")
+                sign_out_dt = timezone.make_aware(sign_out_naive, timezone.get_current_timezone())
+            except ValueError:
+                return JsonResponse({'success': False, 'error': 'Invalid sign-out time format.'})
+
+            if sign_out_dt < sign_in_dt:
+                return JsonResponse({'success': False, 'error': 'Sign-out time cannot be before sign-in time.'})
+
+        classroom = None
+        if classroom_id:
+            try:
+                classroom = Classroom.objects.get(id=classroom_id, user=main_user)
+            except Classroom.DoesNotExist:
+                return JsonResponse({'success': False, 'error': 'Selected classroom was not found.'})
+
+        AttendanceRecord.objects.create(
+            user=main_user,
+            student=student,
+            sign_in_time=sign_in_dt,
+            sign_out_time=sign_out_dt,
+            classroom=classroom or student.classroom,
+        )
+
+        return JsonResponse({'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
@@ -3919,6 +4185,17 @@ def classroom(request):
         if selected_classroom_id:
             selected_classroom = classrooms.filter(id=selected_classroom_id).first()
 
+        other_classroom_students = Student.objects.none()
+        if selected_classroom:
+            other_classroom_students = (
+                Student.objects.filter(main_user=main_user, status='active')
+                .exclude(classroom_id=selected_classroom.id)
+                .exclude(attendancerecord__sign_out_time__isnull=True)
+                .select_related('classroom')
+                .order_by('first_name', 'last_name')
+                .distinct()
+            )
+
         today = timezone.localdate()
 
         # Students with an open record that did not start today (red banner)
@@ -4035,6 +4312,7 @@ def classroom(request):
         filtered_students = []
         classrooms = Classroom.objects.none()
         selected_classroom = None
+        other_classroom_students = Student.objects.none()
         status_filter = 'signed_in'
         show_red_flag = False
 
@@ -4042,6 +4320,7 @@ def classroom(request):
         'assigned_students': filtered_students,
         'classrooms': classrooms,
         'classroom': selected_classroom,
+        'other_classroom_students': other_classroom_students,
         'status_filter': status_filter,
         'show_red_flag': show_red_flag,
         **permissions_context,
@@ -4317,8 +4596,8 @@ def update_classroom_attendance(request):
         user = get_user_for_view(request)
 
         try:
-            student = Student.objects.get(id=student_id)
-            classroom = Classroom.objects.get(id=classroom_id) if classroom_id else student.classroom
+            student = Student.objects.get(id=student_id, main_user=user)
+            classroom = Classroom.objects.get(id=classroom_id, user=user) if classroom_id else student.classroom
 
             if action == 'move':
                 # Existing logic for moving classrooms
@@ -4353,7 +4632,7 @@ def update_classroom_attendance(request):
                 # Existing logic for signing in
                 existing_record = AttendanceRecord.objects.filter(
                     student=student,
-                    classroom=classroom,
+                    user=user,
                     sign_out_time__isnull=True
                 ).exists()
 
@@ -4373,7 +4652,7 @@ def update_classroom_attendance(request):
                 # Existing logic for signing out
                 attendance = AttendanceRecord.objects.filter(
                     student=student,
-                    classroom=classroom,
+                    user=user,
                     sign_out_time__isnull=True
                 ).last()
                 if attendance:
@@ -4581,10 +4860,11 @@ def manual_sign_in_ajax(request):
 @login_required
 def delete_attendance(request):
     if request.method == 'POST':
+        main_user = get_user_for_view(request)
         record_id = request.POST.get('id')
         if record_id:
             try:
-                record = AttendanceRecord.objects.get(pk=record_id)
+                record = AttendanceRecord.objects.get(pk=record_id, user=main_user)
                 record.delete()
                 return JsonResponse({'success': True})
             except AttendanceRecord.DoesNotExist:
@@ -5503,6 +5783,35 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
         used_main_recipes = set()
     
     # Helper to check if recipe has sufficient inventory
+    def has_recipe_name_inventory_fallback(recipe):
+        if not recipe or not getattr(recipe, 'name', None):
+            return False
+
+        # Exact match first
+        item = Inventory.objects.filter(user=user, item=recipe.name).first()
+
+        # Fallback: normalized label match for display variants
+        # (e.g., parentheses differences like "1% Milk" vs "1% Milk (unflavored)").
+        if not item:
+            def _norm_label(text):
+                return re.sub(r'[^a-z0-9]+', '', re.sub(r'\([^)]*\)', '', str(text or '').casefold()))
+
+            target_norm = _norm_label(recipe.name)
+            if target_norm:
+                for candidate in Inventory.objects.filter(user=user):
+                    if _norm_label(candidate.item) == target_norm:
+                        item = candidate
+                        break
+
+        if not item:
+            return False
+        conv_to_base = item.conversion_to_base or 1
+        inventory_units = item.total_quantity or item.quantity or 0
+        available_base = inventory_units * conv_to_base
+        portion_per_student = item.unit_size if item.unit_size and item.unit_size > 0 else 1
+        required_base = portion_per_student * estimated_daily_students
+        return available_base >= required_base
+
     def has_sufficient_inventory(recipe):
         """Check if recipe has enough inventory for all ingredients.
         Returns True if recipe.ignore_inventory is True or all ingredients are sufficient.
@@ -5517,42 +5826,50 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
                 return True
             
             # Get all ingredients for this recipe
-            ingredients_list = recipe.ingredients.all().select_related('ingredient')
+            ingredients_list = list(recipe.ingredients.all().select_related('ingredient'))
             if not ingredients_list:
-                # No ingredients linked - allow the recipe
-                return True
+                return has_recipe_name_inventory_fallback(recipe)
             
             # Check each ingredient
+            has_checkable_ingredient = False
             for recipe_ing in ingredients_list:
-                if recipe_ing.ingredient:
-                    # Interpret recipe quantity in the ingredient's base unit (smallest unit)
-                    per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+                if not recipe_ing.ingredient:
+                    continue
 
-                    # Available inventory in base units: total_quantity (inventory units) * conversion_to_base
-                    conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
-                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+                # Interpret recipe quantity in the ingredient's base unit (smallest unit)
+                per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+                if per_portion_base <= 0:
+                    continue
 
-                    # Required amount in base units for all students
-                    required_base = per_portion_base * estimated_daily_students
-                    
-                    # If we know the required quantity and it exceeds available, insufficient
-                    if required_base > 0 and available_base < required_base:
-                        return False
+                has_checkable_ingredient = True
+
+                conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
+
+                # Prefer total_quantity, but fall back to quantity when total_quantity is empty/zero.
+                inventory_units = recipe_ing.ingredient.total_quantity or recipe_ing.ingredient.quantity or 0
+                available_base = inventory_units * conv_to_base
+
+                # Required amount in base units for all students
+                required_base = per_portion_base * estimated_daily_students
+                if available_base < required_base:
+                    return False
+
+            if not has_checkable_ingredient:
+                return has_recipe_name_inventory_fallback(recipe)
             
             # All ingredients are sufficient
             return True
         except Exception as e:
             pass  # print(f"Error checking inventory for '{recipe.name}': {str(e)}")
-            # On error, allow the recipe (fail-open)
             return True
     
     # Helper to get and format ingredient list for a recipe
     def get_recipe_ingredients_debug(recipe):
         """Get ingredients for a recipe and return formatted string with inventory availability"""
         try:
-            ingredients_list = recipe.ingredients.all().select_related('ingredient')
+            ingredients_list = list(recipe.ingredients.all().select_related('ingredient'))
             if not ingredients_list:
-                return "No ingredients linked"
+                return "No ingredients linked (using recipe-name inventory fallback)"
             
             ingredient_details = []
             has_insufficient = False
@@ -5561,7 +5878,8 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
                 if recipe_ing.ingredient:
                     per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
                     conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
-                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+                    inventory_units = recipe_ing.ingredient.total_quantity or recipe_ing.ingredient.quantity or 0
+                    available_base = inventory_units * conv_to_base
                     required_base = per_portion_base * estimated_daily_students
                     units = recipe_ing.ingredient.base_unit or 'units'
                     
@@ -5594,7 +5912,7 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
             return f"Error fetching ingredients: {str(e)}"
     
     # Get all recipes that have at least one component rule with weekly_qty
-    all_recipes = Recipe.objects.filter(user=user)
+    all_recipes = Recipe.objects.filter(user=user, archive=False)
 
     def get_all_rules_for_recipe(r):
         """Return a set of Rule objects attached via any component field."""
@@ -5879,24 +6197,38 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
                                     self.meat_rule = None
                                     self.fluid_rule = None
                                     self.addfood_rule = None
+                                    # Mirror Django FK *_id attributes used in placement logic.
+                                    self.grain_rule_id = None
+                                    self.fruit_rule_id = None
+                                    self.veg_rule_id = None
+                                    self.meat_rule_id = None
+                                    self.fluid_rule_id = None
+                                    self.addfood_rule_id = None
                                     # Set the matching rule based on rule_id
                                     if side_dish.rule:
                                         # Determine which type of rule this is by checking rule name or default to veg
                                         rule_name_lower = side_dish.rule.rule.lower()
                                         if 'fruit' in rule_name_lower or 'berry' in rule_name_lower:
                                             self.fruit_rule = side_dish.rule
+                                            self.fruit_rule_id = side_dish.rule.id
                                             self.recipe_type = 'fruit'
                                         elif 'veg' in rule_name_lower or 'vegetable' in rule_name_lower:
                                             self.veg_rule = side_dish.rule
+                                            self.veg_rule_id = side_dish.rule.id
                                             self.recipe_type = 'vegetable'
                                         elif 'grain' in rule_name_lower or 'whole grain' in rule_name_lower:
                                             self.grain_rule = side_dish.rule
+                                            self.grain_rule_id = side_dish.rule.id
                                             self.recipe_type = 'whole_grain'
                                         else:
                                             # Default to veg_rule for side dishes
                                             self.veg_rule = side_dish.rule
+                                            self.veg_rule_id = side_dish.rule.id
                                     # Add other attributes that might be accessed
                                     self.addfood = None
+                                    self.grain = None
+                                    self.meat = None
+                                    self.fluid = None
                                     self.fruit = None
                                     self.veg = None
                                     # Use actual populate permissions from inventory item
@@ -6222,13 +6554,30 @@ def generate_full_menu(request):
         f"ignore_inventory={force_ignore_inventory}"
     )
     
-    # Calculate 2-week cooldown window for recipe filtering (used by all meal periods)
+    # Calculate 2-week cooldown window for lunch main-dish filtering.
     from datetime import timedelta
     two_weeks_before = week_start_date - timedelta(days=14)
     two_weeks_after = week_start_date + timedelta(days=14)
     
     # Initialize tracking for main dish recipe deduplication across the week
     used_main_recipes = set()
+
+    # Build similarity exclusion helper: returns IDs of all recipes sharing a group with the given recipe
+    _similarity_groups = list(
+        RecipeSimilarityGroup.objects
+        .filter(user=user)
+        .prefetch_related('recipes')
+    )
+    def _get_similarity_excluded_ids(recipe_id):
+        """Return IDs of all recipes that cannot appear in the same week as recipe_id."""
+        excluded = set()
+        for group in _similarity_groups:
+            member_ids = {r.id for r in group.recipes.all()}
+            if recipe_id in member_ids:
+                excluded |= member_ids - {recipe_id}
+        return excluded
+
+    similarity_excluded_ids = set()  # Updated as recipes are selected
     
     # STEP 1: Assign NON-standalone recipes with rules (standalones are skipped)
     rule_assignments, promoted_recipe_ids, used_main_recipes = assign_rules_to_week(
@@ -6245,6 +6594,7 @@ def generate_full_menu(request):
     # AM/PM Snack: ONLY if main snack exists AND fluid row is blank
     fluid_rule_recipes = list(Recipe.objects.filter(
         user=user,
+        archive=False,
         fluid_rule__isnull=False,
         standalone=True  # Fluid recipes are typically standalone
     ).select_related('fluid_rule'))
@@ -6263,8 +6613,93 @@ def generate_full_menu(request):
             (recipe.fluid_rule and recipe.fluid_rule.weekly_qty),
             (recipe.addfood_rule and recipe.addfood_rule.weekly_qty),
         ])
+
+    # Choose rule id for recipe title cells ONLY when an ingredient with a
+    # rule matches the recipe title (e.g., Cheerios recipe title -> Cheerios ingredient rule).
+    def get_recipe_title_rule_id(recipe):
+        if not recipe or not recipe.name:
+            return None
+
+        def _norm(text):
+            return re.sub(r'\s+', ' ', str(text or '').strip().casefold())
+
+        def _loosely_same(a, b):
+            na, nb = _norm(a), _norm(b)
+            if not na or not nb:
+                return False
+            return na == nb
+
+        recipe_name = recipe.name
+        component_rule_pairs = [
+            (recipe.grain, recipe.grain_rule_id),
+            (recipe.fruit, recipe.fruit_rule_id),
+            (recipe.veg, recipe.veg_rule_id),
+            (recipe.fluid, recipe.fluid_rule_id),
+            (recipe.meat, recipe.meat_rule_id),
+            (recipe.addfood, recipe.addfood_rule_id),
+        ]
+        for component_value, rule_id in component_rule_pairs:
+            if rule_id and _loosely_same(component_value, recipe_name):
+                return rule_id
+
+        for ing, _qty in get_recipe_ingredients(recipe):
+            if not ing:
+                continue
+            if getattr(ing, 'rule_id', None) and _loosely_same(getattr(ing, 'item', ''), recipe_name):
+                return ing.rule_id
+
+    def _normalized_name(value):
+        return re.sub(r'\s+', ' ', str(value or '').strip().casefold())
+
+    def _is_same_as_recipe_name(recipe, component_value):
+        if not recipe or not getattr(recipe, 'name', None) or not component_value:
+            return False
+        return _normalized_name(component_value) == _normalized_name(recipe.name)
+
+    def _first_distinct_component(recipe, *component_values):
+        for component_value in component_values:
+            if component_value and not _is_same_as_recipe_name(recipe, component_value):
+                return component_value
+        return ''
+
+    def _first_distinct_component_with_rule(recipe, component_rule_pairs):
+        for component_value, rule_id in component_rule_pairs:
+            if component_value and not _is_same_as_recipe_name(recipe, component_value):
+                return component_value, rule_id
+        return '', None
+
+        return None
     
     # Helper to check if recipe has sufficient inventory
+    def has_recipe_name_inventory_fallback(recipe):
+        if not recipe or not getattr(recipe, 'name', None):
+            return False
+
+        # Exact match first
+        item = Inventory.objects.filter(user=user, item=recipe.name).first()
+
+        # Fallback: normalized label match for display variants
+        # (e.g., parentheses differences like "1% Milk" vs "1% Milk (unflavored)").
+        if not item:
+            def _norm_label(text):
+                return re.sub(r'[^a-z0-9]+', '', re.sub(r'\([^)]*\)', '', str(text or '').casefold()))
+
+            target_norm = _norm_label(recipe.name)
+            if target_norm:
+                for candidate in Inventory.objects.filter(user=user):
+                    if _norm_label(candidate.item) == target_norm:
+                        item = candidate
+                        break
+
+        if not item:
+            return False
+        conv_to_base = item.conversion_to_base or 1
+        inventory_units = item.total_quantity or item.quantity or 0
+        available_base = inventory_units * conv_to_base
+        portion_per_student = item.unit_size if item.unit_size and item.unit_size > 0 else 1
+        required_base = portion_per_student * estimated_daily_students
+        return available_base >= required_base
+
     def has_sufficient_inventory(recipe):
         """Check if recipe has enough inventory for all ingredients.
         Returns True if recipe.ignore_inventory is True or all ingredients are sufficient.
@@ -6279,42 +6714,50 @@ def generate_full_menu(request):
                 return True
             
             # Get all ingredients for this recipe
-            ingredients_list = recipe.ingredients.all().select_related('ingredient')
+            ingredients_list = list(recipe.ingredients.all().select_related('ingredient'))
             if not ingredients_list:
-                # No ingredients linked - allow the recipe
-                return True
+                return has_recipe_name_inventory_fallback(recipe)
             
             # Check each ingredient
+            has_checkable_ingredient = False
             for recipe_ing in ingredients_list:
-                if recipe_ing.ingredient:
-                    # Interpret recipe quantity in the ingredient's base unit (smallest unit)
-                    per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+                if not recipe_ing.ingredient:
+                    continue
 
-                    # Available inventory in base units: total_quantity (inventory units) * conversion_to_base
-                    conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
-                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+                # Interpret recipe quantity in the ingredient's base unit (smallest unit)
+                per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+                if per_portion_base <= 0:
+                    continue
 
-                    # Required amount in base units for all students
-                    required_base = per_portion_base * estimated_daily_students
-                    
-                    # If we know the required quantity and it exceeds available, insufficient
-                    if required_base > 0 and available_base < required_base:
-                        return False
+                has_checkable_ingredient = True
+
+                conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
+
+                # Prefer total_quantity, but fall back to quantity when total_quantity is empty/zero.
+                inventory_units = recipe_ing.ingredient.total_quantity or recipe_ing.ingredient.quantity or 0
+                available_base = inventory_units * conv_to_base
+
+                # Required amount in base units for all students
+                required_base = per_portion_base * estimated_daily_students
+                if available_base < required_base:
+                    return False
+
+            if not has_checkable_ingredient:
+                return has_recipe_name_inventory_fallback(recipe)
             
             # All ingredients are sufficient
             return True
         except Exception as e:
             pass  # print(f"Error checking inventory for '{recipe.name}': {str(e)}")
-            # On error, allow the recipe (fail-open)
             return True
     
     # Helper to get and format ingredient list for a recipe
     def get_recipe_ingredients_debug(recipe):
         """Get ingredients for a recipe and return formatted string with inventory availability"""
         try:
-            ingredients_list = recipe.ingredients.all().select_related('ingredient')
+            ingredients_list = list(recipe.ingredients.all().select_related('ingredient'))
             if not ingredients_list:
-                return "No ingredients linked"
+                return "No ingredients linked (using recipe-name inventory fallback)"
             
             ingredient_details = []
             has_insufficient = False
@@ -6323,7 +6766,8 @@ def generate_full_menu(request):
                 if recipe_ing.ingredient:
                     per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
                     conv_to_base = recipe_ing.ingredient.conversion_to_base or 1
-                    available_base = (recipe_ing.ingredient.total_quantity or 0) * conv_to_base
+                    inventory_units = recipe_ing.ingredient.total_quantity or recipe_ing.ingredient.quantity or 0
+                    available_base = inventory_units * conv_to_base
                     required_base = per_portion_base * estimated_daily_students
                     units = recipe_ing.ingredient.base_unit or 'units'
                     
@@ -6359,14 +6803,21 @@ def generate_full_menu(request):
     # === BREAKFAST GENERATION ===
     breakfast_data = {}
     for day in days_of_week:
-        breakfast_data[day] = {'fluid_milk': '', 'bread': '', 'add1': '', 'fruit': ''}
+        breakfast_data[day] = {
+            'fluid_milk': '', 'fluid_milk_rule_id': None,
+            'bread': '', 'bread_rule_id': None,
+            'add1': '', 'add1_rule_id': None,
+            'fruit': '', 'fruit_rule_id': None
+        }
     
     # FLUID RULE PLACEMENT (MANDATORY DAILY): Place fluid_rule recipes in milk row EVERY day
+    # Fluid rows use inventory-item portion checks (unit_size), not recipe ingredient math.
     if fluid_rule_recipes:
         fluid_recipe = fluid_rule_recipes[0]  # Use first fluid recipe
         for day in days_of_week:
-            if fluid_recipe.populate_breakfast:
+            if fluid_recipe.populate_breakfast and has_recipe_name_inventory_fallback(fluid_recipe):
                 breakfast_data[day]['fluid_milk'] = fluid_recipe.name
+                breakfast_data[day]['fluid_milk_rule_id'] = fluid_recipe.fluid_rule_id
                 pass  # print(f"  Placed fluid recipe '{fluid_recipe.name}' in {day} breakfast milk")
     
     # Get pre-assigned breakfast recipes from rules
@@ -6399,12 +6850,21 @@ def generate_full_menu(request):
                 )
                 
                 if has_fruit_or_veg_rule:
-                    # Standalone with fruit/veg rule → Place in main fruit row (not Additional Food)
-                    # This works regardless of recipe_type (e.g., Bean might be meat_alternate but has veg_rule)
-                    if not breakfast_data[day]['fruit']:
-                        breakfast_data[day]['fruit'] = recipe.name
-                    # Don't defer to Phase 3
-                    continue
+                    # Standalone with fruit/veg rule → place in fruit row only when
+                    # the recipe is fruit/vegetable typed or has explicit fruit/veg content.
+                    fruit_or_veg_value = _first_distinct_component(
+                        recipe,
+                        getattr(recipe, 'fruit', None),
+                        getattr(recipe, 'veg', None),
+                    )
+                    can_fill_fruit_row = (
+                        recipe_type in ['fruit', 'vegetable'] or bool(fruit_or_veg_value)
+                    )
+                    if can_fill_fruit_row:
+                        if not breakfast_data[day]['fruit']:
+                            breakfast_data[day]['fruit'] = fruit_or_veg_value or recipe.name
+                        # Don't defer to Phase 3
+                        continue
                 elif recipe_type == 'whole_grain':
                     # Standalone grain → ONLY Additional Food (never main bread row)
                     if not breakfast_data[day]['add1']:
@@ -6424,28 +6884,38 @@ def generate_full_menu(request):
                 if not breakfast_data[day]['fruit']:
                     breakfast_data[day]['fruit'] = recipe.name
             elif recipe_type == 'whole_grain':
-                # Non-standalone WG: can go in bread row OR add1
-                if not breakfast_data[day]['bread']:
-                    breakfast_data[day]['bread'] = recipe.name
-                elif not breakfast_data[day]['add1']:
+                # Non-standalone WG: side component only, never main bread row.
+                if not breakfast_data[day]['add1']:
                     breakfast_data[day]['add1'] = recipe.name
             elif recipe_type == 'breakfast':
                 if not breakfast_data[day]['bread']:  # Only if empty
                     # Use recipe.name to show actual recipe name, not generic grain field
                     breakfast_data[day]['bread'] = recipe.name
-                if recipe.addfood and not breakfast_data[day]['add1']:
-                    breakfast_data[day]['add1'] = recipe.addfood
-                if (recipe.fruit or recipe.veg) and not breakfast_data[day]['fruit']:
-                    breakfast_data[day]['fruit'] = recipe.fruit or recipe.veg
+                    breakfast_data[day]['bread_rule_id'] = get_recipe_title_rule_id(recipe)
+                # Keep add1 aligned to this same breakfast recipe for this day.
+                add_component, add_rule_id = _first_distinct_component_with_rule(
+                    recipe,
+                    [
+                        (recipe.grain, recipe.grain_rule_id),
+                        (recipe.addfood, recipe.addfood_rule_id),
+                    ]
+                )
+                breakfast_data[day]['add1'] = add_component
+                breakfast_data[day]['add1_rule_id'] = add_rule_id
+
+                fruit_component = _first_distinct_component(recipe, recipe.fruit, recipe.veg)
+                if fruit_component and not breakfast_data[day]['fruit']:
+                    breakfast_data[day]['fruit'] = fruit_component
+                    breakfast_data[day]['fruit_rule_id'] = recipe.fruit_rule_id or recipe.veg_rule_id
     
     # PHASE 2: Fill remaining empty cells with recipes without weekly rules AND NOT standalone
-    # 1. Fill empty bread cells with breakfast or whole grain recipes (no weekly rules, not standalone)
+    # 1. Fill empty bread cells with breakfast recipes only (no weekly rules, not standalone)
     breakfast_all = list(Recipe.objects.filter(
-        user=user, populate_breakfast=True, recipe_type__in=['breakfast', 'whole_grain']
+        user=user, archive=False, populate_breakfast=True, recipe_type='breakfast'
     ).select_related('grain_rule', 'addfood_rule'))
     
-    # DEBUG: Show ALL breakfast/whole_grain recipes BEFORE filtering
-    pass  # print(f"\n🔍 DEBUG: ALL breakfast/whole_grain recipes BEFORE Phase 2 filtering:")
+    # DEBUG: Show ALL breakfast recipes BEFORE filtering
+    pass  # print(f"\n🔍 DEBUG: ALL breakfast recipes BEFORE Phase 2 filtering:")
     for r in breakfast_all:
         has_rule = has_weekly_rule(r)
         rule_qty = r.grain_rule.weekly_qty if r.grain_rule else "N/A"
@@ -6460,10 +6930,10 @@ def generate_full_menu(request):
         # Normal filtering: no weekly rules, not standalone
         breakfast_recipes_no_rules = [r for r in breakfast_all if not has_weekly_rule(r) and not r.standalone]
 
-    # Fallback: if nothing is flagged to populate breakfast, use any breakfast/whole_grain recipes
+    # Fallback: if nothing is flagged to populate breakfast, use any breakfast recipes
     if not breakfast_recipes_no_rules:
         breakfast_all = list(Recipe.objects.filter(
-            user=user, recipe_type__in=['breakfast', 'whole_grain']
+            user=user, archive=False, recipe_type='breakfast'
         ).select_related('grain_rule', 'addfood_rule'))
         if force_ignore_inventory:
             breakfast_recipes_no_rules = [r for r in breakfast_all if not r.standalone]
@@ -6475,9 +6945,7 @@ def generate_full_menu(request):
     for r in breakfast_recipes_no_rules:
         pass  # print(f"   - {r.name} (type={r.recipe_type}, standalone={r.standalone}, has_rule={has_weekly_rule(r)})")
     
-    # DEDUPLICATION: Filter out already-used main dish recipes
-    breakfast_recipes_no_rules = [r for r in breakfast_recipes_no_rules if r.id not in used_main_recipes]
-    pass  # print(f"   After deduplication: {len(breakfast_recipes_no_rules)} recipes available")
+    pass  # print(f"   After filtering: {len(breakfast_recipes_no_rules)} recipes available")
     
     # INVENTORY CHECK: Filter out recipes with insufficient inventory
     # NOTE: This can be bypassed when force_ignore_inventory is True (user confirmed override)
@@ -6509,16 +6977,11 @@ def generate_full_menu(request):
                 )
     
     breakfast_recipes_no_rules = breakfast_passed_inventory
-    
+
     for day_idx, day in enumerate(days_of_week):
         if not breakfast_data[day]['bread'] and breakfast_recipes_no_rules:
             candidate_count = len(breakfast_recipes_no_rules)
             recipe = random.choice(breakfast_recipes_no_rules)
-            
-            # Track this recipe as used
-            used_main_recipes.add(recipe.id)
-            # Remove from available pool to prevent reuse
-            breakfast_recipes_no_rules = [r for r in breakfast_recipes_no_rules if r.id != recipe.id]
             
             # Decision debug for this day/row
             print(
@@ -6530,21 +6993,29 @@ def generate_full_menu(request):
             if recipe.recipe_type == 'breakfast':
                 # Use recipe.name to show actual recipe, not generic grain field
                 breakfast_data[day]['bread'] = recipe.name
-                # Only set add1 if empty (no cramming)
-                if recipe.addfood and not breakfast_data[day]['add1']:
-                    breakfast_data[day]['add1'] = recipe.addfood
+                breakfast_data[day]['bread_rule_id'] = get_recipe_title_rule_id(recipe)
+                # Keep add1 aligned to this same breakfast recipe for this day.
+                add_component, add_rule_id = _first_distinct_component_with_rule(
+                    recipe,
+                    [
+                        (recipe.grain, recipe.grain_rule_id),
+                        (recipe.addfood, recipe.addfood_rule_id),
+                    ]
+                )
+                breakfast_data[day]['add1'] = add_component
+                breakfast_data[day]['add1_rule_id'] = add_rule_id
                 # Use any fruit/veg defined on the main breakfast recipe
                 # to populate the fruit row before falling back to separate
                 # fruit/veg recipes.
-                if (recipe.fruit or recipe.veg) and not breakfast_data[day]['fruit']:
-                    breakfast_data[day]['fruit'] = recipe.fruit or recipe.veg
-            else:  # whole_grain
-                breakfast_data[day]['bread'] = recipe.name  # Use name for variety (Toast vs Bread)
+                fruit_component = _first_distinct_component(recipe, recipe.fruit, recipe.veg)
+                if fruit_component and not breakfast_data[day]['fruit']:
+                    breakfast_data[day]['fruit'] = fruit_component
+            # breakfast-only pool for main bread row; whole_grain is handled in add1.
     
     # Fill remaining empty cells with recipes without weekly rules AND NOT standalone
     # 2. Fill empty fruit cells with fruit/veg recipes (no weekly rules, not standalone)
     fruit_veg_all = list(Recipe.objects.filter(
-        user=user, populate_breakfast=True, recipe_type__in=['fruit', 'vegetable']
+        user=user, archive=False, populate_breakfast=True, recipe_type__in=['fruit', 'vegetable']
     ).select_related('fruit_rule', 'veg_rule'))
     # Allow standalone fruit/veg for breakfast; only filter out recipes with weekly rules here
     fruit_veg_no_rules = [r for r in fruit_veg_all if not has_weekly_rule(r)]
@@ -6553,7 +7024,7 @@ def generate_full_menu(request):
         # Fallback: still restrict to populate_breakfast=True so lunch-only sides
         # like Instant Garlic Mashed Potatoes are not used at breakfast
         fruit_veg_all = list(Recipe.objects.filter(
-            user=user, populate_breakfast=True, recipe_type__in=['fruit', 'vegetable']
+            user=user, archive=False, populate_breakfast=True, recipe_type__in=['fruit', 'vegetable']
         ).select_related('fruit_rule', 'veg_rule'))
         fruit_veg_no_rules = [r for r in fruit_veg_all if not has_weekly_rule(r)]
     
@@ -6591,10 +7062,9 @@ def generate_full_menu(request):
         for recipe in recipes_list:
             recipe_type = recipe.recipe_type
             
-            # INVENTORY CHECK: Skip fruit/veg/grain standalones if insufficient inventory
-            # Fluid rows are NOT checked (user wants fluid rows to ignore inventory)
+            # INVENTORY CHECK: Side-component standalones use inventory-item unit_size checks.
             if recipe_type in ['fruit', 'vegetable', 'whole_grain']:
-                if not has_sufficient_inventory(recipe):
+                if not has_recipe_name_inventory_fallback(recipe):
                     pass  # print(f"  Skipping standalone '{recipe.name}' for {day} breakfast - insufficient inventory")
                     continue
             
@@ -6611,12 +7081,17 @@ def generate_full_menu(request):
             elif recipe_type == 'breakfast':
                 # Skip standalone breakfast recipes if bread is occupied
                 pass
-    
     # === AM SNACK GENERATION ===
     am_snack_data = {}
     for day in days_of_week:
         # add3: Additional Food (Optional) for AM snack
-        am_snack_data[day] = {'choose1': '', 'fruit2': '', 'bread2': '', 'meat1': '', 'add3': ''}
+        am_snack_data[day] = {
+            'choose1': '', 'choose1_rule_id': None,
+            'fruit2': '', 'fruit2_rule_id': None,
+            'bread2': '', 'bread2_rule_id': None,
+            'meat1': '', 'meat1_rule_id': None,
+            'add3': '', 'add3_rule_id': None
+        }
     
     am_snack_rule_recipes = rule_assignments['am_snack']
     
@@ -6647,10 +7122,20 @@ def generate_full_menu(request):
                 )
                 
                 if has_fruit_or_veg_rule:
-                    # Standalone with fruit/veg rule → Place in main fruit2 row (not Additional Food)
-                    if not am_snack_data[day]['fruit2']:
-                        am_snack_data[day]['fruit2'] = recipe.fruit or recipe.veg or recipe.name
-                    continue
+                    # Standalone with fruit/veg rule → place in fruit row only when
+                    # the recipe is fruit/vegetable typed or has explicit fruit/veg content.
+                    fruit_or_veg_value = _first_distinct_component(
+                        recipe,
+                        getattr(recipe, 'fruit', None),
+                        getattr(recipe, 'veg', None),
+                    )
+                    can_fill_fruit_row = (
+                        recipe.recipe_type in ['fruit', 'vegetable'] or bool(fruit_or_veg_value)
+                    )
+                    if can_fill_fruit_row:
+                        if not am_snack_data[day]['fruit2']:
+                            am_snack_data[day]['fruit2'] = fruit_or_veg_value or recipe.name
+                        continue
                 else:
                     # ALL other standalone recipes (including whole_grain) → Defer to Phase 3
                     # This ensures they go through the has_snack_content check and won't be
@@ -6664,21 +7149,21 @@ def generate_full_menu(request):
             # Fluid always overwrites
             if recipe.fluid:
                 am_snack_data[day]['choose1'] = recipe.fluid
+                am_snack_data[day]['choose1_rule_id'] = recipe.fluid_rule_id
 
             # Bread/grain content - WG items go to add food 
             if is_snack_wg or recipe.grain:
-                # Use recipe.name for WG items to show variety; use grain for non-WG
-                display_name = recipe.name if is_snack_wg else (recipe.grain or recipe.name)
+                # Use recipe.name for WG items to show variety; for non-WG skip values
+                # that duplicate the recipe title.
+                display_name = recipe.name if is_snack_wg else _first_distinct_component(recipe, recipe.grain)
                 # WG items go to Additional Food
                 if is_snack_wg:
                     # Always place in add food to not block main snack
-                    if not am_snack_data[day]['add3']:
+                    if display_name and not am_snack_data[day]['add3']:
                         am_snack_data[day]['add3'] = display_name
                 else:
-                    # Non-WG grain: place in bread field if empty, else add food
-                    if not am_snack_data[day]['bread2']:
-                        am_snack_data[day]['bread2'] = display_name
-                    elif not am_snack_data[day]['add3']:
+                    # For snack recipes, grain is an extra component -> Additional Food.
+                    if display_name and not am_snack_data[day]['add3']:
                         am_snack_data[day]['add3'] = display_name
 
             # Meat content - always place in meat row
@@ -6689,21 +7174,24 @@ def generate_full_menu(request):
                     am_snack_data[day]['add3'] = recipe.meat
 
             # Fruit/veg content - ALWAYS place in fruit row
-            if recipe.fruit or recipe.veg:
-                fruit_or_veg = recipe.fruit or recipe.veg
+            fruit_or_veg = _first_distinct_component(recipe, recipe.fruit, recipe.veg)
+            if fruit_or_veg:
                 if not am_snack_data[day]['fruit2']:
                     am_snack_data[day]['fruit2'] = fruit_or_veg
                 elif not am_snack_data[day]['add3']:
                     am_snack_data[day]['add3'] = fruit_or_veg
     
     # PHASE 2: Fill remaining days with snack recipes without weekly rules AND NOT standalone.
-    # For AM snack, only AM-specific and shared AM/PM snack recipes should
-    # be used (not PM-only recipes).
+    # For the main snack row (bread2), exclude side-only recipe types.
     am_snack_all = list(Recipe.objects.filter(
         user=user,
+        archive=False,
         populate_am_snack=True,
-        recipe_type__in=['am_snack', 'am_pm_snack']
-    ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule'))
+    ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule', 'addfood_rule'))
+    am_snack_all = [
+        r for r in am_snack_all
+        if r.recipe_type not in ['fruit', 'vegetable', 'whole_grain', 'fluid']
+    ]
     
     # When bypassing inventory, include recipes with weekly rules (but still exclude standalone)
     if force_ignore_inventory:
@@ -6712,23 +7200,60 @@ def generate_full_menu(request):
     else:
         am_snack_no_rules = [r for r in am_snack_all if not has_weekly_rule(r) and not r.standalone]
 
-    # Fallback: if nothing is flagged to populate AM snack, use any
-    # AM snack or shared AM/PM snack recipes without weekly rules for this user.
+    # Fallback: if the populate flag yielded nothing with weekly rules filtered out,
+    # relax the weekly-rule filter so at least something gets placed.
+    if not am_snack_no_rules and am_snack_all:
+        if force_ignore_inventory:
+            am_snack_no_rules = [r for r in am_snack_all if not r.standalone]
+        else:
+            am_snack_no_rules = [r for r in am_snack_all if not r.standalone]
+
+    # Ultimate fallback: use any AM-type recipe for this user.
     if not am_snack_no_rules:
         am_snack_all = list(Recipe.objects.filter(
             user=user,
+            archive=False,
             recipe_type__in=['am_snack', 'am_pm_snack']
-        ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule'))
+        ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule', 'addfood_rule'))
         if force_ignore_inventory:
             am_snack_no_rules = [r for r in am_snack_all if not r.standalone]
         else:
             am_snack_no_rules = [r for r in am_snack_all if not has_weekly_rule(r) and not r.standalone]
     
-    # DEDUPLICATION: Filter out already-used main dish recipes
-    am_snack_no_rules = [r for r in am_snack_no_rules if r.id not in used_main_recipes]
+    am_snack_before_filters = am_snack_no_rules[:]
+
+    # Count days that still need a main AM snack dish after Phase 1
+    days_needing_am_snack = sum(1 for day in days_of_week if not am_snack_data[day]['bread2'])
+
+    # If the non-weekly-rule pool is smaller than the days that need filling, supplement
+    if len(am_snack_no_rules) < days_needing_am_snack and am_snack_all:
+        supplemental = [
+            r for r in am_snack_all
+            if not r.standalone
+            and r.id not in {x.id for x in am_snack_no_rules}
+        ]
+        if supplemental:
+            am_snack_no_rules = am_snack_no_rules + supplemental
+            print(
+                f"[MENU DEBUG] AM snack Phase 2 supplement: added {len(supplemental)} weekly-rule "
+                f"recipe(s) to reach {len(am_snack_no_rules)} candidate(s) for {days_needing_am_snack} unfilled days."
+            )
+
+    if len(am_snack_no_rules) < days_needing_am_snack and am_snack_before_filters:
+        reuse_candidates = [
+            r for r in am_snack_before_filters
+            if r.id not in {x.id for x in am_snack_no_rules}
+        ]
+        if reuse_candidates:
+            am_snack_no_rules = am_snack_no_rules + reuse_candidates
+            print(
+                f"[MENU DEBUG] AM snack Phase 2 dedup relax: re-added {len(reuse_candidates)} "
+                f"previously-used recipe(s) to cover {days_needing_am_snack} unfilled day(s)."
+            )
+
     print(
         f"[MENU DEBUG] AM snack Phase 2: {len(am_snack_no_rules)} recipe(s) "
-        f"available after excluding already-used main recipes."
+        f"available after meal-specific filters."
     )
     
     # INVENTORY CHECK: Filter out recipes with insufficient inventory
@@ -6760,23 +7285,33 @@ def generate_full_menu(request):
                 )
     
     am_snack_no_rules = am_passed_inventory
-    
+
     for day_idx, day in enumerate(days_of_week):
         if not am_snack_data[day]['bread2'] and am_snack_no_rules:
             candidate_count = len(am_snack_no_rules)
             recipe = random.choice(am_snack_no_rules)
             
-            # Track this recipe as used
-            used_main_recipes.add(recipe.id)
-            # Remove from available pool to prevent reuse
-            am_snack_no_rules = [r for r in am_snack_no_rules if r.id != recipe.id]
-            
             am_snack_data[day]['choose1'] = recipe.fluid or ""
+            if recipe.fluid:
+                am_snack_data[day]['choose1_rule_id'] = recipe.fluid_rule_id
             # Use recipe.name for main content (not generic recipe.grain component)
             am_snack_data[day]['bread2'] = recipe.name
+            am_snack_data[day]['bread2_rule_id'] = get_recipe_title_rule_id(recipe)
+            if not am_snack_data[day]['add3']:
+                add_component, add_rule_id = _first_distinct_component_with_rule(
+                    recipe,
+                    [
+                        (recipe.grain, recipe.grain_rule_id),
+                        (recipe.addfood, recipe.addfood_rule_id),
+                    ]
+                )
+                am_snack_data[day]['add3'] = add_component
+                am_snack_data[day]['add3_rule_id'] = add_rule_id
             am_snack_data[day]['meat1'] = recipe.meat or ""
-            if recipe.fruit or recipe.veg:
-                am_snack_data[day]['fruit2'] = recipe.fruit or recipe.veg
+            fruit_component = _first_distinct_component(recipe, recipe.fruit, recipe.veg)
+            if fruit_component:
+                am_snack_data[day]['fruit2'] = fruit_component
+                am_snack_data[day]['fruit2_rule_id'] = recipe.fruit_rule_id or recipe.veg_rule_id
 
             print(
                 f"[MENU DEBUG] AM snack {day} bread2: selected recipe '{recipe.name}' "
@@ -6791,12 +7326,13 @@ def generate_full_menu(request):
     # NEVER overwrite existing fluid content
     if fluid_rule_recipes:
         fluid_recipe = fluid_rule_recipes[0]
-        if fluid_recipe.populate_am_snack:
+        if fluid_recipe.populate_am_snack and has_recipe_name_inventory_fallback(fluid_recipe):
             for day in days_of_week:
                 has_main_content = am_snack_data[day]['bread2']
                 fluid_is_blank = not am_snack_data[day]['choose1']
                 if has_main_content and fluid_is_blank:
                     am_snack_data[day]['choose1'] = fluid_recipe.name
+                    am_snack_data[day]['choose1_rule_id'] = fluid_recipe.fluid_rule_id
                     pass  # print(f"  Placed fluid recipe '{fluid_recipe.name}' in {day} AM snack (conditional)")
     
     # PHASE 3: Process standalone recipes ONLY if the AM snack period has main content
@@ -6821,23 +7357,25 @@ def generate_full_menu(request):
         for recipe in recipes_list:
             is_snack_wg = recipe.recipe_type == 'whole_grain'
             
-            # INVENTORY CHECK: Skip fruit/veg/grain standalones if insufficient inventory
-            # Fluid rows are NOT checked (user wants fluid rows to ignore inventory)
-            if is_snack_wg or recipe.recipe_type in ['fruit', 'vegetable']:
-                if not has_sufficient_inventory(recipe):
+            # INVENTORY CHECK: Side-component standalones use inventory-item unit_size checks.
+            if recipe.fluid or is_snack_wg or recipe.recipe_type in ['fruit', 'vegetable']:
+                if not has_recipe_name_inventory_fallback(recipe):
                     pass  # print(f"  Skipping standalone '{recipe.name}' for {day} AM snack - insufficient inventory")
                     continue
             
             # Place standalone recipe in appropriate field ONLY if empty
-            # Fluid placement: NO inventory check (skip filtering for fluid)
             if recipe.fluid and not am_snack_data[day]['choose1']:
                 am_snack_data[day]['choose1'] = recipe.fluid
+                am_snack_data[day]['choose1_rule_id'] = recipe.fluid_rule_id
 
             if is_snack_wg or recipe.grain:
                 grain_or_name = recipe.grain or recipe.name
                 # Standalone/WG items go to add food ONLY if empty
                 if not am_snack_data[day]['add3']:
                     am_snack_data[day]['add3'] = grain_or_name
+                    # Track rule ID for add3: use grain_rule if grain exists
+                    if recipe.grain and recipe.grain_rule_id:
+                        am_snack_data[day]['add3_rule_id'] = recipe.grain_rule_id
 
             elif recipe.meat:
                 if not am_snack_data[day]['add3']:
@@ -6851,19 +7389,30 @@ def generate_full_menu(request):
     # === LUNCH GENERATION ===
     lunch_data = {}
     for day in days_of_week:
-        lunch_data[day] = {'meal_name': '', 'lunch_milk': '', 'grain': '', 'meat_alternate': '', 'vegetable': '', 'fruit3': '', 'add2': ''}
+        lunch_data[day] = {
+            'meal_name': '', 'meal_name_rule_id': None,
+            'lunch_milk': '', 'lunch_milk_rule_id': None,
+            'grain': '', 'grain_rule_id': None,
+            'meat_alternate': '', 'meat_alternate_rule_id': None,
+            'vegetable': '', 'vegetable_rule_id': None,
+            'fruit3': '', 'fruit3_rule_id': None,
+            'add2': '', 'add2_rule_id': None
+        }
     
     # FLUID RULE PLACEMENT (MANDATORY DAILY): Place fluid_rule recipes in lunchmilk row EVERY day
+    # Fluid rows use inventory-item portion checks (unit_size), not recipe ingredient math.
     if fluid_rule_recipes:
         fluid_recipe = fluid_rule_recipes[0]  # Use first fluid recipe
         for day in days_of_week:
-            if fluid_recipe.populate_lunch:
+            if fluid_recipe.populate_lunch and has_recipe_name_inventory_fallback(fluid_recipe):
                 lunch_data[day]['lunch_milk'] = fluid_recipe.name
+                lunch_data[day]['lunch_milk_rule_id'] = fluid_recipe.fluid_rule_id
                 pass  # print(f"  Placed fluid recipe '{fluid_recipe.name}' in {day} lunch milk")
 
     # Pre-resolve main lunch recipes (standalone recipes are excluded from being primary mains)
     main_lunch_qs = Recipe.objects.filter(
         user=user,
+        archive=False,
         populate_lunch=True,
         recipe_type='lunch',
         standalone=False,
@@ -6874,13 +7423,20 @@ def generate_full_menu(request):
     if not main_lunch_qs.exists():
         main_lunch_qs = Recipe.objects.filter(
             user=user,
+            archive=False,
             recipe_type='lunch',
             standalone=False,
         )
     all_main_lunch_recipes = list(main_lunch_qs)
 
     lunch_rule_recipes = rule_assignments['lunch']
-    
+
+    # Track fruit/veg component names placed in fruit3/vegetable across ALL days.
+    # When a main-dish component would repeat a name already placed, we skip it
+    # (leave the cell empty) so Phase 5 and the side-dish pool can provide variety.
+    _fruit3_week_names = set()
+    _veg_week_names = set()
+
     # Separate standalone recipes for Phase 3 processing
     standalone_lunch_recipes = {}
     
@@ -6915,11 +7471,13 @@ def generate_full_menu(request):
                     # Standalone with veg_rule → Main vegetable row (regardless of recipe_type)
                     if not lunch_data[day]['vegetable']:
                         lunch_data[day]['vegetable'] = recipe.name
+                        lunch_data[day]['vegetable_rule_id'] = recipe.veg_rule_id
                     continue
                 elif has_fruit_rule:
                     # Standalone with fruit_rule → Main fruit3 row (regardless of recipe_type)
                     if not lunch_data[day]['fruit3']:
                         lunch_data[day]['fruit3'] = recipe.name
+                        lunch_data[day]['fruit3_rule_id'] = recipe.fruit_rule_id
                     continue
                 else:
                     # Other standalone recipes → Defer to Phase 3
@@ -6932,16 +7490,31 @@ def generate_full_menu(request):
             if recipe_type == 'lunch':
                 # Main lunch dish
                 lunch_data[day]['meal_name'] = recipe.name
-                # Don't auto-fill grain from main dish components - only explicit whole_grain recipes should populate grain row
-                # lunch_data[day]['grain'] = recipe.grain or ""
+                lunch_data[day]['meal_name_rule_id'] = get_recipe_title_rule_id(recipe)
+                # If the main lunch recipe has a grain component (e.g. CN Pizza crust),
+                # fill the grain row directly so no separate whole_grain side is added.
+                grain_component = recipe.grain or ""
+                if grain_component and not lunch_data[day]['grain']:
+                    lunch_data[day]['grain'] = grain_component
+                    if recipe.grain_rule_id:
+                        lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
                 lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
                 # If the main lunch recipe already specifies a vegetable and/or
                 # fruit, use those to populate the corresponding rows before
                 # relying on separate veg/fruit rule or standalone recipes.
-                if recipe.veg and not lunch_data[day]['vegetable']:
-                    lunch_data[day]['vegetable'] = recipe.veg
-                if recipe.fruit and not lunch_data[day]['fruit3']:
-                    lunch_data[day]['fruit3'] = recipe.fruit
+                veg_component = _first_distinct_component(recipe, recipe.veg)
+                fruit_component = _first_distinct_component(recipe, recipe.fruit)
+                if veg_component and not lunch_data[day]['vegetable'] and veg_component not in _veg_week_names:
+                    lunch_data[day]['vegetable'] = veg_component
+                    lunch_data[day]['vegetable_rule_id'] = recipe.veg_rule_id
+                    _veg_week_names.add(veg_component)
+                if fruit_component and not lunch_data[day]['fruit3'] and fruit_component not in _fruit3_week_names:
+                    lunch_data[day]['fruit3'] = fruit_component
+                    lunch_data[day]['fruit3_rule_id'] = recipe.fruit_rule_id
+                    _fruit3_week_names.add(fruit_component)
+                # Track similarity exclusions so Phase 2 / fallback won't pick a
+                # similar recipe into the same week.
+                similarity_excluded_ids |= _get_similarity_excluded_ids(recipe.id)
             elif recipe_type == 'whole_grain':
                 # Grain rule recipes: ONLY to Additional Food (never main grain row per user requirement)
                 if not lunch_data[day]['add2']:
@@ -6950,10 +7523,14 @@ def generate_full_menu(request):
                 # Vegetable goes in vegetable row (only if empty)
                 if not lunch_data[day]['vegetable']:
                     lunch_data[day]['vegetable'] = recipe.name
+                    if recipe.veg_rule_id:
+                        lunch_data[day]['vegetable_rule_id'] = recipe.veg_rule_id
             elif recipe_type == 'fruit':
                 # Fruit goes in fruit row (only if empty)
                 if not lunch_data[day]['fruit3']:
                     lunch_data[day]['fruit3'] = recipe.name
+                    if recipe.fruit_rule_id:
+                        lunch_data[day]['fruit3_rule_id'] = recipe.fruit_rule_id
     
     # Fill remaining empty cells with recipes without weekly rules
     # 1. Main lunch dishes (no weekly rules, non-standalone only)
@@ -6966,8 +7543,21 @@ def generate_full_menu(request):
     else:
         lunch_recipes_no_rules = [r for r in lunch_all if not has_weekly_rule(r)]
     
-    # DEDUPLICATION: Filter out already-used main dish recipes
-    lunch_recipes_no_rules = [r for r in lunch_recipes_no_rules if r.id not in used_main_recipes]
+    # DEDUPLICATION: Filter out already-used main dish recipes and similarity-excluded recipes
+    lunch_before_dedup = lunch_recipes_no_rules[:]
+    lunch_recipes_no_rules = [r for r in lunch_recipes_no_rules if r.id not in used_main_recipes and r.id not in similarity_excluded_ids]
+    days_needing_lunch = sum(1 for day in days_of_week if not lunch_data[day]['meal_name'])
+    if len(lunch_recipes_no_rules) < days_needing_lunch and lunch_before_dedup:
+        reuse_candidates = [
+            r for r in lunch_before_dedup
+            if r.id not in {x.id for x in lunch_recipes_no_rules}
+        ]
+        if reuse_candidates:
+            lunch_recipes_no_rules = lunch_recipes_no_rules + reuse_candidates
+            print(
+                f"[MENU DEBUG] Lunch Phase 2 dedup relax: re-added {len(reuse_candidates)} "
+                f"previously-used recipe(s) to cover {days_needing_lunch} unfilled day(s)."
+            )
     print(
         f"[MENU DEBUG] Lunch Phase 2: {len(lunch_recipes_no_rules)} main lunch recipe(s) "
         f"available after excluding already-used mains."
@@ -7024,19 +7614,34 @@ def generate_full_menu(request):
             
             # Track this recipe as used
             used_main_recipes.add(recipe.id)
-            # Remove from available pool to prevent reuse
-            lunch_recipes_no_rules = [r for r in lunch_recipes_no_rules if r.id != recipe.id]
+            similarity_excluded_ids |= _get_similarity_excluded_ids(recipe.id)
+            # Remove only when we still have enough unique recipes to cover remaining days.
+            remaining_unfilled_days = sum(1 for d in days_of_week if not lunch_data[d]['meal_name'])
+            if len(lunch_recipes_no_rules) > remaining_unfilled_days:
+                lunch_recipes_no_rules = [r for r in lunch_recipes_no_rules if r.id != recipe.id]
             
             lunch_data[day]['meal_name'] = recipe.name
-            # Don't auto-fill grain from main dish components - only explicit whole_grain recipes should populate grain row
-            # lunch_data[day]['grain'] = recipe.grain or ""
+            lunch_data[day]['meal_name_rule_id'] = get_recipe_title_rule_id(recipe)
+            # If the main lunch recipe has a grain component (e.g. CN Pizza crust),
+            # fill the grain row directly so no separate whole_grain side is added.
+            grain_component = recipe.grain or ""
+            if grain_component and not lunch_data[day]['grain']:
+                lunch_data[day]['grain'] = grain_component
+                if recipe.grain_rule_id:
+                    lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
             lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
             # Prefer any veg/fruit that are part of the main lunch recipe
             # over later standalone side selections.
-            if recipe.veg and not lunch_data[day]['vegetable']:
-                lunch_data[day]['vegetable'] = recipe.veg
-            if recipe.fruit and not lunch_data[day]['fruit3']:
-                lunch_data[day]['fruit3'] = recipe.fruit
+            veg_component = _first_distinct_component(recipe, recipe.veg)
+            fruit_component = _first_distinct_component(recipe, recipe.fruit)
+            if veg_component and not lunch_data[day]['vegetable'] and veg_component not in _veg_week_names:
+                lunch_data[day]['vegetable'] = veg_component
+                lunch_data[day]['vegetable_rule_id'] = recipe.veg_rule_id
+                _veg_week_names.add(veg_component)
+            if fruit_component and not lunch_data[day]['fruit3'] and fruit_component not in _fruit3_week_names:
+                lunch_data[day]['fruit3'] = fruit_component
+                lunch_data[day]['fruit3_rule_id'] = recipe.fruit_rule_id
+                _fruit3_week_names.add(fruit_component)
 
             print(
                 f"[MENU DEBUG] Lunch {day} main dish: selected recipe '{recipe.name}' "
@@ -7062,13 +7667,19 @@ def generate_full_menu(request):
                 if lunch_data[day]['meal_name'] and not lunch_data[day]['grain']:
                     # Main dish exists and grain row empty → place in Grain row
                     lunch_data[day]['grain'] = recipe.name
+                    # Track rule ID if recipe has grain_rule
+                    if recipe.grain_rule_id:
+                        lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
                 elif not lunch_data[day]['add2']:
                     # No main dish or grain row filled → place in Additional Food
                     lunch_data[day]['add2'] = recipe.name
+                    # Track rule ID if recipe has grain_rule
+                    if recipe.grain_rule_id:
+                        lunch_data[day]['add2_rule_id'] = recipe.grain_rule_id
     
     # 2. Whole grain items (no weekly rules, not standalone)
     wg_all = list(Recipe.objects.filter(
-        user=user, populate_lunch=True, recipe_type='whole_grain'
+        user=user, archive=False, populate_lunch=True, recipe_type='whole_grain'
     ).select_related('grain_rule'))
     
     # DEBUG: Show ALL whole_grain recipes for lunch
@@ -7094,36 +7705,11 @@ def generate_full_menu(request):
             selected = random.choice(unused_wg if unused_wg else wg_no_rules)
             pass  # print(f"   📍 Selected '{selected.name}' for {day} lunch grain row")
             lunch_data[day]['grain'] = selected.name
+            # Track rule ID if recipe has grain_rule
+            if selected.grain_rule_id:
+                lunch_data[day]['grain_rule_id'] = selected.grain_rule_id
             wg_used_names.add(selected.name)
     
-    # 3. Vegetable items (no weekly rules, not standalone)
-    veg_all = list(Recipe.objects.filter(
-        user=user, populate_lunch=True, recipe_type='vegetable'
-    ).select_related('veg_rule'))
-    veg_no_rules = [r for r in veg_all if not has_weekly_rule(r) and not r.standalone]
-    
-    veg_used_names = set()
-    for day_idx, day in enumerate(days_of_week):
-        if not lunch_data[day]['vegetable'] and veg_no_rules:
-            unused_veg = [r for r in veg_no_rules if r.name not in veg_used_names]
-            selected = random.choice(unused_veg if unused_veg else veg_no_rules)
-            lunch_data[day]['vegetable'] = selected.name
-            veg_used_names.add(selected.name)
-    
-    # 4. Fruit items (no weekly rules, not standalone)
-    fruit_all = list(Recipe.objects.filter(
-        user=user, populate_lunch=True, recipe_type='fruit'
-    ).select_related('fruit_rule'))
-    fruit_no_rules = [r for r in fruit_all if not has_weekly_rule(r) and not r.standalone]
-    
-    fruit_used_names = set()
-    for day_idx, day in enumerate(days_of_week):
-        if not lunch_data[day]['fruit3'] and fruit_no_rules:
-            unused_fruit = [r for r in fruit_no_rules if r.name not in fruit_used_names]
-            selected = random.choice(unused_fruit if unused_fruit else fruit_no_rules)
-            lunch_data[day]['fruit3'] = selected.name
-            fruit_used_names.add(selected.name)
-
     # As a final fallback, if any day is still missing a main dish but
     # there are eligible lunch recipes, fill from the full main_lunch set
     # (ignoring weekly_qty) so "No available meal" is only used when
@@ -7132,7 +7718,8 @@ def generate_full_menu(request):
         # Filter out already-used recipes, apply 2-week cooldown (ALWAYS enforced), AND check inventory (can be bypassed)
         available_lunch_fallback = [
             r for r in all_main_lunch_recipes 
-            if r.id not in used_main_recipes 
+            if r.id not in used_main_recipes
+            and r.id not in similarity_excluded_ids
             and (not r.last_used or r.last_used.date() < two_weeks_before or r.last_used.date() > two_weeks_after)
             and has_sufficient_inventory(r)
         ]
@@ -7147,22 +7734,34 @@ def generate_full_menu(request):
                 
                 # Track this recipe as used
                 used_main_recipes.add(recipe.id)
+                similarity_excluded_ids |= _get_similarity_excluded_ids(recipe.id)
                 # Remove from available pool to prevent reuse
                 available_lunch_fallback = [r for r in available_lunch_fallback if r.id != recipe.id]
                 
                 lunch_data[day]['meal_name'] = recipe.name
-                # Don't auto-fill grain from main dish components
-                # if not lunch_data[day]['grain']:
-                #     lunch_data[day]['grain'] = recipe.grain or ""
+                lunch_data[day]['meal_name_rule_id'] = get_recipe_title_rule_id(recipe)
+                # If the main lunch recipe has a grain component (e.g. CN Pizza crust),
+                # fill the grain row directly so no separate whole_grain side is added.
+                grain_component = recipe.grain or ""
+                if grain_component and not lunch_data[day]['grain']:
+                    lunch_data[day]['grain'] = grain_component
+                    if recipe.grain_rule_id:
+                        lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
                 if not lunch_data[day]['meat_alternate']:
                     lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
                 # As a last resort, also bring over any veg/fruit defined on
                 # this main lunch recipe if those cells are still empty.
-                if recipe.veg and not lunch_data[day]['vegetable']:
-                    lunch_data[day]['vegetable'] = recipe.veg
-                if recipe.fruit and not lunch_data[day]['fruit3']:
-                    lunch_data[day]['fruit3'] = recipe.fruit
-                
+                veg_component = _first_distinct_component(recipe, recipe.veg)
+                fruit_component = _first_distinct_component(recipe, recipe.fruit)
+                if veg_component and not lunch_data[day]['vegetable'] and veg_component not in _veg_week_names:
+                    lunch_data[day]['vegetable'] = veg_component
+                    lunch_data[day]['vegetable_rule_id'] = recipe.veg_rule_id
+                    _veg_week_names.add(veg_component)
+                if fruit_component and not lunch_data[day]['fruit3'] and fruit_component not in _fruit3_week_names:
+                    lunch_data[day]['fruit3'] = fruit_component
+                    lunch_data[day]['fruit3_rule_id'] = recipe.fruit_rule_id
+                    _fruit3_week_names.add(fruit_component)
+
                 print(
                     f"[MENU DEBUG] Lunch {day} main dish: used FALLBACK recipe '{recipe.name}' "
                     f"(id={recipe.id}, type={recipe.recipe_type}) after rules/cooldown/inventory left "
@@ -7213,10 +7812,9 @@ def generate_full_menu(request):
         for recipe in recipes_list:
             recipe_type = recipe.recipe_type
             
-            # INVENTORY CHECK: Skip fruit/veg/grain standalones if insufficient inventory
-            # Fluid rows are NOT checked (user wants fluid rows to ignore inventory)
+            # INVENTORY CHECK: Side-component standalones use inventory-item unit_size checks.
             if recipe_type in ['fruit', 'vegetable', 'whole_grain']:
-                if not has_sufficient_inventory(recipe):
+                if not has_recipe_name_inventory_fallback(recipe):
                     pass  # print(f"  Skipping standalone '{recipe.name}' for {day} lunch - insufficient inventory")
                     continue
             
@@ -7232,16 +7830,26 @@ def generate_full_menu(request):
                 # Standalone vegetable: place ONLY if vegetable row is empty
                 if not lunch_data[day]['vegetable']:
                     lunch_data[day]['vegetable'] = recipe.name
+                    if recipe.veg_rule_id:
+                        lunch_data[day]['vegetable_rule_id'] = recipe.veg_rule_id
             elif recipe_type == 'fruit':
                 # Standalone fruit: place ONLY if fruit row is empty
                 if not lunch_data[day]['fruit3']:
                     lunch_data[day]['fruit3'] = recipe.name
-    
+                    if recipe.fruit_rule_id:
+                        lunch_data[day]['fruit3_rule_id'] = recipe.fruit_rule_id
+
     # === PM SNACK GENERATION ===
     pm_snack_data = {}
     for day in days_of_week:
         # add4: Additional Food (Optional) for PM snack
-        pm_snack_data[day] = {'choose2': '', 'fruit4': '', 'bread3': '', 'meat3': '', 'add4': ''}
+        pm_snack_data[day] = {
+            'choose2': '', 'choose2_rule_id': None,
+            'fruit4': '', 'fruit4_rule_id': None,
+            'bread3': '', 'bread3_rule_id': None,
+            'meat3': '', 'meat3_rule_id': None,
+            'add4': '', 'add4_rule_id': None
+        }
     
     pm_snack_rule_recipes = rule_assignments['pm_snack']
     
@@ -7272,10 +7880,20 @@ def generate_full_menu(request):
                 )
                 
                 if has_fruit_or_veg_rule:
-                    # Standalone with fruit/veg rule → Place in main fruit4 row (not Additional Food)
-                    if not pm_snack_data[day]['fruit4']:
-                        pm_snack_data[day]['fruit4'] = recipe.fruit or recipe.veg or recipe.name
-                    continue
+                    # Standalone with fruit/veg rule → place in fruit row only when
+                    # the recipe is fruit/vegetable typed or has explicit fruit/veg content.
+                    fruit_or_veg_value = _first_distinct_component(
+                        recipe,
+                        getattr(recipe, 'fruit', None),
+                        getattr(recipe, 'veg', None),
+                    )
+                    can_fill_fruit_row = (
+                        recipe.recipe_type in ['fruit', 'vegetable'] or bool(fruit_or_veg_value)
+                    )
+                    if can_fill_fruit_row:
+                        if not pm_snack_data[day]['fruit4']:
+                            pm_snack_data[day]['fruit4'] = fruit_or_veg_value or recipe.name
+                        continue
                 else:
                     # ALL other standalone recipes (including whole_grain) → Defer to Phase 3
                     # This ensures they go through the has_snack_content check and won't be
@@ -7289,21 +7907,21 @@ def generate_full_menu(request):
             # Fluid always overwrites
             if recipe.fluid:
                 pm_snack_data[day]['choose2'] = recipe.fluid
+                pm_snack_data[day]['choose2_rule_id'] = recipe.fluid_rule_id
 
             # Bread/grain content - WG items go to add food
             if is_snack_wg or recipe.grain:
-                # Use recipe.name for WG items to show variety; use grain for non-WG
-                display_name = recipe.name if is_snack_wg else (recipe.grain or recipe.name)
+                # Use recipe.name for WG items to show variety; for non-WG skip values
+                # that duplicate the recipe title.
+                display_name = recipe.name if is_snack_wg else _first_distinct_component(recipe, recipe.grain)
                 # WG items go to Additional Food
                 if is_snack_wg:
                     # Always place in add food to not block main snack
-                    if not pm_snack_data[day]['add4']:
+                    if display_name and not pm_snack_data[day]['add4']:
                         pm_snack_data[day]['add4'] = display_name
                 else:
-                    # Non-WG grain: place in bread field if empty, else add food
-                    if not pm_snack_data[day]['bread3']:
-                        pm_snack_data[day]['bread3'] = display_name
-                    elif not pm_snack_data[day]['add4']:
+                    # For snack recipes, grain is an extra component -> Additional Food.
+                    if display_name and not pm_snack_data[day]['add4']:
                         pm_snack_data[day]['add4'] = display_name
 
             # Meat content - always place in meat row
@@ -7314,46 +7932,106 @@ def generate_full_menu(request):
                     pm_snack_data[day]['add4'] = recipe.meat
 
             # Fruit/veg content - ALWAYS place in fruit row
-            if recipe.fruit or recipe.veg:
-                fruit_or_veg = recipe.fruit or recipe.veg
+            fruit_or_veg = _first_distinct_component(recipe, recipe.fruit, recipe.veg)
+            if fruit_or_veg:
                 if not pm_snack_data[day]['fruit4']:
                     pm_snack_data[day]['fruit4'] = fruit_or_veg
                 elif not pm_snack_data[day]['add4']:
                     pm_snack_data[day]['add4'] = fruit_or_veg
     
     # Fill remaining days with snack recipes without weekly rules AND NOT standalone.
-    # For PM snack, only PM-specific and shared AM/PM snack recipes should
-    # be used (not AM-only recipes).
+    # For the main snack row (bread3), exclude side-only recipe types.
     pm_snack_all = list(Recipe.objects.filter(
         user=user,
+        archive=False,
         populate_pm_snack=True,
-        recipe_type__in=['pm_snack', 'am_pm_snack']
-    ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule'))
+    ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule', 'addfood_rule'))
+    pm_snack_all = [
+        r for r in pm_snack_all
+        if r.recipe_type not in ['fruit', 'vegetable', 'whole_grain', 'fluid']
+    ]
     
-    # When bypassing inventory, include recipes with weekly rules (but still exclude standalone)
+    # PM snack main rows should remain eligible for pm_snack/am_pm_snack recipes,
+    # even if they carry weekly rules (e.g., Sunchips with a grain rule).
     if force_ignore_inventory:
         pm_snack_no_rules = [r for r in pm_snack_all if not r.standalone]
         pass  # print(f"   🔓 BYPASSING INVENTORY: Expanded PM snack pool to include recipes with weekly rules")
     else:
-        pm_snack_no_rules = [r for r in pm_snack_all if not has_weekly_rule(r) and not r.standalone]
+        pm_snack_no_rules = [
+            r for r in pm_snack_all
+            if not r.standalone
+            and (
+                not has_weekly_rule(r)
+                or r.recipe_type in ['pm_snack', 'am_pm_snack']
+            )
+        ]
 
-    # Fallback: if nothing is flagged to populate PM snack, use any
-    # PM snack or shared AM/PM snack recipes without weekly rules for this user.
+    # Fallback: if the populate flag yielded nothing with weekly rules filtered out,
+    # relax the weekly-rule filter so at least something gets placed.
+    if not pm_snack_no_rules and pm_snack_all:
+        if force_ignore_inventory:
+            pm_snack_no_rules = [r for r in pm_snack_all if not r.standalone]
+        else:
+            pm_snack_no_rules = [r for r in pm_snack_all if not r.standalone]
+
+    # Ultimate fallback: use any PM-type recipe for this user.
     if not pm_snack_no_rules:
         pm_snack_all = list(Recipe.objects.filter(
             user=user,
+            archive=False,
             recipe_type__in=['pm_snack', 'am_pm_snack']
-        ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule'))
+        ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule', 'addfood_rule'))
         if force_ignore_inventory:
             pm_snack_no_rules = [r for r in pm_snack_all if not r.standalone]
         else:
             pm_snack_no_rules = [r for r in pm_snack_all if not has_weekly_rule(r) and not r.standalone]
     
-    # DEDUPLICATION: Filter out already-used main dish recipes
+    # DEDUPLICATION: Filter out already-used main dish recipes.
+    # Keep PM snack-typed recipes eligible for PM main rows even if they were
+    # referenced earlier by rule assignment in non-main slots.
     total_pm_candidates = len(pm_snack_no_rules)
     pm_snack_before_dedup = pm_snack_no_rules[:]
-    pm_snack_no_rules = [r for r in pm_snack_no_rules if r.id not in used_main_recipes]
+    pm_snack_no_rules = [
+        r for r in pm_snack_no_rules
+        if (
+            r.id not in used_main_recipes
+            or r.recipe_type in ['pm_snack', 'am_pm_snack']
+        )
+    ]
     filtered_out = [r for r in pm_snack_before_dedup if r.id in used_main_recipes]
+
+    # Count days that still need a main PM snack dish after Phase 1
+    days_needing_pm_snack = sum(1 for day in days_of_week if not pm_snack_data[day]['bread3'])
+
+    # If the non-weekly-rule pool is smaller than the days that need filling, supplement
+    # with weekly-rule recipes so we don't leave days blank. Weekly-rule recipes were
+    # filtered to avoid double-counting with Phase 1, but if Phase 1 placed them only in
+    # add4/fruit4 slots (not as bread3), Phase 2 still needs them to fill the main dish row.
+    if len(pm_snack_no_rules) < days_needing_pm_snack and pm_snack_all:
+        supplemental = [
+            r for r in pm_snack_all
+            if not r.standalone
+            and r.id not in used_main_recipes
+            and r.id not in {x.id for x in pm_snack_no_rules}
+        ]
+        if supplemental:
+            pm_snack_no_rules = pm_snack_no_rules + supplemental
+            print(
+                f"[MENU DEBUG] PM snack Phase 2 supplement: added {len(supplemental)} weekly-rule "
+                f"recipe(s) to reach {len(pm_snack_no_rules)} candidate(s) for {days_needing_pm_snack} unfilled days."
+            )
+
+    if len(pm_snack_no_rules) < days_needing_pm_snack and pm_snack_before_dedup:
+        reuse_candidates = [
+            r for r in pm_snack_before_dedup
+            if r.id not in {x.id for x in pm_snack_no_rules}
+        ]
+        if reuse_candidates:
+            pm_snack_no_rules = pm_snack_no_rules + reuse_candidates
+            print(
+                f"[MENU DEBUG] PM snack Phase 2 dedup relax: re-added {len(reuse_candidates)} "
+                f"previously-used recipe(s) to cover {days_needing_pm_snack} unfilled day(s)."
+            )
 
     print(
         f"[MENU DEBUG] PM snack Phase 2: {total_pm_candidates} candidate recipe(s) "
@@ -7390,23 +8068,57 @@ def generate_full_menu(request):
                 )
     
     pm_snack_no_rules = pm_passed_inventory
+
+    # Enforce weekly uniqueness for PM snack main row by recipe name.
+    used_pm_bread_names = {
+        str(pm_snack_data[d].get('bread3', '')).strip()
+        for d in days_of_week
+        if str(pm_snack_data[d].get('bread3', '')).strip()
+        and 'Out of stock' not in str(pm_snack_data[d].get('bread3', ''))
+    }
     
     for day_idx, day in enumerate(days_of_week):
         if not pm_snack_data[day]['bread3'] and pm_snack_no_rules:
-            candidate_count = len(pm_snack_no_rules)
-            recipe = random.choice(pm_snack_no_rules)
+            candidates_for_day = [r for r in pm_snack_no_rules if r.name not in used_pm_bread_names]
+            if not candidates_for_day:
+                print(
+                    f"[MENU DEBUG] PM snack {day} bread3: no unique recipe name left for this week; "
+                    f"leaving empty to avoid repeats."
+                )
+                continue
+
+            candidate_count = len(candidates_for_day)
+            recipe = random.choice(candidates_for_day)
             
             # Track this recipe as used
             used_main_recipes.add(recipe.id)
-            # Remove from available pool to prevent reuse
-            pm_snack_no_rules = [r for r in pm_snack_no_rules if r.id != recipe.id]
+            used_pm_bread_names.add(recipe.name)
+            # Remove only when we still have enough unique recipes to cover remaining days.
+            remaining_unfilled_days = sum(1 for d in days_of_week if not pm_snack_data[d]['bread3'])
+            if len(pm_snack_no_rules) > remaining_unfilled_days:
+                pm_snack_no_rules = [r for r in pm_snack_no_rules if r.id != recipe.id]
             
             pm_snack_data[day]['choose2'] = recipe.fluid or ""
+            if recipe.fluid:
+                pm_snack_data[day]['choose2_rule_id'] = recipe.fluid_rule_id
             # Use recipe.name for main content (not generic recipe.grain component)
             pm_snack_data[day]['bread3'] = recipe.name
+            pm_snack_data[day]['bread3_rule_id'] = get_recipe_title_rule_id(recipe)
+            if not pm_snack_data[day]['add4']:
+                add_component, add_rule_id = _first_distinct_component_with_rule(
+                    recipe,
+                    [
+                        (recipe.grain, recipe.grain_rule_id),
+                        (recipe.addfood, recipe.addfood_rule_id),
+                    ]
+                )
+                pm_snack_data[day]['add4'] = add_component
+                pm_snack_data[day]['add4_rule_id'] = add_rule_id
             pm_snack_data[day]['meat3'] = recipe.meat or ""
-            if recipe.fruit or recipe.veg:
-                pm_snack_data[day]['fruit4'] = recipe.fruit or recipe.veg
+            fruit_component = _first_distinct_component(recipe, recipe.fruit, recipe.veg)
+            if fruit_component:
+                pm_snack_data[day]['fruit4'] = fruit_component
+                pm_snack_data[day]['fruit4_rule_id'] = recipe.fruit_rule_id or recipe.veg_rule_id
 
             print(
                 f"[MENU DEBUG] PM snack {day} bread3: selected recipe '{recipe.name}' "
@@ -7421,12 +8133,13 @@ def generate_full_menu(request):
     # NEVER overwrite existing fluid content
     if fluid_rule_recipes:
         fluid_recipe = fluid_rule_recipes[0]
-        if fluid_recipe.populate_pm_snack:
+        if fluid_recipe.populate_pm_snack and has_recipe_name_inventory_fallback(fluid_recipe):
             for day in days_of_week:
                 has_main_content = pm_snack_data[day]['bread3']
                 fluid_is_blank = not pm_snack_data[day]['choose2']
                 if has_main_content and fluid_is_blank:
                     pm_snack_data[day]['choose2'] = fluid_recipe.name
+                    pm_snack_data[day]['choose2_rule_id'] = fluid_recipe.fluid_rule_id
                     pass  # print(f"  Placed fluid recipe '{fluid_recipe.name}' in {day} PM snack (conditional)")
     
     # PHASE 3: Process standalone recipes ONLY if the PM snack period has main content
@@ -7451,23 +8164,25 @@ def generate_full_menu(request):
         for recipe in recipes_list:
             is_snack_wg = recipe.recipe_type == 'whole_grain'
             
-            # INVENTORY CHECK: Skip fruit/veg/grain standalones if insufficient inventory
-            # Fluid rows are NOT checked (user wants fluid rows to ignore inventory)
-            if is_snack_wg or recipe.recipe_type in ['fruit', 'vegetable']:
-                if not has_sufficient_inventory(recipe):
+            # INVENTORY CHECK: Side-component standalones use inventory-item unit_size checks.
+            if recipe.fluid or is_snack_wg or recipe.recipe_type in ['fruit', 'vegetable']:
+                if not has_recipe_name_inventory_fallback(recipe):
                     pass  # print(f"  Skipping standalone '{recipe.name}' for {day} PM snack - insufficient inventory")
                     continue
             
             # Place standalone recipe in appropriate field ONLY if empty
-            # Fluid placement: NO inventory check (skip filtering for fluid)
             if recipe.fluid and not pm_snack_data[day]['choose2']:
                 pm_snack_data[day]['choose2'] = recipe.fluid
+                pm_snack_data[day]['choose2_rule_id'] = recipe.fluid_rule_id
 
             if is_snack_wg or recipe.grain:
                 grain_or_name = recipe.grain or recipe.name
                 # Standalone/WG items go to add food ONLY if empty
                 if not pm_snack_data[day]['add4']:
                     pm_snack_data[day]['add4'] = grain_or_name
+                    # Track rule ID for add4: use grain_rule if grain exists
+                    if recipe.grain and recipe.grain_rule_id:
+                        pm_snack_data[day]['add4_rule_id'] = recipe.grain_rule_id
 
             elif recipe.meat:
                 if not pm_snack_data[day]['meat3']:
@@ -7491,7 +8206,7 @@ def generate_full_menu(request):
     
     # Determine which meal periods the user actually serves (has non-standalone recipes for)
     # This is used both for filtering out-of-stock warnings and for side dish placement
-    all_recipes = Recipe.objects.filter(user=user)
+    all_recipes = Recipe.objects.filter(user=user, archive=False)
     
     user_serves_breakfast = all_recipes.filter(
         populate_breakfast=True,
@@ -7522,6 +8237,103 @@ def generate_full_menu(request):
     ).exists()
     
     pass  # print(f"🍽️  User serves: Breakfast={'✓' if user_serves_breakfast else '✗'}, AM Snack={'✓' if user_serves_am_snack else '✗'}, Lunch={'✓' if user_serves_lunch else '✗'}, PM Snack={'✓' if user_serves_pm_snack else '✗'}")
+
+    # FINAL VALIDATION: every populated cell must resolve to a recipe reference and pass
+    # inventory checks, unless that recipe has ignore_inventory=True or global override is on.
+    # This guarantees rule placements, standalones, and main-dish/component fills all follow
+    # the same inventory policy.
+    PLACEHOLDER_VALUES = {
+        "No available breakfast option",
+        "No available meal",
+    }
+
+    recipe_lookup_cache = {}
+    side_dish_lookup_cache = {}
+
+    def get_recipe_by_name_cached(name):
+        key = (name or '').strip()
+        if not key:
+            return None
+        if key in recipe_lookup_cache:
+            return recipe_lookup_cache[key]
+        recipe_lookup_cache[key] = Recipe.objects.filter(user=user, archive=False, name=key).first()
+        return recipe_lookup_cache[key]
+
+    def get_side_dish_by_name_cached(name):
+        key = (name or '').strip()
+        if not key:
+            return None
+        if key in side_dish_lookup_cache:
+            return side_dish_lookup_cache[key]
+        side_dish_lookup_cache[key] = Inventory.objects.filter(
+            user=user,
+            item=key,
+            is_side_dish=True,
+        ).first()
+        return side_dish_lookup_cache[key]
+
+    def is_cell_inventory_valid(cell_value):
+        value = str(cell_value or '').strip()
+        if not value:
+            return True
+        if "Out of stock" in value or value in PLACEHOLDER_VALUES:
+            return True
+        if force_ignore_inventory:
+            return True
+
+        recipe = get_recipe_by_name_cached(value)
+        if recipe:
+            if getattr(recipe, 'ignore_inventory', False):
+                return True
+            return has_sufficient_inventory(recipe)
+
+        # Support direct side-dish inventory items that are not represented as recipes.
+        side_dish = get_side_dish_by_name_cached(value)
+        if side_dish:
+            conv_to_base = side_dish.conversion_to_base or 1
+            inventory_units = side_dish.total_quantity or side_dish.quantity or 0
+            available_base = inventory_units * conv_to_base
+            portion_per_student = side_dish.unit_size if side_dish.unit_size and side_dish.unit_size > 0 else 1
+            required_base = portion_per_student * estimated_daily_students
+            return available_base >= required_base
+
+        # Unknown values are left untouched; main rows are normalized later.
+        return True
+
+    def validate_meal_cells(meal_name, meal_data, fields):
+        for day in days_of_week:
+            for field in fields:
+                cell_value = meal_data[day].get(field, '')
+                if is_cell_inventory_valid(cell_value):
+                    continue
+
+                meal_data[day][field] = "❌ Out of stock ❌"
+                rule_id_key = f"{field}_rule_id"
+                if rule_id_key in meal_data[day]:
+                    meal_data[day][rule_id_key] = None
+                print(
+                    f"[MENU DEBUG] {meal_name} {day} {field}: replaced '{cell_value}' "
+                    f"with OUT OF STOCK after final inventory validation."
+                )
+
+    # Only validate main-dish anchor rows here; component rows can contain
+    # ingredient labels (not recipe names), which should not be recipe-validated.
+    validate_meal_cells('Breakfast', breakfast_data, ['bread'])
+    validate_meal_cells('AM snack', am_snack_data, ['bread2'])
+    validate_meal_cells('Lunch', lunch_data, ['meal_name'])
+    validate_meal_cells('PM snack', pm_snack_data, ['bread3'])
+
+    # Re-assert mandatory main rows after final validation so they are never blank.
+    if not force_ignore_inventory:
+        for day in days_of_week:
+            if not breakfast_data[day]['bread'] or breakfast_data[day]['bread'] == "No available breakfast option":
+                breakfast_data[day]['bread'] = "❌ Out of stock"
+            if not am_snack_data[day]['bread2']:
+                am_snack_data[day]['bread2'] = "❌ Out of stock"
+            if not lunch_data[day]['meal_name'] or lunch_data[day]['meal_name'] == "No available meal":
+                lunch_data[day]['meal_name'] = "❌ Out of stock"
+            if not pm_snack_data[day]['bread3']:
+                pm_snack_data[day]['bread3'] = "❌ Out of stock"
     
     # Check for out-of-stock items (before returning response)
     # Track each specific item that's out of stock with meal period and component name
@@ -7630,65 +8442,123 @@ def generate_full_menu(request):
     # (weekly_qty means "appears on N different days")
     rule_day_counts = {}  # {rule_id: set of day_indices}
     
-    def check_recipe_in_cell(recipe_name, day_idx):
-        """Helper to check if a recipe name has rules and count them.
-        Checks both Recipe table and Inventory table (for side dishes)."""
-        if not recipe_name:
+    def _track_rule_day(rule_obj, day_idx):
+        if not rule_obj:
             return
-        try:
-            recipe = Recipe.objects.get(user=user, name=recipe_name)
-            for rule in get_recipe_rules(recipe):
-                if rule.id not in rule_day_counts:
-                    rule_day_counts[rule.id] = set()
-                rule_day_counts[rule.id].add(day_idx)
-        except Recipe.DoesNotExist:
-            # If not found in Recipe table, check if it's an inventory side dish
-            try:
-                inventory_item = Inventory.objects.get(user=user, item=recipe_name, is_side_dish=True)
-                if inventory_item.rule:
-                    if inventory_item.rule.id not in rule_day_counts:
-                        rule_day_counts[inventory_item.rule.id] = set()
-                    rule_day_counts[inventory_item.rule.id].add(day_idx)
-            except Inventory.DoesNotExist:
-                pass
-        except Recipe.MultipleObjectsReturned:
-            recipe = Recipe.objects.filter(user=user, name=recipe_name).first()
-            if recipe:
-                for rule in get_recipe_rules(recipe):
-                    if rule.id not in rule_day_counts:
-                        rule_day_counts[rule.id] = set()
-                    rule_day_counts[rule.id].add(day_idx)
+        if rule_obj.id not in rule_day_counts:
+            rule_day_counts[rule_obj.id] = set()
+        rule_day_counts[rule_obj.id].add(day_idx)
+
+    def _track_rule_day_id(rule_id, day_idx):
+        if not rule_id:
+            return
+        if rule_id not in rule_day_counts:
+            rule_day_counts[rule_id] = set()
+        rule_day_counts[rule_id].add(day_idx)
+
+    def _preferred_rule_attr_for_field(field_name):
+        if field_name in {'fluid_milk', 'lunch_milk', 'choose1', 'choose2'}:
+            return 'fluid_rule'
+        if field_name in {'fruit', 'fruit2', 'fruit3', 'fruit4'}:
+            return 'fruit_rule'
+        if field_name == 'vegetable':
+            return 'veg_rule'
+        if field_name in {'grain', 'bread', 'bread2', 'bread3'}:
+            return 'grain_rule'
+        if field_name in {'add1', 'add3', 'add4'}:
+            return 'grain_rule'
+        if field_name == 'add2':
+            return 'addfood_rule'
+        return None
+
+    def _resolve_recipe_for_field(recipe_name, field_name):
+        candidates = list(Recipe.objects.filter(user=user, archive=False, name=recipe_name))
+        if not candidates:
+            return None
+
+        preferred_attr = _preferred_rule_attr_for_field(field_name)
+        if preferred_attr:
+            preferred = [r for r in candidates if getattr(r, preferred_attr, None)]
+            if preferred:
+                return preferred[0]
+
+        with_any_rule = [r for r in candidates if get_recipe_rules(r)]
+        if with_any_rule:
+            return with_any_rule[0]
+
+        return candidates[0]
+
+    whole_grain_rule = Rule.objects.filter(user=user, rule__iexact='Whole Grain').first()
+    # Only the dedicated lunch grain row should trigger the whole-grain safety fallback.
+    # 'bread', 'bread2', 'bread3' hold main dish recipes (any type) and must NOT
+    # auto-count as Whole Grain — that causes the rule to appear satisfied before
+    # the add3/add4 grain side-dish filler has a chance to run.
+    whole_grain_fields = {'grain'}
+    whole_grain_non_count_fields = {'bread', 'bread2', 'bread3'}
+
+    def check_recipe_in_cell(recipe_name, day_idx, field_name=None, explicit_rule_id=None):
+        """Count rule occurrences for one rendered cell.
+        Uses field-aware recipe resolution to avoid wrong matches when names are duplicated."""
+        # Prefer explicit rule ids tracked at placement time; they are the authoritative source.
+        if explicit_rule_id:
+            _track_rule_day_id(explicit_rule_id, day_idx)
+            return
+
+        value = str(recipe_name or '').strip()
+        if not value or "Out of stock" in value or value in {"No available breakfast option", "No available meal"}:
+            return
+
+        # Side dish rules should always count when the rendered cell is an inventory side dish.
+        side_dish = Inventory.objects.filter(user=user, item=value, is_side_dish=True).first()
+        counted = False
+        if side_dish and side_dish.rule:
+            if not (
+                whole_grain_rule
+                and side_dish.rule.id == whole_grain_rule.id
+                and field_name in whole_grain_non_count_fields
+            ):
+                _track_rule_day(side_dish.rule, day_idx)
+            counted = True
+
+        recipe = _resolve_recipe_for_field(value, field_name)
+        if recipe:
+            rules = get_recipe_rules(recipe)
+            for rule in rules:
+                if (
+                    whole_grain_rule
+                    and rule.id == whole_grain_rule.id
+                    and field_name in whole_grain_non_count_fields
+                ):
+                    continue
+                _track_rule_day(rule, day_idx)
+                counted = True
+            if rules:
+                return
+
+        # Final fallback: count rule from same-name inventory item for ANY cell.
+        # This allows inventory-driven rule fulfillment (not just side-dish/component rows)
+        # to contribute accurately to insufficiency checks.
+        inventory_item = Inventory.objects.filter(user=user, item=value).select_related('rule').first()
+        if inventory_item and inventory_item.rule:
+            if not (
+                whole_grain_rule
+                and inventory_item.rule.id == whole_grain_rule.id
+                and field_name in whole_grain_non_count_fields
+            ):
+                _track_rule_day(inventory_item.rule, day_idx)
+                counted = True
+
+        # Safety fallback: grain-designated rows should satisfy Whole Grain when the
+        # cell is visibly filled but rule metadata is missing on recipe/inventory.
+        if not counted and field_name in whole_grain_fields and whole_grain_rule:
+            _track_rule_day(whole_grain_rule, day_idx)
     
-    # Scan ALL fields across ALL meal periods to count rule appearances
+    # Scan ALL *_rule_id fields across ALL meal periods to count rule appearances
     for day_idx, day in enumerate(days_of_week):
-        # Breakfast: check ALL fields
-        check_recipe_in_cell(breakfast_data[day].get('fluid_milk', ''), day_idx)
-        check_recipe_in_cell(breakfast_data[day].get('fruit', ''), day_idx)
-        check_recipe_in_cell(breakfast_data[day].get('bread', ''), day_idx)
-        check_recipe_in_cell(breakfast_data[day].get('add1', ''), day_idx)
-        
-        # AM Snack: check ALL fields
-        check_recipe_in_cell(am_snack_data[day].get('choose1', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('fruit2', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('bread2', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('meat1', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('add3', ''), day_idx)
-        
-        # Lunch: check ALL fields
-        check_recipe_in_cell(lunch_data[day].get('meal_name', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('lunch_milk', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('vegetable', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('fruit3', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('grain', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('meat_alternate', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('add2', ''), day_idx)
-        
-        # PM Snack: check ALL fields
-        check_recipe_in_cell(pm_snack_data[day].get('choose2', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('fruit4', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('bread3', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('meat3', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('add4', ''), day_idx)
+        for data_dict in [breakfast_data[day], am_snack_data[day], lunch_data[day], pm_snack_data[day]]:
+            for key, val in data_dict.items():
+                if key.endswith('_rule_id') and val:
+                    _track_rule_day_id(val, day_idx)
     
     # For each rule, check if it needs more appearances
     all_rules = Rule.objects.filter(user=user, weekly_qty__gt=0)
@@ -7704,7 +8574,7 @@ def generate_full_menu(request):
         # They should NEVER be added to Additional Food rows in post-processing
         # Check if any recipe with this rule has fluid_rule set
         is_fluid_rule = False
-        for recipe in Recipe.objects.filter(user=user):
+        for recipe in Recipe.objects.filter(user=user, archive=False):
             if hasattr(recipe, 'fluid_rule') and recipe.fluid_rule and recipe.fluid_rule.id == rule.id:
                 is_fluid_rule = True
                 break
@@ -7713,45 +8583,41 @@ def generate_full_menu(request):
             pass  # print(f"⚠️  Rule '{rule.rule}' is a fluid rule - skipping post-processing (handled by mandatory daily placement)")
             continue
         
-        # Rule needs more appearances - add standalone recipes to Additional Food
+        # Rule needs more appearances - Phase 3 fills from recipe candidates, Phase 4 from inventory side dishes
         gap = needed_count - current_count
         pass  # print(f"⚠️  Rule '{rule.rule}' needs {gap} more appearances ({current_count}/{needed_count})")
-        
-        # Get standalone recipes for this rule
-        standalone_recipes = []
-        for recipe in Recipe.objects.filter(user=user, standalone=True):
-            if rule in get_recipe_rules(recipe):
-                standalone_recipes.append(recipe)
-        
-        if not standalone_recipes:
-            pass  # print(f"  ❌ No standalone recipes available for rule '{rule.rule}'")
-            continue
-        
-        # INVENTORY CHECK: Filter standalone recipes by inventory availability
-        # Check fruit/veg/grain standalones (not fluid)
+
+        # PHASE 3: Find ALL recipe candidates for this rule via a single indexed query.
+        # Includes standalone of any type PLUS non-standalone veg/fruit/grain side recipes.
+        # Non-standalone main dish types (lunch, breakfast, snack) are handled in Phase 1/2 only.
+        from django.db.models import Q as _Q
+        rule_candidate_recipes = list(Recipe.objects.filter(
+            user=user
+        ).filter(
+            _Q(grain_rule_id=rule.id) | _Q(fruit_rule_id=rule.id) | _Q(veg_rule_id=rule.id) |
+            _Q(meat_rule_id=rule.id) | _Q(fluid_rule_id=rule.id) | _Q(addfood_rule_id=rule.id)
+        ).filter(
+            _Q(standalone=True) | _Q(recipe_type__in=('vegetable', 'fruit', 'whole_grain'))
+        ).select_related('grain_rule', 'fruit_rule', 'veg_rule', 'meat_rule', 'fluid_rule', 'addfood_rule'))
+
+        # INVENTORY CHECK for Phase 3 candidates
         standalone_with_inventory = []
-        for recipe in standalone_recipes:
-            # Skip inventory check for fluid rules (user wants fluid rows to ignore inventory)
+        for recipe in rule_candidate_recipes:
+            # Skip inventory check for fluid rules
             if hasattr(recipe, 'fluid_rule') and recipe.fluid_rule:
                 standalone_with_inventory.append(recipe)
                 continue
-            
-            # Check inventory for fruit/veg/grain standalones
-            if has_sufficient_inventory(recipe):
+            if force_ignore_inventory:
                 standalone_with_inventory.append(recipe)
-            else:
-                pass  # print(f"  ⚠️ Skipping standalone '{recipe.name}' for rule '{rule.rule}' - insufficient inventory")
-        
-        if not standalone_with_inventory:
-            pass  # print(f"  ❌ No standalone recipes with sufficient inventory for rule '{rule.rule}'")
-            continue
-        
-        pass  # print(f"  Available standalone recipes with inventory: {[r.name for r in standalone_with_inventory]}")
-        
+                continue
+            if has_recipe_name_inventory_fallback(recipe):
+                standalone_with_inventory.append(recipe)
+        # standalone_with_inventory may be empty — Phase 4 (side-dish inventory) still runs below.
+
         # Find days that don't have this rule yet
         days_without_rule = [i for i in range(len(days_of_week)) if i not in rule_day_counts.get(rule.id, set())]
         
-        # Add standalones to fill rule gaps
+        # Add Phase 3 recipe candidates to fill rule gaps
         # - Grain rule: Additional Food only
         # - Fruit/veg rules: Main fruit/veg rows (if empty), then Additional Food
         # - Other rules: Additional Food
@@ -7759,7 +8625,9 @@ def generate_full_menu(request):
         for day_idx in days_without_rule:
             if added >= gap:
                 break
-            
+            if not standalone_with_inventory:
+                break
+
             day = days_of_week[day_idx]
             recipe = random.choice(standalone_with_inventory)
             
@@ -7775,12 +8643,14 @@ def generate_full_menu(request):
                 # Try lunch vegetable row first (check permission)
                 if recipe.populate_lunch and lunch_data[day]['meal_name'] and not lunch_data[day]['vegetable']:
                     lunch_data[day]['vegetable'] = recipe.name
+                    lunch_data[day]['vegetable_rule_id'] = recipe.veg_rule_id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to lunch vegetable row on {day}")
                 # Try breakfast fruit row as fallback (fruit/veg are same row, check permission)
                 elif recipe.populate_breakfast and breakfast_data[day]['bread'] and not breakfast_data[day]['fruit']:
                     breakfast_data[day]['fruit'] = recipe.name
+                    breakfast_data[day]['fruit_rule_id'] = recipe.veg_rule_id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to breakfast fruit row on {day}")
@@ -7790,12 +8660,14 @@ def generate_full_menu(request):
                 # Try lunch fruit row first (check permission)
                 if recipe.populate_lunch and lunch_data[day]['meal_name'] and not lunch_data[day]['fruit3']:
                     lunch_data[day]['fruit3'] = recipe.name
+                    lunch_data[day]['fruit3_rule_id'] = recipe.fruit_rule_id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to lunch fruit row on {day}")
                 # Try breakfast fruit row as fallback (check permission)
                 elif recipe.populate_breakfast and breakfast_data[day]['bread'] and not breakfast_data[day]['fruit']:
                     breakfast_data[day]['fruit'] = recipe.name
+                    breakfast_data[day]['fruit_rule_id'] = recipe.fruit_rule_id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to breakfast fruit row on {day}")
@@ -7805,18 +8677,21 @@ def generate_full_menu(request):
                 # Try lunch Grain row FIRST (dedicated grain component, check permission)
                 if recipe.populate_lunch and lunch_data[day]['meal_name'] and not lunch_data[day]['grain']:
                     lunch_data[day]['grain'] = recipe.name
+                    lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to lunch Grain row on {day}")
                 # Try breakfast Additional Food (check permission)
                 elif not placed and recipe.populate_breakfast and breakfast_data[day]['bread'] and not breakfast_data[day]['add1']:
                     breakfast_data[day]['add1'] = recipe.name
+                    breakfast_data[day]['add1_rule_id'] = recipe.grain_rule_id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to breakfast Additional Food on {day}")
                 # Try lunch Additional Food (if Grain row already filled, check permission)
                 elif not placed and recipe.populate_lunch and lunch_data[day]['meal_name'] and not lunch_data[day]['add2']:
                     lunch_data[day]['add2'] = recipe.name
+                    lunch_data[day]['add2_rule_id'] = recipe.grain_rule_id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to lunch Additional Food on {day} (Grain row already filled)")
@@ -7826,12 +8701,14 @@ def generate_full_menu(request):
                 # Try breakfast Additional Food (check permission)
                 if recipe.populate_breakfast and breakfast_data[day]['bread'] and not breakfast_data[day]['add1']:
                     breakfast_data[day]['add1'] = recipe.name
+                    breakfast_data[day]['add1_rule_id'] = rule.id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to breakfast Additional Food on {day}")
                 # Try lunch Additional Food (check permission)
                 elif not placed and recipe.populate_lunch and lunch_data[day]['meal_name'] and not lunch_data[day]['add2']:
                     lunch_data[day]['add2'] = recipe.name
+                    lunch_data[day]['add2_rule_id'] = rule.id
                     placed = True
                     added += 1
                     pass  # print(f"  Added '{recipe.name}' to lunch Additional Food on {day}")
@@ -7846,32 +8723,160 @@ def generate_full_menu(request):
             pass  # print(f"✅ Rule '{rule.rule}' now satisfied: {current_count + added}/{needed_count} days")
         elif added == 0 and gap > 0:
             pass  # print(f"  ⚠️ Could not fill all gaps - no empty Additional Food slots available")
-    
-    # Track missing rules (rules that couldn't be satisfied)
+
+        # If standalone recipes could not fully satisfy this rule, try side-dish inventory
+        # items that are explicitly linked to the same rule.
+        remaining_gap = needed_count - len(rule_day_counts.get(rule.id, set()))
+        if remaining_gap > 0:
+            side_dish_candidates = list(
+                Inventory.objects.filter(user=user, is_side_dish=True, rule_id=rule.id).select_related('rule')
+            )
+            if side_dish_candidates:
+                for day_idx in range(len(days_of_week)):
+                    if remaining_gap <= 0:
+                        break
+                    if day_idx in rule_day_counts.get(rule.id, set()):
+                        continue
+
+                    day = days_of_week[day_idx]
+                    placed = False
+
+                    random.shuffle(side_dish_candidates)
+                    for side_dish in side_dish_candidates:
+                        if not force_ignore_inventory:
+                            conv_to_base = float(side_dish.conversion_to_base or 1)
+                            inventory_units = float(side_dish.total_quantity or side_dish.quantity or 0)
+                            available_base = inventory_units * conv_to_base
+                            portion_per_student = float(side_dish.unit_size or 0)
+                            required_base = portion_per_student * estimated_daily_students
+                            if portion_per_student > 0 and available_base < required_base:
+                                continue
+
+                        category_text = str(side_dish.category or '').lower()
+                        is_veg = 'vegetable' in category_text
+                        is_fruit = 'fruit' in category_text
+
+                        if side_dish.populate_lunch and lunch_data[day]['meal_name']:
+                            if is_veg and not lunch_data[day]['vegetable']:
+                                lunch_data[day]['vegetable'] = side_dish.item
+                                lunch_data[day]['vegetable_rule_id'] = rule.id
+                                placed = True
+                            elif is_fruit and not lunch_data[day]['fruit3']:
+                                lunch_data[day]['fruit3'] = side_dish.item
+                                lunch_data[day]['fruit3_rule_id'] = rule.id
+                                placed = True
+                            elif not is_fruit and not is_veg and not lunch_data[day]['add2']:
+                                lunch_data[day]['add2'] = side_dish.item
+                                lunch_data[day]['add2_rule_id'] = rule.id
+                                placed = True
+
+                        # Fruit/veg items fall back to the breakfast fruit row — never to add1
+                        if not placed and (is_fruit or is_veg) and side_dish.populate_breakfast and breakfast_data[day]['bread'] and not breakfast_data[day]['fruit']:
+                            breakfast_data[day]['fruit'] = side_dish.item
+                            breakfast_data[day]['fruit_rule_id'] = rule.id
+                            placed = True
+
+                        # Non-fruit/veg items (and absolute last resort) fall to add slots
+                        if not placed and not is_fruit and not is_veg and side_dish.populate_breakfast and breakfast_data[day]['bread'] and not breakfast_data[day]['add1']:
+                            breakfast_data[day]['add1'] = side_dish.item
+                            breakfast_data[day]['add1_rule_id'] = rule.id
+                            placed = True
+
+                        if not placed and not is_fruit and not is_veg and side_dish.populate_am_snack and am_snack_data[day]['bread2'] and not am_snack_data[day]['add3']:
+                            am_snack_data[day]['add3'] = side_dish.item
+                            am_snack_data[day]['add3_rule_id'] = rule.id
+                            placed = True
+
+                        if not placed and not is_fruit and not is_veg and side_dish.populate_pm_snack and pm_snack_data[day]['bread3'] and not pm_snack_data[day]['add4']:
+                            pm_snack_data[day]['add4'] = side_dish.item
+                            pm_snack_data[day]['add4_rule_id'] = rule.id
+                            placed = True
+
+                        if placed:
+                            _track_rule_day_id(rule.id, day_idx)
+                            remaining_gap -= 1
+                            break
+
+    # === PHASE 5: RANDOM FILLER FOR REMAINING EMPTY VEG/FRUIT CELLS (RECIPE POOL) ===
+    # Phase 5A (force_ignore_inventory=False / "leave as is"):
+    #   Only fill remaining empty cells if ALL non-fluid rules are already satisfied.
+    #   If any rule still has a gap, leave cells empty — Phase 6 will report the missing flag.
+    # Phase 5B (force_ignore_inventory=True / "yes continue generating"):
+    #   Always fill remaining empty cells after rule-gap attempts above.
+
+    # Pre-compute fluid rule IDs to exclude from satisfaction check
+    _phase5_fluid_rule_ids = set()
+    for _r5 in Recipe.objects.filter(user=user, archive=False):
+        if hasattr(_r5, 'fluid_rule') and _r5.fluid_rule:
+            _phase5_fluid_rule_ids.add(_r5.fluid_rule_id)
+
+    _all_rules_satisfied = all(
+        len(rule_day_counts.get(r.id, set())) >= r.weekly_qty
+        for r in all_rules
+        if r.id not in _phase5_fluid_rule_ids
+    )
+    # _should_fill_random is also checked inside the inventory side-dish fill loop below
+    _should_fill_random = force_ignore_inventory or _all_rules_satisfied
+
+    if _should_fill_random:
+        # Lunch vegetable row: pool = all populate_lunch vegetable recipes with inventory.
+        # Phase 5B: include any recipe; Phase 5A: exclude recipes with an unsatisfied weekly rule.
+        veg_all = list(Recipe.objects.filter(
+            user=user, populate_lunch=True, recipe_type='vegetable'
+        ).select_related('veg_rule'))
+        if force_ignore_inventory:
+            veg_pool = veg_all
+        else:
+            veg_pool = [r for r in veg_all if not has_weekly_rule(r) and has_sufficient_inventory(r)]
+
+        veg_used_names = set(
+            str(lunch_data[day].get('vegetable', '') or '').strip()
+            for day in days_of_week
+            if lunch_data[day].get('vegetable') and 'Out of stock' not in str(lunch_data[day].get('vegetable'))
+        )
+        for day_idx, day in enumerate(days_of_week):
+            if lunch_data[day]['meal_name'] and not lunch_data[day]['vegetable'] and veg_pool:
+                unused_veg = [r for r in veg_pool if r.name not in veg_used_names]
+                # Only fill with unused recipes; leave remaining days empty for inventory side dishes
+                if unused_veg:
+                    selected = random.choice(unused_veg)
+                    lunch_data[day]['vegetable'] = selected.name
+                    if selected.veg_rule_id:
+                        lunch_data[day]['vegetable_rule_id'] = selected.veg_rule_id
+                    print(
+                        f"[MENU DEBUG] Lunch {day} vegetable: Phase 5 filler '{selected.name}' "
+                        f"(id={selected.id}, standalone={selected.standalone}, "
+                        f"veg_rule_id={selected.veg_rule_id}) from {len(unused_veg)} candidate(s)."
+                    )
+                    veg_used_names.add(selected.name)
+
+        # Lunch fruit row: pool = all populate_lunch fruit recipes with inventory.
+        fruit_all = list(Recipe.objects.filter(
+            user=user, populate_lunch=True, recipe_type='fruit'
+        ).select_related('fruit_rule'))
+        if force_ignore_inventory:
+            fruit_pool = fruit_all
+        else:
+            fruit_pool = [r for r in fruit_all if not has_weekly_rule(r) and has_sufficient_inventory(r)]
+
+        fruit_used_names = set(
+            str(lunch_data[day].get('fruit3', '') or '').strip()
+            for day in days_of_week
+            if lunch_data[day].get('fruit3') and 'Out of stock' not in str(lunch_data[day].get('fruit3'))
+        )
+        for day_idx, day in enumerate(days_of_week):
+            if lunch_data[day]['meal_name'] and not lunch_data[day]['fruit3'] and fruit_pool:
+                unused_fruit = [r for r in fruit_pool if r.name not in fruit_used_names]
+                # Only fill with unused recipes; leave remaining days empty for inventory side dishes
+                if unused_fruit:
+                    selected = random.choice(unused_fruit)
+                    lunch_data[day]['fruit3'] = selected.name
+                    if selected.fruit_rule_id:
+                        lunch_data[day]['fruit3_rule_id'] = selected.fruit_rule_id
+                    fruit_used_names.add(selected.name)
+
+    # missing_rules is computed in Phase 6 (final re-scan after side-dish fill completes).
     missing_rules = []
-    for rule in all_rules:
-        current_count = len(rule_day_counts.get(rule.id, set()))
-        needed_count = rule.weekly_qty
-        
-        # Skip fluid rules (handled separately)
-        is_fluid_rule = False
-        for recipe in Recipe.objects.filter(user=user):
-            if hasattr(recipe, 'fluid_rule') and recipe.fluid_rule and recipe.fluid_rule.id == rule.id:
-                is_fluid_rule = True
-                break
-        
-        if is_fluid_rule:
-            continue
-        
-        if current_count < needed_count:
-            gap = needed_count - current_count
-            missing_rules.append({
-                'rule': rule.rule,
-                'current': current_count,
-                'required': needed_count,
-                'gap': gap
-            })
-            pass  # print(f"❌ MISSING RULE: '{rule.rule}' appears {current_count}/{needed_count} days (missing {gap})")
     
     # === FILL BLANK FRUIT/VEG FIELDS WITH SIDE DISHES ===
     # After all rule processing, fill remaining blank fruit/vegetable fields
@@ -7886,26 +8891,173 @@ def generate_full_menu(request):
     pass  # print(f"      Lunch: {'✓' if user_serves_lunch else '✗'}")
     pass  # print(f"      PM Snack: {'✓' if user_serves_pm_snack else '✗'}")
     
-    # Get all side dish inventory items for this user
-    available_side_dishes = list(Inventory.objects.filter(user=user, is_side_dish=True))
-    used_side_dishes = set()  # Track used side dishes to prevent duplicates
+    # Get side dish inventory items for this user that can serve at least one day's estimate
+    available_side_dishes = []
+    side_dish_remaining_base = {}
+    for side_dish in Inventory.objects.filter(user=user, is_side_dish=True):
+        conv_to_base = side_dish.conversion_to_base or 1
+        inventory_units = side_dish.total_quantity or side_dish.quantity or 0
+        available_base = inventory_units * conv_to_base
+        portion_per_student = side_dish.unit_size if side_dish.unit_size and side_dish.unit_size > 0 else 1
+        required_base = portion_per_student * estimated_daily_students
+        if force_ignore_inventory or available_base >= required_base:
+            available_side_dishes.append(side_dish)
+            side_dish_remaining_base[side_dish.id] = available_base
+    last_selected_by_slot = {
+        'breakfast_fruit': None,
+        'am_snack_fruit2': None,
+        'am_snack_add3': None,
+        'lunch_vegetable': None,
+        'lunch_fruit3': None,
+        'pm_snack_fruit4': None,
+        'pm_snack_add4': None,
+    }
+
+    # Remaining rule deficit map (daily appearances). Used to avoid over-filling
+    # grain side dishes once the related rule is already satisfied.
+    required_days_by_rule_id = {rule.id: rule.weekly_qty for rule in all_rules}
+
+    def _remaining_rule_days(rule_id):
+        required = required_days_by_rule_id.get(rule_id)
+        if not required:
+            return 0
+        current = len(rule_day_counts.get(rule_id, set()))
+        return max(required - current, 0)
+
+    def _side_dish_rule_text(side_dish):
+        return str(getattr(getattr(side_dish, 'rule', None), 'rule', '') or '').lower()
+
+    def _is_fruit_or_veg_side_dish(side_dish):
+        category_text = str(getattr(side_dish, 'category', '') or '').lower()
+        rule_text = _side_dish_rule_text(side_dish)
+        return (
+            'fruit' in category_text
+            or 'vegetable' in category_text
+            or 'juice' in category_text
+            or 'fruit' in rule_text
+            or 'veg' in rule_text
+            or 'vegetable' in rule_text
+            or 'berry' in rule_text
+        )
+
+    def _is_grain_side_dish(side_dish):
+        category_text = str(getattr(side_dish, 'category', '') or '').lower()
+        rule_text = _side_dish_rule_text(side_dish)
+        return (
+            'grain' in category_text
+            or 'grain' in rule_text
+            or 'whole grain' in rule_text
+        )
+
+    def _required_base_for_side_dish(side_dish):
+        portion_per_student = side_dish.unit_size if side_dish.unit_size and side_dish.unit_size > 0 else 1
+        return portion_per_student * estimated_daily_students
+
+    def _can_reserve_side_dish(side_dish):
+        if force_ignore_inventory:
+            return True
+        return side_dish_remaining_base.get(side_dish.id, 0) >= _required_base_for_side_dish(side_dish)
+
+    def _reserve_side_dish(side_dish):
+        if force_ignore_inventory:
+            return True
+        required_base = _required_base_for_side_dish(side_dish)
+        current_base = side_dish_remaining_base.get(side_dish.id, 0)
+        if current_base < required_base:
+            return False
+        side_dish_remaining_base[side_dish.id] = current_base - required_base
+        return True
+
+    # Week-level used names per slot — exhausted before repeating
+    _week_used_by_slot = {}
+
+    def _pick_side_dish(candidates, slot_key, day_used_names, group_used=None):
+        """Exhaust all options before repeating within a category (fruit, veg, grain).
+        group_used: shared mutable set across ALL slots of the same type (e.g. all fruit slots).
+        Items already in group_used are deprioritized to the repeat tier so every unique
+        option appears once before anything repeats."""
+        if not candidates:
+            return None
+        week_used = _week_used_by_slot.setdefault(slot_key, set())
+        _group = group_used if group_used is not None else week_used
+        # Fresh tier: not yet used in ANY same-type slot this week AND not used today
+        fresh = [
+            sd for sd in candidates
+            if sd.item not in _group and sd.item not in day_used_names
+            and _can_reserve_side_dish(sd)
+        ]
+        if fresh:
+            chosen = random.choice(fresh)
+            if _reserve_side_dish(chosen):
+                week_used.add(chosen.item)
+                _group.add(chosen.item)
+                return chosen
+        # Repeat tier: all fresh options exhausted — prefer items not used today
+        preferred = [
+            sd for sd in candidates
+            if sd.item not in day_used_names and _can_reserve_side_dish(sd)
+        ]
+        if preferred:
+            chosen = random.choice(preferred)
+            if _reserve_side_dish(chosen):
+                week_used.add(chosen.item)
+                _group.add(chosen.item)
+                return chosen
+        repeat_ok = [sd for sd in candidates if _can_reserve_side_dish(sd)]
+        if repeat_ok:
+            chosen = random.choice(repeat_ok)
+            if _reserve_side_dish(chosen):
+                return chosen
+        return None
     
     if available_side_dishes:
         pass  # print(f"   Found {len(available_side_dishes)} side dish items in inventory")
-        
-        for day in days_of_week:
+
+        # Shared week-level sets that span ALL fruit/veg slots so every unique option
+        # is used at least once before anything repeats across breakfast, snack, and lunch.
+        _global_fruit_week_used = set()
+        _global_veg_week_used = set()
+        for _seed_day in days_of_week:
+            for _fv in [
+                breakfast_data[_seed_day].get('fruit'),
+                am_snack_data[_seed_day].get('fruit2'),
+                lunch_data[_seed_day].get('fruit3'),
+                pm_snack_data[_seed_day].get('fruit4'),
+            ]:
+                _fv = str(_fv or '').strip()
+                if _fv and 'Out of stock' not in _fv:
+                    _global_fruit_week_used.add(_fv)
+            _vv = str(lunch_data[_seed_day].get('vegetable', '') or '').strip()
+            if _vv and 'Out of stock' not in _vv:
+                _global_veg_week_used.add(_vv)
+
+        for day_idx, day in enumerate(days_of_week):
+            day_used_names = {
+                str(breakfast_data[day].get('fruit', '')).strip(),
+                str(breakfast_data[day].get('add1', '')).strip(),
+                str(am_snack_data[day].get('fruit2', '')).strip(),
+                str(am_snack_data[day].get('add3', '')).strip(),
+                str(lunch_data[day].get('vegetable', '')).strip(),
+                str(lunch_data[day].get('fruit3', '')).strip(),
+                str(pm_snack_data[day].get('fruit4', '')).strip(),
+                str(pm_snack_data[day].get('add4', '')).strip(),
+            }
+            day_used_names = {v for v in day_used_names if v and 'Out of stock' not in v}
+
             # Breakfast: Fill blank fruit field ONLY if breakfast is being served AND has main content
-            if user_serves_breakfast and breakfast_data[day]['bread'] and breakfast_data[day]['bread'].strip() and not breakfast_data[day]['fruit']:
-                # Get unused side dishes that have permission for breakfast
-                unused = [sd for sd in available_side_dishes if sd.item not in used_side_dishes and sd.populate_breakfast]
-                if unused:
-                    side_dish = random.choice(unused)
+            # Phase 5 condition: only fill random cells if all rules are satisfied (or continue generating)
+            if _should_fill_random and user_serves_breakfast and breakfast_data[day]['bread'] and breakfast_data[day]['bread'].strip() and not breakfast_data[day]['fruit']:
+                candidates = [sd for sd in available_side_dishes if sd.populate_breakfast]
+                side_dish = _pick_side_dish(candidates, 'breakfast_fruit', day_used_names, group_used=_global_fruit_week_used)
+                if side_dish:
                     breakfast_data[day]['fruit'] = side_dish.item
-                    used_side_dishes.add(side_dish.item)
+                    breakfast_data[day]['fruit_rule_id'] = side_dish.rule_id
+                    day_used_names.add(side_dish.item)
+                    last_selected_by_slot['breakfast_fruit'] = side_dish.item
                     pass  # print(f"   📍 {day} breakfast fruit: {side_dish.item}")
                 elif not force_ignore_inventory:
                     breakfast_data[day]['fruit'] = "❌ Out of stock ❌"
-                    pass  # print(f"   ⚠️ {day} breakfast fruit: Out of stock (no unique side dishes left)")
+                    pass  # print(f"   ⚠️ {day} breakfast fruit: Out of stock (no eligible side dish after same-day/back-to-back rules)")
             
             # AM Snack: Fill blank fruit2 field ONLY if user serves AM snack AND has main content
             # Check if there's actual main content (not just empty strings)
@@ -7915,49 +9067,76 @@ def generate_full_menu(request):
                 am_snack_data[day]['meat1'] and am_snack_data[day]['meat1'].strip()
             ])
             
-            if user_serves_am_snack and has_am_snack_content and not am_snack_data[day]['fruit2']:
-                unused = [sd for sd in available_side_dishes if sd.item not in used_side_dishes and sd.populate_am_snack]
-                if unused:
-                    side_dish = random.choice(unused)
+            if _should_fill_random and user_serves_am_snack and has_am_snack_content and not am_snack_data[day]['fruit2']:
+                candidates = [
+                    sd for sd in available_side_dishes
+                    if sd.populate_am_snack and _is_fruit_or_veg_side_dish(sd)
+                ]
+                side_dish = _pick_side_dish(candidates, 'am_snack_fruit2', day_used_names, group_used=_global_fruit_week_used)
+                if side_dish:
                     am_snack_data[day]['fruit2'] = side_dish.item
-                    used_side_dishes.add(side_dish.item)
+                    am_snack_data[day]['fruit2_rule_id'] = side_dish.rule_id
+                    day_used_names.add(side_dish.item)
+                    last_selected_by_slot['am_snack_fruit2'] = side_dish.item
                     pass  # print(f"   📍 {day} AM snack fruit: {side_dish.item}")
                 elif not force_ignore_inventory:
                     am_snack_data[day]['fruit2'] = "❌ Out of stock ❌"
-                    pass  # print(f"   ⚠️ {day} AM snack fruit: Out of stock (no unique side dishes left)")
+                    pass  # print(f"   ⚠️ {day} AM snack fruit: Out of stock (no eligible side dish after same-day/back-to-back rules)")
+
+            # AM Snack: Fill blank add3 with grain side dishes, but only while
+            # the linked grain rule still needs additional day appearances.
+            if user_serves_am_snack and has_am_snack_content and not am_snack_data[day]['add3']:
+                candidates = [
+                    sd for sd in available_side_dishes
+                    if sd.populate_am_snack
+                    and _is_grain_side_dish(sd)
+                    and sd.rule_id
+                    and _remaining_rule_days(sd.rule_id) > 0
+                    and day_idx not in rule_day_counts.get(sd.rule_id, set())
+                ]
+                side_dish = _pick_side_dish(candidates, 'am_snack_add3', day_used_names)
+                if side_dish:
+                    am_snack_data[day]['add3'] = side_dish.item
+                    am_snack_data[day]['add3_rule_id'] = side_dish.rule_id
+                    _track_rule_day_id(side_dish.rule_id, day_idx)
+                    day_used_names.add(side_dish.item)
+                    last_selected_by_slot['am_snack_add3'] = side_dish.item
+                    pass  # print(f"   📍 {day} AM snack add3: {side_dish.item}")
             
             # Lunch: Fill blank vegetable and/or fruit3 fields ONLY if user serves lunch AND has main content
-            # For lunch, respect the category: vegetables go in vegetable field, fruits go in fruit field
-            if user_serves_lunch and lunch_data[day]['meal_name'] and lunch_data[day]['meal_name'].strip():
+            # Phase 5 condition: only fill random cells if all rules are satisfied (or continue generating)
+            if _should_fill_random and user_serves_lunch and lunch_data[day]['meal_name'] and lunch_data[day]['meal_name'].strip():
                 if not lunch_data[day]['vegetable']:
                     # Only select items with "Vegetable" category for the vegetable field
-                    unused = [sd for sd in available_side_dishes 
-                             if sd.item not in used_side_dishes 
-                             and sd.populate_lunch 
-                             and 'vegetable' in sd.category.lower()]
-                    if unused:
-                        side_dish = random.choice(unused)
+                    candidates = [sd for sd in available_side_dishes 
+                                 if sd.populate_lunch 
+                                 and 'vegetable' in sd.category.lower()]
+                    side_dish = _pick_side_dish(candidates, 'lunch_vegetable', day_used_names, group_used=_global_veg_week_used)
+                    if side_dish:
                         lunch_data[day]['vegetable'] = side_dish.item
-                        used_side_dishes.add(side_dish.item)
+                        lunch_data[day]['vegetable_rule_id'] = side_dish.rule_id
+                        day_used_names.add(side_dish.item)
+                        last_selected_by_slot['lunch_vegetable'] = side_dish.item
                         pass  # print(f"   📍 {day} lunch vegetable: {side_dish.item}")
                     elif not force_ignore_inventory:
                         lunch_data[day]['vegetable'] = "❌ Out of stock ❌"
-                        pass  # print(f"   ⚠️ {day} lunch vegetable: Out of stock (no unique vegetable side dishes left)")
+                        pass  # print(f"   ⚠️ {day} lunch vegetable: Out of stock (no eligible vegetable side dish after same-day/back-to-back rules)")
                 
                 if not lunch_data[day]['fruit3']:
                     # Only select items with "Fruit" category for the fruit field
-                    unused = [sd for sd in available_side_dishes 
-                             if sd.item not in used_side_dishes 
-                             and sd.populate_lunch 
-                             and 'fruit' in sd.category.lower()]
-                    if unused:
-                        side_dish = random.choice(unused)
+                    candidates = [sd for sd in available_side_dishes 
+                                 if sd.populate_lunch 
+                                 and 'fruit' in sd.category.lower()]
+                    side_dish = _pick_side_dish(candidates, 'lunch_fruit3', day_used_names, group_used=_global_fruit_week_used)
+                    if side_dish:
                         lunch_data[day]['fruit3'] = side_dish.item
-                        used_side_dishes.add(side_dish.item)
+                        lunch_data[day]['fruit3_rule_id'] = side_dish.rule_id
+                        day_used_names.add(side_dish.item)
+                        last_selected_by_slot['lunch_fruit3'] = side_dish.item
                         pass  # print(f"   📍 {day} lunch fruit: {side_dish.item}")
                     elif not force_ignore_inventory:
                         lunch_data[day]['fruit3'] = "❌ Out of stock ❌"
-                        pass  # print(f"   ⚠️ {day} lunch fruit: Out of stock (no unique fruit side dishes left)")
+                        pass  # print(f"   ⚠️ {day} lunch fruit: Out of stock (no eligible fruit side dish after same-day/back-to-back rules)")
             
             # PM Snack: Fill blank fruit4 field ONLY if user serves PM snack AND has main content
             # Check if there's actual main content (not just empty strings)
@@ -7967,78 +9146,518 @@ def generate_full_menu(request):
                 pm_snack_data[day]['meat3'] and pm_snack_data[day]['meat3'].strip()
             ])
             
-            if user_serves_pm_snack and has_pm_snack_content and not pm_snack_data[day]['fruit4']:
-                unused = [sd for sd in available_side_dishes if sd.item not in used_side_dishes and sd.populate_pm_snack]
-                if unused:
-                    side_dish = random.choice(unused)
+            if _should_fill_random and user_serves_pm_snack and has_pm_snack_content and not pm_snack_data[day]['fruit4']:
+                candidates = [
+                    sd for sd in available_side_dishes
+                    if sd.populate_pm_snack and _is_fruit_or_veg_side_dish(sd)
+                ]
+                side_dish = _pick_side_dish(candidates, 'pm_snack_fruit4', day_used_names, group_used=_global_fruit_week_used)
+                if side_dish:
                     pm_snack_data[day]['fruit4'] = side_dish.item
-                    used_side_dishes.add(side_dish.item)
+                    pm_snack_data[day]['fruit4_rule_id'] = side_dish.rule_id
+                    day_used_names.add(side_dish.item)
+                    last_selected_by_slot['pm_snack_fruit4'] = side_dish.item
                     pass  # print(f"   📍 {day} PM snack fruit: {side_dish.item}")
                 elif not force_ignore_inventory:
                     pm_snack_data[day]['fruit4'] = "❌ Out of stock ❌"
-                    pass  # print(f"   ⚠️ {day} PM snack fruit: Out of stock (no unique side dishes left)")
+                    pass  # print(f"   ⚠️ {day} PM snack fruit: Out of stock (no eligible side dish after same-day/back-to-back rules)")
+
+            # PM Snack: Fill blank add4 with grain side dishes, but only while
+            # the linked grain rule still needs additional day appearances.
+            if user_serves_pm_snack and has_pm_snack_content and not pm_snack_data[day]['add4']:
+                candidates = [
+                    sd for sd in available_side_dishes
+                    if sd.populate_pm_snack
+                    and _is_grain_side_dish(sd)
+                    and sd.rule_id
+                    and _remaining_rule_days(sd.rule_id) > 0
+                    and day_idx not in rule_day_counts.get(sd.rule_id, set())
+                ]
+                side_dish = _pick_side_dish(candidates, 'pm_snack_add4', day_used_names)
+                if side_dish:
+                    pm_snack_data[day]['add4'] = side_dish.item
+                    pm_snack_data[day]['add4_rule_id'] = side_dish.rule_id
+                    _track_rule_day_id(side_dish.rule_id, day_idx)
+                    day_used_names.add(side_dish.item)
+                    last_selected_by_slot['pm_snack_add4'] = side_dish.item
+                    pass  # print(f"   📍 {day} PM snack add4: {side_dish.item}")
     else:
         pass  # print("   No side dish items found in inventory")
+
+    # FINAL INVENTORY RECONCILIATION (CUMULATIVE):
+    # Validate every populated cell at the very end of generation and reserve inventory
+    # across the week so the same stock cannot be reused infinitely by multiple cells.
+    remaining_inventory_base = None
+    if not force_ignore_inventory:
+        inventory_items = Inventory.objects.filter(user=user)
+        remaining_inventory_base = {}
+        for item in inventory_items:
+            conv_to_base = item.conversion_to_base or 1
+            inventory_units = item.total_quantity or item.quantity or 0
+            remaining_inventory_base[item.id] = inventory_units * conv_to_base
+
+        recipe_lookup_cache = {}
+        side_dish_lookup_cache = {}
+        inventory_item_lookup_cache = {}
+        recipe_name_inventory_cache = {}
+
+        def _norm_label(text):
+            base = re.sub(r'\s+', ' ', str(text or '').strip().casefold())
+            no_paren = re.sub(r'\([^)]*\)', '', base)
+            slug_base = re.sub(r'[^a-z0-9]+', '', base)
+            slug_no_paren = re.sub(r'[^a-z0-9]+', '', no_paren)
+            return slug_base, slug_no_paren
+
+        inventory_norm_map = {}
+        for inv_item in inventory_items:
+            key_full, key_no_paren = _norm_label(inv_item.item)
+            if key_full and key_full not in inventory_norm_map:
+                inventory_norm_map[key_full] = inv_item
+            if key_no_paren and key_no_paren not in inventory_norm_map:
+                inventory_norm_map[key_no_paren] = inv_item
+
+        def _preferred_recipe_types_for_field(field_name):
+            if field_name in {'fluid_milk', 'lunch_milk', 'choose1', 'choose2'}:
+                return ['fluid']
+            if field_name in {'vegetable'}:
+                return ['vegetable']
+            if field_name in {'fruit', 'fruit2', 'fruit3', 'fruit4'}:
+                return ['fruit']
+            if field_name in {'grain'}:
+                return ['whole_grain']
+            if field_name in {'meal_name'}:
+                return ['lunch']
+            return []
+
+        def _get_recipe_for_cell_value(cell_value, field_name=None):
+            key = (str(cell_value or '').strip())
+            if not key:
+                return None
+            if "Out of stock" in key:
+                return None
+            if key in {"No available breakfast option", "No available meal"}:
+                return None
+
+            cache_key = (key, field_name or '')
+            if cache_key in recipe_lookup_cache:
+                return recipe_lookup_cache[cache_key]
+
+            candidates = list(Recipe.objects.filter(user=user, archive=False, name=key))
+            if not candidates:
+                recipe_lookup_cache[cache_key] = None
+                return None
+
+            preferred_types = _preferred_recipe_types_for_field(field_name)
+            if preferred_types:
+                preferred = [r for r in candidates if getattr(r, 'recipe_type', None) in preferred_types]
+                if preferred:
+                    recipe_lookup_cache[cache_key] = preferred[0]
+                    return preferred[0]
+
+            with_rules = [r for r in candidates if any([
+                getattr(r, 'grain_rule_id', None),
+                getattr(r, 'fruit_rule_id', None),
+                getattr(r, 'veg_rule_id', None),
+                getattr(r, 'meat_rule_id', None),
+                getattr(r, 'fluid_rule_id', None),
+                getattr(r, 'addfood_rule_id', None),
+            ])]
+            chosen = with_rules[0] if with_rules else candidates[0]
+            recipe_lookup_cache[cache_key] = chosen
+            return chosen
+
+        def _get_side_dish_for_cell_value(cell_value):
+            key = (str(cell_value or '').strip())
+            if not key:
+                return None
+            if "Out of stock" in key:
+                return None
+            if key in {"No available breakfast option", "No available meal"}:
+                return None
+            if key in side_dish_lookup_cache:
+                return side_dish_lookup_cache[key]
+            side_dish_lookup_cache[key] = Inventory.objects.filter(
+                user=user,
+                item=key,
+                is_side_dish=True,
+            ).first()
+            return side_dish_lookup_cache[key]
+
+        def _get_inventory_item_for_cell_value(cell_value):
+            key = (str(cell_value or '').strip())
+            if not key:
+                return None
+            if "Out of stock" in key:
+                return None
+            if key in {"No available breakfast option", "No available meal"}:
+                return None
+
+            if key in inventory_item_lookup_cache:
+                return inventory_item_lookup_cache[key]
+
+            # Fast exact lookup first
+            item = Inventory.objects.filter(user=user, item=key).first()
+            if not item:
+                # Fallback to normalized matching for display variants
+                norm_full, norm_no_paren = _norm_label(key)
+                item = inventory_norm_map.get(norm_full) or inventory_norm_map.get(norm_no_paren)
+
+            inventory_item_lookup_cache[key] = item
+            return item
+
+        def _reserve_recipe_name_inventory_fallback(recipe):
+            if not recipe or not getattr(recipe, 'name', None):
+                return False
+            key = recipe.name
+            if key in recipe_name_inventory_cache:
+                item = recipe_name_inventory_cache[key]
+            else:
+                item = _get_inventory_item_for_cell_value(key)
+                recipe_name_inventory_cache[key] = item
+
+            if not item:
+                return False
+
+            conv_to_base = item.conversion_to_base or 1
+            portion_per_student = item.unit_size if item.unit_size and item.unit_size > 0 else 1
+            required_base = portion_per_student * estimated_daily_students
+            available_base = remaining_inventory_base.get(item.id, 0)
+            if available_base < required_base:
+                return False
+            remaining_inventory_base[item.id] = available_base - required_base
+            return True
+
+        def _reserve_inventory_for_recipe(recipe):
+            if not recipe:
+                return False
+            if getattr(recipe, 'ignore_inventory', False):
+                return True
+
+            ingredients = list(recipe.ingredients.all().select_related('ingredient'))
+            if not ingredients:
+                return _reserve_recipe_name_inventory_fallback(recipe)
+
+            checks = []
+            has_checkable_ingredient = False
+            for recipe_ing in ingredients:
+                ingredient = recipe_ing.ingredient
+                per_portion_base = recipe_ing.quantity if recipe_ing.quantity else 0
+
+                if not ingredient or per_portion_base <= 0:
+                    continue
+
+                has_checkable_ingredient = True
+
+                required_base = per_portion_base * estimated_daily_students
+                available_base = remaining_inventory_base.get(ingredient.id, 0)
+                checks.append((ingredient.id, required_base, available_base))
+
+                if available_base < required_base:
+                    return False
+
+            if not has_checkable_ingredient:
+                return _reserve_recipe_name_inventory_fallback(recipe)
+
+            for ingredient_id, required_base, _available_base in checks:
+                remaining_inventory_base[ingredient_id] = remaining_inventory_base.get(ingredient_id, 0) - required_base
+
+            return True
+
+        def _reserve_inventory_for_side_dish(side_dish):
+            if not side_dish:
+                return False
+
+            conv_to_base = side_dish.conversion_to_base or 1
+            portion_per_student = side_dish.unit_size if side_dish.unit_size and side_dish.unit_size > 0 else 1
+            required_base = portion_per_student * estimated_daily_students
+            available_base = remaining_inventory_base.get(side_dish.id, 0)
+
+            if available_base < required_base:
+                return False
+
+            remaining_inventory_base[side_dish.id] = available_base - required_base
+            return True
+
+        def _reserve_inventory_for_item(item):
+            if not item:
+                return False
+
+            portion_per_student = item.unit_size if item.unit_size and item.unit_size > 0 else 1
+            required_base = portion_per_student * estimated_daily_students
+            available_base = remaining_inventory_base.get(item.id, 0)
+            if available_base < required_base:
+                return False
+
+            remaining_inventory_base[item.id] = available_base - required_base
+            return True
+
+        def _reconcile_cells(meal_name, meal_data, field_names):
+            optional_fields = {'add1', 'add2', 'add3', 'add4'}
+            unit_size_fields = {
+                'fluid_milk', 'choose1', 'lunch_milk', 'choose2',
+                'fruit', 'fruit2', 'vegetable', 'fruit3', 'fruit4',
+                'grain', 'add1', 'add3', 'add4'
+            }
+
+            anchor_field_by_meal = {
+                'Breakfast': 'bread',
+                'AM snack': 'bread2',
+                'Lunch': 'meal_name',
+                'PM snack': 'bread3',
+            }
+
+            component_fields_by_meal = {
+                'Breakfast': {'fruit', 'add1'},
+                'AM snack': {'fruit2', 'choose1', 'add3', 'meat1'},
+                'Lunch': {'lunch_milk', 'vegetable', 'fruit3', 'grain', 'meat_alternate', 'add2'},
+                'PM snack': {'fruit4', 'choose2', 'add4', 'meat3'},
+            }
+
+            def _component_values_from_recipe(recipe_obj):
+                if not recipe_obj:
+                    return set()
+                values = {
+                    str(recipe_obj.fluid or '').strip(),
+                    str(recipe_obj.fruit or '').strip(),
+                    str(recipe_obj.veg or '').strip(),
+                    str(recipe_obj.grain or '').strip(),
+                    str(recipe_obj.meat or '').strip(),
+                    str(recipe_obj.meat_alternate or '').strip(),
+                    str(recipe_obj.addfood or '').strip(),
+                }
+                return {v for v in values if v}
+
+            def _normalize_component_label(text):
+                label = re.sub(r'[^a-z0-9]+', '', str(text or '').strip().casefold())
+                if label.endswith('s') and len(label) > 3:
+                    return label[:-1]
+                return label
+
+            def _component_matches(value, components):
+                target = _normalize_component_label(value)
+                if not target:
+                    return False
+                return any(_normalize_component_label(c) == target for c in components)
+
+            for day in days_of_week:
+                anchor_field = anchor_field_by_meal.get(meal_name)
+                anchor_value = str(meal_data[day].get(anchor_field, '') or '').strip() if anchor_field else ''
+                anchor_recipe = _get_recipe_for_cell_value(anchor_value, anchor_field) if anchor_value else None
+                anchor_components = _component_values_from_recipe(anchor_recipe)
+
+                for field in field_names:
+                    value = meal_data[day].get(field, '')
+                    value_str = str(value or '').strip()
+                    if not value_str or "Out of stock" in value_str:
+                        continue
+
+                    # Component labels copied from the same day's main recipe should
+                    # not consume inventory a second time.
+                    if field in component_fields_by_meal.get(meal_name, set()) and _component_matches(value_str, anchor_components):
+                        continue
+
+                    recipe = _get_recipe_for_cell_value(value_str, field)
+                    side_dish = _get_side_dish_for_cell_value(value_str)
+
+                    if field in unit_size_fields:
+                        # Component rows (fluid/fruit/veg/grain/add) reserve by inventory unit_size
+                        # for inventory side dishes, but still use recipe ingredients when an
+                        # actual recipe is present in the cell.
+                        if side_dish:
+                            is_valid = _reserve_inventory_for_side_dish(side_dish)
+                        elif recipe:
+                            is_valid = _reserve_inventory_for_recipe(recipe)
+                        else:
+                            inventory_item = _get_inventory_item_for_cell_value(value_str)
+                            if not inventory_item and recipe:
+                                inventory_item = _get_inventory_item_for_cell_value(recipe.name)
+                            is_valid = _reserve_inventory_for_item(inventory_item)
+                    else:
+                        # Main rows keep recipe ingredient quantity checks.
+                        if recipe:
+                            is_valid = _reserve_inventory_for_recipe(recipe)
+                        elif side_dish:
+                            is_valid = _reserve_inventory_for_side_dish(side_dish)
+                        else:
+                            inventory_item = _get_inventory_item_for_cell_value(value_str)
+                            is_valid = _reserve_inventory_for_item(inventory_item)
+
+                    if not is_valid:
+                        # Optional add-food rows should remain blank when unavailable,
+                        # not display an out-of-stock warning.
+                        if field in optional_fields:
+                            meal_data[day][field] = ""
+                        else:
+                            meal_data[day][field] = "❌ Out of stock ❌"
+                        rule_field = f"{field}_rule_id"
+                        if rule_field in meal_data[day]:
+                            meal_data[day][rule_field] = None
+                        print(
+                            f"[MENU DEBUG] {meal_name} {day} {field}: final cumulative inventory check failed "
+                            f"for '{value_str}', {'cleared optional field' if field in optional_fields else 'marked OUT OF STOCK'}."
+                        )
+
+        # Reconcile all visible meal rows against inventory and reserve cumulatively.
+        _reconcile_cells('Breakfast', breakfast_data, ['fluid_milk', 'fruit', 'bread', 'add1'])
+        _reconcile_cells('AM snack', am_snack_data, ['choose1', 'fruit2', 'bread2', 'meat1', 'add3'])
+        _reconcile_cells('Lunch', lunch_data, ['meal_name', 'lunch_milk', 'vegetable', 'fruit3', 'grain', 'meat_alternate', 'add2'])
+        _reconcile_cells('PM snack', pm_snack_data, ['choose2', 'fruit4', 'bread3', 'meat3', 'add4'])
+
+        # After reconciliation, try to refill lunch fruit/vegetable gaps from side-dish
+        # inventory before final rule recount. This avoids persistent blanks/out-of-stock
+        # when other side-dish items still have capacity.
+        lunch_side_dishes = list(
+            Inventory.objects.filter(user=user, is_side_dish=True, populate_lunch=True).select_related('rule')
+        )
+
+        def _can_reserve_remaining(side_dish):
+            conv_to_base = float(side_dish.conversion_to_base or 1)
+            portion_per_student = float(side_dish.unit_size or 0)
+            required_base = portion_per_student * estimated_daily_students
+            available_base = float(remaining_inventory_base.get(side_dish.id, 0))
+            return required_base == 0 or available_base >= required_base
+
+        def _reserve_remaining(side_dish):
+            conv_to_base = float(side_dish.conversion_to_base or 1)
+            portion_per_student = float(side_dish.unit_size or 0)
+            required_base = portion_per_student * estimated_daily_students
+            if required_base == 0:
+                return True
+            available_base = float(remaining_inventory_base.get(side_dish.id, 0))
+            if available_base < required_base:
+                return False
+            remaining_inventory_base[side_dish.id] = available_base - required_base
+            return True
+
+        def _current_rule_day_counts_from_cells():
+            current_counts = {}
+            for scan_day_idx, scan_day in enumerate(days_of_week):
+                for data_dict in [breakfast_data[scan_day], am_snack_data[scan_day], lunch_data[scan_day], pm_snack_data[scan_day]]:
+                    for key, val in data_dict.items():
+                        if key.endswith('_rule_id') and val:
+                            current_counts.setdefault(val, set()).add(scan_day_idx)
+            return current_counts
+
+        def _prioritize_rule_gap_side_dishes(candidates, day_idx):
+            if not candidates:
+                return []
+
+            current_counts = _current_rule_day_counts_from_cells()
+            prioritized = [
+                sd for sd in candidates
+                if sd.rule_id
+                and day_idx not in current_counts.get(sd.rule_id, set())
+                and any(r.id == sd.rule_id and len(current_counts.get(sd.rule_id, set())) < r.weekly_qty for r in all_rules)
+            ]
+            # Return prioritized items first, then remaining — never exclude non-rule items entirely
+            remaining = [sd for sd in candidates if sd not in prioritized]
+            return prioritized + remaining if prioritized else candidates
+
+        # Collect names already placed this week for variety tracking in Phase 4
+        def _placed_names_for_phase4(data_dict, field_key):
+            return {
+                str(data_dict[d].get(field_key, '') or '').strip()
+                for d in days_of_week
+                if str(data_dict[d].get(field_key, '') or '').strip()
+                and 'Out of stock' not in str(data_dict[d].get(field_key, '') or '')
+            }
+        _phase4_veg_used = _placed_names_for_phase4(lunch_data, 'vegetable')
+        _phase4_fruit_used = _placed_names_for_phase4(lunch_data, 'fruit3')
+
+        for day in days_of_week:
+            if not lunch_data[day]['meal_name'] or 'Out of stock' in str(lunch_data[day]['meal_name']):
+                continue
+
+            day_idx = days_of_week.index(day)
+
+            veg_val = str(lunch_data[day].get('vegetable', '') or '')
+            if not veg_val or 'Out of stock' in veg_val:
+                veg_candidates = [
+                    sd for sd in lunch_side_dishes
+                    if 'vegetable' in str(sd.category or '').lower() and _can_reserve_remaining(sd)
+                ]
+                # Phase 4: always try rule-bearing side dishes for rule gaps
+                rule_priority_veg = _prioritize_rule_gap_side_dishes(veg_candidates, day_idx)
+                # Only use the full (non-rule) fallback pool when Phase 5 random fill is allowed
+                if not _should_fill_random:
+                    veg_candidates = [sd for sd in veg_candidates if sd.rule_id]
+                else:
+                    veg_candidates = rule_priority_veg
+                if veg_candidates:
+                    unused = [sd for sd in veg_candidates if sd.item not in _phase4_veg_used]
+                    chosen = random.choice(unused if unused else veg_candidates)
+                    if _reserve_remaining(chosen):
+                        lunch_data[day]['vegetable'] = chosen.item
+                        lunch_data[day]['vegetable_rule_id'] = chosen.rule_id
+                        _phase4_veg_used.add(chosen.item)
+
+            fruit_val = str(lunch_data[day].get('fruit3', '') or '')
+            if not fruit_val or 'Out of stock' in fruit_val:
+                fruit_candidates = [
+                    sd for sd in lunch_side_dishes
+                    if 'fruit' in str(sd.category or '').lower() and _can_reserve_remaining(sd)
+                ]
+                # Phase 4: always try rule-bearing side dishes for rule gaps
+                rule_priority_fruit = _prioritize_rule_gap_side_dishes(fruit_candidates, day_idx)
+                if not _should_fill_random:
+                    fruit_candidates = [sd for sd in fruit_candidates if sd.rule_id]
+                else:
+                    fruit_candidates = rule_priority_fruit
+                if fruit_candidates:
+                    unused = [sd for sd in fruit_candidates if sd.item not in _phase4_fruit_used]
+                    chosen = random.choice(unused if unused else fruit_candidates)
+                    if _reserve_remaining(chosen):
+                        lunch_data[day]['fruit3'] = chosen.item
+                        lunch_data[day]['fruit3_rule_id'] = chosen.rule_id
+                        _phase4_fruit_used.add(chosen.item)
+
+        for day in days_of_week:
+            if not breakfast_data[day]['bread'] or "Out of stock" in str(breakfast_data[day]['bread']):
+                breakfast_data[day]['bread'] = "❌ Out of stock"
+            if not am_snack_data[day]['bread2'] or "Out of stock" in str(am_snack_data[day]['bread2']):
+                am_snack_data[day]['bread2'] = "❌ Out of stock"
+            if not lunch_data[day]['meal_name'] or "Out of stock" in str(lunch_data[day]['meal_name']):
+                lunch_data[day]['meal_name'] = "❌ Out of stock"
+            if not pm_snack_data[day]['bread3'] or "Out of stock" in str(pm_snack_data[day]['bread3']):
+                pm_snack_data[day]['bread3'] = "❌ Out of stock"
     
     # === RE-SCAN ALL CELLS TO COUNT RULES (INCLUDING NEWLY PLACED SIDE DISHES) ===
-    # After placing side dishes, we need to re-count rules because side dishes have rules too!
-    # This ensures the missing_rules list accurately reflects the final menu state
-    pass  # print("\n🔄 RE-SCANNING ALL CELLS TO UPDATE RULE COUNTS (including side dishes)")
+    # Pure *_rule_id scan: count only explicitly assigned rule IDs. No name lookups or
+    # field-name special-casing. If placement code sets the rule_id, it counts; otherwise it doesn't.
+    rule_day_counts = {}
     for day_idx, day in enumerate(days_of_week):
-        # Breakfast: check ALL fields
-        check_recipe_in_cell(breakfast_data[day].get('fluid_milk', ''), day_idx)
-        check_recipe_in_cell(breakfast_data[day].get('fruit', ''), day_idx)
-        check_recipe_in_cell(breakfast_data[day].get('bread', ''), day_idx)
-        check_recipe_in_cell(breakfast_data[day].get('add1', ''), day_idx)
-        
-        # AM Snack: check ALL fields
-        check_recipe_in_cell(am_snack_data[day].get('choose1', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('fruit2', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('bread2', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('meat1', ''), day_idx)
-        check_recipe_in_cell(am_snack_data[day].get('add3', ''), day_idx)
-        
-        # Lunch: check ALL fields
-        check_recipe_in_cell(lunch_data[day].get('meal_name', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('lunch_milk', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('vegetable', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('fruit3', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('grain', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('meat_alternate', ''), day_idx)
-        check_recipe_in_cell(lunch_data[day].get('add2', ''), day_idx)
-        
-        # PM Snack: check ALL fields
-        check_recipe_in_cell(pm_snack_data[day].get('choose2', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('fruit4', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('bread3', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('meat3', ''), day_idx)
-        check_recipe_in_cell(pm_snack_data[day].get('add4', ''), day_idx)
-    
-    # Recalculate missing_rules based on updated rule_day_counts
+        for data_dict in [breakfast_data[day], am_snack_data[day], lunch_data[day], pm_snack_data[day]]:
+            for key, val in data_dict.items():
+                if key.endswith('_rule_id') and val:
+                    _track_rule_day_id(val, day_idx)
+
+    # Recalculate missing_rules based on updated rule_day_counts.
+    # Ignore-inventory mode should never show insufficiency warnings.
     missing_rules = []
-    for rule in all_rules:
-        current_count = len(rule_day_counts.get(rule.id, set()))
-        needed_count = rule.weekly_qty
-        
-        # Skip fluid rules (handled separately)
-        is_fluid_rule = False
-        for recipe in Recipe.objects.filter(user=user):
-            if hasattr(recipe, 'fluid_rule') and recipe.fluid_rule and recipe.fluid_rule.id == rule.id:
-                is_fluid_rule = True
-                break
-        
-        if is_fluid_rule:
-            continue
-        
-        if current_count < needed_count:
-            gap = needed_count - current_count
-            missing_rules.append({
-                'rule': rule.rule,
-                'current': current_count,
-                'required': needed_count,
-                'gap': gap
-            })
-            pass  # print(f"❌ FINAL MISSING RULE: '{rule.rule}' appears {current_count}/{needed_count} days (missing {gap})")
+    if not force_ignore_inventory:
+        for rule in all_rules:
+            current_count = len(rule_day_counts.get(rule.id, set()))
+            needed_count = rule.weekly_qty
+
+            # Skip fluid rules (handled separately)
+            is_fluid_rule = False
+            for recipe in Recipe.objects.filter(user=user, archive=False):
+                if hasattr(recipe, 'fluid_rule') and recipe.fluid_rule and recipe.fluid_rule.id == rule.id:
+                    is_fluid_rule = True
+                    break
+
+            if is_fluid_rule:
+                continue
+
+            if current_count < needed_count:
+                gap = needed_count - current_count
+                missing_rules.append({
+                    'rule': rule.rule,
+                    'current': current_count,
+                    'required': needed_count,
+                    'gap': gap
+                })
+                pass  # print(f"❌ FINAL MISSING RULE: '{rule.rule}' appears {current_count}/{needed_count} days (missing {gap})")
     
     # Return all meal data in a single response
     # Debug: Log breakfast data to see if it contains out-of-stock markers
@@ -8083,10 +9702,10 @@ def generate_menu(request):
     
     # Separate recipe selection by type for complete menu coverage
     # 1. Main lunch dishes
-    lunch_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='lunch'))
+    lunch_recipes = list(Recipe.objects.filter(user=user, archive=False, populate_lunch=True, recipe_type='lunch'))
     # Fallback: if nothing is flagged to populate lunch, use any lunch recipes
     if not lunch_recipes:
-        lunch_recipes = list(Recipe.objects.filter(user=user, recipe_type='lunch'))
+        lunch_recipes = list(Recipe.objects.filter(user=user, archive=False, recipe_type='lunch'))
     if lunch_recipes:
         selected_lunch = select_recipes_with_rules(lunch_recipes, days_count=5, rule_tracker=rule_tracker)
         for day_idx, day in enumerate(days_of_week):
@@ -8097,9 +9716,9 @@ def generate_menu(request):
                 menu_data[day]['meat_alternate'] = recipe.meat_alternate or ""
     
     # 2. Whole grain items (fill grain row if not already filled by lunch recipe)
-    wg_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='whole_grain'))
+    wg_recipes = list(Recipe.objects.filter(user=user, archive=False, populate_lunch=True, recipe_type='whole_grain'))
     if not wg_recipes:
-        wg_recipes = list(Recipe.objects.filter(user=user, recipe_type='whole_grain'))
+        wg_recipes = list(Recipe.objects.filter(user=user, archive=False, recipe_type='whole_grain'))
     if wg_recipes:
         selected_wg = select_recipes_with_rules(wg_recipes, days_count=5, rule_tracker=rule_tracker)
         for day_idx, day in enumerate(days_of_week):
@@ -8107,9 +9726,9 @@ def generate_menu(request):
                 menu_data[day]['grain'] = selected_wg[day_idx].name
     
     # 3. Vegetable items
-    veg_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='vegetable'))
+    veg_recipes = list(Recipe.objects.filter(user=user, archive=False, populate_lunch=True, recipe_type='vegetable'))
     if not veg_recipes:
-        veg_recipes = list(Recipe.objects.filter(user=user, recipe_type='vegetable'))
+        veg_recipes = list(Recipe.objects.filter(user=user, archive=False, recipe_type='vegetable'))
     if veg_recipes:
         selected_veg = select_recipes_with_rules(veg_recipes, days_count=5, rule_tracker=rule_tracker)
         for day_idx, day in enumerate(days_of_week):
@@ -8117,9 +9736,9 @@ def generate_menu(request):
                 menu_data[day]['vegetable'] = selected_veg[day_idx].name
     
     # 4. Fruit items
-    fruit_recipes = list(Recipe.objects.filter(user=user, populate_lunch=True, recipe_type='fruit'))
+    fruit_recipes = list(Recipe.objects.filter(user=user, archive=False, populate_lunch=True, recipe_type='fruit'))
     if not fruit_recipes:
-        fruit_recipes = list(Recipe.objects.filter(user=user, recipe_type='fruit'))
+        fruit_recipes = list(Recipe.objects.filter(user=user, archive=False, recipe_type='fruit'))
     if fruit_recipes:
         selected_fruit = select_recipes_with_rules(fruit_recipes, days_count=5, rule_tracker=rule_tracker)
         for day_idx, day in enumerate(days_of_week):
@@ -8170,6 +9789,7 @@ def generate_snack_menu(request, populate_field, fluid_key, fruit_key, bread_key
 
     snack_type_recipes = list(Recipe.objects.filter(
         user=user,
+        archive=False,
         **{populate_field: True},
         recipe_type__in=snack_types
     ))
@@ -8179,6 +9799,7 @@ def generate_snack_menu(request, populate_field, fluid_key, fruit_key, bread_key
     if not snack_type_recipes:
         snack_type_recipes = list(Recipe.objects.filter(
             user=user,
+            archive=False,
             recipe_type__in=snack_types
         ))
 
@@ -8197,6 +9818,7 @@ def generate_snack_menu(request, populate_field, fluid_key, fruit_key, bread_key
     # 2. Fruit/vegetable items (fill fruit row if not already filled)
     fruit_veg_recipes = list(Recipe.objects.filter(
         user=user,
+        archive=False,
         **{populate_field: True},
         recipe_type__in=['fruit', 'vegetable']
     ))
@@ -8206,6 +9828,7 @@ def generate_snack_menu(request, populate_field, fluid_key, fruit_key, bread_key
     if not fruit_veg_recipes:
         fruit_veg_recipes = list(Recipe.objects.filter(
             user=user,
+            archive=False,
             recipe_type__in=['fruit', 'vegetable']
         ))
 
@@ -8218,6 +9841,7 @@ def generate_snack_menu(request, populate_field, fluid_key, fruit_key, bread_key
     # 3. Whole grain items (fill bread row if not already filled)
     wg_recipes = list(Recipe.objects.filter(
         user=user,
+        archive=False,
         **{populate_field: True},
         recipe_type='whole_grain'
     ))
@@ -8227,6 +9851,7 @@ def generate_snack_menu(request, populate_field, fluid_key, fruit_key, bread_key
     if not wg_recipes:
         wg_recipes = list(Recipe.objects.filter(
             user=user,
+            archive=False,
             recipe_type='whole_grain'
         ))
 
@@ -8265,10 +9890,10 @@ def generate_breakfast_menu(request):
         breakfast_data[day] = {'bread': '', 'add1': '', 'fruit': ''}
     
     # 1. Main breakfast items
-    breakfast_recipes = list(Recipe.objects.filter(user=user, populate_breakfast=True, recipe_type='breakfast'))
+    breakfast_recipes = list(Recipe.objects.filter(user=user, archive=False, populate_breakfast=True, recipe_type='breakfast'))
     # Fallback: if nothing is flagged to populate breakfast, use any breakfast recipes
     if not breakfast_recipes:
-        breakfast_recipes = list(Recipe.objects.filter(user=user, recipe_type='breakfast'))
+        breakfast_recipes = list(Recipe.objects.filter(user=user, archive=False, recipe_type='breakfast'))
     if breakfast_recipes:
         selected_breakfast = select_recipes_with_rules(breakfast_recipes, days_count=5, rule_tracker=rule_tracker)
         for day_idx, day in enumerate(days_of_week):
@@ -8278,9 +9903,9 @@ def generate_breakfast_menu(request):
                 breakfast_data[day]['add1'] = recipe.addfood or ""
     
     # 2. Whole grain items (fill bread row if not already filled, otherwise add1)
-    wg_recipes = list(Recipe.objects.filter(user=user, populate_breakfast=True, recipe_type='whole_grain'))
+    wg_recipes = list(Recipe.objects.filter(user=user, archive=False, populate_breakfast=True, recipe_type='whole_grain'))
     if not wg_recipes:
-        wg_recipes = list(Recipe.objects.filter(user=user, recipe_type='whole_grain'))
+        wg_recipes = list(Recipe.objects.filter(user=user, archive=False, recipe_type='whole_grain'))
     if wg_recipes:
         selected_wg = select_recipes_with_rules(wg_recipes, days_count=5, rule_tracker=rule_tracker)
         for day_idx, day in enumerate(days_of_week):
@@ -8293,12 +9918,14 @@ def generate_breakfast_menu(request):
     # 3. Fruit/vegetable items
     fruit_veg_recipes = list(Recipe.objects.filter(
         user=user, 
+        archive=False,
         populate_breakfast=True, 
         recipe_type__in=['fruit', 'vegetable']
     ))
     if not fruit_veg_recipes:
         fruit_veg_recipes = list(Recipe.objects.filter(
             user=user,
+            archive=False,
             recipe_type__in=['fruit', 'vegetable']
         ))
     if fruit_veg_recipes:
@@ -8714,7 +10341,7 @@ def check_missing_rules(request):
     fulfilled_rules = []
     
     for rule in all_rules:
-        # Check if any recipes exist with this rule in any component field
+        # Check if any recipes exist with this rule in any component field.
         recipes_with_rule = Recipe.objects.filter(
             user=user
         ).filter(
@@ -8725,6 +10352,24 @@ def check_missing_rules(request):
             models.Q(fluid_rule=rule) |
             models.Q(addfood_rule=rule)
         ).count()
+
+        # Also count inventory side dishes carrying the rule.
+        # These can satisfy rule placement even when no Recipe row has that rule.
+        inventory_with_rule = Inventory.objects.filter(
+            user=user,
+            rule=rule,
+            is_side_dish=True,
+        ).count()
+        inventory_with_rule_in_stock = Inventory.objects.filter(
+            user=user,
+            rule=rule,
+            is_side_dish=True,
+            total_quantity__gt=0,
+        ).count()
+
+        # A rule is considered "assigned" if it is attached to at least one
+        # recipe OR at least one inventory side dish.
+        assignment_count = recipes_with_rule + inventory_with_rule
         
         rule_data = {
             'id': rule.id,
@@ -8733,10 +10378,13 @@ def check_missing_rules(request):
             'gradient_start': rule.gradient_start,
             'gradient_end': rule.gradient_end,
             'text_color': rule.text_color,
-            'recipe_count': recipes_with_rule
+            'recipe_count': recipes_with_rule,
+            'inventory_count': inventory_with_rule,
+            'inventory_in_stock_count': inventory_with_rule_in_stock,
+            'assignment_count': assignment_count,
         }
         
-        if recipes_with_rule == 0:
+        if assignment_count == 0:
             missing_rules.append(rule_data)
         else:
             fulfilled_rules.append(rule_data)
@@ -13587,6 +15235,7 @@ def update_recipe(request, recipe_id):
         'fruitMainIngredient',
         'vegMainIngredient',
         'wgMainIngredient',
+        'ingredient',
     ]
     qty_prefixes = [
         'qtyMainIngredient',
@@ -13596,6 +15245,7 @@ def update_recipe(request, recipe_id):
         'fruitQtyMainIngredient',
         'vegQtyMainIngredient',
         'wgQtyMainIngredient',
+        'qty',
     ]
 
     ingredient_ids = []
@@ -13758,6 +15408,66 @@ def wg_recipe_detail(request, recipe_id):
         'standalone': r.standalone,
         'ignore_inventory': r.ignore_inventory,
     })
+
+@login_required
+def similarity_groups_list(request):
+    user = get_user_for_view(request)
+    groups = RecipeSimilarityGroup.objects.filter(user=user).prefetch_related('recipes')
+    data = []
+    for g in groups:
+        data.append({
+            'id': g.id,
+            'name': g.name,
+            'recipes': [{'id': r.id, 'name': r.name} for r in g.recipes.order_by('name')],
+        })
+    return JsonResponse({'groups': data})
+
+
+@login_required
+@require_http_methods(["POST"])
+def similarity_group_create(request):
+    user = get_user_for_view(request)
+    name = (request.POST.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'error': 'Name is required.'}, status=400)
+    if RecipeSimilarityGroup.objects.filter(user=user, name=name).exists():
+        return JsonResponse({'success': False, 'error': 'A group with that name already exists.'}, status=400)
+    group = RecipeSimilarityGroup.objects.create(user=user, name=name)
+    recipe_ids = request.POST.getlist('recipe_ids')
+    valid_ids = list(Recipe.objects.filter(user=user, id__in=recipe_ids).values_list('id', flat=True))
+    group.recipes.set(valid_ids)
+    return JsonResponse({'success': True, 'id': group.id})
+
+
+@login_required
+@require_http_methods(["POST"])
+def similarity_group_update(request, group_id):
+    user = get_user_for_view(request)
+    group = RecipeSimilarityGroup.objects.filter(id=group_id, user=user).first()
+    if not group:
+        return JsonResponse({'success': False, 'error': 'Not found.'}, status=404)
+    name = (request.POST.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'success': False, 'error': 'Name is required.'}, status=400)
+    if RecipeSimilarityGroup.objects.filter(user=user, name=name).exclude(id=group_id).exists():
+        return JsonResponse({'success': False, 'error': 'A group with that name already exists.'}, status=400)
+    group.name = name
+    group.save()
+    recipe_ids = request.POST.getlist('recipe_ids')
+    valid_ids = list(Recipe.objects.filter(user=user, id__in=recipe_ids).values_list('id', flat=True))
+    group.recipes.set(valid_ids)
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def similarity_group_delete(request, group_id):
+    user = get_user_for_view(request)
+    deleted, _ = RecipeSimilarityGroup.objects.filter(id=group_id, user=user).delete()
+    if deleted:
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': 'Not found.'}, status=404)
+
 
 @require_http_methods(["POST"])
 def update_wg_recipe(request, recipe_id):

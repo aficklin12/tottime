@@ -348,6 +348,7 @@ thead tr:first-child th:last-child {
 }
 .desktop-header-left .icon-generate { color: rgb(57,189,180); }
 .desktop-header-left .icon-save { color: rgb(228,218,79); }
+.desktop-header-left .saved-menus-icon { color: rgb(57,189,180); text-decoration: none; }
 
 .desktop-menu-btn {
     background: transparent;
@@ -1071,11 +1072,7 @@ h1.mt-4 {
                 </div>
 
                 <!-- Desktop-only Rule Legend (color gradients → rule labels) -->
-                <div id="rulesLegend" class="rules-legend" aria-label="Rule legend" role="list">
-                    <a href="{% url 'past_menus' %}" class="saved-menus-icon" title="Saved Menus" aria-label="Saved Menus" style="font-size:18px; color: rgb(57,189,180); text-decoration:none; display:inline-flex; align-items:center; margin-left:6px; margin-right:12px;">
-                        <i class="fas fa-folder-open" aria-hidden="true"></i>
-                    </a>
-                </div>
+                <div id="rulesLegend" class="rules-legend" aria-label="Rule legend" role="list"></div>
 
                <!-- Mobile Day Selector -->
 <div id="mobileDaySelector">
@@ -1144,6 +1141,9 @@ h1.mt-4 {
                                         <button type="button" id="headerSaveBtn" class="icon-btn icon-save" title="Save Menu" aria-label="Save Menu" onclick="document.getElementById('saveMenuBtn').click();">
                                             <i class="fas fa-save" aria-hidden="true"></i>
                                         </button>
+                                        <a href="{% url 'past_menus' %}" class="icon-btn saved-menus-icon" title="Saved Menus" aria-label="Saved Menus">
+                                            <i class="fas fa-folder-open" aria-hidden="true"></i>
+                                        </a>
                                     </div>
                                     <span class="weekly-header-title">Weekly Menu: Date - Date</span>
                                     <div class="desktop-students-wrapper" aria-label="Estimated daily students">
@@ -1804,6 +1804,14 @@ async function applyGradientsToCells() {
         }
         if (!text) return;
 
+        // SKIP text-matching for recipe name cells (bread, Meals, milk, choose)
+        // These should only be colored if they have explicit rule IDs from backend
+        const recipeNameCellPatterns = /(bread|Meals|Milk|choose)/i;
+        if (recipeNameCellPatterns.test(cellId)) {
+            return;  // Skip text-matching for recipe name cells
+        }
+
+        // Text-matching is ONLY for component cells (grain, add1, add3, add4, add2, fruit, vege, meat)
         // Try exact match first
         let rule = itemRules[text];
         
@@ -2044,31 +2052,98 @@ const KEY_ID_MAP = {
     'vegetable': '{day}vege', 'add2':'{day}add2'
 };
 function dayPrefix(day){ return day.toLowerCase(); }
-function applyResponseToDay(day, payload) {
+function resolveResponseTemplate(key, options = {}) {
+    const normalizedKey = String(key || '').toLowerCase();
+    if (normalizedKey === 'grain' && options.grainTemplate) {
+        return options.grainTemplate;
+    }
+    return KEY_ID_MAP[key] || KEY_ID_MAP[normalizedKey];
+}
+function applyResponseToDay(day, payload, options = {}) {
     if (!payload || typeof payload !== 'object') return;
     const prefix = dayPrefix(day);
+    const ruleIdMap = {};  // Track (coreName -> ruleId) for this day
+    
+    // First pass: collect rule IDs
     Object.entries(payload).forEach(([k, v]) => {
+        if (k.endsWith('_rule_id')) {
+            const coreName = k.substring(0, k.length - 8);  // Remove '_rule_id' suffix
+            ruleIdMap[coreName] = v;  // Store rule ID for later application
+        }
+    });
+    
+    // Second pass: apply values and rule IDs
+    Object.entries(payload).forEach(([k, v]) => {
+        // Skip rule ID keys (they're handled in first pass)
+        if (k.endsWith('_rule_id')) return;
+        
         if (v == null) v = '';
-        let template = KEY_ID_MAP[k] || KEY_ID_MAP[k.toLowerCase()];
-        if (template) { safeSetText(template.replace('{day}', prefix), v); return; }
+        let template = resolveResponseTemplate(k, options);
+        if (template) {
+            const cellId = template.replace('{day}', prefix);
+            safeSetText(cellId, v);
+            // Apply rule id when present; clear stale rule id when absent
+            const el = document.getElementById(cellId);
+            if (el) {
+                if (ruleIdMap.hasOwnProperty(k) && ruleIdMap[k]) {
+                    el.dataset.ruleId = ruleIdMap[k];
+                } else {
+                    delete el.dataset.ruleId;
+                }
+            }
+            return;
+        }
         if (typeof v === 'object') {
             Object.entries(v).forEach(([subk, subv]) => {
-                let t = KEY_ID_MAP[subk] || KEY_ID_MAP[subk.toLowerCase()];
-                if (t) safeSetText(t.replace('{day}', prefix), subv);
+                let t = resolveResponseTemplate(subk, options);
+                if (t) {
+                    const cellId = t.replace('{day}', prefix);
+                    safeSetText(cellId, subv);
+                    // Apply rule id when present; clear stale rule id when absent
+                    const el = document.getElementById(cellId);
+                    if (el) {
+                        if (ruleIdMap.hasOwnProperty(subk) && ruleIdMap[subk]) {
+                            el.dataset.ruleId = ruleIdMap[subk];
+                        } else {
+                            delete el.dataset.ruleId;
+                        }
+                    }
+                }
             });
             return;
         }
         const fallbackId = prefix + k.charAt(0).toUpperCase() + k.slice(1);
-        if (document.getElementById(fallbackId)) safeSetText(fallbackId, v);
-        else {
+        if (document.getElementById(fallbackId)) {
+            safeSetText(fallbackId, v);
+            // Apply rule id when present; clear stale rule id when absent
+            const el = document.getElementById(fallbackId);
+            if (el) {
+                if (ruleIdMap.hasOwnProperty(k) && ruleIdMap[k]) {
+                    el.dataset.ruleId = ruleIdMap[k];
+                } else {
+                    delete el.dataset.ruleId;
+                }
+            }
+        } else {
             const fallback2 = prefix + k.toLowerCase();
-            if (document.getElementById(fallback2)) safeSetText(fallback2, v);
+            if (document.getElementById(fallback2)) {
+                safeSetText(fallback2, v);
+                // Apply rule id when present; clear stale rule id when absent
+                const el = document.getElementById(fallback2);
+                if (el) {
+                    if (ruleIdMap.hasOwnProperty(k) && ruleIdMap[k]) {
+                        el.dataset.ruleId = ruleIdMap[k];
+                    } else {
+                        delete el.dataset.ruleId;
+                    }
+                }
+            }
         }
     });
 }
-function populateFromResponse(response) {
+function populateFromResponse(response, options = {}) {
     if (!response) return;
-    ['Monday','Tuesday','Wednesday','Thursday','Friday'].forEach(day => { if (response[day]) applyResponseToDay(day, response[day]); });
+    ['Monday','Tuesday','Wednesday','Thursday','Friday'].forEach(day => { if (response[day]) applyResponseToDay(day, response[day], options); });
 }
 
 /* Editable support */
@@ -2227,10 +2302,10 @@ function updateTable(response){
     enableEditablesForAllCells();
     {% endif %}
 }
-function updateAMTable(response){ populateFromResponse(response); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} toggleAMSnackVisibility(); }
-function updatePMTable(response){ populateFromResponse(response); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} }
+function updateAMTable(response){ populateFromResponse(response, { grainTemplate: '{day}add3' }); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} toggleAMSnackVisibility(); }
+function updatePMTable(response){ populateFromResponse(response, { grainTemplate: '{day}add4' }); {% if not use_inventory_selectors %} enableEditablesForAllCells(); {% endif %} }
 function updateBreakfastTable(response){
-    populateFromResponse(response);
+    populateFromResponse(response, { grainTemplate: '{day}add1' });
     {% if not use_inventory_selectors %}
     enableEditablesForAllCells();
     {% endif %}
@@ -2319,6 +2394,7 @@ $(document).ready(function() {
         e.preventDefault();
         const $btn = $(this);
         $btn.prop('disabled', true).addClass('disabled');
+        window._inventoryToastPending = false;
         showLoading('Generating menu…');
 
         // Determine whether the table already has cached/menu data.
@@ -2336,24 +2412,40 @@ $(document).ready(function() {
         // Clear previous colors before regenerating
         clearAllMenuCellStyles();
 
+        // One-shot token: only the immediate next generation should use ignore-inventory.
+        const ignoreInventoryForRequest = !!window.ignoreInventoryNextRequest;
+        window.ignoreInventoryNextRequest = false;
+        // Legacy flag should never drive request behavior.
+        window.confirmedIgnoreInventory = false;
+        // Persist suppression for the full lifecycle of this generated menu.
+        window.suppressRuleWarningsForCurrentMenu = ignoreInventoryForRequest;
+        if (ignoreInventoryForRequest) {
+            const recipeMissingAlert = document.getElementById('missingRulesAlert');
+            if (recipeMissingAlert) recipeMissingAlert.style.display = 'none';
+            const inventoryMissingAlert = document.getElementById('missingInventoryRulesAlert');
+            if (inventoryMissingAlert) inventoryMissingAlert.style.display = 'none';
+            console.debug('[RULE ALERT] Cleared stale rule alerts for ignore-inventory generation run.');
+        }
+
         // Call the unified full menu generation endpoint (all meals generated in one request with shared rule tracker)
         // Include week_start so backend uses the correct date for 2-week cooldown calculation
         ajaxPost('/generate_full_menu/', {
             week_start: (window.nextMondayDate ? (new Date(window.nextMondayDate)).toISOString().split('T')[0] : null),
             estimated_daily_students: getEstimatedDailyStudents(),
-            ignore_inventory: (window.confirmedIgnoreInventory ? 'true' : 'false')
+            ignore_inventory: (ignoreInventoryForRequest ? 'true' : 'false')
         })
             .done(function(resp) {
                 // DEBUG: Log what we received
                 console.log('🔍 RESPONSE RECEIVED:', {
                     has_out_of_stock_items: !!(resp.out_of_stock_items && resp.out_of_stock_items.length > 0),
                     out_of_stock_count: resp.out_of_stock_items ? resp.out_of_stock_items.length : 0,
-                    confirmedIgnoreInventory: window.confirmedIgnoreInventory,
+                    ignoreInventoryForRequest,
+                    ignoreInventoryNextRequest: !!window.ignoreInventoryNextRequest,
                     breakfast_monday_bread: resp.breakfast ? resp.breakfast.Monday.bread || '(empty)' : '(no breakfast data)'
                 });
                 
                 // Check if there are out-of-stock items and user hasn't confirmed yet
-                if (resp.out_of_stock_items && resp.out_of_stock_items.length > 0 && !window.confirmedIgnoreInventory) {
+                if (resp.out_of_stock_items && resp.out_of_stock_items.length > 0 && !ignoreInventoryForRequest) {
                     // Build a simplified list showing day/meal combinations (deduplicated)
                     const dayAbbr = {'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed', 'Thursday': 'Thu', 'Friday': 'Fri'};
                     const uniqueCombos = new Set();
@@ -2363,6 +2455,9 @@ $(document).ready(function() {
                     });
                     const itemsList = Array.from(uniqueCombos).join(', ');
                     
+                    // Show the toast but keep the overlay visible — it hides only
+                    // after the user picks an option and that path fully completes.
+                    window._inventoryToastPending = true;
                     const uniqueId = Date.now();
                     toastr.warning(
                         `<div style="margin-bottom: 10px;"><strong>Recipes out of stock for the following:</strong></div>
@@ -2387,14 +2482,24 @@ $(document).ready(function() {
                                 $('.inventory-bypass-yes-btn').off('click').on('click', function() {
                                     $('.toastr-inventory-warning').fadeOut(200, function(){ $(this).remove(); });
                                     // User confirmed - regenerate with ignore_inventory flag
-                                    window.confirmedIgnoreInventory = true;
+                                    window.ignoreInventoryNextRequest = true;
+                                    window.suppressRuleWarningsForCurrentMenu = true;
+                                    const recipeMissingAlert = document.getElementById('missingRulesAlert');
+                                    if (recipeMissingAlert) recipeMissingAlert.style.display = 'none';
+                                    const inventoryMissingAlert = document.getElementById('missingInventoryRulesAlert');
+                                    if (inventoryMissingAlert) inventoryMissingAlert.style.display = 'none';
+                                    // Keep overlay visible through the re-generation
+                                    showLoading('Generating menu\u2026');
+                                    window._inventoryToastPending = false;
                                     // Re-trigger generation immediately
                                     setTimeout(() => $btn.click(), 100);
                                 });
                                 $('.inventory-bypass-no-btn').off('click').on('click', async function() {
                                     $('.toastr-inventory-warning').fadeOut(200, function(){ $(this).remove(); });
+                                    window._inventoryToastPending = false;
                                     // User declined - continue with out of stock markers
-                                    window.confirmedIgnoreInventory = false;
+                                    window.ignoreInventoryNextRequest = false;
+                                    window.suppressRuleWarningsForCurrentMenu = false;
                                     // Process response with out of stock markers
                                     if (resp.breakfast) updateBreakfastTable(resp.breakfast);
                                     if (resp.am_snack) updateAMTable(resp.am_snack);
@@ -2424,7 +2529,7 @@ $(document).ready(function() {
                             }
                         }
                     );
-                    return; // Don't process response yet, wait for user choice
+                    return; // Don't process response yet, wait for user choice — .always() checks the flag
                 }
                 
                 // Response contains all meal data: breakfast, am_snack, lunch, pm_snack, missing_rules
@@ -2434,27 +2539,35 @@ $(document).ready(function() {
                 if (resp.pm_snack) updatePMTable(resp.pm_snack);
                 
                 // Only normalize (convert empties to "Out of stock") when NOT bypassing inventory
-                if (!window.confirmedIgnoreInventory) {
+                if (!ignoreInventoryForRequest) {
                     normalizeMissingMenuText();
                 } else {
-                    // Reset flag after successful bypass generation
-                    // (Next generation will check inventory again)
-                    window.confirmedIgnoreInventory = false;
+                    // Ignore-inventory generation should never show insufficiency warnings.
+                    displayMissingRulesFromData([]);
                 }
                 
                 // Display missing rules (inventory shortages) above table
                 if (resp.missing_rules) {
-                    displayMissingRulesFromData(resp.missing_rules);
+                    if (ignoreInventoryForRequest) {
+                        displayMissingRulesFromData([]);
+                    } else {
+                        displayMissingRulesFromData(resp.missing_rules);
+                    }
                 }
                 
                 saveMenuProgressToLocalStorage();
             })
-            .fail(() => toastr.error('Failed generating menu'))
+            .fail(() => { hideLoading(); toastr.error('Failed generating menu'); })
             .always(async function() {
             try {
                 // If we triggered a regeneration, don't do post-processing yet
-                if (window.confirmedIgnoreInventory === true) {
+                if (window.ignoreInventoryNextRequest === true && !ignoreInventoryForRequest) {
                     // The regeneration will handle everything
+                    return;
+                }
+                // Overlay stays until fully complete — if toast is still waiting for user
+                // input just bail out here; the button-click handlers do their own cleanup.
+                if (window._inventoryToastPending) {
                     return;
                 }
                 
@@ -2507,15 +2620,19 @@ $(document).ready(function() {
                 await ensureDailyWG();
                 toggleAMSnackVisibility();
                 await buildRulesLegendFromCache();
-                await displayMissingRules();
-            } finally {
-                setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 200);
-                // We already applied gradients, WG checks, and legend updates
-                // against the freshly generated menu above, so avoid reloading
-                // the table fragment here (which could overwrite unsaved
-                // client-side changes like snack additions). Just hide the
-                // loading overlay.
+                if (!ignoreInventoryForRequest) {
+                    await displayMissingRules();
+                } else {
+                    const missingRulesAlert = document.getElementById('missingRulesAlert');
+                    if (missingRulesAlert) missingRulesAlert.style.display = 'none';
+                }
+                // All async work done — hide overlay now
                 hideLoading();
+            } finally {
+                // Always re-enable the button, but never hide the overlay here —
+                // hideLoading() is only called inside the try block after all work
+                // completes, or by the toast button handlers when the user responds.
+                setTimeout(function(){ $btn.prop('disabled', false).removeClass('disabled'); }, 200);
             }
         });
     });
@@ -2536,6 +2653,7 @@ async function buildRulesLegendFromCache() {
     const unique = new Map();
     Object.values(rulesMap || {}).forEach(v => {
         if (!v || !v.rule_label) return;
+        if (/milk/i.test(v.rule_label)) return;
         if (!unique.has(v.rule_label)) {
             unique.set(v.rule_label, {
                 gradient_start: v.gradient_start,
@@ -2565,6 +2683,13 @@ async function buildRulesLegendFromCache() {
 
 /* Display missing rules (rules without recipes) */
 async function displayMissingRules() {
+    if (window.suppressRuleWarningsForCurrentMenu) {
+        console.debug('[RULE ALERT] Suppressed recipe-missing alert during ignore-inventory menu view.');
+        const missingContainer = document.getElementById('missingRulesAlert');
+        if (missingContainer) missingContainer.style.display = 'none';
+        return;
+    }
+
     try {
         const response = await fetch('/api/check_missing_rules/', {
             method: 'GET',
@@ -2596,11 +2721,11 @@ async function displayMissingRules() {
                     <div style="flex: 1;">
                         <strong style="color: #f57c00; display: block; margin-bottom: 6px;">Missing Recipes for Rules</strong>
                         <p style="margin: 4px 0 8px 0; font-size: 0.95rem; color: #555;">
-                            The following rules cannot be fulfilled because no recipes are assigned to them:
+                            The following rules cannot be fulfilled because no recipes or inventory side dishes are assigned to them:
                         </p>
                         <div>${rulesList}</div>
                         <p style="margin: 8px 0 0 0; font-size: 0.9rem; color: #666;">
-                            <em>Add recipes with these rules to include them in the menu generation.</em>
+                            <em>Add recipes or side-dish inventory items with these rules to include them in menu generation.</em>
                         </p>
                     </div>
                 </div>
@@ -2617,6 +2742,13 @@ async function displayMissingRules() {
 
 /* Display missing rules from direct data (inventory shortage alert) */
 function displayMissingRulesFromData(missingRules) {
+    if (window.suppressRuleWarningsForCurrentMenu) {
+        console.debug('[RULE ALERT] Suppressed inventory-insufficiency alert during ignore-inventory menu view.');
+        const existing = document.getElementById('missingInventoryRulesAlert');
+        if (existing) existing.style.display = 'none';
+        return;
+    }
+
     // Keep inventory-shortage alert separate so it is not overwritten by recipe-missing checks.
     let missingContainer = document.getElementById('missingInventoryRulesAlert');
     if (!missingContainer) {

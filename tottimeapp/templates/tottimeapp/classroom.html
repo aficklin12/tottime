@@ -378,6 +378,25 @@ body {
         </div>
         
     </form>
+    {% if classroom and status_filter != 'signed_in' %}
+    <div class="dropdown ms-2">
+        <button class="btn btn-primary dropdown-toggle" type="button" id="otherStudentsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            Other classroom students
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="otherStudentsDropdown" style="max-height: 280px; overflow-y: auto;">
+            {% for student in other_classroom_students %}
+            <li>
+                <a class="dropdown-item insert-other-student" href="#" data-student-id="{{ student.id }}">
+                    {{ student.first_name }} {{ student.last_name }}
+                    <small class="text-muted">({{ student.classroom.name }})</small>
+                </a>
+            </li>
+            {% empty %}
+            <li><span class="dropdown-item-text text-muted">No available students</span></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </div>
                 
                 <div class="container mt-4">
@@ -686,6 +705,40 @@ document.getElementById('classroomFilter').addEventListener('change', function()
 <script>
 $(document).ready(function() {
     let isSelectMode = false;
+
+    $(document).on('click', '.insert-other-student', function(e) {
+        e.preventDefault();
+
+        const studentId = $(this).data('student-id');
+        const classroomId = $('#classroomFilter').val() || '{{ classroom.id|default:"" }}';
+
+        if (!classroomId) {
+            toastr.error('Select a classroom first.');
+            return;
+        }
+
+        $.ajax({
+            url: "{% url 'update_classroom_attendance' %}",
+            type: "POST",
+            data: {
+                student_id: studentId,
+                classroom_id: classroomId,
+                action: 'sign_in',
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    toastr.success('Student inserted into this classroom.', 'Success');
+                    window.location.reload();
+                } else {
+                    toastr.error(response.message || 'Could not insert student.', 'Error');
+                }
+            },
+            error: function() {
+                toastr.error('An error occurred. Please try again.', 'Error');
+            }
+        });
+    });
 
     // Toggle checkboxes and "Select All" when "Select" button is clicked
     $('#selectButton').on('click', function() {

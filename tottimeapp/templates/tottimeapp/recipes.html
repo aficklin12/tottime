@@ -54,6 +54,25 @@
         color: rgb(57, 189, 180);
     }
 
+    /* Keep Archived visually distinct from active recipe tabs */
+    #archived-tab {
+        background-color: #c2c2c2;
+        color: #5f5f5f;
+        border-color: #d0d7de;
+    }
+
+    #archived-tab:hover:not(.active-tab) {
+        background-color: #e1e6ea;
+        color: #4b5563;
+    }
+
+    #archived-tab.active-tab {
+        background-color: #cfd6dc;
+        color: #2f3842;
+        border-color: #b8c2cc;
+        font-weight: 700;
+    }
+
     .clickable-name {
         cursor: pointer;
         text-decoration: none;
@@ -161,6 +180,101 @@
         text-align: center;
     }
 
+    .archive-column {
+        display: none;
+        width: 80px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .archive-cell-label {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .archive-cell-text {
+        font-size: 0.72rem;
+        color: #888;
+        display: none;
+    }
+
+    @media (max-width: 999px) {
+        .archive-cell-text {
+            display: inline;
+        }
+    }
+
+    .archive-checkbox {
+        cursor: pointer;
+        width: 16px;
+        height: 16px;
+        accent-color: rgb(57, 189, 180);
+    }
+
+    .archive-bulk-toolbar {
+        display: none;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+
+    .archive-bulk-toolbar .btn {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        line-height: 1.1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .archive-bulk-toolbar .btn i {
+        font-size: 0.85rem;
+    }
+
+    .archive-selected-count {
+        min-width: 16px;
+        height: 16px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.22);
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        line-height: 16px;
+        text-align: center;
+        padding: 0 3px;
+    }
+
+    #selectAllArchiveBtn {
+        background-color: #6c757d;
+        border-color: #6c757d;
+        color: #fff;
+    }
+
+    #selectAllArchiveBtn:hover,
+    #selectAllArchiveBtn:focus {
+        background-color: #5c636a;
+        border-color: #565e64;
+        color: #fff;
+    }
+
+    .recipe-type-badge {
+        display: inline-block;
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #555;
+        background: #e9ecef;
+        border-radius: 4px;
+        padding: 1px 5px;
+        margin-right: 4px;
+        vertical-align: middle;
+    }
+
     .field-group { display: none; }
     .field-group.active { display: block; }
     
@@ -215,6 +329,15 @@
 
         .desktop-only { display: none !important; }
 
+        .archive-bulk-toolbar {
+            position: fixed;
+            top: 62px;
+            right: 12px;
+            margin-bottom: 0 !important;
+            z-index: 1095;
+            background: transparent;
+        }
+
         .tab-content {
             width: 100%;
             padding: 0 !important;
@@ -238,6 +361,7 @@
         }
         .tab-content table td:first-child { width: auto; }
         .tab-content table td.delete-column { width: 48px; text-align: center; }
+        .tab-content table td.archive-column { width: 72px; text-align: center; }
         .tab-content table tbody { background-color: #e8e8e8bd !important; }
         .mobile-nav-spacer { height: 72px; }
         
@@ -274,7 +398,18 @@
         }
         #recipeTabs .tab { flex-shrink: 0; padding: 6px 10px; font-size: 0.95rem; }
         .tabs { margin-left: 0 !important; margin-bottom: 0 !important; margin-top: 6px !important; }
-        .tab-content { margin-top: 0 !important; padding-top: 0 !important; }
+        .tab-content {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            position: relative;
+        }
+        .archive-bulk-toolbar {
+            position: absolute;
+            top: -36px;
+            right: 2.5%;
+            margin-bottom: 0;
+            z-index: 2;
+        }
         .container.mt-4 { max-width: 1300px; padding-left: 8px; padding-right: 8px; }
         .desktop-only .btn-recipe { display: none !important; }
         .tab-content table { width: 95% !important; margin-left: auto !important; margin-right: auto !important; }
@@ -314,6 +449,8 @@
         <button class="tab" id="fruit-tab" data-category="fruit" role="tab">Fruits</button>
         <button class="tab" id="veg-tab" data-category="veg" role="tab">Vegetables</button>
         <button class="tab" id="wg-tab" data-category="wg" role="tab">Whole Grains</button>
+        <button class="tab" id="fluid-tab" data-category="fluid" role="tab">Fluids</button>
+        <button class="tab" id="archived-tab" data-category="archived" role="tab">Archived</button>
     </div>
 
     <div class="d-block d-md-none" id="recipeDropdownContainer">
@@ -326,12 +463,23 @@
                 <option value="fruit">Fruits</option>
                 <option value="veg">Vegetables</option>
                 <option value="wg">Whole Grains</option>
+                <option value="fluid">Fluids</option>
+                <option value="archived">Archived</option>
             </select>
             <span class="mobile-dropdown-indicator"></span>
         </div>
     </div>
 
     <div class="tab-content mt-3">
+        <div id="archiveBulkToolbar" class="archive-bulk-toolbar">
+            <button type="button" id="selectAllArchiveBtn" class="btn btn-outline-light" title="Select all" aria-label="Select all">
+                <i class="fas fa-check-double" aria-hidden="true"></i>
+            </button>
+            <button type="button" id="confirmArchiveSelectedBtn" class="btn btn-primarytwo" title="Archive selected" aria-label="Archive selected" disabled>
+                <i class="fas fa-archive" aria-hidden="true"></i>
+                <span id="archiveSelectedCount" class="archive-selected-count">0</span>
+            </button>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -343,10 +491,16 @@
                                 <input type="number" id="studentCountInput" min="1" step="1" value="25" data-user-id="{{ request.user.id|default:'anon' }}">
                             </label>
                             <div class="table-header-actions">
+                                <button type="button" class="create-icon active" id="similarityGroupsBtn" title="Manage Similarity Groups" data-bs-toggle="modal" data-bs-target="#similarityGroupModal" style="display:none;">
+                                    <i class="fas fa-object-group"></i>
+                                </button>
                                 <button type="button" class="create-icon active" id="headerCreateBtn" title="Create Recipe"><i class="fas fa-plus"></i></button>
                                 <button type="button" id="headerToggleDelete" class="header-trash active" title="Toggle Delete"><i class="fas fa-trash-alt"></i></button>
                             </div>
                         </div>
+                    </th>
+                    <th class="archive-column" id="archiveColumnHeader">
+                        <span style="color: white; font-size: 0.8rem;">Archive</span>
                     </th>
                     <th class="delete-column" id="deleteColumnHeader" style="cursor: pointer;" title="Hide Delete Column">
                         <i class="fas fa-trash-alt" style="color: white;"></i>
@@ -361,6 +515,9 @@
 <div id="mobileBottomNav" class="d-md-none">
     <button id="mobileToggleDeleteBtn" class="btn" type="button" title="Toggle Delete">
         <i class="fas fa-trash-alt"></i>
+    </button>
+    <button id="mobileSimilarityGroupsBtn" class="btn update-btn" type="button" title="Similar Recipe Groups" data-bs-toggle="modal" data-bs-target="#similarityGroupModal">
+        <i class="fas fa-object-group"></i>
     </button>
     <button id="mobileCreateBtn" class="btn" type="button" title="Create" data-bs-toggle="modal" data-bs-target="#unifiedRecipeModal">
         <i class="fas fa-plus"></i>
@@ -420,6 +577,7 @@
                     </div>
                     <div class="recipe-step" id="step-2" style="display:none;">
                         <label class="form-label" for="addIngredientBtn">What are the ingredients for this recipe?</label>
+                        <div class="form-text mb-2">Input all ingredients for the portion of 1 student.</div>
                         <div id="ingredientsContainer"></div>
                         <button type="button" class="btn btn-secondary btn-sm" id="addIngredientBtn">Add Ingredient</button>
                     </div>
@@ -571,11 +729,41 @@
 </div>
 </div>
 
+<!-- SIMILARITY GROUP MODAL -->
+<div class="modal fade" id="similarityGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Similar Recipe Groups</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="form-text mb-3">Recipes in the same group will never be scheduled in the same week. Use this to prevent similar lunches (e.g., two fried-chicken variants) from appearing together.</p>
+                <div id="simGroupList" style="max-height: 260px; overflow-y: auto;"></div>
+                <hr>
+                <h6 id="simGroupFormTitle">Add New Group</h6>
+                <input type="hidden" id="simGroupEditId" value="">
+                <div class="mb-2">
+                    <label class="form-label" for="simGroupName">Group Name</label>
+                    <input type="text" class="form-control" id="simGroupName" placeholder='e.g. "Fried Chicken Variants"'>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Lunch Recipes in this Group</label>
+                    <div id="simGroupRecipeList" style="max-height: 220px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 8px; background: #f8f9fa;"></div>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <button type="button" class="btn btn-success btn-sm" id="simGroupSaveBtn">Save Group</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="simGroupCancelEditBtn" style="display:none;">Cancel Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Multi-step modal navigation
 
 // Define the correct step order as it appears in the HTML (now sequential)
 const stepOrder = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12];
@@ -595,7 +783,8 @@ const CATEGORY_TO_RECIPE_TYPE = {
     pm: 'pm_snack',
     fruit: 'fruit',
     veg: 'vegetable',
-    wg: 'whole_grain'
+    wg: 'whole_grain',
+    fluid: 'fluid'
 };
 const MANUAL_POPULATE_RECIPE_TYPES = ['multiple', 'vegetable', 'fruit', 'whole_grain', 'fluid'];
 const RECIPE_TYPE_PRIORITY = ['populateBreakfast', 'populateAMSnack', 'populateLunch', 'populatePMSnack'];
@@ -1061,7 +1250,6 @@ function applyStudentScalingToModal() {
         return;
     }
 
-    const studentCount = getStudentCount();
     CURRENT_RECIPE_BASE_INGREDIENTS.forEach((ingredient, index) => {
         const rowIndex = index + 1;
         const qtyInput = document.getElementById(`qty${rowIndex}`);
@@ -1071,12 +1259,11 @@ function applyStudentScalingToModal() {
 
         const selectedOption = ingredientSelect.options[ingredientSelect.selectedIndex];
         const unitType = selectedOption ? selectedOption.getAttribute('data-units') || '' : (ingredient.unitType || '');
-        const scaledQuantity = Number(ingredient.baseQty) * studentCount;
-        const converted = convertScaledQuantity(scaledQuantity, unitType);
+        const baseQuantity = Number(ingredient.baseQty) || 0;
 
-        qtyInput.value = formatQuantityValue(converted.quantity);
-        unitsSpan.textContent = converted.unitLabel || unitType || '';
-        qtyInput.title = `Base per student: ${formatQuantityValue(Number(ingredient.baseQty))} ${unitType || ''}`.trim();
+        qtyInput.value = formatQuantityValue(baseQuantity);
+        unitsSpan.textContent = unitType || '';
+        qtyInput.title = `Per student portion: ${formatQuantityValue(baseQuantity)} ${unitType || ''}`.trim();
     });
 }
 
@@ -1152,7 +1339,8 @@ function populateIngredientsDropdown(selectId, selectedValue) {
         const dropdown = $('#' + selectId);
         dropdown.empty().append('<option value="">Select Ingredient</option>');
         items.forEach(i => {
-            dropdown.append(`<option value="${i.id}" data-units="${i.unit_type || ''}">${i.item}</option>`);
+            const displayUnit = i.base_unit || i.unit_type || '';
+            dropdown.append(`<option value="${i.id}" data-units="${displayUnit}">${i.item}</option>`);
         });
         if (selectedValue) dropdown.val(String(selectedValue));
     });
@@ -1207,6 +1395,10 @@ function getCategoryConfig(category) {
         wg: {
             ingredientPrefix: 'wgMainIngredient',
             qtyPrefix: 'wgQtyMainIngredient',
+        },
+        fluid: {
+            ingredientPrefix: 'mainIngredient',
+            qtyPrefix: 'qtyMainIngredient',
         }
     };
     return configs[category];
@@ -1308,6 +1500,33 @@ function clearAllIngredients() {
     }
     ingredientCounter = 0;
     CURRENT_RECIPE_BASE_INGREDIENTS = [];
+}
+
+function syncCanonicalIngredientInputs(form) {
+    if (!form) return;
+
+    form.querySelectorAll('input[data-canonical-ingredient-input="true"]').forEach((input) => input.remove());
+
+    const fieldGroups = document.querySelectorAll('.ingredient-field-group');
+    fieldGroups.forEach((group, idx) => {
+        const index = idx + 1;
+        const ingredientSelect = group.querySelector('.ingredient-select');
+        const qtyInput = group.querySelector('input[type="number"]');
+
+        const ingredientHidden = document.createElement('input');
+        ingredientHidden.type = 'hidden';
+        ingredientHidden.name = `ingredient${index}`;
+        ingredientHidden.value = ingredientSelect ? (ingredientSelect.value || '') : '';
+        ingredientHidden.setAttribute('data-canonical-ingredient-input', 'true');
+        form.appendChild(ingredientHidden);
+
+        const qtyHidden = document.createElement('input');
+        qtyHidden.type = 'hidden';
+        qtyHidden.name = `qty${index}`;
+        qtyHidden.value = qtyInput ? (qtyInput.value || '') : '';
+        qtyHidden.setAttribute('data-canonical-ingredient-input', 'true');
+        form.appendChild(qtyHidden);
+    });
 }
 
 function updateIngredientFieldNames() {
@@ -1578,6 +1797,8 @@ document.addEventListener('DOMContentLoaded', function () {
             clientRecipeTypeChangedAtInput.value = LAST_RECIPE_TYPE_CHANGE.at || '';
             userSelectedRecipeTypeInput.value = LAST_USER_SELECTED_RECIPE_TYPE || '';
 
+            syncCanonicalIngredientInputs(unifiedRecipeForm);
+
             if (MANUAL_POPULATE_RECIPE_TYPES.includes(selectedType)) {
                 const flags = getPopulateFlagsFromCheckboxes();
                 const anySelected = Object.values(flags).some(Boolean);
@@ -1593,9 +1814,54 @@ document.addEventListener('DOMContentLoaded', function () {
     const dropdown = document.getElementById('recipeCategoryDropdown');
     const recipeTableBody = document.getElementById('recipeTableBody');
     const deleteColumnHeader = document.getElementById('deleteColumnHeader');
+    const archiveColumnHeader = document.getElementById('archiveColumnHeader');
+    const archiveBulkToolbar = document.getElementById('archiveBulkToolbar');
+    const selectAllArchiveBtn = document.getElementById('selectAllArchiveBtn');
+    const confirmArchiveSelectedBtn = document.getElementById('confirmArchiveSelectedBtn');
+    const archiveSelectedCount = document.getElementById('archiveSelectedCount');
     const headerToggleDelete = document.getElementById('headerToggleDelete');
     const mobileToggleDelete = document.getElementById('mobileToggleDeleteBtn');
     const studentCountInput = document.getElementById('studentCountInput');
+
+    function getBulkCheckboxes(category) {
+        const selector = category === 'archived' ? '.unarchive-checkbox' : '.archive-checkbox';
+        return Array.from(document.querySelectorAll(selector));
+    }
+
+    function updateArchiveBulkToolbarState(category) {
+        const isActionsVisible = deleteColumnHeader.style.display === 'table-cell';
+        const isArchivedTab = category === 'archived';
+        const checkboxes = getBulkCheckboxes(category);
+        const checked = checkboxes.filter(cb => cb.checked);
+
+        if (archiveBulkToolbar) {
+            archiveBulkToolbar.style.display = (isActionsVisible && checkboxes.length > 0) ? 'flex' : 'none';
+        }
+        if (confirmArchiveSelectedBtn) {
+            confirmArchiveSelectedBtn.disabled = checked.length === 0;
+            confirmArchiveSelectedBtn.title = checked.length > 0
+                ? `${isArchivedTab ? 'Unarchive' : 'Archive'} ${checked.length} selected`
+                : `${isArchivedTab ? 'Unarchive' : 'Archive'} selected`;
+            confirmArchiveSelectedBtn.setAttribute('aria-label', confirmArchiveSelectedBtn.title);
+            const confirmIcon = confirmArchiveSelectedBtn.querySelector('i');
+            if (confirmIcon) {
+                confirmIcon.className = isArchivedTab ? 'fas fa-undo' : 'fas fa-archive';
+            }
+        }
+        if (archiveSelectedCount) {
+            archiveSelectedCount.textContent = `${checked.length}`;
+        }
+        if (selectAllArchiveBtn) {
+            const allChecked = checkboxes.length > 0 && checked.length === checkboxes.length;
+            const selectAllLabel = allChecked ? 'Clear all' : 'Select all';
+            selectAllArchiveBtn.title = selectAllLabel;
+            selectAllArchiveBtn.setAttribute('aria-label', selectAllLabel);
+            const selectAllIcon = selectAllArchiveBtn.querySelector('i');
+            if (selectAllIcon) {
+                selectAllIcon.className = allChecked ? 'fas fa-times' : 'fas fa-check-double';
+            }
+        }
+    }
 
     if (studentCountInput) {
         loadStudentCountPreference();
@@ -1617,16 +1883,19 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Hide delete column initially
+    // Hide delete/archive columns initially
     deleteColumnHeader.style.display = 'none';
+    archiveColumnHeader.style.display = 'none';
 
     // Toggle delete column function
     function toggleDeleteColumn() {
         const isHidden = deleteColumnHeader.style.display === 'none';
         deleteColumnHeader.style.display = isHidden ? 'table-cell' : 'none';
-        document.querySelectorAll('.delete-column').forEach(col => {
+        archiveColumnHeader.style.display = isHidden ? 'table-cell' : 'none';
+        document.querySelectorAll('.delete-column, .archive-column').forEach(col => {
             col.style.display = isHidden ? 'table-cell' : 'none';
         });
+        updateArchiveBulkToolbarState(getCurrentCategory());
         
         // Toggle button visibility (hide button when delete column is shown)
         if (headerToggleDelete) {
@@ -1655,6 +1924,62 @@ document.addEventListener('DOMContentLoaded', function () {
         mobileToggleDelete.addEventListener('click', toggleDeleteColumn);
     }
 
+    if (selectAllArchiveBtn) {
+        selectAllArchiveBtn.addEventListener('click', function () {
+            const checkboxes = getBulkCheckboxes(getCurrentCategory());
+            if (!checkboxes.length) return;
+            const allChecked = checkboxes.every(cb => cb.checked);
+            checkboxes.forEach(cb => { cb.checked = !allChecked; });
+            updateArchiveBulkToolbarState(getCurrentCategory());
+        });
+    }
+
+    if (confirmArchiveSelectedBtn) {
+        confirmArchiveSelectedBtn.addEventListener('click', function () {
+            const currentCategory = getCurrentCategory();
+            const isArchivedTab = currentCategory === 'archived';
+            const selected = Array.from(document.querySelectorAll(isArchivedTab ? '.unarchive-checkbox:checked' : '.archive-checkbox:checked'));
+            if (!selected.length) return;
+            const ids = selected.map(cb => cb.getAttribute('data-id'));
+            const names = selected.map(cb => cb.getAttribute('data-name'));
+            const label = selected.length === 1 ? `<strong>${names[0]}</strong>` : `<strong>${selected.length} recipes</strong>`;
+            const actionVerb = isArchivedTab ? 'Unarchive' : 'Archive';
+            const actionPath = isArchivedTab ? 'unarchive-recipe' : 'archive-recipe';
+
+            toastr.clear();
+            toastr.warning(
+                `<div>${actionVerb} ${label}? ${isArchivedTab ? 'These recipes will return to active tabs.' : 'These recipes will be hidden from active tabs.'}</div>` +
+                `<br><button type="button" class="btn btn-sm btn-primarytwo" id="archiveBulkConfirmBtn">${actionVerb}</button> ` +
+                `<button type="button" class="btn btn-sm btn-secondary" id="archiveBulkCancelBtn">Cancel</button>`,
+                `Confirm ${actionVerb}`,
+                { allowHtml: true, timeOut: 0, extendedTimeOut: 0, closeButton: true, tapToDismiss: false, positionClass: 'toast-top-center' }
+            );
+
+            document.getElementById('archiveBulkConfirmBtn').addEventListener('click', function () {
+                Promise.all(ids.map(id => fetch(`/${actionPath}/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+                }).then(r => r.json())))
+                .then(results => {
+                    toastr.clear();
+                    const failures = results.filter(r => r.status !== 'success');
+                    if (failures.length === 0) {
+                        toastr.success(`${actionVerb}d ${ids.length} recipe(s).`);
+                        setTimeout(() => location.reload(), 600);
+                    } else {
+                        toastr.error(`${actionVerb}d ${ids.length - failures.length} of ${ids.length}.`);
+                        fetchRecipes(getCurrentCategory());
+                    }
+                })
+                .catch(() => toastr.error(`Failed to ${actionVerb.toLowerCase()} selected recipes.`));
+            });
+
+            document.getElementById('archiveBulkCancelBtn').addEventListener('click', function () {
+                toastr.clear();
+            });
+        });
+    }
+
     // Fetch recipes
     function fetchRecipes(category) {
         const endpoints = {
@@ -1664,21 +1989,57 @@ document.addEventListener('DOMContentLoaded', function () {
             pm: '/fetch-pm-recipes/',
             fruit: '/fetch-fruit-recipes/',
             veg: '/fetch-veg-recipes/',
-            wg: '/fetch-wg-recipes/'
+            wg: '/fetch-wg-recipes/',
+            fluid: '/fetch-fluid-recipes/',
+            archived: '/fetch-archived-recipes/'
         };
 
         fetch(endpoints[category])
             .then(r => r.json())
             .then(data => {
                 recipeTableBody.innerHTML = '';
+                const RECIPE_TYPE_LABELS = {
+                    lunch: 'Lunch', breakfast: 'Breakfast', am_snack: 'AM Snack',
+                    pm_snack: 'PM Snack', am_pm_snack: 'AM+PM Snack', vegetable: 'Vegetable',
+                    fruit: 'Fruit', whole_grain: 'Whole Grain', fluid: 'Fluid'
+                };
                 (data.recipes || []).forEach(recipe => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class="clickable-name" onclick="viewRecipe(${recipe.id}, '${category}')">${recipe.name}</td>
-                        <td class="delete-column" style="display: none;">
-                            <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${category}" style="color: red; cursor: pointer;"></i>
-                        </td>
-                    `;
+                    const effectiveCategory = category === 'archived'
+                        ? (recipe.recipe_type === 'am_snack' || recipe.recipe_type === 'am_pm_snack' ? 'am'
+                            : recipe.recipe_type === 'pm_snack' ? 'pm'
+                            : recipe.recipe_type === 'vegetable' ? 'veg'
+                            : recipe.recipe_type === 'whole_grain' ? 'wg'
+                            : (recipe.recipe_type || 'lunch'))
+                        : category;
+                    if (category === 'archived') {
+                        const typeLabel = `<span class="recipe-type-badge">${RECIPE_TYPE_LABELS[recipe.recipe_type] || recipe.recipe_type}</span> `;
+                        row.innerHTML = `
+                            <td class="clickable-name" onclick="viewRecipe(${recipe.id}, '${effectiveCategory}')">${typeLabel}${recipe.name}</td>
+                            <td class="archive-column" style="display: none;">
+                                <label class="archive-cell-label">
+                                    <span class="archive-cell-text">Unarchive</span>
+                                    <input type="checkbox" class="unarchive-checkbox" data-id="${recipe.id}" data-name="${recipe.name.replace(/"/g, '&quot;')}">
+                                </label>
+                            </td>
+                            <td class="delete-column" style="display: none;">
+                                <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${effectiveCategory}" style="color: red; cursor: pointer;"></i>
+                            </td>
+                        `;
+                    } else {
+                        row.innerHTML = `
+                            <td class="clickable-name" onclick="viewRecipe(${recipe.id}, '${category}')">${recipe.name}</td>
+                            <td class="archive-column" style="display: none;">
+                                <label class="archive-cell-label">
+                                    <span class="archive-cell-text">Archive</span>
+                                    <input type="checkbox" class="archive-checkbox" data-id="${recipe.id}" data-name="${recipe.name.replace(/"/g, '&quot;')}">
+                                </label>
+                            </td>
+                            <td class="delete-column" style="display: none;">
+                                <i class="fas fa-trash-alt delete-record" data-id="${recipe.id}" data-category="${category}" style="color: red; cursor: pointer;"></i>
+                            </td>
+                        `;
+                    }
                     recipeTableBody.appendChild(row);
                 });
 
@@ -1691,11 +2052,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                 });
 
-                // Sync delete column visibility
+                // Archive checkbox listeners (bulk mode)
+                document.querySelectorAll('.archive-checkbox').forEach(cb => {
+                    cb.addEventListener('change', function () {
+                        updateArchiveBulkToolbarState(category);
+                    });
+                });
+                document.querySelectorAll('.unarchive-checkbox').forEach(cb => {
+                    cb.addEventListener('change', function () {
+                        updateArchiveBulkToolbarState(category);
+                    });
+                });
+
+                // Sync column visibility
                 const isVisible = deleteColumnHeader.style.display === 'table-cell';
-                document.querySelectorAll('.delete-column').forEach(col => {
+                document.querySelectorAll('.delete-column, .archive-column').forEach(col => {
                     col.style.display = isVisible ? 'table-cell' : 'none';
                 });
+                updateArchiveBulkToolbarState(category);
+
             });
     }
 
@@ -1764,6 +2139,171 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initial load
     fetchRecipes('breakfast');
+    updateSimilarityGroupsBtn('breakfast');
+});
+
+// Show similarity groups button only when on Lunch tab
+function updateSimilarityGroupsBtn(category) {
+    const btn = document.getElementById('similarityGroupsBtn');
+    if (!btn) return;
+    btn.style.display = category === 'lunch' ? 'inline-block' : 'none';
+}
+
+// ---- Similarity Group Modal JS ----
+let _simLunchRecipes = null;
+
+function _getSimLunchRecipes() {
+    if (_simLunchRecipes) return Promise.resolve(_simLunchRecipes);
+    return fetch('/fetch-recipes/')
+        .then(r => r.json())
+        .then(data => {
+            _simLunchRecipes = (data.recipes || []).sort((a, b) => a.name.localeCompare(b.name));
+            return _simLunchRecipes;
+        });
+}
+
+function _renderSimGroupRecipeCheckboxes(selectedIds) {
+    const container = document.getElementById('simGroupRecipeList');
+    if (!container) return;
+    _getSimLunchRecipes().then(recipes => {
+        container.innerHTML = '';
+        recipes.forEach(r => {
+            const checked = (selectedIds || []).includes(r.id) ? 'checked' : '';
+            const div = document.createElement('div');
+            div.className = 'form-check';
+            div.innerHTML = `<input class="form-check-input sim-recipe-checkbox" type="checkbox" value="${r.id}" id="simrc_${r.id}" ${checked}><label class="form-check-label" for="simrc_${r.id}">${r.name}</label>`;
+            container.appendChild(div);
+        });
+    });
+}
+
+function _getSimCheckedRecipeIds() {
+    return Array.from(document.querySelectorAll('.sim-recipe-checkbox:checked')).map(cb => cb.value);
+}
+
+function _renderSimGroupList(groups) {
+    const container = document.getElementById('simGroupList');
+    if (!container) return;
+    if (!groups.length) {
+        container.innerHTML = '<p class="text-muted">No similarity groups yet.</p>';
+        return;
+    }
+    container.innerHTML = groups.map(g => `
+        <div class="card mb-1" data-sim-group-id="${g.id}">
+            <div class="card-body py-1 px-2 d-flex justify-content-between align-items-start">
+                <div style="overflow: hidden; text-align: left;">
+                    <strong style="font-size:0.9rem;">${g.name}</strong>
+                    <div class="form-text" style="font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:420px;">${g.recipes.length ? g.recipes.map(r => r.name).join(', ') : 'No recipes yet.'}</div>
+                </div>
+                <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                    <button class="btn btn-sm btn-outline-secondary sim-edit-btn" data-group-id="${g.id}" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn btn-sm btn-outline-danger sim-delete-btn" data-group-id="${g.id}" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    container.querySelectorAll('.sim-edit-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const gid = parseInt(this.getAttribute('data-group-id'));
+            const group = groups.find(g => g.id === gid);
+            if (!group) return;
+            document.getElementById('simGroupEditId').value = gid;
+            document.getElementById('simGroupName').value = group.name;
+            document.getElementById('simGroupFormTitle').textContent = 'Edit Group';
+            document.getElementById('simGroupCancelEditBtn').style.display = '';
+            _renderSimGroupRecipeCheckboxes(group.recipes.map(r => r.id));
+        });
+    });
+
+    container.querySelectorAll('.sim-delete-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const gid = this.getAttribute('data-group-id');
+            if (!confirm('Delete this similarity group?')) return;
+            fetch(`/api/similarity-groups/${gid}/delete/`, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    toastr.success('Group deleted.');
+                    _loadSimGroups();
+                } else {
+                    toastr.error(data.error || 'Failed to delete group.');
+                }
+            });
+        });
+    });
+}
+
+function _loadSimGroups() {
+    fetch('/api/similarity-groups/')
+        .then(r => r.json())
+        .then(data => _renderSimGroupList(data.groups || []));
+}
+
+function _resetSimGroupForm() {
+    document.getElementById('simGroupEditId').value = '';
+    document.getElementById('simGroupName').value = '';
+    document.getElementById('simGroupFormTitle').textContent = 'Add New Group';
+    document.getElementById('simGroupCancelEditBtn').style.display = 'none';
+    _renderSimGroupRecipeCheckboxes([]);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const simModal = document.getElementById('similarityGroupModal');
+    if (simModal) {
+        simModal.addEventListener('show.bs.modal', function () {
+            _loadSimGroups();
+            _renderSimGroupRecipeCheckboxes([]);
+        });
+    }
+
+    const simSaveBtn = document.getElementById('simGroupSaveBtn');
+    if (simSaveBtn) {
+        simSaveBtn.addEventListener('click', function () {
+            const name = (document.getElementById('simGroupName').value || '').trim();
+            if (!name) { toastr.warning('Please enter a group name.'); return; }
+            const recipeIds = _getSimCheckedRecipeIds();
+            const editId = document.getElementById('simGroupEditId').value;
+            const isEdit = !!editId;
+            const url = isEdit ? `/api/similarity-groups/${editId}/update/` : '/api/similarity-groups/create/';
+            const formData = new FormData();
+            formData.append('name', name);
+            recipeIds.forEach(id => formData.append('recipe_ids', id));
+            fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+                body: formData,
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    toastr.success(isEdit ? 'Group updated.' : 'Group created.');
+                    _resetSimGroupForm();
+                    _loadSimGroups();
+                } else {
+                    toastr.error(data.error || 'Failed to save group.');
+                }
+            });
+        });
+    }
+
+    const simCancelBtn = document.getElementById('simGroupCancelEditBtn');
+    if (simCancelBtn) {
+        simCancelBtn.addEventListener('click', _resetSimGroupForm);
+    }
+
+    // Wire similarity groups button visibility to tab switches
+    const tabs = document.querySelectorAll('#recipeTabs .tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            updateSimilarityGroupsBtn(this.getAttribute('data-category'));
+        });
+    });
+    const dropdown = document.getElementById('recipeCategoryDropdown');
+    if (dropdown) {
+        dropdown.addEventListener('change', function () {
+            updateSimilarityGroupsBtn(this.value);
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -1061,7 +1061,7 @@ table thead {
 
                                         <!-- Desktop left header action: sync (visible only on >=1000px) -->
                                         <div class="left-header-action" aria-hidden="false" style="display:none;">
-                                            <button type="button" id="headerUpdateInventory" class="sync-icon" title="Update Inventory"><i class="fas fa-sync"></i></button>
+                                            <button type="button" class="sync-icon header-update-inventory" title="Update Inventory" onclick="updateInventory()"><i class="fas fa-sync"></i></button>
                                         </div>
 
                        <!-- Mobile: category dropdown becomes the header -->
@@ -1098,7 +1098,14 @@ table thead {
                             data-item-name="{{ item.item }}"
                             data-category="{{ item.category }}"
                             data-unit-type="{{ item.unit_type|default_if_none:'' }}"
+                            data-unit-size="{{ item.unit_size|default_if_none:'' }}"
                             data-rule-id="{{ item.rule_id|default_if_none:'' }}"
+                            data-is-side-dish="{% if item.is_side_dish %}true{% else %}false{% endif %}"
+                            data-meal-period="{{ item.meal_period|default_if_none:'' }}"
+                            data-populate-breakfast="{% if item.populate_breakfast %}true{% else %}false{% endif %}"
+                            data-populate-am-snack="{% if item.populate_am_snack %}true{% else %}false{% endif %}"
+                            data-populate-lunch="{% if item.populate_lunch %}true{% else %}false{% endif %}"
+                            data-populate-pm-snack="{% if item.populate_pm_snack %}true{% else %}false{% endif %}"
                             data-quantity="{{ item.quantity }}"
                             data-resupply="{{ item.resupply }}"
                             title="Click to edit item details">
@@ -1207,6 +1214,7 @@ table thead {
                             <option value="Grains">Grains</option>
                             <option value="Breakfast">Breakfast</option>
                             <option value="Snacks">Snacks</option>
+                            <option value="Juice">Juice</option>
                             <option value="Infants">Infants</option>
                             <option value="Supplies">Supplies</option>
                             <option value="Misc">Misc</option>
@@ -1234,6 +1242,7 @@ table thead {
                             <option value="g">Gram (g)</option>
                             <option value="ml">Milliliter (ml)</option>
                             <option value="l">Liter (L)</option>
+                            <option value="gal">Gallon (gal)</option>
                             <option value="cup">Cup</option>
                             <option value="tbsp">Tablespoon</option>
                             <option value="tsp">Teaspoon</option>
@@ -1246,12 +1255,6 @@ table thead {
                     <div class="mb-3">
                         <!-- base_unit is set automatically in backend; not shown to user -->
                         <input type="hidden" id="baseUnit" name="base_unit">
-                    </div>
-                    <div class="mb-3">
-                        <div id="unitSizeGroup">
-                            <label for="unitSize" class="form-label">Unit Size</label>
-                            <input type="number" step="any" min="0" class="form-control" id="unitSize" name="unit_size" placeholder="e.g., 16">
-                        </div>
                     </div>
                     <div class="mb-3">
                         <!-- conversion_to_base is set automatically in backend; not shown to user -->
@@ -1273,6 +1276,53 @@ table thead {
                             <option value="{{ rule.id }}">{{ rule.rule }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="isSideDish" name="is_side_dish" value="true">
+                        <label class="form-check-label" for="isSideDish">Side dish</label>
+                    </div>
+                    <div class="mb-3" id="addMealPeriodControls" style="display: none;">
+                        <label for="mealPeriod" class="form-label">Meal Period</label>
+                        <select class="form-control" id="mealPeriod" name="meal_period">
+                            <option value="" selected disabled>Select meal period</option>
+                            <option value="all">All Meals</option>
+                            <option value="manual">Manual Selection</option>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="am_snack">AM Snack</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="pm_snack">PM Snack</option>
+                        </select>
+                        <div class="form-text">Selecting All Meals will automatically populate every meal period.</div>
+                        <div class="mt-3" id="addManualMealPeriodOptions" style="display: none;">
+                            <div class="form-label mb-2">Choose which meal periods to populate</div>
+                            <div class="form-check">
+                                <input class="form-check-input add-manual-period" type="checkbox" id="addManualBreakfast" value="breakfast">
+                                <label class="form-check-label" for="addManualBreakfast">Breakfast</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input add-manual-period" type="checkbox" id="addManualAmSnack" value="am_snack">
+                                <label class="form-check-label" for="addManualAmSnack">AM Snack</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input add-manual-period" type="checkbox" id="addManualLunch" value="lunch">
+                                <label class="form-check-label" for="addManualLunch">Lunch</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input add-manual-period" type="checkbox" id="addManualPmSnack" value="pm_snack">
+                                <label class="form-check-label" for="addManualPmSnack">PM Snack</label>
+                            </div>
+                            <div class="form-text">The first meal period you check will be stored as the main meal period.</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="populateBreakfast" name="populate_breakfast" value="false">
+                    <input type="hidden" id="populateAmSnack" name="populate_am_snack" value="false">
+                    <input type="hidden" id="populateLunch" name="populate_lunch" value="false">
+                    <input type="hidden" id="populatePmSnack" name="populate_pm_snack" value="false">
+                    <input type="hidden" id="addManualSelectionOrder" name="manual_selection_order" value="">
+                    <div class="mb-3" id="unitSizeGroup" style="display: none;">
+                        <label for="unitSize" class="form-label" id="unitSizeLabel">Portion Size Per Student</label>
+                        <input type="number" step="any" min="0" class="form-control" id="unitSize" name="unit_size" placeholder="e.g., 16">
+                        <div class="form-text" id="unitSizeHelp">Enter one student's serving size in base units.</div>
                     </div>
                  <!--  <div class="mb-3>
                         <label for="barcode" class="form-label">Barcode</label>
@@ -1326,6 +1376,7 @@ table thead {
                                         <option value="Grains">Grains</option>
                                         <option value="Breakfast">Breakfast</option>
                                         <option value="Snacks">Snacks</option>
+                                        <option value="Juice">Juice</option>
                                         <option value="Infants">Infants</option>
                                         <option value="Supplies">Supplies</option>
                                         <option value="Misc">Misc</option>
@@ -1342,6 +1393,7 @@ table thead {
                                         <option value="g">Gram (g)</option>
                                         <option value="ml">Milliliter (ml)</option>
                                         <option value="l">Liter (L)</option>
+                                        <option value="gal">Gallon (gal)</option>
                                         <option value="cup">Cup</option>
                                         <option value="tbsp">Tablespoon</option>
                                         <option value="tsp">Teaspoon</option>
@@ -1370,6 +1422,56 @@ table thead {
                                         <option value="{{ rule.id }}">{{ rule.rule }}</option>
                                         {% endfor %}
                                     </select>
+                                </div>
+
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="editIsSideDish" name="is_side_dish" value="true">
+                                    <label class="form-check-label" for="editIsSideDish">Side dish</label>
+                                </div>
+
+                                <div class="mb-3" id="editMealPeriodControls" style="display: none;">
+                                    <label for="editMealPeriod" class="form-label">Meal Period</label>
+                                    <select class="form-control" id="editMealPeriod" name="meal_period">
+                                        <option value="" selected disabled>Select meal period</option>
+                                        <option value="all">All Meals</option>
+                                        <option value="manual">Manual Selection</option>
+                                        <option value="breakfast">Breakfast</option>
+                                        <option value="am_snack">AM Snack</option>
+                                        <option value="lunch">Lunch</option>
+                                        <option value="pm_snack">PM Snack</option>
+                                    </select>
+                                    <div class="form-text">Selecting All Meals will automatically populate every meal period.</div>
+                                    <div class="mt-3" id="editManualMealPeriodOptions" style="display: none;">
+                                        <div class="form-label mb-2">Choose which meal periods to populate</div>
+                                        <div class="form-check">
+                                            <input class="form-check-input edit-manual-period" type="checkbox" id="editManualBreakfast" value="breakfast">
+                                            <label class="form-check-label" for="editManualBreakfast">Breakfast</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input edit-manual-period" type="checkbox" id="editManualAmSnack" value="am_snack">
+                                            <label class="form-check-label" for="editManualAmSnack">AM Snack</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input edit-manual-period" type="checkbox" id="editManualLunch" value="lunch">
+                                            <label class="form-check-label" for="editManualLunch">Lunch</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input edit-manual-period" type="checkbox" id="editManualPmSnack" value="pm_snack">
+                                            <label class="form-check-label" for="editManualPmSnack">PM Snack</label>
+                                        </div>
+                                        <div class="form-text">The first meal period you check will be stored as the main meal period.</div>
+                                    </div>
+                                </div>
+
+                                <input type="hidden" id="editPopulateBreakfast" name="populate_breakfast" value="false">
+                                <input type="hidden" id="editPopulateAmSnack" name="populate_am_snack" value="false">
+                                <input type="hidden" id="editPopulateLunch" name="populate_lunch" value="false">
+                                <input type="hidden" id="editPopulatePmSnack" name="populate_pm_snack" value="false">
+                                <input type="hidden" id="editManualSelectionOrder" name="manual_selection_order" value="">
+                                <div class="mb-3" id="editUnitSizeGroup" style="display: none;">
+                                    <label for="editUnitSize" class="form-label" id="editUnitSizeLabel">Portion Size Per Student</label>
+                                    <input type="number" step="any" min="0" class="form-control" id="editUnitSize" name="unit_size" placeholder="e.g., 16">
+                                    <div class="form-text" id="editUnitSizeHelp">Enter one student's serving size in base units.</div>
                                 </div>
 
                                 <button type="submit" class="btn btn-primarytwo">Save Changes</button>
@@ -1409,26 +1511,65 @@ table thead {
 {% endblock %}
 {% block scripts %}
 <script>
-// Show/hide Unit Size based on unit_type selection
+// Portion-size helper text based on unit_type selection
 document.addEventListener('DOMContentLoaded', function() {
-    var unitTypeSelect = document.getElementById('unitType');
-    var unitSizeGroup = document.getElementById('unitSizeGroup');
-    var unitSizeInput = document.getElementById('unitSize');
-    function updateUnitSizeVisibility() {
-        var val = unitTypeSelect.value;
-        if (val === 'each' || val === 'case' || val === 'pack') {
-            unitSizeGroup.style.display = '';
-            unitSizeInput.disabled = false;
+    var unitBaseMap = {
+        each: 'each',
+        lb: 'oz',
+        oz: 'oz',
+        g: 'g',
+        ml: 'ml',
+        l: 'ml',
+        gal: 'oz',
+        cup: 'cup',
+        tbsp: 'tbsp',
+        tsp: 'tsp',
+        slice: 'slice',
+        loaf: 'slice',
+        pack: 'each',
+        case: 'each'
+    };
+
+    function updatePortionSizePresentation(typeSelectId, inputId, labelId, helpId) {
+        var typeSelect = document.getElementById(typeSelectId);
+        var input = document.getElementById(inputId);
+        var label = document.getElementById(labelId);
+        var help = document.getElementById(helpId);
+        if (!typeSelect || !input || !label || !help) return;
+
+        var unitType = (typeSelect.value || '').trim();
+        var baseUnit = unitBaseMap[unitType] || 'base units';
+
+        if (!unitType) {
+            label.textContent = 'Portion Size Per Student';
+            help.textContent = 'Select unit type, then enter one student\'s serving size in base units.';
+            input.placeholder = 'e.g., 1';
+            return;
+        }
+
+        label.textContent = 'Portion Size Per Student (' + baseUnit + ')';
+        if (unitType === 'gal') {
+            help.textContent = 'For gallon-based inventory, enter one student\'s portion in oz (example: 16).';
+            input.placeholder = 'e.g., 16';
         } else {
-            unitSizeGroup.style.display = 'none';
-            unitSizeInput.value = '';
-            unitSizeInput.disabled = true;
+            help.textContent = 'Enter one student\'s portion in ' + baseUnit + '.';
+            input.placeholder = 'e.g., 1';
         }
     }
-    if (unitTypeSelect && unitSizeGroup && unitSizeInput) {
-        updateUnitSizeVisibility();
-        unitTypeSelect.addEventListener('change', updateUnitSizeVisibility);
+
+    function refreshPortionLabels() {
+        updatePortionSizePresentation('unitType', 'unitSize', 'unitSizeLabel', 'unitSizeHelp');
+        updatePortionSizePresentation('editUnitType', 'editUnitSize', 'editUnitSizeLabel', 'editUnitSizeHelp');
     }
+
+    refreshPortionLabels();
+
+    var addUnitType = document.getElementById('unitType');
+    var editUnitType = document.getElementById('editUnitType');
+    if (addUnitType) addUnitType.addEventListener('change', refreshPortionLabels);
+    if (editUnitType) editUnitType.addEventListener('change', refreshPortionLabels);
+
+    window.refreshPortionSizeLabels = refreshPortionLabels;
 });
 // Fix modal backdrop issue - ensure backdrop is removed when modal closes
 document.addEventListener('DOMContentLoaded', function() {
@@ -1481,12 +1622,356 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+const sideDishFieldMap = {
+    add: {
+        checkbox: 'isSideDish',
+        controls: 'addMealPeriodControls',
+        unitSizeGroup: 'unitSizeGroup',
+        unitSizeInput: 'unitSize',
+        mealPeriod: 'mealPeriod',
+        manualControls: 'addManualMealPeriodOptions',
+        populateBreakfast: 'populateBreakfast',
+        populateAmSnack: 'populateAmSnack',
+        populateLunch: 'populateLunch',
+        populatePmSnack: 'populatePmSnack',
+        manualSelectionOrder: 'addManualSelectionOrder',
+        manualCheckboxes: '.add-manual-period',
+    },
+    edit: {
+        checkbox: 'editIsSideDish',
+        controls: 'editMealPeriodControls',
+        unitSizeGroup: 'editUnitSizeGroup',
+        unitSizeInput: 'editUnitSize',
+        mealPeriod: 'editMealPeriod',
+        manualControls: 'editManualMealPeriodOptions',
+        populateBreakfast: 'editPopulateBreakfast',
+        populateAmSnack: 'editPopulateAmSnack',
+        populateLunch: 'editPopulateLunch',
+        populatePmSnack: 'editPopulatePmSnack',
+        manualSelectionOrder: 'editManualSelectionOrder',
+        manualCheckboxes: '.edit-manual-period',
+    },
+};
+
+const mealPeriodKeys = ['breakfast', 'am_snack', 'lunch', 'pm_snack'];
+
+function getSideDishElements(prefix) {
+    const ids = sideDishFieldMap[prefix];
+    if (!ids) return null;
+
+    return {
+        checkbox: document.getElementById(ids.checkbox),
+        controls: document.getElementById(ids.controls),
+        unitSizeGroup: document.getElementById(ids.unitSizeGroup),
+        unitSizeInput: document.getElementById(ids.unitSizeInput),
+        mealPeriod: document.getElementById(ids.mealPeriod),
+        manualControls: document.getElementById(ids.manualControls),
+        populateBreakfast: document.getElementById(ids.populateBreakfast),
+        populateAmSnack: document.getElementById(ids.populateAmSnack),
+        populateLunch: document.getElementById(ids.populateLunch),
+        populatePmSnack: document.getElementById(ids.populatePmSnack),
+        manualSelectionOrder: document.getElementById(ids.manualSelectionOrder),
+        manualCheckboxes: Array.from(document.querySelectorAll(ids.manualCheckboxes)),
+    };
+}
+
+function setHiddenPopulateFlags(fields, flags) {
+    fields.populateBreakfast.value = String(!!flags.breakfast);
+    fields.populateAmSnack.value = String(!!flags.am_snack);
+    fields.populateLunch.value = String(!!flags.lunch);
+    fields.populatePmSnack.value = String(!!flags.pm_snack);
+}
+
+function clearManualSelections(fields) {
+    fields.manualCheckboxes.forEach(function(input) {
+        input.checked = false;
+    });
+    if (fields.manualSelectionOrder) {
+        fields.manualSelectionOrder.value = '';
+    }
+}
+
+function syncManualPopulateFlags(prefix) {
+    const fields = getSideDishElements(prefix);
+    if (!fields) return [];
+
+    let selectionOrder = (fields.manualSelectionOrder.value || '')
+        .split(',')
+        .map(function(value) { return value.trim(); })
+        .filter(function(value) { return mealPeriodKeys.includes(value); });
+
+    fields.manualCheckboxes.forEach(function(input) {
+        if (input.checked && !selectionOrder.includes(input.value)) {
+            selectionOrder.push(input.value);
+        }
+    });
+
+    selectionOrder = selectionOrder.filter(function(value) {
+        return fields.manualCheckboxes.some(function(input) {
+            return input.value === value && input.checked;
+        });
+    });
+
+    fields.manualSelectionOrder.value = selectionOrder.join(',');
+
+    const flags = {
+        breakfast: fields.manualCheckboxes.some(function(input) { return input.value === 'breakfast' && input.checked; }),
+        am_snack: fields.manualCheckboxes.some(function(input) { return input.value === 'am_snack' && input.checked; }),
+        lunch: fields.manualCheckboxes.some(function(input) { return input.value === 'lunch' && input.checked; }),
+        pm_snack: fields.manualCheckboxes.some(function(input) { return input.value === 'pm_snack' && input.checked; }),
+    };
+
+    setHiddenPopulateFlags(fields, flags);
+    return selectionOrder;
+}
+
+function setPopulateFlags(prefix, mealPeriod) {
+    const fields = getSideDishElements(prefix);
+    if (!fields) return;
+
+    const flags = {
+        breakfast: false,
+        am_snack: false,
+        lunch: false,
+        pm_snack: false,
+    };
+
+    fields.mealPeriod.value = mealPeriod || '';
+
+    if (mealPeriod === 'manual') {
+        syncManualPopulateFlags(prefix);
+        return;
+    }
+
+    if (mealPeriod === 'all') {
+        flags.breakfast = true;
+        flags.am_snack = true;
+        flags.lunch = true;
+        flags.pm_snack = true;
+    } else if (flags.hasOwnProperty(mealPeriod)) {
+        flags[mealPeriod] = true;
+    }
+
+    clearManualSelections(fields);
+    setHiddenPopulateFlags(fields, flags);
+}
+
+function resetSideDishFields(prefix) {
+    setPopulateFlags(prefix, '');
+    updateMealPeriodVisibility(prefix);
+}
+
+function isMilkRuleSelected(prefix) {
+    const ruleSelectId = prefix === 'edit' ? 'editItemRule' : 'itemRule';
+    const ruleSelect = document.getElementById(ruleSelectId);
+    if (!ruleSelect) return false;
+    const selectedOption = ruleSelect.options[ruleSelect.selectedIndex];
+    if (!selectedOption) return false;
+    return selectedOption.text.toLowerCase().includes('milk');
+}
+
+function updateMealPeriodVisibility(prefix) {
+    const fields = getSideDishElements(prefix);
+    if (!fields) return;
+
+    const isSideDish = !!fields.checkbox.checked;
+    const showUnitSize = isSideDish || isMilkRuleSelected(prefix);
+
+    if (fields.controls) {
+        fields.controls.style.display = isSideDish ? '' : 'none';
+    }
+
+    if (fields.unitSizeGroup) {
+        fields.unitSizeGroup.style.display = showUnitSize ? 'block' : 'none';
+    }
+
+    if (fields.unitSizeInput) {
+        fields.unitSizeInput.required = showUnitSize;
+    }
+
+    if (fields.manualControls) {
+        fields.manualControls.style.display = isSideDish && fields.mealPeriod.value === 'manual' ? '' : 'none';
+    }
+
+    if (!isSideDish) {
+        fields.mealPeriod.value = '';
+        clearManualSelections(fields);
+        setHiddenPopulateFlags(fields, {
+            breakfast: false,
+            am_snack: false,
+            lunch: false,
+            pm_snack: false,
+        });
+    }
+}
+
+function ensureMealPeriodSelected(prefix) {
+    const fields = getSideDishElements(prefix);
+    if (!fields || !fields.checkbox.checked) {
+        return true;
+    }
+
+    if (!fields.mealPeriod.value) {
+        toastr.error('Select a meal period for side dishes.');
+        fields.mealPeriod.focus();
+        return false;
+    }
+
+    if (fields.mealPeriod.value === 'manual') {
+        const selectionOrder = syncManualPopulateFlags(prefix);
+        if (!selectionOrder.length) {
+            toastr.error('Select at least one meal period for manual selection.');
+            const firstCheckbox = fields.manualCheckboxes[0];
+            if (firstCheckbox) firstCheckbox.focus();
+            return false;
+        }
+        return true;
+    }
+
+    setPopulateFlags(prefix, fields.mealPeriod.value);
+    return true;
+}
+
+function initializeManualSelections(prefix, selectedPeriods, firstSelectedPeriod) {
+    const fields = getSideDishElements(prefix);
+    if (!fields) return;
+
+    fields.manualCheckboxes.forEach(function(input) {
+        input.checked = selectedPeriods.includes(input.value);
+    });
+
+    const prioritizedOrder = [];
+    if (firstSelectedPeriod && selectedPeriods.includes(firstSelectedPeriod)) {
+        prioritizedOrder.push(firstSelectedPeriod);
+    }
+    selectedPeriods.forEach(function(period) {
+        if (!prioritizedOrder.includes(period)) {
+            prioritizedOrder.push(period);
+        }
+    });
+
+    fields.manualSelectionOrder.value = prioritizedOrder.join(',');
+    syncManualPopulateFlags(prefix);
+}
+
+function applySideDishState(prefix, options) {
+    const fields = getSideDishElements(prefix);
+    if (!fields) return;
+
+    const isSideDish = !!options.isSideDish;
+    const selectedPeriods = (options.selectedPeriods || []).filter(function(period) {
+        return mealPeriodKeys.includes(period);
+    });
+    const firstSelectedPeriod = options.firstSelectedPeriod || '';
+    const allSelected = mealPeriodKeys.every(function(period) {
+        return selectedPeriods.includes(period);
+    });
+
+    fields.checkbox.checked = isSideDish;
+
+    if (!isSideDish) {
+        resetSideDishFields(prefix);
+        return;
+    }
+
+    if (allSelected) {
+        fields.mealPeriod.value = 'all';
+        clearManualSelections(fields);
+        setPopulateFlags(prefix, 'all');
+    } else if (selectedPeriods.length > 1) {
+        fields.mealPeriod.value = 'manual';
+        initializeManualSelections(prefix, selectedPeriods, firstSelectedPeriod);
+    } else if (selectedPeriods.length === 1) {
+        fields.mealPeriod.value = selectedPeriods[0];
+        clearManualSelections(fields);
+        setPopulateFlags(prefix, selectedPeriods[0]);
+    } else if (firstSelectedPeriod) {
+        fields.mealPeriod.value = firstSelectedPeriod;
+        clearManualSelections(fields);
+        setPopulateFlags(prefix, firstSelectedPeriod);
+    } else {
+        fields.mealPeriod.value = '';
+        clearManualSelections(fields);
+    }
+
+    updateMealPeriodVisibility(prefix);
+}
+
 // Click item name to open full item editor modal
 document.addEventListener('DOMContentLoaded', function() {
+    const addSideDishCheckbox = document.getElementById('isSideDish');
+    const editSideDishCheckbox = document.getElementById('editIsSideDish');
+    const addMealPeriodSelect = document.getElementById('mealPeriod');
+    const editMealPeriodSelect = document.getElementById('editMealPeriod');
+    const addItemModalEl = document.getElementById('addItemModal');
     const editItemModalEl = document.getElementById('editItemModal');
     const editItemModal = editItemModalEl ? new bootstrap.Modal(editItemModalEl) : null;
     const editItemForm = document.getElementById('editItemForm');
     let editItemSubmitting = false;
+
+    if (addItemModalEl) {
+        addItemModalEl.addEventListener('show.bs.modal', function() {
+            document.getElementById('addItemForm').reset();
+            resetSideDishFields('add');
+        });
+    }
+
+    if (editItemModalEl) {
+        editItemModalEl.addEventListener('show.bs.modal', function() {
+            updateMealPeriodVisibility('edit');
+        });
+    }
+
+    if (addSideDishCheckbox) {
+        addSideDishCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                updateMealPeriodVisibility('add');
+            } else {
+                resetSideDishFields('add');
+            }
+        });
+    }
+
+    if (editSideDishCheckbox) {
+        editSideDishCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                updateMealPeriodVisibility('edit');
+            } else {
+                resetSideDishFields('edit');
+            }
+        });
+    }
+
+    if (addMealPeriodSelect) {
+        addMealPeriodSelect.addEventListener('change', function() {
+            setPopulateFlags('add', this.value);
+            updateMealPeriodVisibility('add');
+        });
+    }
+
+    if (editMealPeriodSelect) {
+        editMealPeriodSelect.addEventListener('change', function() {
+            setPopulateFlags('edit', this.value);
+            updateMealPeriodVisibility('edit');
+        });
+    }
+
+    const addItemRule = document.getElementById('itemRule');
+    const editItemRule = document.getElementById('editItemRule');
+    if (addItemRule) addItemRule.addEventListener('change', function() { updateMealPeriodVisibility('add'); });
+    if (editItemRule) editItemRule.addEventListener('change', function() { updateMealPeriodVisibility('edit'); });
+
+    getSideDishElements('add').manualCheckboxes.forEach(function(input) {
+        input.addEventListener('change', function() {
+            syncManualPopulateFlags('add');
+        });
+    });
+
+    getSideDishElements('edit').manualCheckboxes.forEach(function(input) {
+        input.addEventListener('change', function() {
+            syncManualPopulateFlags('edit');
+        });
+    });
 
     document.addEventListener('click', function(e) {
         const span = e.target.closest('.editable-item-name');
@@ -1496,15 +1981,34 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editItemName').value = span.dataset.itemName || span.textContent.trim();
         document.getElementById('editItemCategory').value = span.dataset.category || '';
         document.getElementById('editUnitType').value = span.dataset.unitType || '';
+        document.getElementById('editUnitSize').value = span.dataset.unitSize || '1';
         document.getElementById('editItemQuantity').value = span.dataset.quantity || '';
         document.getElementById('editItemResupply').value = span.dataset.resupply || '';
         document.getElementById('editItemRule').value = span.dataset.ruleId || '';
+        if (typeof window.refreshPortionSizeLabels === 'function') {
+            window.refreshPortionSizeLabels();
+        }
+        applySideDishState('edit', {
+            isSideDish: span.dataset.isSideDish === 'true',
+            firstSelectedPeriod: span.dataset.mealPeriod || '',
+            selectedPeriods: [
+                span.dataset.populateBreakfast === 'true' ? 'breakfast' : null,
+                span.dataset.populateAmSnack === 'true' ? 'am_snack' : null,
+                span.dataset.populateLunch === 'true' ? 'lunch' : null,
+                span.dataset.populatePmSnack === 'true' ? 'pm_snack' : null,
+            ].filter(Boolean),
+        });
+        // Explicitly re-evaluate milk rule visibility after all values are set
+        updateMealPeriodVisibility('edit');
 
         editItemModal.show();
     });
 
     editItemForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        if (!ensureMealPeriodSelected('edit')) {
+            return;
+        }
         if (editItemSubmitting) return;
         editItemSubmitting = true;
 
@@ -1599,10 +2103,17 @@ function getCookie(name) {
         // Track the number of AJAX requests
         let totalRequests = 0;
         let completedRequests = 0;
+        let hadError = false;
 
         // Iterate over each form and perform AJAX request
         const forms = $('form[id^="updateForm_"]');
         totalRequests = forms.length;
+
+        if (totalRequests === 0) {
+            toastr.clear();
+            toastr.info('No inventory rows found to update.');
+            return;
+        }
 
         forms.each(function () {
             const form = $(this);
@@ -1624,6 +2135,7 @@ function getCookie(name) {
                     console.log(`Inventory for item ${itemId} updated successfully`);
                 },
                 error: function (xhr, status, error) {
+                    hadError = true;
                     console.error(`Failed to update inventory for item ${itemId}`, error);
                     // Show error message using Toastr
                     toastr.error(`Error updating inventory for item ${itemId}. Please try again.`, 'Error', {
@@ -1639,11 +2151,16 @@ function getCookie(name) {
                     if (completedRequests === totalRequests) {
                         // Show success message using Toastr once
                         toastr.clear(); // Clear the "Please wait" message
-                        toastr.success('Inventory updated successfully!', 'Success', {
-                            timeOut: 3000, // Auto-dismiss after 3 seconds
-                            closeButton: true,
-                            progressBar: true
-                        });
+                        if (!hadError) {
+                            toastr.success('Inventory updated successfully!', 'Success', {
+                                timeOut: 1200,
+                                closeButton: true,
+                                progressBar: true
+                            });
+                            setTimeout(function () {
+                                location.reload();
+                            }, 600);
+                        }
                     }
                 }
             });
@@ -1983,6 +2500,10 @@ document.addEventListener('DOMContentLoaded', function() {
         addItemForm.addEventListener('submit', function (event) {
             event.preventDefault(); // Prevent the default form submission
 
+            if (!ensureMealPeriodSelected('add')) {
+                return;
+            }
+
             const formData = new FormData(addItemForm);
 
             fetch(addItemForm.action, {
@@ -2187,8 +2708,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const headerSync = document.getElementById('headerUpdateInventory');
-    if (headerSync) headerSync.addEventListener('click', function () { if (typeof updateInventory === 'function') updateInventory(); });
 });
 </script>
 <!-- Add this to your inventory_list.html (or the remote template at https://tot-time.com/inventory_list) -->
