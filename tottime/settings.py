@@ -175,18 +175,19 @@ PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 
 PWA_MANIFEST_PATH = os.path.join(BASE_DIR, 'tottimeapp', 'static', 'pwa', 'manifest.json')
 
 
-STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "pk_live_CFhVogdafoLSvBgPbbRz6YhW00kDpD3Qg7")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "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")
-STRIPE_CLIENT_ID = "ca_RKaqTYIkm4UM9fAhUXUs05oUAo5mo7Y8"  # Your platform's client ID
-STRIPE_REDIRECT_URI = "https://tot-time.com/stripe/callback/"
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_CLIENT_ID = os.getenv("STRIPE_CLIENT_ID", "")
+STRIPE_REDIRECT_URI = os.getenv("STRIPE_REDIRECT_URI", "https://tot-time.com/stripe/callback/")
 
 # Square OAuth Credentials (Sandbox)
-SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "sandbox-sq0idb-_y7yf6QfkrNWU-3GkgnPRg")
-SQUARE_CLIENT_SECRET = os.getenv("SQUARE_CLIENT_SECRET", "sq0csp-uwRc1ajYJe0ZH7qAG3ITPl266_BXzqawFEy0l4p7VoE")
-SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "EAAAlwqbgDbAW8kIFJnFkTNpYUWinrVAEw6b5UssaZCyq-ZlF9OkTlQlgUlOW1hu")
-SQUARE_LOCATION_ID = os.getenv("SQUARE_LOCATION_ID", "L0KMJC7JQ3BA9")
-# Square OAuth Redirect URI (Must match what you set in the Square Developer Portal)
-SQUARE_REDIRECT_URI = "http://localhost:8000/square/oauth/callback/"
+SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "")
+SQUARE_CLIENT_SECRET = os.getenv("SQUARE_CLIENT_SECRET", "")
+SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "")
+SQUARE_LOCATION_ID = os.getenv("SQUARE_LOCATION_ID", "")
+SQUARE_SUBSCRIPTION_PLAN_ID = os.getenv("SQUARE_SUBSCRIPTION_PLAN_ID", "")
+SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID = os.getenv("SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID", "")
+SQUARE_WEBHOOK_SIGNATURE_KEY = os.getenv("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
 
 # Square OAuth Auth URL for sandbox
 SQUARE_AUTH_URL = "https://sandbox.connect.squareup.com/oauth2/authorize"

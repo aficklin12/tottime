@@ -1,15 +1,270 @@
-{% extends 'tottimeapp/base.html' %}
+{% extends 'tottimeapp/base_dynamic.html' %}
 {% load static %}
 
 {% block title %}Account Settings{% endblock %}
 
 {% block styles %}
 <style>
+.account-shell {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.25rem 0.75rem 2rem;
+}
+
+.account-header {
+    margin-bottom: 1rem;
+}
+
+.account-header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.account-subtitle {
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.panel-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04);
+    text-align: left !important;
+}
+
+.panel-card .card-body {
+    padding: 1.25rem;
+    text-align: left !important;
+    display: block !important;
+}
+
+.panel-card .card-body > * {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-align: left !important;
+    float: none !important;
+    width: 100% !important;
+}
+
+.profile-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eef1f4;
+    margin-bottom: 1rem;
+    width: 100% !important;
+}
+
+.profile-avatar {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #f1f3f5;
+}
+
+.profile-name {
+    font-weight: 600;
+    margin-bottom: 0.1rem;
+}
+
+.profile-email {
+    color: #6c757d;
+    font-size: 0.92rem;
+    margin-bottom: 0;
+}
+
+.field-label {
+    font-weight: 600;
+    color: #495057;
+    text-align: left !important;
+}
+
+.panel-card form,
+.panel-card .form-check,
+.panel-card .form-text {
+    text-align: left !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.panel-card input,
+.panel-card textarea,
+.panel-card select,
+.panel-card .form-control {
+    text-align: left !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.panel-card input::placeholder,
+.panel-card textarea::placeholder,
+.panel-card .form-control::placeholder {
+    text-align: left !important;
+}
+
+.subscription-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1.25rem;
+    margin-bottom: 1rem;
+    text-align: left !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.subscription-panel .card-body,
+.subscription-panel .subscription-grid,
+.subscription-panel .subscription-note-box,
+.subscription-panel .subscription-actions,
+.subscription-panel form {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+}
+
+.subscription-label {
+    color: #6c757d;
+    font-size: 0.86rem;
+    margin-bottom: 0.1rem;
+}
+
+.subscription-value {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.subscription-note-box {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+    margin-bottom: 0.9rem;
+}
+
+.subscription-actions {
+    margin-top: 0.75rem;
+}
+
+.subscription-terms {
+    margin-top: 0.75rem;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+}
+
+.subscription-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.subscription-main-card,
+.history-card {
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+.history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.history-item {
+    border: 1px solid #edf0f3;
+    border-radius: 10px;
+    padding: 0.7rem 0.8rem;
+    margin-bottom: 0.6rem;
+    background: #fafbfc;
+}
+
+.history-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-item-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.history-event {
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.history-date {
+    color: #6c757d;
+    font-size: 0.84rem;
+    white-space: nowrap;
+}
+
+.history-note {
+    color: #495057;
+    font-size: 0.92rem;
+    margin-bottom: 0.15rem;
+}
+
+.history-meta {
+    color: #6c757d;
+    font-size: 0.83rem;
+    margin-bottom: 0;
+}
+
 @media (max-width: 999px) {
+    h1 {
+        display: none !important;
+    }
+
     #profilePictureInput {
         display: none !important;
     }
+
+    .account-shell {
+        padding: 0.5rem 0 1.5rem;
+    }
+
+    .panel-card {
+        margin-left: 0.75rem;
+        margin-right: 0.75rem;
+    }
+
+    .subscription-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .subscription-panel {
+        display: block;
+    }
+
+    .subscription-main-card,
+    .history-card {
+        min-height: auto;
+    }
+
+    .history-card {
+        margin-top: 0.9rem;
+    }
 }
+
 @media (min-width: 999px) {
     #profilePictureHelp {
         display: none !important;
@@ -19,46 +274,251 @@
 {% endblock %}
 
 {% block content %}
-<h1>Account</h1>
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    <div class="row mb-3">
-        <div class="col-12 col-md-6" style="margin-left: 25px; max-width: 350px;">
-            <label for="firstName" class="form-label">First Name</label>
-            <input type="text" class="form-control w-100" style="max-width: 100%;" id="firstName" name="first_name" value="{{ user.first_name }}">
-            <label for="lastName" class="form-label mt-2">Last Name</label>
-            <input type="text" class="form-control w-100" style="max-width: 100%;" id="lastName" name="last_name" value="{{ user.last_name }}">
-            <label for="email" class="form-label mt-2">Email</label>
-            <input type="email" class="form-control w-100" style="max-width: 100%;" id="email" name="email" value="{{ user.email }}">
-            <label for="phoneNumber" class="form-label mt-2">Phone Number</label>
-            <input type="text" class="form-control w-100" style="max-width: 100%;" id="phoneNumber" name="phone_number" value="{{ user.phone_number }}">
-            <!--<label for="address" class="form-label mt-2">Address</label>
-            <input type="text" class="form-control w-100" style="max-width: 100%;" id="address" name="address" value="{{ user.address }}">
-            <label for="code" class="form-label mt-2">Code</label>
-            <input type="number" class="form-control w-100" style="max-width: 100%;" id="code" name="code" value="{{ user.code }}" min="0" step="1" pattern="\d*">-->
-            {% if user.profile_picture %}
-            <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 75px; height: 75px;">
-            {% else %}
-            <img src="{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture" class="img-thumbnail mt-2" style="width: 75px; height: 75px;">
-            {% endif %}
-                    <input 
-                type="file" 
-                class="form-control mt-2 w-100"
-                style="max-width: 100%;"
-                id="profilePictureInput" 
-                name="profile_picture"
-                accept="image/*"
-            />
-            <div class="form-text text-muted mt-1" id="profilePictureHelp">
-                Photo uploads disabled within the app. This function is only available on the website directly.
-                <a href="https://tot-time.com" target="_blank" rel="noopener">Tot-time.com</a>.
+<h1>Account Settings</h1>
+<div class="account-shell">
+   
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-5">
+            <div class="card panel-card">
+                <div class="card-body">
+                    <h5 class="section-title">Profile</h5>
+
+                    <div class="profile-identity">
+                        {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="Profile Picture" class="profile-avatar">
+                        {% else %}
+                        <img src="{% static 'profile_pictures/Default_pfp.jpg' %}" alt="Profile Picture" class="profile-avatar">
+                        {% endif %}
+                        <div>
+                            <p class="profile-name">{{ user.first_name }} {{ user.last_name }}</p>
+                            <p class="profile-email">{{ user.email }}</p>
+                        </div>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            <label for="firstName" class="form-label field-label">First Name</label>
+                            <input type="text" class="form-control" id="firstName" name="first_name" value="{{ user.first_name }}">
+                        </div>
+                        <div class="mb-2">
+                            <label for="lastName" class="form-label field-label">Last Name</label>
+                            <input type="text" class="form-control" id="lastName" name="last_name" value="{{ user.last_name }}">
+                        </div>
+                        <div class="mb-2">
+                            <label for="email" class="form-label field-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
+                        </div>
+                        <div class="mb-2">
+                            <label for="phoneNumber" class="form-label field-label">Phone Number</label>
+                            <input type="text" class="form-control" id="phoneNumber" name="phone_number" value="{{ user.phone_number }}">
+                        </div>
+                        <input
+                            type="file"
+                            class="form-control mt-2"
+                            id="profilePictureInput"
+                            name="profile_picture"
+                            accept="image/*"
+                        />
+                        <div class="form-text text-muted mt-1" id="profilePictureHelp">
+                            Photo uploads disabled within the app. This function is only available on the website directly.
+                            <a href="https://tot-time.com" target="_blank" rel="noopener">Tot-time.com</a>.
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
+                    </form>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary mt-2" style="height: 38px;">Save Changes</button>
+        </div>
+
+        <div class="col-12 col-lg-7 subscription-panel">
+            <div class="card panel-card subscription-main-card">
+                <div class="card-body">
+                    <h5 class="section-title">Subscription</h5>
+
+                    <div class="subscription-grid">
+                        <div>
+                            <p class="subscription-label">Plan</p>
+                            <p class="subscription-value">{{ billing_subscription.plan_name|default:"Monthly Subscription" }}</p>
+                        </div>
+                        <div>
+                            <p class="subscription-label">Status</p>
+                            <p class="subscription-value">{{ billing_subscription.get_status_display }}</p>
+                        </div>
+                        <div>
+                            <p class="subscription-label">Price</p>
+                            <p class="subscription-value">${{ subscription_monthly_amount }}/month</p>
+                        </div>
+                        <div>
+                            <p class="subscription-label">Access Through</p>
+                            <p class="subscription-value">
+                                {% if billing_subscription.current_period_end %}
+                                    {{ billing_subscription.current_period_end|date:"M d, Y" }}
+                                {% else %}
+                                    Not active
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    {% if square_connected %}
+                        {% if not billing_subscription.provider_subscription_id %}
+                            <div class="subscription-note-box text-muted">
+                                Auto-renews monthly. Cancel or pause anytime.
+                            </div>
+
+                            <form method="post" action="{% url 'start_square_subscription_checkout' %}">
+                                {% csrf_token %}
+                                <div class="form-check subscription-terms">
+                                    <input class="form-check-input" type="checkbox" id="termsAccepted" name="terms_accepted" required>
+                                    <label class="form-check-label" for="termsAccepted">
+                                        I agree to the <a href="/terms-of-service/" target="_blank" rel="noopener">Terms of Service</a> and
+                                        <a href="/privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a>.
+                                        I understand this is a recurring monthly subscription that will automatically renew
+                                        until cancelled. I can cancel or pause anytime from my account.
+                                    </label>
+                                </div>
+                                <div class="subscription-actions">
+                                    <button type="submit" class="btn btn-primary">Start Subscription</button>
+                                </div>
+                            </form>
+                        {% else %}
+                            {% if billing_subscription.cancel_at_period_end %}
+                                <div class="subscription-note-box">
+                                    <p class="text-warning mb-1"><strong>Cancellation is scheduled at period end.</strong></p>
+                                    {% if billing_subscription.current_period_end %}
+                                        <p class="text-muted mb-0">Access remains active through {{ billing_subscription.current_period_end|date:"M d, Y" }}.</p>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <p class="text-success mb-2"><strong>Recurring billing is active in Square.</strong></p>
+                                <form id="cancelAtPeriodEndForm" method="post" action="{% url 'cancel_square_subscription_at_period_end' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Cancel at Period End</button>
+                                </form>
+                                <p class="text-muted mt-2 mb-0">This stops future renewals and keeps access through the current billing period.</p>
+                            {% endif %}
+                        {% endif %}
+                    {% else %}
+                        <div class="subscription-note-box text-muted mb-0">
+                            Subscription checkout is not fully configured yet. Add Square access token, location ID,
+                            and SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID in app settings.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card panel-card history-card">
+                <div class="card-body">
+                    <h5 class="section-title">Billing History</h5>
+
+                    {% if billing_subscription.billing_history %}
+                        <ul class="history-list">
+                            {% for event in billing_subscription.billing_history|slice:"-8:" reversed %}
+                                <li class="history-item">
+                                    <div class="history-item-top">
+                                        <p class="history-event js-history-event" data-event-type="{{ event.event_type|default:'billing_event'|escape }}">{{ event.event_type|default:"Billing Event" }}</p>
+                                        <span class="history-date">{{ event.timestamp|date:"M d, Y" }}</span>
+                                    </div>
+                                    {% if event.note %}
+                                        <p class="history-note">{{ event.note }}</p>
+                                    {% endif %}
+                                    <p class="history-meta">
+                                        {% if event.amount and event.amount != 'None' %}Amount: ${{ event.amount }}{% else %}Amount: --{% endif %}
+                                    </p>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="subscription-note-box text-muted mb-0">
+                            No billing events yet. New subscription, payment, and status updates will appear here.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
-</form>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function formatHistoryEventLabel(rawValue) {
+        if (!rawValue) {
+            return 'Billing Event';
+        }
 
+        var withSpaces = String(rawValue)
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/[_-]+/g, ' ')
+            .trim()
+            .toLowerCase();
+
+        return withSpaces.replace(/\b\w/g, function (char) {
+            return char.toUpperCase();
+        });
+    }
+
+    document.querySelectorAll('.js-history-event').forEach(function (node) {
+        node.textContent = formatHistoryEventLabel(node.dataset.eventType);
+    });
+
+    {% if success_message %}
+    toastr.success('{{ success_message|escapejs }}');
+    {% endif %}
+
+    {% if messages %}
+    {% for message in messages %}
+    {% if message.tags == 'success' %}
+    toastr.success('{{ message|escapejs }}');
+    {% elif message.tags == 'error' %}
+    toastr.error('{{ message|escapejs }}');
+    {% elif message.tags == 'warning' %}
+    toastr.warning('{{ message|escapejs }}');
+    {% else %}
+    toastr.info('{{ message|escapejs }}');
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    var cancelForm = document.getElementById('cancelAtPeriodEndForm');
+    if (!cancelForm) {
+        return;
+    }
+
+    cancelForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        toastr.warning(
+            '<div>Schedule cancellation at period end?<br>You will keep access until the current cycle ends.</div>' +
+            '<div style="margin-top:10px; text-align:center;">' +
+            '<button type="button" class="btn btn-sm btn-danger confirm-cancel-btn" style="margin-right:6px;">Confirm</button>' +
+            '<button type="button" class="btn btn-sm btn-secondary keep-subscription-btn">Keep Subscription</button>' +
+            '</div>',
+            'Confirm Cancellation',
+            {
+                closeButton: false,
+                timeOut: 0,
+                extendedTimeOut: 0,
+                tapToDismiss: false,
+                onShown: function () {
+                    var confirmBtn = document.querySelector('.confirm-cancel-btn');
+                    var keepBtn = document.querySelector('.keep-subscription-btn');
+                    if (confirmBtn) {
+                        confirmBtn.addEventListener('click', function () {
+                            cancelForm.submit();
+                        }, { once: true });
+                    }
+                    if (keepBtn) {
+                        keepBtn.addEventListener('click', function () {
+                            toastr.clear();
+                        }, { once: true });
+                    }
+                }
+            }
+        );
+    });
+});
+</script>
 {% endblock %}

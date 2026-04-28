@@ -7,6 +7,7 @@ from django.db.models.functions import Concat, Lower
 from django.http import HttpResponseForbidden, HttpResponseBadRequest, JsonResponse, HttpResponseNotAllowed, HttpResponseRedirect
 from django.utils import timezone as django_timezone
 import urllib.parse, stripe, requests, random, logging, json, pytz, os, uuid
+import base64, hashlib, hmac
 from square.client import Client
 from django.conf import settings
 import re
@@ -25,7 +26,7 @@ from django.contrib import messages
 from django.db.models import Count, Avg
 from django.contrib.sites.shortcuts import get_current_site
 from .forms import SignupForm, ImprovementGoalFormSet, ImprovementPlan,ImprovementPlanForm, ImprovementGoal, SurveyForm, QuestionForm, ForgotUsernameForm, LoginForm, RuleForm, MessageForm, InvitationForm
-from .models import Classroom, WeeklyMenuAssignedRule, TemporaryAccess, FeedRecord, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe, MessagingPermission, Classroom, ClassroomAssignment, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, RolePermission, SubUser, Invitation, RecipeIngredient, NutritionFact
+from .models import Classroom, WeeklyMenuAssignedRule, TemporaryAccess, FeedRecord, CurriculumTheme, CurriculumActivity, IndicatorPageLink, PublicLink, Response, Survey, Answer, Question, Choice, ABCQualityElement, ABCQualityIndicator, ResourceSignature, Resource, StandardCategory, ClassroomScoreSheet, StandardCriteria, ScoreItem, OrientationItem, StaffOrientation, OrientationProgress, EnrollmentTemplate, EnrollmentPolicy, EnrollmentSubmission, CompanyAccountOwner, Announcement, UserMessagingPermission, DiaperChangeRecord, IncidentReport, MainUser, SubUser, RolePermission, Student, Inventory, Recipe, MessagingPermission, Classroom, ClassroomAssignment, OrderList, Student, AttendanceRecord, Message, Conversation, Payment, WeeklyTuition, TeacherAttendanceRecord, TuitionPlan, PaymentRecord, MilkCount, WeeklyMenu, Rule, MainUser, RolePermission, SubUser, Invitation, RecipeIngredient, NutritionFact, MainUserBillingSubscription
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
@@ -63,6 +64,299 @@ ALLOWED_ATTRIBUTES = {
 ALLOWED_STYLES = ['font-weight', 'font-style', 'text-decoration']
 
 logger = logging.getLogger(__name__)
+SIGNUP_TEMPLATE_MAINUSER_ID = 46
+SIGNUP_DEFAULT_GROUP_ID = 9
+TRIAL_ACCESS_DAYS = 30
+SUBSCRIPTION_MONTHLY_AMOUNT = Decimal('20.00')
+
+
+def _square_subscription_credentials_available():
+    return bool(settings.SQUARE_ACCESS_TOKEN and settings.SQUARE_LOCATION_ID)
+
+
+def _square_subscription_plan_configured():
+    return bool(getattr(settings, 'SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID', None))
+
+
+def _square_environment():
+    application_id = getattr(settings, 'SQUARE_APPLICATION_ID', '') or ''
+    return 'sandbox' if application_id.startswith('sandbox-') else 'production'
+
+
+def _normalize_square_subscription_status(status):
+    status_value = (status or '').strip().lower()
+    status_map = {
+        'active': 'active',
+        'trialing': 'trialing',
+        'pending': 'pending',
+        'incomplete': 'incomplete',
+        'paused': 'past_due',
+        'past_due': 'past_due',
+        'deactivated': 'canceled',
+        'canceled': 'canceled',
+        'cancelled': 'canceled',
+    }
+    return status_map.get(status_value, 'inactive')
+
+
+def _parse_square_timestamp(value):
+    if not value:
+        return None
+
+    raw_value = str(value).strip()
+    if not raw_value:
+        return None
+
+    # Date-only values from Square (YYYY-MM-DD) are treated as end-of-day UTC.
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}', raw_value):
+        parsed_date = datetime.strptime(raw_value, '%Y-%m-%d').date()
+        return datetime.combine(parsed_date, time(23, 59, 59, tzinfo=utc))
+
+    if raw_value.endswith('Z'):
+        raw_value = raw_value[:-1] + '+00:00'
+
+    try:
+        parsed_dt = datetime.fromisoformat(raw_value)
+    except ValueError:
+        return None
+
+    if timezone.is_naive(parsed_dt):
+        return parsed_dt.replace(tzinfo=utc)
+    return parsed_dt
+
+
+def _verify_square_webhook_signature(request):
+    signature_key = getattr(settings, 'SQUARE_WEBHOOK_SIGNATURE_KEY', '') or ''
+    if not signature_key:
+        return True
+
+    provided_signature = (
+        request.headers.get('x-square-hmacsha256-signature')
+        or request.headers.get('x-square-signature')
+        or ''
+    )
+    if not provided_signature:
+        return False
+
+    body = request.body.decode('utf-8')
+    notification_url = request.build_absolute_uri()
+    signed_payload = f"{notification_url}{body}".encode('utf-8')
+    expected_signature = base64.b64encode(
+        hmac.new(signature_key.encode('utf-8'), signed_payload, hashlib.sha256).digest()
+    ).decode('utf-8')
+
+    return hmac.compare_digest(provided_signature, expected_signature)
+
+
+def _apply_subscription_access_window(billing_subscription, period_start, period_end, now_ts):
+    billing_subscription.current_period_start = period_start or billing_subscription.current_period_start or now_ts
+    billing_subscription.current_period_end = period_end
+    billing_subscription.next_billing_at = period_end
+    if period_end and period_end > now_ts:
+        billing_subscription.last_payment_at = now_ts
+
+
+def _model_copy_fields(model, excluded_fields):
+    return [
+        field.name
+        for field in model._meta.concrete_fields
+        if field.name not in excluded_fields and not field.primary_key
+    ]
+
+
+def _clone_signup_template_data(new_user, template_user_id=SIGNUP_TEMPLATE_MAINUSER_ID):
+    template_user = MainUser.objects.filter(id=template_user_id).first()
+    if not template_user:
+        raise ValidationError(f"Template MainUser with id={template_user_id} was not found.")
+
+    rule_copy_fields = _model_copy_fields(Rule, {'id', 'user'})
+    inventory_copy_fields = _model_copy_fields(
+        Inventory,
+        {'id', 'user', 'rule', 'quantity', 'total_quantity'},
+    )
+    recipe_copy_fields = _model_copy_fields(
+        Recipe,
+        {
+            'id',
+            'user',
+            'grain_rule',
+            'addfood_rule',
+            'fluid_rule',
+            'veg_rule',
+            'fruit_rule',
+            'meat_rule',
+            'last_used',
+        },
+    )
+    similarity_group_copy_fields = _model_copy_fields(RecipeSimilarityGroup, {'id', 'user'})
+
+    rule_id_map = {}
+    for source_rule in Rule.objects.filter(user=template_user):
+        rule_data = {field_name: getattr(source_rule, field_name) for field_name in rule_copy_fields}
+        cloned_rule = Rule.objects.create(user=new_user, **rule_data)
+        rule_id_map[source_rule.id] = cloned_rule
+
+    inventory_id_map = {}
+    item_max_length = Inventory._meta.get_field('item').max_length
+    barcode_max_length = Inventory._meta.get_field('barcode').max_length
+    for source_inventory in Inventory.objects.filter(user=template_user):
+        inventory_data = {
+            field_name: getattr(source_inventory, field_name)
+            for field_name in inventory_copy_fields
+        }
+        inventory_data['rule'] = rule_id_map.get(source_inventory.rule_id)
+        inventory_data['quantity'] = Decimal('0')
+        inventory_data['total_quantity'] = Decimal('0')
+
+        try:
+            cloned_inventory = Inventory.objects.create(user=new_user, **inventory_data)
+        except IntegrityError:
+            suffix = f" ({new_user.id})"
+            inventory_data['item'] = f"{source_inventory.item[: item_max_length - len(suffix)]}{suffix}"
+            if inventory_data.get('barcode'):
+                barcode_suffix = f"-{new_user.id}"
+                inventory_data['barcode'] = f"{str(source_inventory.barcode)[: barcode_max_length - len(barcode_suffix)]}{barcode_suffix}"
+            cloned_inventory = Inventory.objects.create(user=new_user, **inventory_data)
+
+        inventory_id_map[source_inventory.id] = cloned_inventory
+
+    recipe_id_map = {}
+    recipe_content_type = ContentType.objects.get_for_model(Recipe)
+    source_recipes = Recipe.objects.filter(user=template_user)
+    for source_recipe in source_recipes:
+        recipe_data = {field_name: getattr(source_recipe, field_name) for field_name in recipe_copy_fields}
+        recipe_data['grain_rule'] = rule_id_map.get(source_recipe.grain_rule_id)
+        recipe_data['addfood_rule'] = rule_id_map.get(source_recipe.addfood_rule_id)
+        recipe_data['fluid_rule'] = rule_id_map.get(source_recipe.fluid_rule_id)
+        recipe_data['veg_rule'] = rule_id_map.get(source_recipe.veg_rule_id)
+        recipe_data['fruit_rule'] = rule_id_map.get(source_recipe.fruit_rule_id)
+        recipe_data['meat_rule'] = rule_id_map.get(source_recipe.meat_rule_id)
+
+        cloned_recipe = Recipe.objects.create(user=new_user, **recipe_data)
+        recipe_id_map[source_recipe.id] = cloned_recipe
+
+        source_ingredients = RecipeIngredient.objects.filter(
+            content_type=recipe_content_type,
+            object_id=source_recipe.id,
+        )
+        for source_ingredient in source_ingredients:
+            RecipeIngredient.objects.create(
+                content_type=recipe_content_type,
+                object_id=cloned_recipe.id,
+                ingredient=inventory_id_map.get(source_ingredient.ingredient_id),
+                quantity=source_ingredient.quantity,
+            )
+
+        source_nutrition_facts = NutritionFact.objects.filter(
+            content_type=recipe_content_type,
+            object_id=source_recipe.id,
+        )
+        for source_nutrition in source_nutrition_facts:
+            NutritionFact.objects.create(
+                content_type=recipe_content_type,
+                object_id=cloned_recipe.id,
+                label=source_nutrition.label,
+                amount=source_nutrition.amount,
+                unit=source_nutrition.unit,
+                percent_dv=source_nutrition.percent_dv,
+                raw_text=source_nutrition.raw_text,
+            )
+
+    for source_group in RecipeSimilarityGroup.objects.filter(user=template_user):
+        group_data = {field_name: getattr(source_group, field_name) for field_name in similarity_group_copy_fields}
+        cloned_group = RecipeSimilarityGroup.objects.create(user=new_user, **group_data)
+        mapped_recipe_ids = [
+            recipe_id_map[recipe_id].id
+            for recipe_id in source_group.recipes.values_list('id', flat=True)
+            if recipe_id in recipe_id_map
+        ]
+        cloned_group.recipes.set(mapped_recipe_ids)
+
+    for source_role_permission in RolePermission.objects.filter(main_user=template_user):
+        try:
+            RolePermission.objects.update_or_create(
+                main_user=new_user,
+                role=source_role_permission.role,
+                permission=source_role_permission.permission,
+                defaults={'yes_no_permission': source_role_permission.yes_no_permission},
+            )
+        except IntegrityError as exc:
+            raise ValidationError(
+                'Unable to copy RolePermission template rows due to a unique-constraint conflict. '
+                'Update RolePermission uniqueness to include main_user (main_user, role, permission).'
+            ) from exc
+
+
+def _grant_temporary_access_for_main_user(main_user, days=TRIAL_ACCESS_DAYS):
+    if not main_user:
+        return
+
+    now_ts = timezone.now()
+    expires_ts = now_ts + timedelta(days=days)
+    RolePermission.objects.filter(main_user=main_user).update(
+        yes_no_permission=True,
+        access_enabled_at=now_ts,
+        access_expires_at=expires_ts,
+    )
+
+
+def _sync_role_permissions_from_subscription(main_user_id):
+    if not main_user_id:
+        return
+
+    subscription = MainUserBillingSubscription.objects.filter(main_user_id=main_user_id).first()
+    if not subscription:
+        return
+
+    now_ts = timezone.now()
+    period_start = subscription.current_period_start or subscription.started_at or now_ts
+    period_end = subscription.current_period_end
+
+    if subscription.status in {'active', 'trialing'} and period_end and period_end > now_ts:
+        RolePermission.objects.filter(main_user_id=main_user_id).update(
+            yes_no_permission=True,
+            access_enabled_at=period_start,
+            access_expires_at=period_end,
+        )
+        return
+
+    # Pending/incomplete checkout should not remove existing access.
+    if subscription.status in {'pending', 'incomplete'}:
+        return
+
+    RolePermission.objects.filter(main_user_id=main_user_id, yes_no_permission=True).update(
+        yes_no_permission=False,
+        access_enabled_at=period_start if period_end else models.F('access_enabled_at'),
+        access_expires_at=period_end if period_end else models.F('access_expires_at'),
+    )
+
+
+def _sync_temporary_access_by_date(main_user_id):
+    if not main_user_id:
+        return
+
+    _sync_role_permissions_from_subscription(main_user_id)
+
+    now_ts = timezone.now()
+
+    # Expire active permissions when the access window has passed.
+    RolePermission.objects.filter(
+        main_user_id=main_user_id,
+        yes_no_permission=True,
+        access_expires_at__isnull=False,
+        access_expires_at__lt=now_ts,
+    ).update(yes_no_permission=False)
+
+    # Re-enable permissions if access window is valid again.
+    RolePermission.objects.filter(
+        main_user_id=main_user_id,
+        yes_no_permission=False,
+        access_enabled_at__isnull=False,
+        access_enabled_at__lte=now_ts,
+        access_expires_at__isnull=False,
+        access_expires_at__gte=now_ts,
+    ).update(yes_no_permission=True)
+
 
 def public_or_login_required(view_func):
     """
@@ -331,6 +625,10 @@ def check_permissions(request, required_permission_id=None):
 
     # If we have a role mapping (group_id + main_user_id), evaluate permissions
     if group_id and main_user_id:
+        _sync_temporary_access_by_date(main_user_id)
+        now_ts = timezone.now()
+        access_active_filter = Q(access_expires_at__isnull=True) | Q(access_expires_at__gte=now_ts)
+
         # Check for required permission
         if required_permission_id:
             allow_access = RolePermission.objects.filter(
@@ -338,7 +636,7 @@ def check_permissions(request, required_permission_id=None):
                 permission_id=required_permission_id,
                 yes_no_permission=True,
                 main_user_id=main_user_id
-            ).exists()
+            ).filter(access_active_filter).exists()
 
         permissions_ids = {
             'weekly_menu': 271,
@@ -368,7 +666,7 @@ def check_permissions(request, required_permission_id=None):
                 permission_id=perm_id,
                 yes_no_permission=True,
                 main_user_id=main_user_id
-            ).exists()
+            ).filter(access_active_filter).exists()
 
         conversations = Conversation.objects.filter(
             Q(sender=request.user) | Q(recipient=request.user)
@@ -845,11 +1143,16 @@ def index_cacfp(request):
     # prefer cookie first, then query param
     cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
     param_minimal = request.GET.get('minimal') == '1'
+
+    # cookie present at all (value '0' or '1') means sniff already ran
+    cookie_sniffed = 'use_minimal_base' in request.COOKIES
+    # param present at all (minimal=0 or minimal=1) means sniff already ran
+    param_sniffed = request.GET.get('minimal') is not None
     use_minimal_base = param_minimal or cookie_minimal
 
     # If we don't yet know the client's viewport, return a tiny sniffing page that
     # sets the cookie and redirects immediately (prevents flashing the full base).
-    if not (cookie_minimal or param_minimal):
+    if not (cookie_sniffed or param_sniffed):
         sniff_html = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <script>
         (function(){
@@ -863,8 +1166,11 @@ def index_cacfp(request):
                 }
                 window.location.replace(url);
             } else {
-                // ensure no minimal param and reload so server will serve full base
-                url = url.replace(/([?&])minimal=1(&|$)/g, '$1').replace(/[?&]$/, '');
+                // set cookie so server skips sniff on next request
+                document.cookie = "use_minimal_base=0; path=/; max-age=" + (60*60*24*365) + ";";
+                // add minimal=0 so server can detect sniff is done even before cookie arrives
+                url = url.replace(/([?&])minimal=[^&]*(&|$)/g, function(m,p1,p2){return p2 ? p1 : '';}).replace(/[?&]$/, '');
+                url += (url.indexOf('?') === -1 ? '?' : '&') + 'minimal=0';
                 window.location.replace(url);
             }
         })();
@@ -1871,6 +2177,12 @@ def account_settings(request):
         return permissions_context
 
     user = request.user
+    billing_subscription, _created = MainUserBillingSubscription.objects.get_or_create(main_user=user)
+
+    now_ts = timezone.now()
+    if billing_subscription.status in {'active', 'trialing'} and billing_subscription.current_period_end and billing_subscription.current_period_end <= now_ts:
+        billing_subscription.status = 'past_due'
+        billing_subscription.save(update_fields=['status', 'updated_at'])
 
     if request.method == "POST":
         user.first_name = request.POST.get("first_name", user.first_name)
@@ -1887,8 +2199,620 @@ def account_settings(request):
     return render(request, 'account_settings.html', {
         **permissions_context,
         "success_message": success_message,
-        "user": user, 
+        "user": user,
+        "billing_subscription": billing_subscription,
+        "square_connected": _square_subscription_credentials_available() and _square_subscription_plan_configured(),
+        "subscription_monthly_amount": SUBSCRIPTION_MONTHLY_AMOUNT,
+        "square_application_id": getattr(settings, 'SQUARE_APPLICATION_ID', ''),
+        "square_location_id": getattr(settings, 'SQUARE_LOCATION_ID', ''),
     })
+
+
+def _square_error_message(result):
+    errors = getattr(result, 'errors', None) or []
+    if not errors:
+        return 'Unknown Square API error.'
+    details = []
+    for error in errors:
+        code = error.get('code', 'UNKNOWN')
+        detail = error.get('detail', 'No detail provided')
+        details.append(f"{code}: {detail}")
+    return '; '.join(details)
+
+
+def _validate_square_subscription_plan_variation(square_client):
+    try:
+        result = square_client.catalog.retrieve_catalog_object(
+            object_id=settings.SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID
+        )
+    except Exception:
+        logger.exception('Failed to validate Square subscription plan variation.')
+        return 'Unable to validate Square subscription plan variation configuration.'
+
+    if not result.is_success():
+        return f"Unable to validate Square subscription plan variation: {_square_error_message(result)}"
+
+    variation_object = (result.body or {}).get('object', {})
+    if variation_object.get('type') != 'SUBSCRIPTION_PLAN_VARIATION':
+        return 'Configured SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID is not a subscription plan variation.'
+
+    variation_data = variation_object.get('subscription_plan_variation_data', {}) or {}
+    phases = variation_data.get('phases', []) or []
+    if not phases:
+        return 'Configured Square subscription plan variation has no billing phases.'
+
+    # Hosted subscription checkout fails at pay-time for RELATIVE pricing variations.
+    if any((phase.get('pricing') or {}).get('type') == 'RELATIVE' for phase in phases):
+        return (
+            'Square subscription plan variation uses RELATIVE pricing and cannot be completed '
+            'with this hosted checkout flow. Create a STATIC monthly variation (for example, '
+            '$1.00 USD) and set SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID to that variation id.'
+        )
+
+    return None
+
+
+def _sync_square_subscription_from_provider(user, billing_subscription):
+    try:
+        square_client = Client(
+            access_token=settings.SQUARE_ACCESS_TOKEN,
+            environment=_square_environment()
+        )
+    except Exception:
+        logger.exception('Failed to initialize Square client while syncing subscription.')
+        return False
+
+    customer_id = billing_subscription.provider_customer_id
+    if not customer_id and user.email:
+        search_customer_result = square_client.customers.search_customers(
+            body={
+                'query': {
+                    'filter': {
+                        'email_address': {
+                            'exact': user.email,
+                        }
+                    }
+                },
+                'limit': 1,
+            }
+        )
+        if search_customer_result.is_success():
+            customers = search_customer_result.body.get('customers', [])
+            if customers:
+                customer_id = customers[0].get('id')
+
+    if not customer_id:
+        return False
+
+    search_subscriptions_result = square_client.subscriptions.search_subscriptions(
+        body={
+            'query': {
+                'filter': {
+                    'location_ids': [settings.SQUARE_LOCATION_ID],
+                    'plan_variation_ids': [settings.SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID],
+                    'customer_ids': [customer_id],
+                }
+            },
+            'limit': 25,
+        }
+    )
+    if not search_subscriptions_result.is_success():
+        return False
+
+    subscriptions = search_subscriptions_result.body.get('subscriptions', [])
+    if not subscriptions:
+        return False
+
+    def _status_rank(value):
+        normalized = _normalize_square_subscription_status(value)
+        rank_map = {'active': 0, 'trialing': 1, 'pending': 2, 'incomplete': 3, 'past_due': 4, 'canceled': 5, 'inactive': 6}
+        return rank_map.get(normalized, 99)
+
+    subscriptions.sort(key=lambda item: (_status_rank(item.get('status')), item.get('created_at') or ''), reverse=False)
+    subscription_payload = subscriptions[0]
+
+    now_ts = timezone.now()
+    status = _normalize_square_subscription_status(subscription_payload.get('status'))
+    period_start = _parse_square_timestamp(
+        subscription_payload.get('start_date') or subscription_payload.get('current_billing_period_start_date')
+    ) or billing_subscription.current_period_start or now_ts
+    period_end = _parse_square_timestamp(
+        subscription_payload.get('charged_through_date')
+        or subscription_payload.get('billing_end_date')
+        or subscription_payload.get('canceled_date')
+        or subscription_payload.get('end_date')
+    )
+    canceled_at = _parse_square_timestamp(subscription_payload.get('canceled_date'))
+
+    billing_subscription.provider = 'square'
+    billing_subscription.provider_customer_id = customer_id
+    billing_subscription.provider_subscription_id = subscription_payload.get('id')
+    billing_subscription.plan_code = settings.SQUARE_SUBSCRIPTION_PLAN_ID
+    billing_subscription.plan_name = 'Monthly Subscription'
+    billing_subscription.billing_interval = 'monthly'
+    billing_subscription.amount = SUBSCRIPTION_MONTHLY_AMOUNT
+    billing_subscription.currency = 'USD'
+    billing_subscription.provider_location_id = settings.SQUARE_LOCATION_ID
+    billing_subscription.status = status
+    billing_subscription.cancel_at_period_end = bool(canceled_at and status in {'active', 'trialing', 'pending', 'past_due'})
+    billing_subscription.canceled_at = canceled_at
+    if not billing_subscription.started_at:
+        billing_subscription.started_at = period_start
+    _apply_subscription_access_window(
+        billing_subscription,
+        period_start=period_start,
+        period_end=period_end,
+        now_ts=now_ts,
+    )
+    billing_subscription.append_history_event(
+        event_type='square_subscription_synced',
+        amount=billing_subscription.amount,
+        note='Subscription synced from Square after hosted checkout return.',
+        payload={
+            'square_subscription_id': subscription_payload.get('id'),
+            'square_customer_id': customer_id,
+        },
+    )
+    billing_subscription.save()
+    _sync_role_permissions_from_subscription(user.id)
+    return True
+
+
+@login_required
+@require_POST
+def create_square_auto_renew_subscription(request):
+    if not _square_subscription_credentials_available():
+        return JsonResponse({'ok': False, 'error': 'Square credentials are not configured.'}, status=400)
+    if not _square_subscription_plan_configured():
+        return JsonResponse({'ok': False, 'error': 'SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID is not configured.'}, status=400)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON request body.'}, status=400)
+
+    source_id = (payload.get('source_id') or payload.get('token') or '').strip()
+    if not source_id:
+        return JsonResponse({'ok': False, 'error': 'Missing Square payment source token.'}, status=400)
+
+    verification_token = (payload.get('verification_token') or '').strip()
+    if not verification_token:
+        return JsonResponse({'ok': False, 'error': 'Missing payment verification token.'}, status=400)
+
+    user = request.user
+    billing_subscription, _created = MainUserBillingSubscription.objects.get_or_create(main_user=user)
+    billing_subscription.provider = 'square'
+    billing_subscription.plan_code = settings.SQUARE_SUBSCRIPTION_PLAN_ID
+    billing_subscription.plan_name = 'Monthly Subscription (Auto-Renew)'
+    billing_subscription.billing_interval = 'monthly'
+    billing_subscription.amount = SUBSCRIPTION_MONTHLY_AMOUNT
+    billing_subscription.currency = 'USD'
+    billing_subscription.provider_location_id = settings.SQUARE_LOCATION_ID
+    billing_subscription.status = 'pending'
+
+    square_client = Client(
+        access_token=settings.SQUARE_ACCESS_TOKEN,
+        environment=_square_environment()
+    )
+
+    customer_id = billing_subscription.provider_customer_id
+    if customer_id:
+        customer_lookup = square_client.customers.retrieve_customer(customer_id)
+        if not customer_lookup.is_success():
+            customer_id = None
+
+    if not customer_id and user.email:
+        search_result = square_client.customers.search_customers(
+            body={
+                'query': {
+                    'filter': {
+                        'email_address': {
+                            'exact': user.email,
+                        }
+                    }
+                },
+                'limit': 1,
+            }
+        )
+        if search_result.is_success():
+            customers = search_result.body.get('customers', [])
+            if customers:
+                customer_id = customers[0].get('id')
+
+    if not customer_id:
+        create_customer_result = square_client.customers.create_customer(
+            body={
+                'given_name': user.first_name or '',
+                'family_name': user.last_name or '',
+                'email_address': user.email or '',
+                'reference_id': str(user.id),
+            }
+        )
+        if not create_customer_result.is_success():
+            return JsonResponse({'ok': False, 'error': _square_error_message(create_customer_result)}, status=400)
+        customer_id = (create_customer_result.body.get('customer') or {}).get('id')
+
+    create_card_result = square_client.cards.create_card(
+        body={
+            'idempotency_key': str(uuid.uuid4()),
+            'source_id': source_id,
+            'verification_token': verification_token,
+            'card': {
+                'customer_id': customer_id,
+            },
+        }
+    )
+    if not create_card_result.is_success():
+        return JsonResponse({'ok': False, 'error': _square_error_message(create_card_result)}, status=400)
+
+    card_id = (create_card_result.body.get('card') or {}).get('id')
+    if not card_id:
+        return JsonResponse({'ok': False, 'error': 'Square did not return a saved card id.'}, status=400)
+
+    create_subscription_result = square_client.subscriptions.create_subscription(
+        body={
+            'idempotency_key': str(uuid.uuid4()),
+            'location_id': settings.SQUARE_LOCATION_ID,
+            'plan_variation_id': settings.SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID,
+            'customer_id': customer_id,
+            'card_id': card_id,
+            'start_date': timezone.now().date().isoformat(),
+        }
+    )
+    if not create_subscription_result.is_success():
+        return JsonResponse({'ok': False, 'error': _square_error_message(create_subscription_result)}, status=400)
+
+    square_subscription = create_subscription_result.body.get('subscription', {})
+    square_subscription_id = square_subscription.get('id')
+    now_ts = timezone.now()
+    period_start = _parse_square_timestamp(square_subscription.get('start_date')) or now_ts
+    period_end = _parse_square_timestamp(square_subscription.get('charged_through_date')) or (now_ts + timedelta(days=30))
+
+    billing_subscription.provider_customer_id = customer_id
+    billing_subscription.provider_subscription_id = square_subscription_id
+    billing_subscription.status = _normalize_square_subscription_status(square_subscription.get('status') or 'active')
+    if not billing_subscription.started_at:
+        billing_subscription.started_at = period_start
+    _apply_subscription_access_window(
+        billing_subscription,
+        period_start=period_start,
+        period_end=period_end,
+        now_ts=now_ts,
+    )
+    billing_subscription.append_history_event(
+        event_type='square_subscription_created',
+        amount=billing_subscription.amount,
+        note='Auto-renew subscription created in Square.',
+        payload={
+            'square_subscription_id': square_subscription_id,
+            'square_customer_id': customer_id,
+        },
+    )
+    billing_subscription.save()
+    _sync_role_permissions_from_subscription(user.id)
+
+    return JsonResponse({
+        'ok': True,
+        'subscription_id': square_subscription_id,
+        'status': billing_subscription.status,
+    })
+
+
+@login_required
+@require_POST
+def start_square_subscription_checkout(request):
+    user = request.user
+    if request.method == 'POST' and not request.POST.get('terms_accepted'):
+        messages.error(request, 'You must agree to the Terms of Service to start a subscription.')
+        return redirect('account_settings')
+    if not _square_subscription_credentials_available():
+        messages.error(request, 'Square subscription checkout is not configured in app settings yet.')
+        return redirect('account_settings')
+    if not _square_subscription_plan_configured():
+        messages.error(request, 'Square subscription plan variation id (SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID) is missing in app settings.')
+        return redirect('account_settings')
+
+    billing_subscription, _created = MainUserBillingSubscription.objects.get_or_create(main_user=user)
+    billing_subscription.provider = 'square'
+    billing_subscription.plan_code = settings.SQUARE_SUBSCRIPTION_PLAN_ID
+    billing_subscription.plan_name = 'Tot-Time Monthly Access Subscription'
+    billing_subscription.billing_interval = 'monthly'
+    billing_subscription.amount = SUBSCRIPTION_MONTHLY_AMOUNT
+    billing_subscription.currency = 'USD'
+    billing_subscription.provider_location_id = settings.SQUARE_LOCATION_ID
+    if billing_subscription.status not in {'active', 'trialing'}:
+        billing_subscription.status = 'pending'
+
+    # Record T&C acceptance for legal audit trail.
+    from django.utils import timezone
+    metadata = billing_subscription.metadata or {}
+    acceptances = metadata.get('terms_acceptances', [])
+    acceptances.append({
+        'accepted_at': timezone.now().isoformat(),
+        'ip_address': request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip(),
+        'user_agent': request.META.get('HTTP_USER_AGENT', '')[:500],
+        'terms_version': 'v1',
+    })
+    metadata['terms_acceptances'] = acceptances
+    billing_subscription.metadata = metadata
+    billing_subscription.save()
+
+    callback_url = request.build_absolute_uri(reverse('square_subscription_callback'))
+    callback_url = f"{callback_url}?local_subscription_id={billing_subscription.id}"
+    checkout_display_name = 'Tot-Time Monthly Access Subscription'
+
+    try:
+        square_client = Client(
+            access_token=settings.SQUARE_ACCESS_TOKEN,
+            environment=_square_environment()
+        )
+        plan_variation_error = _validate_square_subscription_plan_variation(square_client)
+        if plan_variation_error:
+            messages.error(request, plan_variation_error)
+            return redirect('account_settings')
+
+        result = square_client.checkout.create_payment_link(
+            body={
+                'idempotency_key': str(uuid.uuid4()),
+                'quick_pay': {
+                    'name': checkout_display_name,
+                    'price_money': {
+                        'amount': int((billing_subscription.amount * Decimal('100')).quantize(Decimal('1'))),
+                        'currency': billing_subscription.currency or 'USD',
+                    },
+                    'location_id': settings.SQUARE_LOCATION_ID,
+                },
+                'checkout_options': {
+                    'subscription_plan_id': settings.SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID,
+                    'redirect_url': callback_url,
+                },
+                'pre_populated_data': {
+                    'buyer_email': user.email,
+                },
+            }
+        )
+    except Exception as exc:
+        logger.exception('Failed to create Square hosted subscription checkout.')
+        messages.error(request, f'Unable to start checkout: {exc}')
+        return redirect('account_settings')
+
+    if not result.is_success():
+        messages.error(request, f"Unable to start checkout: {_square_error_message(result)}")
+        return redirect('account_settings')
+
+    payment_link = result.body.get('payment_link', {})
+    payment_link_id = payment_link.get('id')
+    checkout_url = payment_link.get('url') or payment_link.get('long_url')
+
+    if payment_link_id:
+        billing_subscription.provider_checkout_id = payment_link_id
+        billing_subscription.save(update_fields=['provider_checkout_id', 'updated_at'])
+
+    if not checkout_url:
+        messages.error(request, 'Square did not return a checkout URL.')
+        return redirect('account_settings')
+
+    return redirect(checkout_url)
+
+
+@login_required
+def square_subscription_callback(request):
+    user = request.user
+    # Supports both the new param and legacy test links.
+    subscription_id_raw = request.GET.get('local_subscription_id') or request.GET.get('subscription_id')
+    try:
+        subscription_id = int(subscription_id_raw)
+    except (TypeError, ValueError):
+        messages.error(request, 'Invalid subscription session id.')
+        return redirect('account_settings')
+
+    billing_subscription = MainUserBillingSubscription.objects.filter(id=subscription_id, main_user=user).first()
+    if not billing_subscription:
+        messages.error(request, 'Subscription session not found.')
+        return redirect('account_settings')
+
+    found_subscription = _sync_square_subscription_from_provider(user, billing_subscription)
+    if found_subscription:
+        messages.success(request, 'Subscription checkout completed and monthly auto-renew is active in Square.')
+        return redirect('account_settings')
+
+    billing_subscription.status = 'pending'
+    billing_subscription.append_history_event(
+        event_type='subscription_checkout_return',
+        amount=billing_subscription.amount,
+        note='Square hosted checkout returned before subscription sync was available.',
+        payload={'local_subscription_id': billing_subscription.id},
+    )
+    billing_subscription.save(update_fields=['status', 'billing_history', 'updated_at'])
+    messages.info(request, 'Checkout returned successfully. Final subscription sync may take a moment; refresh shortly.')
+    return redirect('account_settings')
+
+
+@login_required
+@require_POST
+def cancel_square_subscription_at_period_end(request):
+    if not _square_subscription_credentials_available():
+        messages.error(request, 'Square subscription checkout is not configured in app settings yet.')
+        return redirect('account_settings')
+
+    billing_subscription = MainUserBillingSubscription.objects.filter(main_user=request.user).first()
+    if not billing_subscription or not billing_subscription.provider_subscription_id:
+        messages.error(request, 'No active Square subscription was found for this account.')
+        return redirect('account_settings')
+
+    if billing_subscription.cancel_at_period_end:
+        messages.info(request, 'Cancellation is already scheduled for the end of the current billing cycle.')
+        return redirect('account_settings')
+
+    try:
+        square_client = Client(
+            access_token=settings.SQUARE_ACCESS_TOKEN,
+            environment=_square_environment()
+        )
+        result = square_client.subscriptions.cancel_subscription(
+            subscription_id=billing_subscription.provider_subscription_id
+        )
+    except Exception as exc:
+        logger.exception('Failed to schedule Square subscription cancellation.')
+        messages.error(request, f'Unable to schedule cancellation: {exc}')
+        return redirect('account_settings')
+
+    if not result.is_success():
+        messages.error(request, f"Unable to schedule cancellation: {_square_error_message(result)}")
+        return redirect('account_settings')
+
+    subscription_payload = (result.body or {}).get('subscription', {}) or {}
+    now_ts = timezone.now()
+    status = _normalize_square_subscription_status(subscription_payload.get('status') or billing_subscription.status)
+    period_start = _parse_square_timestamp(
+        subscription_payload.get('start_date') or subscription_payload.get('current_billing_period_start_date')
+    ) or billing_subscription.current_period_start or now_ts
+    period_end = _parse_square_timestamp(
+        subscription_payload.get('paid_until_date')
+        or subscription_payload.get('charged_through_date')
+        or subscription_payload.get('canceled_date')
+        or subscription_payload.get('end_date')
+    )
+    canceled_at = _parse_square_timestamp(subscription_payload.get('canceled_date'))
+
+    billing_subscription.status = status
+    billing_subscription.cancel_at_period_end = True
+    billing_subscription.canceled_at = canceled_at
+    _apply_subscription_access_window(
+        billing_subscription,
+        period_start=period_start,
+        period_end=period_end,
+        now_ts=now_ts,
+    )
+    billing_subscription.append_history_event(
+        event_type='square_subscription_cancel_scheduled',
+        amount=billing_subscription.amount,
+        note='Cancellation scheduled at the end of current billing cycle in Square.',
+        payload={
+            'square_subscription_id': billing_subscription.provider_subscription_id,
+            'effective_end_date': subscription_payload.get('paid_until_date') or subscription_payload.get('canceled_date'),
+        },
+    )
+    billing_subscription.save()
+    _sync_role_permissions_from_subscription(request.user.id)
+
+    if period_end:
+        messages.success(
+            request,
+            f"Subscription cancellation is scheduled. Access remains active through {period_end.strftime('%b %d, %Y %I:%M %p')}.",
+        )
+    else:
+        messages.success(request, 'Subscription cancellation is scheduled at the end of the current billing cycle.')
+    return redirect('account_settings')
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def square_subscription_webhook(request):
+    if not _verify_square_webhook_signature(request):
+        return JsonResponse({'ok': False, 'error': 'Invalid webhook signature.'}, status=403)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON payload.'}, status=400)
+
+    event_type = payload.get('type', '')
+    event_data = payload.get('data', {}) or {}
+    object_payload = event_data.get('object', {}) or {}
+    subscription_payload = object_payload.get('subscription', {}) or {}
+    invoice_payload = object_payload.get('invoice', {}) or {}
+
+    square_subscription_id = (
+        subscription_payload.get('id')
+        or object_payload.get('subscription_id')
+        or invoice_payload.get('subscription_id')
+    )
+    square_payment_link_id = (
+        object_payload.get('payment_link_id')
+        or object_payload.get('id')
+    )
+    square_customer_id = (
+        subscription_payload.get('customer_id')
+        or object_payload.get('customer_id')
+        or invoice_payload.get('customer_id')
+    )
+
+    billing_subscription = None
+    if square_subscription_id:
+        billing_subscription = MainUserBillingSubscription.objects.filter(
+            provider='square',
+            provider_subscription_id=square_subscription_id,
+        ).first()
+
+    if not billing_subscription and square_customer_id:
+        billing_subscription = MainUserBillingSubscription.objects.filter(
+            provider='square',
+            provider_customer_id=square_customer_id,
+        ).first()
+
+    if not billing_subscription and square_payment_link_id:
+        billing_subscription = MainUserBillingSubscription.objects.filter(
+            provider='square',
+            provider_checkout_id=square_payment_link_id,
+        ).first()
+
+    if not billing_subscription:
+        return JsonResponse({'ok': True, 'ignored': True, 'reason': 'No local subscription mapping found.'})
+
+    now_ts = timezone.now()
+    new_status = _normalize_square_subscription_status(
+        subscription_payload.get('status') or billing_subscription.status
+    )
+    charged_through = (
+        subscription_payload.get('charged_through_date')
+        or subscription_payload.get('canceled_date')
+        or subscription_payload.get('end_date')
+    )
+
+    period_start = _parse_square_timestamp(
+        subscription_payload.get('start_date') or subscription_payload.get('current_billing_period_start_date')
+    ) or billing_subscription.current_period_start or now_ts
+
+    period_end = _parse_square_timestamp(charged_through)
+    canceled_at = _parse_square_timestamp(subscription_payload.get('canceled_date'))
+
+    # Backstop: some invoice events may not include period dates.
+    if not period_end and 'invoice.payment_made' in event_type:
+        baseline = billing_subscription.current_period_end or now_ts
+        period_end = max(baseline, now_ts) + timedelta(days=30)
+
+    if square_subscription_id:
+        billing_subscription.provider_subscription_id = square_subscription_id
+    if square_customer_id:
+        billing_subscription.provider_customer_id = square_customer_id
+
+    billing_subscription.status = new_status
+    billing_subscription.cancel_at_period_end = bool(canceled_at and new_status in {'active', 'trialing', 'pending', 'past_due'})
+    billing_subscription.canceled_at = canceled_at
+    if not billing_subscription.started_at:
+        billing_subscription.started_at = period_start
+    _apply_subscription_access_window(
+        billing_subscription,
+        period_start=period_start,
+        period_end=period_end,
+        now_ts=now_ts,
+    )
+    billing_subscription.last_webhook_payload = payload
+    billing_subscription.append_history_event(
+        event_type='square_webhook',
+        amount=billing_subscription.amount,
+        note=f'Processed Square event: {event_type}',
+        payload={
+            'event_type': event_type,
+            'square_subscription_id': square_subscription_id,
+            'square_customer_id': square_customer_id,
+        },
+    )
+    billing_subscription.save()
+
+    _sync_role_permissions_from_subscription(billing_subscription.main_user_id)
+    return JsonResponse({'ok': True})
 
 @login_required
 def menu_rules(request):
@@ -1936,6 +2860,9 @@ def error500(request):
 def privacy_policy(request):
     return render(request, 'privacy-policy.html')
 
+def terms_of_service(request):
+    return render(request, 'terms-of-service.html')
+
 def delete_request(request):
     return render(request, 'delete_request.html')
 
@@ -1943,12 +2870,35 @@ def user_signup(request):
     if request.method == 'POST':
         form = SignupForm(request.POST)
         if form.is_valid():
-            # Save the auth_user instance
-            user = form.save()
-        
-            # Log in the user and redirect
-            login(request, user)
-            return redirect('login')  # Replace with the name of the view to redirect after signup
+            try:
+                with transaction.atomic():
+                    user = form.save()
+                    signup_group = Group.objects.filter(id=SIGNUP_DEFAULT_GROUP_ID).first()
+                    if not signup_group:
+                        raise ValidationError(f"Signup default group with id={SIGNUP_DEFAULT_GROUP_ID} was not found.")
+
+                    user.primary_group = signup_group
+                    user.save(update_fields=['primary_group'])
+                    user.groups.add(signup_group)
+
+                    _clone_signup_template_data(user)
+                    _grant_temporary_access_for_main_user(user)
+            except IntegrityError as exc:
+                logger.exception('Signup save failed due to integrity error.')
+                if 'tottimeapp_mainuser_username_key' in str(exc):
+                    form.add_error('username', 'This username/email is already in use.')
+                else:
+                    form.add_error(None, 'Unable to create your account right now. Please try again.')
+            except ValidationError as exc:
+                logger.exception('Signup validation/setup failed.')
+                form.add_error(None, str(exc))
+            except Exception:
+                logger.exception('Signup template cloning failed.')
+                form.add_error(None, 'Unable to create your starter data right now. Please try again.')
+            else:
+                # Log in the user and redirect
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                return redirect('login')  # Replace with the name of the view to redirect after signup
     else:
         form = SignupForm()
     return render(request, 'signup.html', {'form': form})
@@ -11203,6 +12153,7 @@ def create_payment(request):
                 balance=Decimal(rate),
                 next_invoice_date=due_date  # Set initial next_invoice_date to trigger recurring logic
             )
+            _grant_temporary_access_for_main_user(subuser.main_user)
             messages.success(request, 'Recurring invoice created successfully.')
             return redirect('payment')
         except Exception as e:
@@ -11279,6 +12230,7 @@ def update_payment_status(request):
                     payment.status = 'Pending'  # Ensure Pending for new invoices without payment
                 # Save the updated payment
                 payment.save()
+                _grant_temporary_access_for_main_user(payment.subuser.main_user)
             return JsonResponse({'success': 'Payment status updated successfully'})
         except Payment.DoesNotExist:
             return JsonResponse({'error': 'Payment not found'}, status=404)
@@ -11303,6 +12255,7 @@ def record_payment(request, subuser_id):
             source=payment_method,
             note=payment_note,
         )
+        _grant_temporary_access_for_main_user(subuser.main_user)
         # Add a success message
         messages.success(request, f"{payment_method.capitalize()} payment of ${payment_amount} recorded successfully.")
         return redirect('payment')
@@ -11810,6 +12763,7 @@ def process_payment(request):
                         source='card',
                         note='Wallet top-up via Square'
                     )
+                    _grant_temporary_access_for_main_user(subuser.main_user)
                 except SubUser.DoesNotExist:
                     return JsonResponse({'success': False, 'error': 'SubUser account not found'})
                 return JsonResponse({

@@ -669,6 +669,8 @@ class RolePermission(models.Model):
     permission = models.ForeignKey(Permission, on_delete=models.CASCADE, related_name="role_permissions")  # Linking to Permission
     yes_no_permission = models.BooleanField(default=False)  # Added yes/no field for permission control
     main_user = models.ForeignKey('MainUser', on_delete=models.CASCADE, related_name='role_permissions', null=True, blank=True) 
+    access_enabled_at = models.DateTimeField(null=True, blank=True)
+    access_expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('role', 'permission')  # Ensure unique combination of role and permission
@@ -1011,6 +1013,84 @@ class PaymentRecord(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
+
+
+class MainUserBillingSubscription(models.Model):
+    BILLING_PROVIDER_CHOICES = [
+        ('square', 'Square'),
+        ('stripe', 'Stripe'),
+        ('manual', 'Manual'),
+    ]
+    STATUS_CHOICES = [
+        ('inactive', 'Inactive'),
+        ('pending', 'Pending'),
+        ('incomplete', 'Incomplete'),
+        ('trialing', 'Trialing'),
+        ('active', 'Active'),
+        ('past_due', 'Past Due'),
+        ('canceled', 'Canceled'),
+    ]
+    INTERVAL_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('yearly', 'Yearly'),
+        ('custom', 'Custom'),
+    ]
+
+    main_user = models.OneToOneField('MainUser', on_delete=models.CASCADE, related_name='billing_subscription')
+    provider = models.CharField(max_length=20, choices=BILLING_PROVIDER_CHOICES, default='square')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='inactive')
+
+    plan_code = models.CharField(max_length=100, blank=True, null=True)
+    plan_name = models.CharField(max_length=100, blank=True, null=True)
+    billing_interval = models.CharField(max_length=20, choices=INTERVAL_CHOICES, default='monthly')
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    currency = models.CharField(max_length=10, default='USD')
+
+    provider_customer_id = models.CharField(max_length=150, blank=True, null=True)
+    provider_subscription_id = models.CharField(max_length=150, blank=True, null=True)
+    provider_checkout_id = models.CharField(max_length=150, blank=True, null=True)
+    provider_location_id = models.CharField(max_length=100, blank=True, null=True)
+
+    started_at = models.DateTimeField(blank=True, null=True)
+    current_period_start = models.DateTimeField(blank=True, null=True)
+    current_period_end = models.DateTimeField(blank=True, null=True)
+    next_billing_at = models.DateTimeField(blank=True, null=True)
+    last_payment_at = models.DateTimeField(blank=True, null=True)
+    canceled_at = models.DateTimeField(blank=True, null=True)
+    cancel_at_period_end = models.BooleanField(default=False)
+
+    # Denormalized billing/audit history for fast timeline display per account.
+    billing_history = models.JSONField(default=list, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    last_webhook_payload = models.JSONField(blank=True, null=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Billing Subscription'
+        verbose_name_plural = 'Billing Subscriptions'
+
+    @property
+    def is_active_now(self):
+        return (
+            self.status in {'active', 'trialing'}
+            and (self.current_period_end is None or self.current_period_end > timezone.now())
+        )
+
+    def append_history_event(self, event_type, amount=None, note='', payload=None):
+        history = list(self.billing_history or [])
+        history.append({
+            'timestamp': timezone.now().isoformat(),
+            'event_type': event_type,
+            'amount': str(amount) if amount is not None else None,
+            'note': note,
+            'payload': payload or {},
+        })
+        self.billing_history = history
+
+    def __str__(self):
+        return f"{self.main_user.username} - {self.status} ({self.provider})"
 
 class WeeklyTuition(models.Model):
     STATUS_CHOICES = [

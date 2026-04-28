@@ -67,6 +67,21 @@
             outline: none;
         }
 
+        .btn-square.disabled-card {
+            background: #b8bec3;
+            color: #eef1f3;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            cursor: not-allowed;
+            pointer-events: none;
+            transform: none;
+        }
+
+        .btn-square.disabled-card .sb-nav-link-icon i,
+        .btn-square.disabled-card .label {
+            color: #eef1f3;
+            opacity: 0.95;
+        }
+
         /* Icon styling (unchanged) */
         .btn-square .sb-nav-link-icon {
             display: block;
@@ -153,29 +168,28 @@
 {% block content %}
   
    <div class="container-fluid px-4">
-        {% if base_template == 'tottimeapp/base_minimal.html' %}
         <div class="dashboard-grid" style="min-height: 40vh;">
-               <a href="{% url 'inventory_list' %}" class="btn btn-primary btn-square" aria-label="Inventory">
+               <a href="{% if show_inventory %}{% url 'inventory_list' %}{% else %}#{% endif %}" class="btn btn-primary btn-square {% if not show_inventory %}disabled-card{% endif %}" aria-label="Inventory" {% if not show_inventory %}aria-disabled="true" tabindex="-1"{% endif %}>
                    <div class="sb-nav-link-icon"><i class="fas fa-list"></i></div>
                    <span class="label">Inventory</span>
                </a>
 
-               <a href="{% url 'todays_menu' %}" class="btn btn-primary btn-square" aria-label="Today's Menu">
+               <a href="{% if show_todays_menu %}{% url 'todays_menu' %}{% else %}#{% endif %}" class="btn btn-primary btn-square {% if not show_todays_menu %}disabled-card{% endif %}" aria-label="Today's Menu" {% if not show_todays_menu %}aria-disabled="true" tabindex="-1"{% endif %}>
                    <div class="sb-nav-link-icon"><i class="fas fa-clipboard-list"></i></div>
                    <span class="label">Today's Menu</span>
                </a>
 
-               <a href="{% url 'menu' %}" class="btn btn-primary btn-square" aria-label="Weekly Menu">
+               <a href="{% if show_weekly_menu %}{% url 'menu' %}{% else %}#{% endif %}" class="btn btn-primary btn-square {% if not show_weekly_menu %}disabled-card{% endif %}" aria-label="Weekly Menu" {% if not show_weekly_menu %}aria-disabled="true" tabindex="-1"{% endif %}>
                    <div class="sb-nav-link-icon"><i class="fas fa-calendar-alt"></i></div>
                    <span class="label">Weekly Menu</span>
                </a>
 
-               <a href="{% url 'recipes' %}" class="btn btn-primary btn-square" aria-label="Recipes">
+               <a href="{% if show_recipes %}{% url 'recipes' %}{% else %}#{% endif %}" class="btn btn-primary btn-square {% if not show_recipes %}disabled-card{% endif %}" aria-label="Recipes" {% if not show_recipes %}aria-disabled="true" tabindex="-1"{% endif %}>
                    <div class="sb-nav-link-icon"><i class="fas fa-utensils"></i></div>
                    <span class="label">Recipes</span>
                </a>
 
-               <a href="{% url 'meal_calculator' %}" class="btn btn-primary btn-square" aria-label="Meal Calculator">
+               <a href="{% if show_meal_count %}{% url 'meal_calculator' %}{% else %}#{% endif %}" class="btn btn-primary btn-square {% if not show_meal_count %}disabled-card{% endif %}" aria-label="Meal Calculator" {% if not show_meal_count %}aria-disabled="true" tabindex="-1"{% endif %}>
                    <div class="sb-nav-link-icon"><i class="fas fa-calculator"></i></div>
                    <span class="label">Meal Calculator</span>
                </a>
@@ -185,7 +199,6 @@
                    <span class="label">Account Settings</span>
                </a>
         </div>
-        {% endif %}
    </div>
 {% endblock %}
 

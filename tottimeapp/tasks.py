@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 from decimal import Decimal
 from django_q.tasks import async_task
-from .models import SubUser, WeeklyTuition, TuitionPlan
+from django.utils import timezone
+from .models import SubUser, WeeklyTuition, TuitionPlan, MainUserBillingSubscription, RolePermission
 
 def process_weekly_tuition():
     today = date.today()
@@ -59,4 +60,33 @@ def process_weekly_tuition():
 # To run the task with Django Q
 def schedule_weekly_tuition():
     async_task('tottimeapp.tasks.process_weekly_tuition')
+
+
+def reconcile_subscription_access_windows():
+    now_ts = timezone.now()
+
+    for subscription in MainUserBillingSubscription.objects.select_related('main_user'):
+        period_start = subscription.current_period_start or subscription.started_at or now_ts
+        period_end = subscription.current_period_end
+
+        if subscription.status in {'active', 'trialing'} and period_end and period_end > now_ts:
+            RolePermission.objects.filter(main_user=subscription.main_user).update(
+                yes_no_permission=True,
+                access_enabled_at=period_start,
+                access_expires_at=period_end,
+            )
+        elif subscription.status in {'pending', 'incomplete'}:
+            continue
+        else:
+            RolePermission.objects.filter(main_user=subscription.main_user, yes_no_permission=True).update(
+                yes_no_permission=False,
+                access_enabled_at=period_start if period_end else None,
+                access_expires_at=period_end,
+            )
+
+    return 'Subscription access windows reconciled.'
+
+
+def schedule_subscription_access_reconciliation():
+    async_task('tottimeapp.tasks.reconcile_subscription_access_windows')
 
