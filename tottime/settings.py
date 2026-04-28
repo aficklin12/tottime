@@ -3,12 +3,30 @@ import logging
 from pathlib import Path
 import stripe
 
+
+def _load_env_file(env_path):
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*"
+_load_env_file(BASE_DIR / ".env")
+_load_env_file(BASE_DIR / ".env.keys")
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*")
 # Allows Django to still read sessions/cookies signed with the old key after key rotation
 SECRET_KEY_FALLBACKS = [
-    "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*",
+    os.getenv("DJANGO_SECRET_KEY_FALLBACK", "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*"),
 ]
 DEBUG = True
 ALLOWED_HOSTS = ['44.209.83.215', 'localhost', '127.0.0.1', 'tot-time.com', 'www.tot-time.com']
@@ -73,11 +91,11 @@ WSGI_APPLICATION = "tottime.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'postgres',
-        'USER': 'aficklin12',
-        'PASSWORD': 'Uiyqdi1994!',
-        'HOST': 'tottime.cbeiq0qm4vjk.us-east-1.rds.amazonaws.com',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'postgres'),
+        'USER': os.getenv('DB_USER', 'aficklin12'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'Uiyqdi1994!'),
+        'HOST': os.getenv('DB_HOST', 'tottime.cbeiq0qm4vjk.us-east-1.rds.amazonaws.com'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
@@ -128,11 +146,11 @@ LOGIN_URL = '/login/'
 
 # For production (SMTP configuration):
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'tottimeapp@gmail.com'
-EMAIL_HOST_PASSWORD = 'cfks wtbl kdxr zqqs' 
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'tottimeapp@gmail.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 AUTH_USER_MODEL = 'tottimeapp.MainUser'
@@ -179,8 +197,9 @@ STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_CLIENT_ID = os.getenv("STRIPE_CLIENT_ID", "")
 STRIPE_REDIRECT_URI = os.getenv("STRIPE_REDIRECT_URI", "https://tot-time.com/stripe/callback/")
+STRIPE_CONNECT_CLIENT_ID = os.getenv("STRIPE_CONNECT_CLIENT_ID", "")
 
-# Square OAuth Credentials (Sandbox)
+# Square OAuth Credentials
 SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "")
 SQUARE_CLIENT_SECRET = os.getenv("SQUARE_CLIENT_SECRET", "")
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "")
@@ -189,8 +208,10 @@ SQUARE_SUBSCRIPTION_PLAN_ID = os.getenv("SQUARE_SUBSCRIPTION_PLAN_ID", "")
 SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID = os.getenv("SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID", "")
 SQUARE_WEBHOOK_SIGNATURE_KEY = os.getenv("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
 
-# Square OAuth Auth URL for sandbox
-SQUARE_AUTH_URL = "https://sandbox.connect.squareup.com/oauth2/authorize"
+# Square OAuth Auth URL (set to production or sandbox based on SQUARE_ENVIRONMENT)
+SQUARE_ENVIRONMENT = os.getenv("SQUARE_ENVIRONMENT", "sandbox")
+SQUARE_AUTH_URL = f"https://{SQUARE_ENVIRONMENT}.connect.squareup.com/oauth2/authorize"
+SQUARE_REDIRECT_URI = os.getenv("SQUARE_REDIRECT_URI", "http://localhost:8000/square/oauth/callback/")
 
 Q_CLUSTER = {
     'name': 'tottime',
