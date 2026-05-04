@@ -2452,7 +2452,7 @@ $(document).ready(function() {
                     resp.out_of_stock_items.forEach(item => {
                         const abbr = dayAbbr[item.day] || item.day;
                         uniqueCombos.add(`${abbr} ${item.meal}`);
-                    });
+                    }); 
                     const itemsList = Array.from(uniqueCombos).join(', ');
                     
                     // Show the toast but keep the overlay visible — it hides only
