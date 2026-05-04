@@ -28,7 +28,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-e84gb%3c5fb5(s0!imu
 SECRET_KEY_FALLBACKS = [
     os.getenv("DJANGO_SECRET_KEY_FALLBACK", "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*"),
 ]
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = ['44.209.83.215', 'localhost', '127.0.0.1', 'tot-time.com', 'www.tot-time.com']
 
 # Application definition
@@ -136,7 +136,39 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Logging configuration
-logging.basicConfig(level=logging.DEBUG)
+# Allow forcing debug logging via environment without enabling Django DEBUG.
+FORCE_DEBUG_LOGGING = os.getenv("DJANGO_FORCE_DEBUG_LOGS", "false").lower() in ("1", "true", "yes")
+console_level = "DEBUG" if (DEBUG or FORCE_DEBUG_LOGGING) else "INFO"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "runtime": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "runtime",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": console_level,
+    },
+    "loggers": {
+        "tottimeapp": {
+            "handlers": ["console"],
+            "level": console_level,
+            "propagate": False,
+        },
+        "django": {
+            "handlers": ["console"],
+            "level": "WARNING" if not DEBUG else "INFO",
+            "propagate": False,
+        },
+    },
+}
 
 LOGIN_URL = '/login/'
 

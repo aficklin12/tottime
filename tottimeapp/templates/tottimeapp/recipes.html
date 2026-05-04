@@ -711,6 +711,11 @@
                             <label class="form-check-label" for="ignoreInventory">This recipe will ignore Inventory.</label>
                             <div class="form-text">If checked, this recipe will generate in menu regardless if the ingredients are out of stock. It's reccomended to have at least one of each CACFP rule (standalone/side dishes) to ignore inventory to ensure menu's compliance.</div>
                         </div>
+                        <div class="mb-3" id="ignoreMaxRepetitionsWrapper" style="display:none; margin-top:8px;">
+                            <label for="maxRepetitions" class="form-label">Max repetitions per week</label>
+                            <input type="number" min="0" step="1" class="form-control" id="maxRepetitions" name="max_repetitions_week" value="0">
+                            <div class="form-text">When ignore inventory is enabled, limit how many times this recipe may repeat in a week. 0 means no automatic placement.</div>
+                        </div>
                     </div>
                     <div class="recipe-step" id="step-12" style="display:none;">
                         <label for="recipeImage" class="form-label">Recipe Labels/Nutrition Facts</label>
@@ -1571,6 +1576,15 @@ function configureModalForType(category, isEdit = false) {
 
     // Update checkbox name prefixes (no prefix)
     const checkboxes = ['populateBreakfast', 'populateAMSnack', 'populateLunch', 'populatePMSnack', 'standalone', 'ignoreInventory'];
+
+    // Toggle visibility of max repetitions when ignoreInventory is toggled
+    const ignoreCheckbox = document.getElementById('ignoreInventory');
+    const maxRepWrapperGlobal = document.getElementById('ignoreMaxRepetitionsWrapper');
+    if (ignoreCheckbox && maxRepWrapperGlobal) {
+        ignoreCheckbox.addEventListener('change', function() {
+            maxRepWrapperGlobal.style.display = this.checked ? '' : 'none';
+        });
+    }
     checkboxes.forEach(cb => {
         const el = document.getElementById(cb);
         if (el) {
@@ -1692,6 +1706,15 @@ async function viewRecipe(id, category) {
         document.getElementById('populatePMSnack').checked = !!data.populate_pm_snack;
         document.getElementById('standalone').checked = !!data.standalone;
         document.getElementById('ignoreInventory').checked = !!data.ignore_inventory;
+        // Populate max repetitions and show/hide wrapper
+        const maxRepInput = document.getElementById('maxRepetitions');
+        const maxRepWrapper = document.getElementById('ignoreMaxRepetitionsWrapper');
+        if (maxRepInput) {
+            maxRepInput.value = typeof data.max_repetitions_week !== 'undefined' ? data.max_repetitions_week : (data.max_repetitions || 0);
+        }
+        if (maxRepWrapper) {
+            maxRepWrapper.style.display = document.getElementById('ignoreInventory').checked ? '' : 'none';
+        }
 
         // Auto-expand optional sections if they have pre-loaded data
         const fieldsToCheck = [

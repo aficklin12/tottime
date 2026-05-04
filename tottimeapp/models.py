@@ -88,6 +88,7 @@ class Inventory(models.Model):
     )
     rule = models.ForeignKey('Rule', on_delete=models.CASCADE, null=True, blank=True)
     resupply = models.DecimalField(max_digits=10, decimal_places=2)
+    max_repetitions_week = models.PositiveIntegerField(default=0, help_text='Maximum number of repetitions per week')
     total_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     barcode = models.CharField(max_length=100, unique=True, null=True, blank=True)
     MEAL_PERIOD_CHOICES = [
@@ -111,7 +112,8 @@ class Inventory(models.Model):
     populate_am_snack = models.BooleanField(default=False, help_text='Can be used in AM snack menu')
     populate_lunch = models.BooleanField(default=False, help_text='Can be used in lunch menu')
     populate_pm_snack = models.BooleanField(default=False, help_text='Can be used in PM snack menu')
-
+    ignore_inventory = models.BooleanField(default=False, help_text='Ignore inventory tracking for this recipe')
+    
     def save(self, *args, **kwargs):
         # Standard conversions (add more as needed)
         standard_conversions = {
@@ -301,7 +303,7 @@ class Recipe(models.Model):
     image = models.ImageField(upload_to='recipe_pictures/', blank=True, null=True, default=None)
     pdf_url = models.URLField(max_length=500, blank=True, null=True)
     archive = models.BooleanField(default=False)
-    
+    max_repetitions_week = models.PositiveIntegerField(default=0, help_text='Maximum number of repetitions per week')
 
     def __str__(self):
         return self.name

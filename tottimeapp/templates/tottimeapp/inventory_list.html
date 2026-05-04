@@ -1108,6 +1108,8 @@ table thead {
                             data-populate-pm-snack="{% if item.populate_pm_snack %}true{% else %}false{% endif %}"
                             data-quantity="{{ item.quantity }}"
                             data-resupply="{{ item.resupply }}"
+                            data-ignore-inventory="{% if item.ignore_inventory %}true{% else %}false{% endif %}"
+                            data-max-repetitions-week="{{ item.max_repetitions_week|default:1 }}"
                             title="Click to edit item details">
                             {{ item.item }}
                         </span>
@@ -1281,6 +1283,14 @@ table thead {
                         <input class="form-check-input" type="checkbox" id="isSideDish" name="is_side_dish" value="true">
                         <label class="form-check-label" for="isSideDish">Side dish</label>
                     </div>
+                    <div class="form-check mb-2" id="addIgnoreInventoryWrapper" style="display:none;">
+                        <input class="form-check-input" type="checkbox" id="addIgnoreInventory" name="ignore_inventory" value="true">
+                        <label class="form-check-label" for="addIgnoreInventory">Ignore inventory</label>
+                    </div>
+                    <div class="mb-3" id="addMaxRepetitionsWrapper" style="display:none;">
+                        <label for="addMaxRepetitions" class="form-label">Max repetitions per week</label>
+                        <input type="number" min="1" step="1" class="form-control" id="addMaxRepetitions" name="max_repetitions_week" value="1">
+                    </div>
                     <div class="mb-3" id="addMealPeriodControls" style="display: none;">
                         <label for="mealPeriod" class="form-label">Meal Period</label>
                         <select class="form-control" id="mealPeriod" name="meal_period">
@@ -1427,6 +1437,14 @@ table thead {
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="checkbox" id="editIsSideDish" name="is_side_dish" value="true">
                                     <label class="form-check-label" for="editIsSideDish">Side dish</label>
+                                </div>
+                                <div class="form-check mb-2" id="editIgnoreInventoryWrapper" style="display:none;">
+                                    <input class="form-check-input" type="checkbox" id="editIgnoreInventory" name="ignore_inventory" value="true">
+                                    <label class="form-check-label" for="editIgnoreInventory">Ignore inventory</label>
+                                </div>
+                                <div class="mb-3" id="editMaxRepetitionsWrapper" style="display:none;">
+                                    <label for="editMaxRepetitions" class="form-label">Max repetitions per week</label>
+                                    <input type="number" min="1" step="1" class="form-control" id="editMaxRepetitions" name="max_repetitions_week" value="1">
                                 </div>
 
                                 <div class="mb-3" id="editMealPeriodControls" style="display: none;">
@@ -1636,6 +1654,8 @@ const sideDishFieldMap = {
         populatePmSnack: 'populatePmSnack',
         manualSelectionOrder: 'addManualSelectionOrder',
         manualCheckboxes: '.add-manual-period',
+        ignoreCheckbox: 'addIgnoreInventory',
+        maxRepetitionsInput: 'addMaxRepetitions',
     },
     edit: {
         checkbox: 'editIsSideDish',
@@ -1650,6 +1670,8 @@ const sideDishFieldMap = {
         populatePmSnack: 'editPopulatePmSnack',
         manualSelectionOrder: 'editManualSelectionOrder',
         manualCheckboxes: '.edit-manual-period',
+        ignoreCheckbox: 'editIgnoreInventory',
+        maxRepetitionsInput: 'editMaxRepetitions',
     },
 };
 
@@ -1666,6 +1688,8 @@ function getSideDishElements(prefix) {
         unitSizeInput: document.getElementById(ids.unitSizeInput),
         mealPeriod: document.getElementById(ids.mealPeriod),
         manualControls: document.getElementById(ids.manualControls),
+        ignoreCheckbox: document.getElementById(ids.ignoreCheckbox),
+        maxRepetitionsInput: document.getElementById(ids.maxRepetitionsInput),
         populateBreakfast: document.getElementById(ids.populateBreakfast),
         populateAmSnack: document.getElementById(ids.populateAmSnack),
         populateLunch: document.getElementById(ids.populateLunch),
@@ -1758,6 +1782,12 @@ function setPopulateFlags(prefix, mealPeriod) {
 
 function resetSideDishFields(prefix) {
     setPopulateFlags(prefix, '');
+    // reset new side-dish specific fields
+    const fields = getSideDishElements(prefix);
+    if (fields) {
+        if (fields.ignoreCheckbox) fields.ignoreCheckbox.checked = false;
+        if (fields.maxRepetitionsInput) fields.maxRepetitionsInput.value = '1';
+    }
     updateMealPeriodVisibility(prefix);
 }
 
@@ -1791,6 +1821,19 @@ function updateMealPeriodVisibility(prefix) {
 
     if (fields.manualControls) {
         fields.manualControls.style.display = isSideDish && fields.mealPeriod.value === 'manual' ? '' : 'none';
+    }
+
+    // Show/hide ignore-inventory checkbox and max repetitions input when side dish selected
+    if (fields.ignoreCheckbox) {
+        const wrapper = document.getElementById((prefix === 'edit' ? 'editIgnoreInventoryWrapper' : 'addIgnoreInventoryWrapper'));
+        if (wrapper) wrapper.style.display = isSideDish ? '' : 'none';
+        fields.ignoreCheckbox.required = false;
+    }
+
+    if (fields.maxRepetitionsInput) {
+        const wrapper = document.getElementById((prefix === 'edit' ? 'editMaxRepetitionsWrapper' : 'addMaxRepetitionsWrapper'));
+        if (wrapper) wrapper.style.display = isSideDish ? '' : 'none';
+        if (fields.maxRepetitionsInput && !fields.maxRepetitionsInput.value) fields.maxRepetitionsInput.value = '1';
     }
 
     if (!isSideDish) {
@@ -1997,7 +2040,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 span.dataset.populateLunch === 'true' ? 'lunch' : null,
                 span.dataset.populatePmSnack === 'true' ? 'pm_snack' : null,
             ].filter(Boolean),
+            ignoreInventory: span.dataset.ignoreInventory === 'true',
+            maxRepetitionsWeek: span.dataset.maxRepetitionsWeek || span.dataset.maxRepetitions || '1',
         });
+        // populate the edit-specific inputs for these values
+        const editIgnore = document.getElementById('editIgnoreInventory');
+        const editMaxRep = document.getElementById('editMaxRepetitions');
+        if (editIgnore) editIgnore.checked = span.dataset.ignoreInventory === 'true';
+        if (editMaxRep) editMaxRep.value = span.dataset.maxRepetitionsWeek || span.dataset.maxRepetitions || '1';
         // Explicitly re-evaluate milk rule visibility after all values are set
         updateMealPeriodVisibility('edit');
 

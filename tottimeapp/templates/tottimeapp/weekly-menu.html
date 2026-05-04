@@ -1282,20 +1282,20 @@ h1.mt-4 {
                         </tr>
                         <tr>
                             <td class="vertical-header" rowspan="7" style="font-weight: bold; text-align: center;">Lunch</td>
-                            <td>Main Dish</td>
-                            <td id="mondayMeals" style="text-align: center;" data-day="monday"></td>
-                            <td id="tuesdayMeals" style="text-align: center;" data-day="tuesday"></td>
-                            <td id="wednesdayMeals" style="text-align: center;" data-day="wednesday"></td>
-                            <td id="thursdayMeals" style="text-align: center;" data-day="thursday"></td>
-                            <td id="fridayMeals" style="text-align: center;" data-day="friday"></td>
-                        </tr>
-                        <tr>
                             <td>Fluid Milk</td>
                             <td id="mondayLunchMilk" style="text-align: center;" data-day="monday"></td>
                             <td id="tuesdayLunchMilk" style="text-align: center;" data-day="tuesday"></td>
                             <td id="wednesdayLunchMilk" style="text-align: center;" data-day="wednesday"></td>
                             <td id="thursdayLunchMilk" style="text-align: center;" data-day="thursday"></td>
                             <td id="fridayLunchMilk" style="text-align: center;" data-day="friday"></td>
+                        </tr>
+                        <tr>
+                            <td>Main Dish</td>
+                            <td id="mondayMeals" style="text-align: center;" data-day="monday"></td>
+                            <td id="tuesdayMeals" style="text-align: center;" data-day="tuesday"></td>
+                            <td id="wednesdayMeals" style="text-align: center;" data-day="wednesday"></td>
+                            <td id="thursdayMeals" style="text-align: center;" data-day="thursday"></td>
+                            <td id="fridayMeals" style="text-align: center;" data-day="friday"></td>
                         </tr>
                         <tr>
                             <td>Vegetable</td>
@@ -2510,7 +2510,108 @@ $(document).ready(function() {
                                         displayMissingRulesFromData(resp.missing_rules);
                                     }
                                     saveMenuProgressToLocalStorage();
-                                    
+                                    // After rendering the table with in-stock choices and out-of-stock markers,
+                                    // seed any ignore-inventory items (once per item) into available empty slots.
+                                    (function seedIgnoreItemsFromResponse(){
+                                        try {
+                                            const ignore = resp.ignore_items || {recipes: [], inventory: []};
+                                            if ((!ignore.recipes || ignore.recipes.length === 0) && (!ignore.inventory || ignore.inventory.length === 0)) return;
+                                            const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+                                            const shuffledDays = days.slice().sort(() => Math.random() - 0.5);
+
+                                            function idFor(field, day){
+                                                try { return resolveResponseTemplate(field).replace('{day}', dayPrefix(day)); } catch(e) { return null; }
+                                            }
+                                            function slotAvailable(el){ if(!el) return false; const t = (el.innerText||'').trim(); return !t || OUT_OF_STOCK_RX.test(t) || MISSING_OPTION_RX.test(t); }
+
+                                            function fieldToPeriod(field){
+                                                const lunch = new Set(['meal_name','vegetable','fruit3','grain','add2','meat_alternate']);
+                                                const breakfast = new Set(['bread','fruit','add1','Milk','milk','fluid_milk']);
+                                                const am = new Set(['bread2','fruit2','add3','meat1','choose1']);
+                                                const pm = new Set(['bread3','fruit4','add4','meat3','choose2']);
+                                                if (lunch.has(field)) return 'lunch';
+                                                if (breakfast.has(field)) return 'breakfast';
+                                                if (am.has(field)) return 'am_snack';
+                                                if (pm.has(field)) return 'pm_snack';
+                                                return 'lunch';
+                                            }
+
+                                            // Helper to check populate flag for a given item/recipe and field
+                                            function allowsPopulate(obj, field){
+                                                if (!obj) return true;
+                                                const period = fieldToPeriod(field);
+                                                if (period === 'lunch' && obj.populate_lunch === true) return true;
+                                                if (period === 'breakfast' && obj.populate_breakfast === true) return true;
+                                                if (period === 'am_snack' && obj.populate_am_snack === true) return true;
+                                                if (period === 'pm_snack' && obj.populate_pm_snack === true) return true;
+                                                // If none of the populate flags are present on the object, allow by default
+                                                if (typeof obj.populate_lunch === 'undefined' && typeof obj.populate_breakfast === 'undefined' && typeof obj.populate_am_snack === 'undefined' && typeof obj.populate_pm_snack === 'undefined') return true;
+                                                return false;
+                                            }
+
+                                            // Place ignore-recipes respecting recipe_type and populate flags
+                                            (ignore.recipes || []).forEach(r => {
+                                                const rtype = (r.recipe_type || '').toLowerCase();
+                                                // Candidate fields by recipe_type
+                                                let fields = [];
+                                                if (rtype === 'lunch') fields = ['meal_name','meat_alternate','grain','add2','vegetable','fruit3'];
+                                                else if (rtype === 'breakfast') fields = ['bread','add1','fruit','fluid_milk'];
+                                                else if (rtype === 'fluid') fields = ['fluid_milk','lunch_milk'];
+                                                else if (rtype === 'whole_grain') fields = ['grain','add2','add1','add3','add4'];
+                                                else if (rtype === 'fruit') fields = ['fruit3','fruit','fruit2','fruit4'];
+                                                else if (rtype === 'vegetable') fields = ['vegetable'];
+                                                else if (rtype === 'am_snack') fields = ['bread2','add3','fruit2'];
+                                                else if (rtype === 'pm_snack') fields = ['bread3','add4','fruit4'];
+                                                else fields = ['meal_name','bread','grain','vegetable','fruit3','add2'];
+
+                                                const repeats = parseInt(r.max_repetitions_week || 1, 10) || 1;
+                                                let placedCount = 0;
+                                                for (let rep = 0; rep < repeats; rep++){
+                                                    let placed = false;
+                                                    for (const day of shuffledDays){
+                                                        for (const field of fields){
+                                                            if (!allowsPopulate(r, field)) continue;
+                                                            const id = idFor(field, day);
+                                                            const el = id ? document.getElementById(id) : null;
+                                                            if (el && slotAvailable(el)) { el.innerText = r.name; placed = true; break; }
+                                                        }
+                                                        if (placed) break;
+                                                    }
+                                                    if (placed) placedCount++; else break; // stop if no slot available this iteration
+                                                }
+                                            });
+
+                                            // Place ignore-inventory inventory items respecting category and populate flags
+                                            (ignore.inventory || []).forEach(it => {
+                                                const name = it.item || '';
+                                                const cat = (it.category || '').toLowerCase();
+                                                let candidates = [];
+                                                if (cat.includes('fruit')) candidates = ['fruit3','fruit','fruit2','fruit4','add2'];
+                                                else if (cat.includes('veg') || cat.includes('veget')) candidates = ['vegetable','add2','fruit3'];
+                                                else if (name.toLowerCase().includes('milk') || cat.includes('milk') || cat.includes('fluid')) candidates = ['fluid_milk','lunch_milk','Milk'];
+                                                else candidates = ['add2','add1','fruit3','vegetable'];
+
+                                                const repeats = parseInt(it.max_repetitions_week || it.max_repetitions || 1, 10) || 1;
+                                                let placedCount = 0;
+                                                for (let rep = 0; rep < repeats; rep++){
+                                                    let placed = false;
+                                                    for (const day of shuffledDays){
+                                                        for (const field of candidates){
+                                                            if (!allowsPopulate(it, field)) continue;
+                                                            const id = idFor(field, day);
+                                                            const el = id ? document.getElementById(id) : null;
+                                                            if (el && slotAvailable(el)) { el.innerText = name; placed = true; break; }
+                                                        }
+                                                        if (placed) break;
+                                                    }
+                                                    if (placed) placedCount++; else break;
+                                                }
+                                            });
+
+                                            try { normalizeMissingMenuText(); } catch(e){}
+                                        } catch (e) { console.warn('Seeding ignore-inventory items failed', e); }
+                                    })();
+
                                     // Apply colors and rebuild legend after table updates
                                     await new Promise(r => setTimeout(r, 100));
                                     clearAllMenuCellStyles();
