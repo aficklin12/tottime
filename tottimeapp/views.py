@@ -77,6 +77,37 @@ def _square_subscription_credentials_available():
     return bool(settings.SQUARE_ACCESS_TOKEN and settings.SQUARE_LOCATION_ID)
 
 
+def pick_recipe_from_pool(pool, use_count_map=None, prev_recipe_id=None, avoid_back_to_back=True):
+    """Module-level helper: choose a recipe from a candidate pool.
+    - Shuffles pool to avoid deterministic ordering from DB results.
+    - If `use_count_map` provided (dict recipe_id->uses), favors less-used recipes via inverse weighting.
+    - Attempts to avoid back-to-back repetition of `prev_recipe_id` when possible.
+    """
+    if not pool:
+        return None
+    candidates = list(pool)
+    random.shuffle(candidates)
+
+    weights = None
+    if use_count_map is not None:
+        weights = [1.0 / (1 + use_count_map.get(r.id, 0)) for r in candidates]
+
+    try:
+        if weights:
+            recipe = random.choices(candidates, weights=weights, k=1)[0]
+        else:
+            recipe = random.choice(candidates)
+    except Exception:
+        recipe = random.choice(candidates)
+
+    if avoid_back_to_back and prev_recipe_id and getattr(recipe, 'id', None) == prev_recipe_id and len(candidates) > 1:
+        for r in candidates:
+            if getattr(r, 'id', None) != prev_recipe_id:
+                recipe = r
+                break
+    return recipe
+
+
 def _square_subscription_plan_configured():
     return bool(getattr(settings, 'SQUARE_SUBSCRIPTION_PLAN_VARIATION_ID', None))
 
@@ -6903,6 +6934,20 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
             return result
         except Exception as e:
             return f"Error fetching ingredients: {str(e)}"
+
+    # Build similarity map for this user: recipe_id -> set(of similar recipe ids)
+    similarity_map = {}
+    try:
+        _groups = list(RecipeSimilarityGroup.objects.filter(user=user).prefetch_related('recipes'))
+        for g in _groups:
+            member_ids = {r.id for r in g.recipes.all()}
+            for mid in member_ids:
+                similarity_map.setdefault(mid, set())
+                similarity_map[mid] |= (member_ids - {mid})
+    except Exception:
+        similarity_map = {}
+
+    
     
     # Get all recipes that have at least one component rule with weekly_qty
     all_recipes = Recipe.objects.filter(user=user, archive=False)
@@ -7040,6 +7085,11 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
                 if recipe.id in used_main_recipes:
                     pass  # print(f"  Skipping '{recipe.name}' - already used in main dish row this week")
                     continue
+                # SIMILARITY: Skip if this recipe is similar to an already-used main
+                sim_ids = similarity_map.get(recipe.id, set())
+                if sim_ids and (sim_ids & used_main_recipes):
+                    print(f"  Skipping '{recipe.name}' due to similarity exclusion with used mains: {sorted(sim_ids & used_main_recipes)}")
+                    continue
                 
                 # Determine which meal periods this recipe can go into
                 eligible_periods = []
@@ -7099,6 +7149,11 @@ def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_d
                     # DEDUPLICATION: Skip if this recipe has already been used in a main dish row
                     if recipe.id in used_main_recipes:
                         pass  # print(f"  Skipping standalone '{recipe.name}' - already used in main dish row this week")
+                        continue
+                    # SIMILARITY: Skip if this standalone recipe is similar to an already-used main
+                    sim_ids = similarity_map.get(recipe.id, set())
+                    if sim_ids and (sim_ids & used_main_recipes):
+                        print(f"  Skipping standalone '{recipe.name}' due to similarity exclusion with used mains: {sorted(sim_ids & used_main_recipes)}")
                         continue
                     
                     eligible_periods = []
@@ -7564,10 +7619,20 @@ def generate_full_menu(request):
     def _get_similarity_excluded_ids(recipe_id):
         """Return IDs of all recipes that cannot appear in the same week as recipe_id."""
         excluded = set()
+        groups_found = []
         for group in _similarity_groups:
             member_ids = {r.id for r in group.recipes.all()}
             if recipe_id in member_ids:
+                groups_found.append((group.id, group.name, sorted(member_ids)))
                 excluded |= member_ids - {recipe_id}
+
+        if groups_found:
+            # Print concise debug: which groups matched and their members
+            try:
+                details = "; ".join([f"[group:{gid} name='{gname}' members={m[:10]}{'...' if len(m)>10 else ''}]" for gid, gname, m in groups_found])
+            except Exception:
+                details = str(groups_found)
+            print(f"[MENU DEBUG] _get_similarity_excluded_ids({recipe_id}) matched {len(groups_found)} group(s): {details}; excluded_count={len(excluded)}")
         return excluded
 
     similarity_excluded_ids = set()  # Updated as recipes are selected
@@ -8028,7 +8093,7 @@ def generate_full_menu(request):
                     pool = breakfast_recipes_no_rules
 
             candidate_count = len(pool)
-            recipe = random.choice(pool)
+            recipe = pick_recipe_from_pool(pool, use_count_map=breakfast_use_count, prev_recipe_id=prev_recipe_id)
             breakfast_use_count[recipe.id] = breakfast_use_count.get(recipe.id, 0) + 1
             
             # Decision debug for this day/row
@@ -8339,7 +8404,7 @@ def generate_full_menu(request):
     for day_idx, day in enumerate(days_of_week):
         if not am_snack_data[day]['bread2'] and am_snack_no_rules:
             candidate_count = len(am_snack_no_rules)
-            recipe = random.choice(am_snack_no_rules)
+            recipe = pick_recipe_from_pool(am_snack_no_rules, use_count_map=None)
             
             am_snack_data[day]['choose1'] = recipe.fluid or ""
             if recipe.fluid:
@@ -8567,7 +8632,16 @@ def generate_full_menu(request):
                     _fruit3_week_names.add(fruit_component)
                 # Track similarity exclusions so Phase 2 / fallback won't pick a
                 # similar recipe into the same week.
-                similarity_excluded_ids |= _get_similarity_excluded_ids(recipe.id)
+                # Update similarity exclusion set for this placed recipe
+                newly_excluded = _get_similarity_excluded_ids(recipe.id)
+                similarity_excluded_ids |= newly_excluded
+                # Also mark this recipe as used so later de-dup logic excludes it
+                used_main_recipes.add(recipe.id)
+                print(
+                    f"[MENU DEBUG] Rule-placed lunch main '{recipe.name}' (id={recipe.id}) for {day}; "
+                    f"added {len(newly_excluded)} similar recipe(s) to exclusion set; "
+                    f"used_main_recipes now has {len(used_main_recipes)} id(s)."
+                )
             elif recipe_type == 'whole_grain':
                 # Grain rule recipes: ONLY to Additional Food (never main grain row per user requirement)
                 if not lunch_data[day]['add2']:
@@ -8673,7 +8747,7 @@ def generate_full_menu(request):
             if not filtered_candidates:
                 continue  # No available recipe for this day
             candidate_count = len(filtered_candidates)
-            recipe = random.choice(filtered_candidates)
+            recipe = pick_recipe_from_pool(filtered_candidates, use_count_map=None)
             # Update exclusion set BEFORE next pick
             used_main_recipes.add(recipe.id)
             similarity_excluded_ids |= _get_similarity_excluded_ids(recipe.id)
