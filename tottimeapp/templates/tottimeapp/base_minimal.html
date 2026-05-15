@@ -84,7 +84,16 @@ footer {
 }
 
 /* =========================
-   NAVIGATION
+    MODALS
+    ========================= */
+/* Keep all modals within the viewport and scrollable */
+.modal-content {
+     max-height: calc(100vh - 3.5rem);
+     overflow-y: auto;
+}
+
+/* =========================
+    NAVIGATION
    ========================= */
 .sb-topnav .sidebar-toggle,
 .sb-topnav .sidenav-toggler,
@@ -117,13 +126,13 @@ footer {
 .sb-topnav,
 .sb-topnav .nav-item,
 .sb-topnav .dropdown {
-    z-index: 2147483646 !important;
+    z-index: 1030 !important;
     position: relative;
 }
 
 .sb-topnav .dropdown-menu,
 .dropdown.show > .dropdown-menu {
-    z-index: 2147483647 !important;
+    z-index: 1040 !important;
     position: absolute !important;
 }
 

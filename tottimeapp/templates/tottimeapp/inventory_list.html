@@ -863,6 +863,16 @@ table thead {
 .modal-backdrop {
     z-index: 2999 !important;
 }
+
+/* Ensure Edit Item modal also appears above fixed header/nav */
+#editItemModal.modal {
+    z-index: 3000 !important;
+}
+
+#editItemModal.modal .modal-dialog {
+    z-index: 3001 !important;
+}
+
 #addItemModal .modal-content { font-size: 0.9rem !important; }
 #addItemModal .form-control { font-size: 0.9rem !important; }
 
@@ -1098,7 +1108,9 @@ table thead {
                             data-item-name="{{ item.item }}"
                             data-category="{{ item.category }}"
                             data-unit-type="{{ item.unit_type|default_if_none:'' }}"
+                            data-base-unit="{{ item.base_unit|default_if_none:'' }}"
                             data-unit-size="{{ item.unit_size|default_if_none:'' }}"
+                            data-units-per-pack="{{ item.units_per_pack|default_if_none:'' }}"
                             data-rule-id="{{ item.rule_id|default_if_none:'' }}"
                             data-is-side-dish="{% if item.is_side_dish %}true{% else %}false{% endif %}"
                             data-meal-period="{{ item.meal_period|default_if_none:'' }}"
@@ -1238,7 +1250,7 @@ table thead {
                         <label for="unitType" class="form-label">Unit Type</label>
                         <select class="form-control" id="unitType" name="unit_type">
                             <option value="" disabled selected>Select unit type</option>
-                            <option value="each">Each</option>
+                            <option value="each">Individual</option>
                             <option value="lb">Pound (lb)</option>
                             <option value="oz">Ounce (oz)</option>
                             <option value="g">Gram (g)</option>
@@ -1254,21 +1266,34 @@ table thead {
                             <option value="case">Case</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <!-- base_unit is set automatically in backend; not shown to user -->
-                        <input type="hidden" id="baseUnit" name="base_unit">
+                    <div class="mb-3" id="baseUnitGroup" style="display: none;">
+                        <label for="baseUnitSelect" class="form-label" id="baseUnitLabel">Unit In Pack</label>
+                        <select class="form-control" id="baseUnitSelect" name="base_unit">
+                            <option value="">Select unit in pack</option>
+                            <option value="each">Individual</option>
+                            <option value="slice">Slice</option>
+                            <option value="oz">Ounce (oz)</option>
+                            <option value="g">Gram (g)</option>
+                            <option value="ml">Milliliter (ml)</option>
+                            <option value="cup">Cup</option>
+                            <option value="tbsp">Tablespoon</option>
+                            <option value="tsp">Teaspoon</option>
+                        </select>
                     </div>
-                    <div class="mb-3">
-                        <!-- conversion_to_base is set automatically in backend; not shown to user -->
-                        <input type="hidden" id="conversionToBase" name="conversion_to_base">
+                    <div class="mb-3" id="unitsPerPackGroup" style="display: none;">
+                        <label for="unitsPerPack" class="form-label" id="unitsPerPackLabel">Average Units Per Pack</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="unitsPerPack" name="units_per_pack" placeholder="e.g., 20">
+                        <div class="form-text" id="unitsPerPackHelp">Enter the average number of units in each pack.</div>
                     </div>
+                    <input type="hidden" id="conversionToBase" name="conversion_to_base">
                     <div class="mb-3">
-                        <label for="itemQuantity" class="form-label">Current Quantity</label>
+                        <label for="itemQuantity" class="form-label" id="itemQuantityLabel">Current Quantity</label>
                         <input type="number" step="any" min="0" class="form-control" id="itemQuantity" name="quantity" required>
                     </div>
                     <div class="mb-3">
-                        <label for="itemResupply" class="form-label">Resupply Threshold</label>
+                        <label for="itemResupply" class="form-label" id="itemResupplyLabel">Reorder Alert When Units Is:</label>
                         <input type="number" step="any" min="0" class="form-control" id="itemResupply" name="resupply" required>
+                        <div class="form-text" id="itemResupplyHelp">If the on-hand amount drops below this level, the item appears in Order Soon.</div>
                     </div>
                     <div class="mb-3">
                         <label for="itemRule" class="form-label">Rule</label>
@@ -1397,7 +1422,7 @@ table thead {
                                     <label for="editUnitType" class="form-label">Unit Type</label>
                                     <select class="form-control" id="editUnitType" name="unit_type">
                                         <option value="">Select unit type</option>
-                                        <option value="each">Each</option>
+                                        <option value="each">Individual</option>
                                         <option value="lb">Pound (lb)</option>
                                         <option value="oz">Ounce (oz)</option>
                                         <option value="g">Gram (g)</option>
@@ -1414,14 +1439,36 @@ table thead {
                                     </select>
                                 </div>
 
+                                <div class="mb-3" id="editBaseUnitGroup" style="display: none;">
+                                    <label for="editBaseUnitSelect" class="form-label" id="editBaseUnitLabel">Unit In Pack</label>
+                                    <select class="form-control" id="editBaseUnitSelect" name="base_unit">
+                                        <option value="">Select unit in pack</option>
+                                        <option value="each">Individual</option>
+                                        <option value="slice">Slice</option>
+                                        <option value="oz">Ounce (oz)</option>
+                                        <option value="g">Gram (g)</option>
+                                        <option value="ml">Milliliter (ml)</option>
+                                        <option value="cup">Cup</option>
+                                        <option value="tbsp">Tablespoon</option>
+                                        <option value="tsp">Teaspoon</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3" id="editUnitsPerPackGroup" style="display: none;">
+                                    <label for="editUnitsPerPack" class="form-label" id="editUnitsPerPackLabel">Average Units Per Pack</label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="editUnitsPerPack" name="units_per_pack" placeholder="e.g., 20">
+                                    <div class="form-text" id="editUnitsPerPackHelp">Enter the average number of units in each pack.</div>
+                                </div>
+
                                 <div class="mb-3">
-                                    <label for="editItemQuantity" class="form-label">Current Quantity</label>
+                                    <label for="editItemQuantity" class="form-label" id="editItemQuantityLabel">Current Quantity</label>
                                     <input type="number" step="any" min="0" class="form-control" id="editItemQuantity" name="quantity" required>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="editItemResupply" class="form-label">Resupply Threshold</label>
+                                    <label for="editItemResupply" class="form-label" id="editItemResupplyLabel">Reorder Alert When Units Is:</label>
                                     <input type="number" step="any" min="0" class="form-control" id="editItemResupply" name="resupply" required>
+                                    <div class="form-text" id="editItemResupplyHelp">If the on-hand amount drops below this level, the item appears in Order Soon.</div>
                                 </div>
 
                                 <div class="mb-3">
@@ -1547,6 +1594,117 @@ document.addEventListener('DOMContentLoaded', function() {
         pack: 'each',
         case: 'each'
     };
+    var containerTypes = {
+        pack: 'Pack',
+        case: 'Case',
+        loaf: 'Loaf'
+    };
+    var unitDisplayNames = {
+        each: 'Item',
+        slice: 'Slice',
+        oz: 'Ounce',
+        g: 'Gram',
+        ml: 'Milliliter',
+        cup: 'Cup',
+        tbsp: 'Tablespoon',
+        tsp: 'Teaspoon'
+    };
+    var unitPluralNames = {
+        each: 'Items',
+        slice: 'Slices',
+        oz: 'Ounces',
+        g: 'Grams',
+        ml: 'Milliliters',
+        cup: 'Cups',
+        tbsp: 'Tablespoons',
+        tsp: 'Teaspoons'
+    };
+    var inventoryUnitPluralLabels = {
+        each: 'Items',
+        lb: 'Pounds',
+        oz: 'Ounces',
+        g: 'Grams',
+        ml: 'Milliliters',
+        l: 'Liters',
+        gal: 'Gallons',
+        cup: 'Cups',
+        tbsp: 'Tablespoons',
+        tsp: 'Teaspoons',
+        slice: 'Slices',
+        loaf: 'Loaves',
+        pack: 'Packs',
+        case: 'Cases'
+    };
+
+    function getBaseUnitLabel(unitKey, plural) {
+        if (!unitKey) {
+            return plural ? 'Units' : 'Unit';
+        }
+        if (plural) {
+            return unitPluralNames[unitKey] || (unitDisplayNames[unitKey] ? unitDisplayNames[unitKey] + 's' : unitKey + 's');
+        }
+        return unitDisplayNames[unitKey] || unitKey;
+    }
+
+    function updateContainerFields(prefix) {
+        var isEdit = prefix === 'edit';
+        var typeSelect = document.getElementById(isEdit ? 'editUnitType' : 'unitType');
+        var baseUnitGroup = document.getElementById(isEdit ? 'editBaseUnitGroup' : 'baseUnitGroup');
+        var baseUnitSelect = document.getElementById(isEdit ? 'editBaseUnitSelect' : 'baseUnitSelect');
+        var baseUnitLabel = document.getElementById(isEdit ? 'editBaseUnitLabel' : 'baseUnitLabel');
+        var amountGroup = document.getElementById(isEdit ? 'editUnitsPerPackGroup' : 'unitsPerPackGroup');
+        var amountInput = document.getElementById(isEdit ? 'editUnitsPerPack' : 'unitsPerPack');
+        var amountLabel = document.getElementById(isEdit ? 'editUnitsPerPackLabel' : 'unitsPerPackLabel');
+        var amountHelp = document.getElementById(isEdit ? 'editUnitsPerPackHelp' : 'unitsPerPackHelp');
+        var quantityLabel = document.getElementById(isEdit ? 'editItemQuantityLabel' : 'itemQuantityLabel');
+        var resupplyLabel = document.getElementById(isEdit ? 'editItemResupplyLabel' : 'itemResupplyLabel');
+        var resupplyHelp = document.getElementById(isEdit ? 'editItemResupplyHelp' : 'itemResupplyHelp');
+
+        if (!typeSelect || !baseUnitGroup || !baseUnitSelect || !amountGroup || !amountInput) return;
+
+        var unitType = (typeSelect.value || '').trim();
+        var inventoryUnitLabel = inventoryUnitPluralLabels[unitType] || 'units';
+        var isContainer = !!containerTypes[unitType];
+
+        if (resupplyLabel) {
+            resupplyLabel.textContent = 'Reorder Alert When ' + inventoryUnitLabel + ' Is:';
+        }
+        if (resupplyHelp) {
+            resupplyHelp.textContent = 'If the on-hand amount drops below this level, the item appears in Order Soon.';
+        }
+
+        if (isContainer) {
+            var containerName = containerTypes[unitType];
+            var baseUnitKey = (baseUnitSelect.value || unitBaseMap[unitType] || '').trim();
+            var baseUnitPluralLabel = getBaseUnitLabel(baseUnitKey, true);
+            baseUnitGroup.style.display = '';
+            amountGroup.style.display = '';
+            if (baseUnitLabel) baseUnitLabel.textContent = 'Unit In ' + containerName;
+            if (amountLabel) amountLabel.textContent = 'Average ' + baseUnitPluralLabel + ' Per ' + containerName;
+            if (amountHelp) amountHelp.textContent = 'Enter the average number of ' + baseUnitPluralLabel.toLowerCase() + ' in each ' + containerName.toLowerCase() + '.';
+            if (quantityLabel) quantityLabel.textContent = 'Current Quantity (Total ' + containerName.toLowerCase() + 's)';
+
+            if (!baseUnitSelect.value) {
+                baseUnitSelect.value = unitBaseMap[unitType] || 'each';
+            }
+            if (!amountInput.value) {
+                amountInput.value = '1';
+            }
+            baseUnitSelect.required = true;
+            amountInput.required = true;
+        } else {
+            baseUnitGroup.style.display = 'none';
+            amountGroup.style.display = 'none';
+            baseUnitSelect.required = false;
+            amountInput.required = false;
+            baseUnitSelect.value = unitBaseMap[unitType] || '';
+            amountInput.value = '';
+            if (quantityLabel) {
+                var unitLabel = inventoryUnitPluralLabels[unitType] || 'units';
+                quantityLabel.textContent = 'Current Quantity (Total ' + unitLabel + ')';
+            }
+        }
+    }
 
     function updatePortionSizePresentation(typeSelectId, inputId, labelId, helpId) {
         var typeSelect = document.getElementById(typeSelectId);
@@ -1556,7 +1714,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!typeSelect || !input || !label || !help) return;
 
         var unitType = (typeSelect.value || '').trim();
-        var baseUnit = unitBaseMap[unitType] || 'base units';
+        var baseUnitSelectId = typeSelectId === 'editUnitType' ? 'editBaseUnitSelect' : 'baseUnitSelect';
+        var selectedBaseUnit = document.getElementById(baseUnitSelectId);
+        var baseUnit = (selectedBaseUnit && selectedBaseUnit.value) || unitBaseMap[unitType] || 'base units';
 
         if (!unitType) {
             label.textContent = 'Portion Size Per Student';
@@ -1576,6 +1736,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function refreshPortionLabels() {
+        updateContainerFields('add');
+        updateContainerFields('edit');
         updatePortionSizePresentation('unitType', 'unitSize', 'unitSizeLabel', 'unitSizeHelp');
         updatePortionSizePresentation('editUnitType', 'editUnitSize', 'editUnitSizeLabel', 'editUnitSizeHelp');
     }
@@ -1584,8 +1746,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var addUnitType = document.getElementById('unitType');
     var editUnitType = document.getElementById('editUnitType');
+    var addBaseUnit = document.getElementById('baseUnitSelect');
+    var editBaseUnit = document.getElementById('editBaseUnitSelect');
     if (addUnitType) addUnitType.addEventListener('change', refreshPortionLabels);
     if (editUnitType) editUnitType.addEventListener('change', refreshPortionLabels);
+    if (addBaseUnit) addBaseUnit.addEventListener('change', refreshPortionLabels);
+    if (editBaseUnit) editBaseUnit.addEventListener('change', refreshPortionLabels);
 
     window.refreshPortionSizeLabels = refreshPortionLabels;
 });
@@ -1956,6 +2122,9 @@ document.addEventListener('DOMContentLoaded', function() {
         addItemModalEl.addEventListener('show.bs.modal', function() {
             document.getElementById('addItemForm').reset();
             resetSideDishFields('add');
+            if (typeof window.refreshPortionSizeLabels === 'function') {
+                window.refreshPortionSizeLabels();
+            }
         });
     }
 
@@ -2024,6 +2193,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editItemName').value = span.dataset.itemName || span.textContent.trim();
         document.getElementById('editItemCategory').value = span.dataset.category || '';
         document.getElementById('editUnitType').value = span.dataset.unitType || '';
+        document.getElementById('editBaseUnitSelect').value = span.dataset.baseUnit || '';
+        document.getElementById('editUnitsPerPack').value = span.dataset.unitsPerPack || '1';
         document.getElementById('editUnitSize').value = span.dataset.unitSize || '1';
         document.getElementById('editItemQuantity').value = span.dataset.quantity || '';
         document.getElementById('editItemResupply').value = span.dataset.resupply || '';

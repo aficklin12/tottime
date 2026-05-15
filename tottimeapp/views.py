@@ -3352,6 +3352,7 @@ def add_item(request):
         unit_type = request.POST.get('unit_type')
         base_unit = request.POST.get('base_unit')
         unit_size = request.POST.get('unit_size')
+        units_per_pack = request.POST.get('units_per_pack')
         conversion_to_base = request.POST.get('conversion_to_base')
         custom_unit_label = request.POST.get('custom_unit_label')
         rule_id = request.POST.get('rule')
@@ -3391,6 +3392,7 @@ def add_item(request):
             unit_type=unit_type,
             base_unit=base_unit,
             unit_size=unit_size if unit_size else 1,
+            units_per_pack=units_per_pack if units_per_pack else 1,
             conversion_to_base=conversion_to_base if conversion_to_base else 1,
             custom_unit_label=custom_unit_label,
             rule_id=rule_id if rule_id else None,
@@ -3463,7 +3465,9 @@ def edit_inventory_item(request, item_id):
     new_name = request.POST.get('item', '').strip()
     raw_category = request.POST.get('category', '').strip()
     unit_type = (request.POST.get('unit_type') or '').strip()
+    base_unit = (request.POST.get('base_unit') or '').strip()
     unit_size = (request.POST.get('unit_size') or '').strip()
+    units_per_pack = (request.POST.get('units_per_pack') or '').strip()
     rule_id = (request.POST.get('rule') or '').strip()
     quantity = request.POST.get('quantity')
     resupply = request.POST.get('resupply')
@@ -3504,7 +3508,8 @@ def edit_inventory_item(request, item_id):
         'pack': 'each',
         'case': 'each'
     }
-    base_unit = unit_base_map.get(unit_type, 'each') if unit_type else None
+    if not base_unit:
+        base_unit = unit_base_map.get(unit_type, 'each') if unit_type else None
 
     try:
         item.item = new_name
@@ -3512,6 +3517,7 @@ def edit_inventory_item(request, item_id):
         item.unit_type = unit_type or None
         item.base_unit = base_unit
         item.unit_size = unit_size if unit_size else 1
+        item.units_per_pack = units_per_pack if units_per_pack else 1
         item.rule = rule_obj
         item.quantity = quantity
         item.resupply = resupply

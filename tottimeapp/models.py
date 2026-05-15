@@ -14,6 +14,7 @@ from django.core.files.storage import default_storage
 from django.conf import settings
 from datetime import timedelta
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 import os
 from django.core.files.base import ContentFile
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
@@ -81,6 +82,13 @@ class Inventory(models.Model):
     )
     # Quantity in inventory units (e.g., 3 packs, 2 lbs)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    # For container-style units (pack/case/loaf): number of base units in one container.
+    units_per_pack = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=1,
+        help_text="How many base units are in one pack/case/loaf (e.g., 20 slices per loaf)",
+    )
     # Automated: how many base units in one inventory unit (for calculations)
     conversion_to_base = models.DecimalField(
         max_digits=10, decimal_places=4, default=1,
@@ -115,7 +123,14 @@ class Inventory(models.Model):
     ignore_inventory = models.BooleanField(default=False, help_text='Ignore inventory tracking for this recipe')
     
     def save(self, *args, **kwargs):
-        # Standard conversions (add more as needed)
+        def _to_positive_decimal(value):
+            try:
+                parsed = Decimal(str(value))
+            except (InvalidOperation, TypeError, ValueError):
+                return None
+            return parsed if parsed > 0 else None
+
+        # Standard conversions for non-container units.
         standard_conversions = {
             'lb': ('oz', 16),
             'oz': ('oz', 1),
@@ -127,27 +142,35 @@ class Inventory(models.Model):
             'tbsp': ('tbsp', 1),
             'tsp': ('tsp', 1),
             'slice': ('slice', 1),
-            'loaf': ('slice', self.unit_size if self.unit_size else 1),
-            'pack': ('each', self.unit_size if self.unit_size else 1),
-            'case': ('each', self.unit_size if self.unit_size else 1),
             'each': ('each', 1),
+        }
+        container_defaults = {
+            'loaf': 'slice',
+            'pack': 'each',
+            'case': 'each',
         }
 
         # If base_unit is not set, auto-set it
         if not self.base_unit:
             if self.unit_type in standard_conversions:
                 self.base_unit = standard_conversions[self.unit_type][0]
+            elif self.unit_type in container_defaults:
+                self.base_unit = container_defaults[self.unit_type]
             else:
                 self.base_unit = self.unit_type  # fallback
 
         # Set conversion_to_base
         if self.unit_type in standard_conversions:
-            conv = standard_conversions[self.unit_type][1]
-            # If conversion is based on unit_size (for pack/loaf/case), use that
-            if isinstance(conv, (int, float)):
-                self.conversion_to_base = conv
-            else:
-                self.conversion_to_base = float(self.unit_size) if self.unit_size else 1
+            self.conversion_to_base = standard_conversions[self.unit_type][1]
+        elif self.unit_type in container_defaults:
+            # Preserve existing behavior for older rows by falling back to previous conversion_to_base.
+            inferred_pack_size = (
+                _to_positive_decimal(self.units_per_pack)
+                or _to_positive_decimal(self.conversion_to_base)
+                or Decimal('1')
+            )
+            self.units_per_pack = inferred_pack_size
+            self.conversion_to_base = inferred_pack_size
         else:
             self.conversion_to_base = 1
 
