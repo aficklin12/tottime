@@ -7482,7 +7482,7 @@ def select_meals_for_days(recipes, user):
                 # Main lunch dish
                 menu_data[day]['meal_name'] = selected_meal.name
                 menu_data[day]['grain'] = selected_meal.grain or ""
-                menu_data[day]['meat_alternate'] = selected_meal.meat_alternate or ""
+                menu_data[day]['meat_alternate'] = selected_meal.meat_alternate or selected_meal.meat or ""
             elif recipe_type == 'whole_grain':
                 # Goes in grain row
                 if not menu_data[day]['grain']:
@@ -8622,7 +8622,7 @@ def generate_full_menu(request):
                     lunch_data[day]['grain'] = grain_component
                     if recipe.grain_rule_id:
                         lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
-                lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
+                lunch_data[day]['meat_alternate'] = recipe.meat_alternate or recipe.meat or ""
                 # If the main lunch recipe already specifies a vegetable and/or
                 # fruit, use those to populate the corresponding rows before
                 # relying on separate veg/fruit rule or standalone recipes.
@@ -8769,7 +8769,7 @@ def generate_full_menu(request):
                 lunch_data[day]['grain'] = grain_component
                 if recipe.grain_rule_id:
                     lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
-            lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
+            lunch_data[day]['meat_alternate'] = recipe.meat_alternate or recipe.meat or ""
             # Prefer any veg/fruit that are part of the main lunch recipe
             # over later standalone side selections.
             veg_component = _first_distinct_component(recipe, recipe.veg)
@@ -8892,7 +8892,7 @@ def generate_full_menu(request):
                     if recipe.grain_rule_id:
                         lunch_data[day]['grain_rule_id'] = recipe.grain_rule_id
                 if not lunch_data[day]['meat_alternate']:
-                    lunch_data[day]['meat_alternate'] = recipe.meat_alternate or ""
+                    lunch_data[day]['meat_alternate'] = recipe.meat_alternate or recipe.meat or ""
                 # As a last resort, also bring over any veg/fruit defined on
                 # this main lunch recipe if those cells are still empty.
                 veg_component = _first_distinct_component(recipe, recipe.veg)
