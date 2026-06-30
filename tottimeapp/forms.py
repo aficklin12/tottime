@@ -80,3 +80,27 @@ ImprovementGoalFormSet = forms.inlineformset_factory(
     extra=3,
     can_delete=True
 )
+
+class KitchenTimeForm(forms.Form):
+    center_name = forms.CharField(
+        max_length=255, required=False, label='Center Name'
+    )
+    employee_name = forms.CharField(
+        max_length=255, required=False, label='Employee Name'
+    )
+    position = forms.CharField(
+        max_length=255, required=False, label='Position'
+    )
+    week_beginning = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label='Week Beginning'
+    )
+    week_ending = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label='Week Ending'
+    )
+    schedule_json = forms.CharField(
+        widget=forms.HiddenInput(), required=False, label='Schedule JSON'
+    )

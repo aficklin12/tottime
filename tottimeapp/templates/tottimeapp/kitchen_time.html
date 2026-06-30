@@ -1,0 +1,1578 @@
+{% extends 'tottimeapp/base_dynamic.html' %}
+{% load static %}
+
+{% block title %}Kitchen Time{% endblock %}
+
+{% block styles %}
+<style>
+/* Container and form layout */
+#kitchen-container { }
+.kitchen-container { max-width: 1100px; margin: 18px auto; padding: 18px; }
+.card { width: 100%; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.card-body { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; }
+#kitchen-time-form { width:100%; }
+#kitchen-time-form .form-row { width: 100%; max-width: 640px; display:flex; flex-direction:column; align-items:center; margin-bottom:8px; }
+#kitchen-time-form .form-row label { margin-bottom:6px; font-weight:600; color:#111827 }
+#kitchen-time-form input[type="text"], #kitchen-time-form input[type="date"], #kitchen-time-form input[type="email"], #kitchen-time-form input[type="number"],
+#kitchen-time-form textarea, #kitchen-time-form select { width: 100%; padding: 8px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing: border-box; font-size:15px; }
+
+/* Ensure the template loader select matches other inputs in width and display */
+#id_template_loader, select.full-input { display: block; width: 100% !important; box-sizing: border-box; }
+
+/* Visual differentiation for the loader dropdown so it reads as a control separate
+   from the main form inputs. Uses CACFP accent colors for a subtle accent. */
+#id_template_loader.full-input {
+  background: linear-gradient(180deg, #f6fffb, #ffffff) !important;
+  border: 1px solid rgba(57,189,180,0.18) !important;
+  color: rgb(6,59,52) !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 0 rgba(6,59,52,0.03) !important;
+  padding-left: 12px !important;
+}
+
+#id_template_loader.full-input:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(57,189,180,0.08) !important;
+  border-color: rgb(57,189,180) !important;
+}
+
+/* Hide the original Django-generated position input (we'll manage it via JS) */
+#id_position { display:none !important; }
+
+/* Also ensure form-row inputs inherit larger text for consistency */
+#kitchen-time-form .form-row input, #kitchen-time-form .form-row select, #kitchen-time-form .form-row textarea { font-size:15px; }
+#kitchen-time-form .btn { min-width: 120px; }
+
+/* Grid and legend */
+.kitchen-grid { margin-top: 1rem; width:100%; }
+.kitchen-grid .legend { display:flex; align-items:center; gap:12px; margin-bottom:8px; justify-content:center; flex-wrap:wrap; }
+.legend-vertical .legend-items-vertical .code-btn { width:100%; display:flex; justify-content:space-between; align-items:center; padding:8px 10px; }
+.left-pane .form-row { align-items:stretch; }
+.code-btn { border:1px solid #e5e7eb; background:#ffffff; padding:6px 8px; border-radius:6px; cursor:pointer; min-width:52px; text-align:center; font-weight:600; font-size:14px }
+.code-btn small { display:block; font-size:10px; color:#6b7280; font-weight:400 }
+.code-btn.active { box-shadow: 0 0 0 3px rgba(57,189,180,0.12); border-color: rgb(57,189,180); }
+.clear-btn { background:#fff7f7; border-color:#fecaca }
+.table .slot, .grid-wrap table .slot { cursor:pointer; user-select:none; height:36px; vertical-align:middle; text-align:center; font-weight:600; font-size:13px }
+.table .slot:hover, .grid-wrap table .slot:hover { background:#f1f5f9 }
+.time-label { text-align:right; padding-right:12px; color:#374151; background:#fbfbfd; width:110px }
+.slot.code-C { background: #fff7ed; color:#7c2d12 }
+.slot.code-MS { background: #ecfeff; color:#065f46 }
+.slot.code-CL { background: #eef2ff; color:#3730a3 }
+.slot.code-A { background: #fef3c7; color:#92400e }
+.slot.code-TR { background: #f0f9ff; color:#0369a1 }
+.slot.code-TG { background: #f0fdf4; color:#166534 }
+.slot.code-OT { background: #f8fafc; color:#111827 }
+
+.grid-wrap { width:100%; overflow-x:auto; }
+
+/* Layout fixes: center this page's content and prevent global table margins from shifting it */
+.kitchen-container .kitchen-layout { justify-content: center; }
+.kitchen-container table { margin-left: 0 !important; margin-right: 0 !important; }
+.kitchen-container .grid-wrap { padding-left: 14px; padding-right: 14px; }
+.table, .grid-wrap table { width:100%; table-layout:fixed; min-width:0; border-collapse:collapse }
+.table th, .table td, .grid-wrap table th, .grid-wrap table td { padding:6px 6px; }
+.table thead th:first-child, .table tbody td.time-label, .grid-wrap table thead th:first-child, .grid-wrap table tbody td.time-label { width:110px; }
+.table thead th, .table tbody td, .grid-wrap table thead th, .grid-wrap table tbody td { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.slot { padding:4px 2px; font-size:12px }
+
+/* Summary panel styles (right of table) */
+.summary-panel { background:#ffffff; border:1px solid #e5e7eb; padding:12px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.03); }
+.summary-panel h3 { margin:0 0 8px 0; font-size:14px; }
+.summary-list { list-style:none; margin:0; padding:0; }
+ .summary-list .summary-item { display:flex; justify-content:space-between; padding:4px 0; color:#111827 }
+ .summary-total { display:flex; justify-content:space-between; padding-top:8px; border-top:1px solid #e5e7eb; font-weight:700; margin-top:8px }
+ /* Code description styles (inline) */
+ .summary-list .code-left { display:flex; align-items:center; gap:8px; }
+ .code-desc { font-size:12px; color:#6b7280; font-weight:400; line-height:1; margin-left:4px; }
+ .code-label { font-weight:600; font-size:13px; color:#111827; min-width:18px; text-align:left; }
+
+/* Fixed uniform column width for all columns (including time). Adjust --col-width as needed. */
+:root { --col-width: 90px; }
+/* Apply fixed width to both `.table` class tables and plain tables inside `.grid-wrap`.
+  Use higher specificity and !important only where necessary to beat other rules. */
+.table th, .table td, .grid-wrap table th, .grid-wrap table td { min-width: var(--col-width) !important; width: var(--col-width) !important; box-sizing: border-box; white-space: nowrap; }
+
+/* Legend grid square styles */
+.legend-square { padding:0; height:48px; display:flex; align-items:center; justify-content:center; border-radius:8px; font-size:15px; }
+.legend-square.active { box-shadow: 0 0 0 3px rgba(57,189,180,0.12); border-color: rgb(57,189,180); }
+# Input focus highlight using CACFP accent color */
+#kitchen-time-form input:focus, #kitchen-time-form select:focus, #kitchen-time-form textarea:focus {
+  outline: none;
+  border-color: rgb(57,189,180) !important;
+  box-shadow: 0 0 0 3px rgba(57,189,180,0.12) !important;
+}
+/* Center table headers for this view */
+.grid-wrap table thead th { text-align: center !important; vertical-align: middle; }
+
+/* CACFP details: position the hide button at the panel bottom-right when open; avoid extra space when closed */
+#cacfp-panel { position: relative; }
+/* add bottom padding to details only while open so closed state has no extra blank space */
+#cacfp-details[open] { padding-bottom: 44px; }
+#cacfp-details[open] > summary { display: none; }
+#cacfp-panel { position: relative; }
+.hide-details-btn { display:none; position: absolute; right: 12px; bottom: 12px; background: transparent; border: none; color: #374151; cursor: pointer; font-size:13px; padding:6px 10px; border-radius:6px; box-shadow: none; z-index:999; }
+/* show the hide button (which is a sibling of the details) when details is open */
+#cacfp-details[open] ~ .hide-details-btn { display: inline-flex; align-items:center; gap:8px; }
+.hide-details-btn::before { content: '▲'; display:inline-block; margin-right:6px; font-size:12px; line-height:1; vertical-align:middle; }
+.hide-details-btn:hover { background: transparent !important; }
+
+/* Add left padding/margin to inputs and legend in the left pane */
+.left-pane { padding-left:18px; }
+.left-pane .inputs, .legend-vertical { margin-left:12px; }
+
+/* Hide controls-bar on desktop by default; shown in mobile media query */
+.controls-bar { display: none; }
+
+/* Print button styling */
+.print-btn {
+  background: transparent;
+  color: rgb(57,189,180);
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, transform 0.1s ease;
+}
+.print-btn:hover {
+  color: rgb(47,159,150);
+  transform: scale(1.1);
+}
+.print-btn i {
+  font-size: 20px;
+}
+
+/* Print styles */
+@media print {
+  /* Set landscape orientation with minimal margins */
+  @page {
+    size: landscape;
+    margin: 0.3in;
+  }
+
+  /* Hide only the navbar, h1 title, and print button */
+  nav,
+  .navbar,
+  #layoutSidenav_nav,
+  .sb-topnav,
+  h1.desktop-only,
+  .print-btn,
+  #mobileBottomNav,
+  #mobileLegend,
+  .mobile-left-panel,
+  .mobile-right-panel,
+  .controls-bar {
+    display: none !important;
+  }
+
+  /* No transformations - print exactly as shown on screen */
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Preserve cell colors when printing */
+  .slot.code-C { background: #fff7ed !important; color: #7c2d12 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slot.code-MS { background: #ecfeff !important; color: #065f46 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slot.code-CL { background: #eef2ff !important; color: #3730a3 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slot.code-A { background: #fef3c7 !important; color: #92400e !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slot.code-TR { background: #f0f9ff !important; color: #0369a1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slot.code-TG { background: #f0fdf4 !important; color: #166534 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .slot.code-OT { background: #f8fafc !important; color: #111827 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Preserve all backgrounds and colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+}
+
+/* Responsive tweaks */
+@media (max-width: 800px) {
+  #kitchen-time-form .form-row { max-width: 92%; }
+  .table { min-width: 0 }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="desktop-only">Kitchen Time</h1>
+<div class="kitchen-container">
+  
+
+  <form method="post" class="form" id="kitchen-time-form">
+        {% csrf_token %}
+
+      <!-- Mobile-only controls container: inputs are moved here on small screens -->
+      <div id="mobileControls" class="controls-bar" aria-hidden="true"></div>
+
+      <div class="kitchen-layout" style="display:flex; gap:20px; align-items:flex-start;">
+          <div class="left-pane" style="width:320px; min-width:260px;">
+            <div class="inputs">
+              <div class="form-row">
+                <select id="id_template_loader" class="full-input" style="display:block; width:100% !important; padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box; margin-top:6px; margin-bottom:8px;">
+                  <option value="">Load Template</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="id_center_name">Center Name</label>
+                {{ form.center_name }}
+              </div>
+              <div class="form-row">
+                <label for="id_employee_name">Employee Name</label>
+                {{ form.employee_name }}
+              </div>
+              <div class="form-row">
+                <label for="id_position_picker">Position</label>
+                {{ form.position }}
+                <select id="id_position_picker" name="position_picker" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box; margin-top:6px;">
+                  <option value="">Select Position</option>
+                  <option value="Director">Director</option>
+                  <option value="Cook">Cook</option>
+                  <option value="Teacher">Teacher</option>
+                  <option value="Custom">Other</option>
+                </select>
+                <input type="text" id="id_position_custom" placeholder="Enter custom position" style="display:none; width:100%; margin-top:8px; padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box;">
+              </div>
+              <div class="form-row">
+                <label for="id_weekly_salary">Weekly Salary</label>
+                <input type="number" id="id_weekly_salary" name="weekly_salary" step="0.01" value="0.00" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box;">
+              </div>
+              <div class="form-row">
+                <label for="id_week_beginning">Week Beginning</label>
+                {{ form.week_beginning }}
+              </div>
+              <div class="form-row">
+                <label for="id_week_ending">Week Ending</label>
+                {{ form.week_ending }}
+              </div>
+              <div class="form-row">
+                <label for="id_time_begin">Time Beginning</label>
+                <select id="id_time_begin" name="time_begin" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box;">
+                  {% for t in times %}
+                    <option value="{{ t.value }}" {% if t.value == '05:00' %}selected{% endif %}>{{ t.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="id_time_end">Time Ending</label>
+                <select id="id_time_end" name="time_end" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box;">
+                  {% for t in times %}
+                    <option value="{{ t.value }}" {% if t.value == '01:00' %}selected{% endif %}>{{ t.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <!-- Legend moved to right column -->
+
+            <div class="form-row" style="margin-top:12px; display:flex !important; flex-direction:row !important; gap:8px; align-items:center;">
+              <button id="save-template-btn" class="btn btn-primary" style="flex:1;" type="submit" form="kitchen-time-form">Save as Template</button>
+              <button type="button" class="print-btn" onclick="generatePDF()" title="Generate PDF">
+                <i class="fas fa-file-pdf"></i>
+              </button>
+            </div>
+          </div>
+
+          <div style="flex:1; display:flex; gap:16px; align-items:flex-start;">
+            <div class="right-pane" style="flex:1;">
+              {{ form.schedule_json }}
+              <input type="hidden" id="id_selected_template_id" name="selected_template_id" value="">
+              <div class="grid-wrap">
+                <div class="table-actions" aria-hidden="true"></div>
+                <table>
+                <thead>
+                  <tr id="mobile-loader-row" class="mobile-loader-row" style="display:none;">
+                    <th colspan="{{ days|length|add:'1' }}" class="mobile-loader-cell" style="padding:0 6px 0 6px;">
+                      <div id="table-loader-mobile" class="table-loader-mobile" aria-hidden="true"></div>
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="width:110px">Time</th>
+                    {% for d in days %}
+                    <th data-day="{{ d.key }}">{{ d.label }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for t in times %}
+                  <tr data-time="{{ t.value }}">
+                    <td class="time-label">{{ t.label }}</td>
+                    {% for d in days %}
+                    <td class="slot" data-day="{{ d.key }}" data-time="{{ t.value }}"></td>
+                    {% endfor %}
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+                </table>
+              </div>
+            </div>
+
+            <aside style="width:320px;">
+              <div class="legend-grid-wrap" style="margin-bottom:12px;">
+                <div class="legend-grid" style="margin-top:8px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+                  <button type="button" class="code-btn legend-square" data-code="C">C</button>
+                  <button type="button" class="code-btn legend-square" data-code="MS">MS</button>
+                  <button type="button" class="code-btn legend-square" data-code="CL">CL</button>
+                  <button type="button" class="code-btn legend-square" data-code="A">A</button>
+                  <button type="button" class="code-btn legend-square" data-code="TR">TR</button>
+                  <button type="button" class="code-btn legend-square" data-code="TG">TG</button>
+                  <button type="button" class="code-btn legend-square" data-code="OT">OT</button>
+                  <button type="button" class="code-btn legend-square" data-code="">Blank</button>
+                  <button type="button" id="clear-all-btn" class="code-btn legend-square clear-btn">Clear</button>
+                </div>
+              </div>
+              <div class="summary-panel" id="summary-panel">
+                <ul class="summary-list">
+                  <li class="summary-item"><div class="code-left"><span class="code-label">C</span><small class="code-desc">Cooking</small></div><span id="sum-C">0.0</span></li>
+                  <li class="summary-item"><div class="code-left"><span class="code-label">MS</span><small class="code-desc">Meal Service</small></div><span id="sum-MS">0.0</span></li>
+                  <li class="summary-item"><div class="code-left"><span class="code-label">CL</span><small class="code-desc">Clean Up</small></div><span id="sum-CL">0.0</span></li>
+                  <li class="summary-item"><div class="code-left"><span class="code-label">A</span><small class="code-desc">Admin</small></div><span id="sum-A">0.0</span></li>
+                  <li class="summary-item"><div class="code-left"><span class="code-label">TR</span><small class="code-desc">Travel</small></div><span id="sum-TR">0.0</span></li>
+                  <li class="summary-item"><div class="code-left"><span class="code-label">TG</span><small class="code-desc">Training</small></div><span id="sum-TG">0.0</span></li>
+                  <li class="summary-item"><div class="code-left"><span class="code-label">OT</span><small class="code-desc">Other</small></div><span id="sum-OT">0.0</span></li>
+                </ul>
+                <div class="summary-total"><span>TOTAL HOURS WORKED</span><span id="sum-total">0.0</span></div>
+              </div>
+              <div class="summary-panel" style="margin-top:12px;" id="cacfp-panel">
+                <h3>CACFP</h3>
+                <!-- Visible summary: only the final amounts -->
+                <div style="display:flex; gap:8px; justify-content:space-between; margin-top:8px;"><div>Kitchen Amount for SOE</div><div id="cacfp-kitchen-amt">$0.00</div></div>
+                <div style="display:flex; gap:8px; justify-content:space-between; margin-top:6px;"><div>Admin Amount for SOE</div><div id="cacfp-admin-amt">$0.00</div></div>
+
+                <!-- Details dropdown for full calculations -->
+                <details id="cacfp-details" style="margin-top:10px;">
+                  <summary id="cacfp-details-summary" style="cursor:pointer; font-size:13px; color:#374151; margin-bottom:6px;">Show Details</summary>
+                  <div style="margin-top:8px;">
+                    <div style="display:flex; gap:8px; justify-content:space-between; margin-bottom:6px;"><div>Kitchen Hours</div><div id="cacfp-kitchen-hours">0.0</div></div>
+                    <div style="display:flex; gap:8px; justify-content:space-between; margin-bottom:6px;"><div>Admin Hours</div><div id="cacfp-admin-hours">0.0</div></div>
+                    <div style="display:flex; gap:8px; justify-content:space-between; margin-bottom:6px;"><div>Total Hours</div><div id="cacfp-total">0.0</div></div>
+                    <hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0;">
+                    <div style="font-size:12px; color:#6b7280; margin-bottom:6px;">Kitchen Hours: <span id="cacfp-kitchen-calc">0.0 ÷ 0.0 = 0.00%</span></div>
+                    <div style="font-size:12px; color:#6b7280; margin-bottom:6px;">Admin Hours: <span id="cacfp-admin-calc">0.0 ÷ 0.0 = 0.00%</span></div>
+                    <div style="font-size:12px; color:#6b7280; margin-top:8px;">Weekly Salary: <span id="cacfp-kitchen-dollar-calc">0.00 × 0.00% = $0.00</span></div>
+                    <div style="font-size:12px; color:#6b7280; margin-top:4px;">Weekly Salary: <span id="cacfp-admin-dollar-calc">0.00 × 0.00% = $0.00</span></div>
+                  </div>
+                </details>
+                <button id="cacfp-hide-btn" type="button" class="hide-details-btn">Hide Details</button>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        
+      </form>
+
+      {% if submitted %}
+      <h3>Submitted</h3>
+      <ul>
+        <li>Center: {{ form.cleaned_data.center_name }}</li>
+        <li>Employee: {{ form.cleaned_data.employee_name }}</li>
+        <li>Position: {{ form.cleaned_data.position }}</li>
+        <li>Week beginning: {{ form.cleaned_data.week_beginning }}</li>
+        <li>Week ending: {{ form.cleaned_data.week_ending }}</li>
+      </ul>
+      {% if schedule_map %}
+      <h4>Schedule</h4>
+      <pre>{{ schedule_map|safe }}</pre>
+      {% endif %}
+      {% endif %}
+
+    </div>
+
+    <!-- Mobile bottom navigation (mobile-only: visible under 1000px). -->
+    <style>
+    /* Use existing base styles for #mobileBottomNav; add only mobile-only helpers here. */
+    #mobileBottomNav { display: none; }
+    #mobileLegend { display: none; }
+    @media (max-width: 999px) {
+      #mobileBottomNav { display: flex; }
+
+      /* Mobile-only: hide large-screen title and make layout flush with top nav */
+      h1.desktop-only { display: none !important; }
+      .kitchen-container { margin: 0 auto !important; padding-top: 0 !important; max-width: 100% !important; width: 100% !important; box-sizing: border-box; }
+      /* remove left/right gutters so table sits flush with viewport edges */
+      .grid-wrap { padding-left: 0 !important; padding-right: 0 !important; }
+      /* also ensure the outer container has no horizontal padding on mobile */
+      .kitchen-container { padding-left: 0 !important; padding-right: 0 !important; }
+      .grid-wrap table { margin: 0 !important; }
+
+      /* Use a darker background between topnav and table headers on mobile */
+      .controls-bar, .controls-bar-mobile { background: rgb(33,31,39); color: #fff; }
+
+      /* Larger, touch-friendly sizing and compact stacking for small screens */
+      :root { --col-width: 74px; }
+      .grid-wrap table, .table { width: 100% !important; min-width: 0 !important; table-layout: fixed; }
+      .kitchen-layout { gap: 6px; }
+      .code-btn { min-width:44px; height:44px; padding:0; }
+      .legend-square { height:44px; }
+      .grid-wrap table thead th { padding:8px 6px; }
+      .table .slot, .grid-wrap table .slot { height:44px; font-size:15px }
+
+      /* Mobile controls bar: show only on small screens and place between nav and table */
+      .controls-bar { display:flex; gap:8px; padding:8px 10px; align-items:center; flex-wrap:wrap; }
+      .controls-bar .form-row { margin:0; }
+      .controls-bar label { color: #fff; margin-bottom:4px; font-weight:600 }
+      /* Ensure labels inside main container and mobile panels/controls are white */
+      .kitchen-container label,
+      .mobile-left-panel label,
+      .mobile-right-panel label,
+      #mobileControls label,
+      .controls-bar label {
+        color: #fff !important;
+      }
+      .controls-bar .full-input, .controls-bar input, .controls-bar select { background:#ffffff; color:#111827; border-radius:6px; padding:8px 10px; font-size:14px }
+
+      /* Mobile left panel for center/employee/position/salary (hidden by default) */
+      .mobile-left-panel { 
+        display: none;
+        position: fixed;
+        left: 12px;
+        bottom: 78px; /* above the bottom nav */
+        width: 240px;
+        max-width: calc(100% - 96px);
+        z-index: 1400;
+        background: rgb(33,31,39);
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.28);
+        transition: transform .18s ease, opacity .18s ease;
+        transform: translateY(6px);
+        opacity: 0;
+        pointer-events: none;
+      }
+      .mobile-left-panel.open { display: block; transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+      /* Mobile right panel for week/time inputs (hidden by default) */
+      .mobile-right-panel { 
+        display: none;
+        position: fixed;
+        right: 12px;
+        bottom: 78px; /* above the bottom nav */
+        width: 240px;
+        max-width: calc(100% - 96px);
+        z-index: 1400;
+        background: rgb(33,31,39);
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.28);
+        transition: transform .18s ease, opacity .18s ease;
+        transform: translateY(6px);
+        opacity: 0;
+        pointer-events: none;
+      }
+      .mobile-right-panel.open { display: block; transform: translateY(0); opacity: 1; pointer-events: auto; }
+      .mobile-left-panel .form-row { margin-bottom:8px; }
+      .mobile-left-panel label { color: #fff; margin-bottom:4px; font-weight:600 }
+      .mobile-left-panel .full-input, .mobile-left-panel input, .mobile-left-panel select { width:100%; border-radius:6px; padding:8px 10px; }
+      /* Make inputs inside the right panel (week/time) full-width and styled like other controls */
+      .mobile-right-panel .full-input,
+      .mobile-right-panel input,
+      .mobile-right-panel select {
+        width: 100% !important;
+        display: block !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+        border-radius: 6px !important;
+        padding: 8px 10px !important;
+        border: 1px solid #d1d5db !important;
+        box-sizing: border-box !important;
+        font-size: 14px;
+      }
+      /* Ensure date inputs show full width and align with labels */
+      .mobile-right-panel input[type="date"] { padding-right: 40px; }
+
+      /* Stack inputs vertically on very small widths */
+      @media (max-width: 420px) {
+        .controls-bar { flex-direction:column; align-items:stretch; }
+        .controls-bar .save-template-wrap { margin-left:0; }
+      }
+
+      /* Position centered legend above the middle FAB */
+      /* Mobile-only: hide everything except the schedule table to provide a clean table-only view */
+      /* Keep mobile bottom nav and our dynamic mobile panels functional (they're appended to body) */
+      .left-pane,
+      aside,
+      .legend-grid-wrap,
+      .legend-grid,
+      .legend-vertical,
+      .legend,
+      .summary-panel,
+      #summary-panel,
+      #cacfp-panel,
+      #save-template-btn,
+      .summary-list,
+      .summary-total,
+      #cacfp-details,
+      .hide-details-btn {
+        display: none !important;
+      }
+
+      /* Ensure the save/update template button is visible when placed into the mobile-left-panel */
+      .mobile-left-panel #save-template-btn { display: block !important; }
+      .mobile-left-panel #save-template-btn.full-input { width: 100% !important; }
+
+      /* Expand the right pane/table to fill available space */
+      .kitchen-layout { flex-direction: column !important; align-items: stretch !important; }
+      .kitchen-layout > div { width: 100% !important; }
+      .right-pane { width: 100% !important; flex: 1 1 100% !important; }
+      /* remove side gutters so the table uses full viewport width */
+      html, body, #layoutSidenav_content, #layoutSidenav_content main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+      .kitchen-container, .container, .container-fluid { margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
+      .kitchen-layout { gap: 0 !important; }
+      .grid-wrap { width: 100% !important; margin: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }
+      .grid-wrap table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
+      /* Mobile: remove only the outer top border that creates a white rectangle
+        while keeping internal gridlines between header columns and rows. */
+      .grid-wrap table { border-top: 0 !important; border-collapse: collapse !important; }
+      /* Header background and separator under the header */
+      .grid-wrap table thead th { background: var(--tt-topnav-bg, #212529) !important; color: #fff !important; border-bottom: 1px solid rgba(255,255,255,0.12) !important; }
+      /* Vertical separators between adjacent header cells and body cells */
+      .grid-wrap table thead th + th,
+      .grid-wrap table tbody td + td { border-left: 1px solid rgba(255,255,255,0.08) !important; }
+      /* Subtle horizontal separators between body rows */
+      .grid-wrap table tbody tr { border-bottom: 1px solid rgba(0,0,0,0.04) !important; }
+      /* Remove the thin outer rectangle/border that appears above the table headers on mobile.
+        Keep inner column separators intact; this targets only the wrapper/table frame. */
+      .grid-wrap, .grid-wrap table, .table-actions { border: none !important; border-top: none !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
+      .grid-wrap table thead { border-top: none !important; }
+      /* Keep the first 'Time' column narrow and let remaining columns share remaining space equally */
+      .grid-wrap table thead th:first-child,
+      .grid-wrap table tbody td:first-child { width: 72px !important; min-width: 72px !important; max-width: 120px !important; }
+      /* remaining columns will automatically be equal widths under table-layout:fixed */
+      .grid-wrap table thead th:not(:first-child), .grid-wrap table tbody td:not(:first-child) { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      /* Allow JS to set dynamic widths on mobile by clearing fixed widths from desktop styles */
+      .table th, .table td, .grid-wrap table th, .grid-wrap table td { min-width: 0 !important; width: auto !important; }
+
+      /* Position the loader bar flush between top navbar and table header */
+      :root { --tt-topnav-offset: 56px; --tt-loader-bar-height: 48px; --tt-topnav-bg: #212529; }
+      /* Make header sit slightly below the top nav on mobile to appear flush visually. */
+      :root { --tt-table-top-offset: 14px; }
+      .grid-wrap { position: relative; padding-top: var(--tt-table-top-offset) !important; margin-top: 0 !important; background: transparent !important; }
+      /* Hide the empty actions slot so it doesn't create a band above the table */
+      .table-actions { display: none !important; height: 0 !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
+      /* Ensure no top border remains on the table or thead */
+      .grid-wrap table { border-top: 0 !important; margin-top: 0 !important; }
+      .grid-wrap table thead, .grid-wrap table thead tr, .grid-wrap table thead th { border-top: 0 !important; }
+      /* On mobile keep the loader inline (not fixed) so it sits in normal flow
+        directly above the table headers — this avoids any gap or overlap. */
+      .table-actions { position: static !important; top: auto !important; left: auto !important; right: auto !important; height: auto !important; width: 100% !important; display:flex; justify-content:center; align-items:center; z-index:1100; background: transparent !important; padding:0 !important; box-shadow: none !important; }
+      .table-actions .table-loader-mobile { width: 100%; display:flex; justify-content:center; align-items:center; padding:0; background: transparent; }
+      .table-loader-mobile { width: 100%; display:flex; justify-content:center; align-items:center; padding:0; background: transparent; }
+      /* when the loader is moved here, constrain its displayed width */
+      .table-loader-mobile .full-input { max-width: 520px !important; width: 100% !important; display:block !important; }
+      /* Mobile loader placed inside the table header row (hidden by default; shown by JS) */
+      .mobile-loader-row { display: none; }
+      /* add a larger top inset so native select dropdowns aren't clipped by the fixed top nav */
+      .mobile-loader-cell { padding: 22px 6px 0 6px !important; }
+      .mobile-loader-cell .table-loader-mobile { display:flex; justify-content:center; align-items:center; padding:0; background: transparent; }
+      .mobile-loader-cell .table-loader-mobile .full-input,
+      .mobile-loader-cell #id_template_loader.full-input { max-width: 520px !important; width: 100% !important; margin: 0 auto !important; display:block !important; }
+      /* Remove extra vertical space under the mobile loader input so the
+        template dropdown sits flush with the table headers on small screens. */
+      .table-actions { padding-bottom: 0 !important; }
+      .table-actions .full-input,
+      .table-loader-mobile .full-input,
+      #id_template_loader.full-input { margin: 0 !important; margin-bottom: 0 !important; }
+
+      #mobileLegend { display: block; position: fixed; left: 50%; bottom: 74px; width: auto; pointer-events: none; z-index: 2000; opacity: 0; visibility: hidden; transform: translate(-50%,6px); transition: opacity .18s ease, transform .18s ease, visibility .18s ease; }
+      #mobileLegend.open { pointer-events: auto; opacity: 1; visibility: visible; transform: translate(-50%,0); }
+      /* show only the circular buttons — remove panel background */
+      #mobileLegend .legend-grid-mobile { display: grid; grid-template-columns: repeat(3, 56px); gap: 8px; padding: 6px; background: transparent; border-radius: 0; box-shadow: none; align-items: center; justify-items: center; pointer-events: auto; }
+      /* Mobile legend circular buttons: add theme highlight shadow and press state */
+      #mobileLegend .legend-grid-mobile .code-btn {
+        width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; padding:0;
+        background: #fff; color: #111827;
+        box-shadow: 0 6px 14px rgba(57,189,180,0.12);
+        transition: box-shadow .12s ease, transform .09s ease, background-color .12s ease, color .12s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* subtle stronger glow on hover/focus for clarity */
+      #mobileLegend .legend-grid-mobile .code-btn:hover,
+      #mobileLegend .legend-grid-mobile .code-btn:focus {
+        box-shadow: 0 10px 20px rgba(57,189,180,0.16);
+      }
+      /* active (press) visual: fill with theme color and darker text, with pressed transform */
+      #mobileLegend .legend-grid-mobile .code-btn:active,
+      #mobileLegend .legend-grid-mobile .code-btn.pressed,
+      #mobileLegend .legend-grid-mobile .code-btn.active {
+        transform: translateY(1px) scale(.96);
+        background: rgb(57,189,180) !important;
+        color: rgba(34,37,41,1) !important;
+        box-shadow: 0 12px 26px rgba(57,189,180,0.22), 0 0 0 6px rgba(57,189,180,0.06);
+      }
+      /* ensure FAB remains visually centered above the bar */
+      #mobileBottomNav .update-btn { bottom: 8px; }
+    }
+
+    /* Print styles - MUST come after mobile styles to override them */
+    @media print {
+      /* Override all mobile hiding rules */
+      .left-pane,
+      .left-pane .inputs,
+      aside,
+      .legend-grid-wrap,
+      .summary-panel,
+      #summary-panel,
+      #cacfp-panel,
+      .summary-list,
+      .summary-total,
+      #cacfp-details {
+        display: block !important;
+      }
+      
+      /* Reset mobile layout overrides */
+      html, body {
+        width: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      .kitchen-container {
+        max-width: none !important;
+        width: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      .kitchen-layout {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+      }
+      
+      .kitchen-layout > div {
+        width: auto !important;
+      }
+      
+      .kitchen-layout > div:nth-child(2) {
+        display: flex !important;
+        flex: 1 !important;
+        gap: 8px !important;
+      }
+      
+      .right-pane {
+        width: auto !important;
+        flex: 1 !important;
+      }
+      
+      .grid-wrap {
+        width: auto !important;
+      }
+      
+      .grid-wrap table {
+        width: 100% !important;
+        table-layout: auto !important;
+      }
+      
+      /* Hide legend buttons in print */
+      .legend-grid-wrap,
+      .legend-grid,
+      .code-btn,
+      .legend-square,
+      #clear-all-btn,
+      #save-template-btn {
+        display: none !important;
+      }
+    }
+    </style>
+
+    <div id="mobileBottomNav" role="navigation" aria-label="Mobile bottom navigation" aria-hidden="true">
+      <button type="button" class="btn left-btn" id="mobile-left-btn" title="Legend">
+        <i class="fas fa-list" aria-hidden="true"></i>
+        <span class="sr-only">Legend</span>
+      </button>
+
+      <button type="button" class="btn update-btn" id="legend-picker-btn" aria-haspopup="true" aria-expanded="false" title="Legend / Update table">
+        <i class="fas fa-table" aria-hidden="true"></i>
+      </button>
+
+      <button type="button" class="btn right-btn" id="mobile-right-btn" title="Time">
+        <i class="fas fa-clock" aria-hidden="true"></i>
+        <span class="sr-only">Time</span>
+      </button>
+    </div>
+
+    <!-- Mobile bubble legend (duplicates legend buttons for mobile; arranged in a semicircle). -->
+    <div id="mobileLegend" aria-hidden="true" role="dialog" aria-modal="false" aria-label="Legend options">
+      <div class="legend-grid-mobile" aria-hidden="true">
+        <button type="button" class="code-btn legend-square" data-code="C">C</button>
+        <button type="button" class="code-btn legend-square" data-code="MS">MS</button>
+        <button type="button" class="code-btn legend-square" data-code="CL">CL</button>
+        <button type="button" class="code-btn legend-square" data-code="A">A</button>
+        <button type="button" class="code-btn legend-square" data-code="TR">TR</button>
+        <button type="button" class="code-btn legend-square" data-code="TG">TG</button>
+        <button type="button" class="code-btn legend-square" data-code="OT">OT</button>
+        <button type="button" class="code-btn legend-square" data-code="">Blank</button>
+        <button type="button" class="code-btn legend-square clear-btn" id="mobile-clear-all-btn">Clear</button>
+      </div>
+    </div>
+
+    {% endblock %}
+
+{% block scripts %}
+<script>
+const INITIAL_SCHEDULE = {{ initial_schedule_json|default:'{}'|safe }};
+
+// Generate PDF function - opens optimized print view
+function generatePDF() {
+  const printWindow = window.open('', 'printWindow', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+  const currentContent = document.documentElement.cloneNode(true);
+  
+  // Add PDF-optimized styles with actual size reduction
+  const pdfStyles = `
+    <style>
+      @page {
+        size: landscape;
+        margin: 0.25in;
+      }
+      body {
+        font-size: 8.5px !important;
+        margin: 0;
+        padding: 8px;
+      }
+      .kitchen-container {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .kitchen-layout {
+        gap: 10px !important;
+      }
+      .left-pane {
+        width: 200px !important;
+        min-width: 200px !important;
+        font-size: 7.5px !important;
+      }
+      .left-pane label {
+        font-size: 7.5px !important;
+        margin-bottom: 2px !important;
+      }
+      .left-pane input,
+      .left-pane select {
+        font-size: 7.5px !important;
+        padding: 2px 4px !important;
+      }
+      aside {
+        width: 180px !important;
+        font-size: 7.5px !important;
+      }
+      .summary-panel {
+        padding: 6px !important;
+        font-size: 7.5px !important;
+      }
+      .grid-wrap table {
+        font-size: 7.5px !important;
+      }
+      .grid-wrap table th,
+      .grid-wrap table td {
+        padding: 2px 4px !important;
+        font-size: 7.5px !important;
+      }
+      .slot {
+        height: 20px !important;
+        min-height: 20px !important;
+        line-height: 20px !important;
+      }
+      nav, .navbar, #layoutSidenav_nav, .sb-topnav, h1,
+      .print-btn, #mobileBottomNav, #mobileLegend, .mobile-left-panel,
+      .mobile-right-panel, .controls-bar, #save-template-btn,
+      .legend-grid-wrap, .legend-grid, .code-btn {
+        display: none !important;
+      }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    </style>
+  `;
+  
+  printWindow.document.write('<!DOCTYPE html><html>');
+  printWindow.document.write(currentContent.querySelector('head').innerHTML);
+  printWindow.document.write(pdfStyles);
+  printWindow.document.write('</head><body>');
+  printWindow.document.write(currentContent.querySelector('body').innerHTML);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  
+  // Wait for content to load, then trigger print
+  printWindow.onload = function() {
+    setTimeout(function() {
+      printWindow.print();
+      // Close the window after print dialog is dismissed (print or cancel)
+      printWindow.onafterprint = function() {
+        printWindow.close();
+      };
+    }, 250);
+  };
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    const scheduleInput = document.getElementById('id_schedule_json');
+    const gridSlots = Array.from(document.querySelectorAll('.grid-wrap .slot'));
+    const summaryKeys = ['C','MS','CL','A','TR','TG','OT'];
+      function computeSummary(){
+      const counts = { C:0, MS:0, CL:0, A:0, TR:0, TG:0, OT:0 };
+      gridSlots.forEach(cell=>{ 
+        // ignore cells hidden by date range
+        if(getComputedStyle(cell).display === 'none') return;
+        const code = cell.dataset.code || ''; if(code && counts.hasOwnProperty(code)) counts[code] += 1; 
+      });
+      // Each slot represents 0.5 hours
+      let total = 0;
+      summaryKeys.forEach(k=>{ const hours = (counts[k]||0) * 0.5; const el = document.getElementById('sum-' + k); if(el) el.textContent = hours.toFixed(1); total += hours; });
+      const totalEl = document.getElementById('sum-total'); if(totalEl) totalEl.textContent = total.toFixed(1);
+      // CACFP calculations
+      const kitchen = ( (counts.C||0) + (counts.MS||0) + (counts.CL||0) ) * 0.5;
+      const admin = (counts.A||0) * 0.5;
+      const cacfpTotal = total;
+      const kitchenPct = cacfpTotal>0 ? (kitchen / cacfpTotal) : 0;
+      const adminPct = cacfpTotal>0 ? (admin / cacfpTotal) : 0;
+      const elKitchenHours = document.getElementById('cacfp-kitchen-hours'); if(elKitchenHours) elKitchenHours.textContent = kitchen.toFixed(1);
+      const elAdminHours = document.getElementById('cacfp-admin-hours'); if(elAdminHours) elAdminHours.textContent = admin.toFixed(1);
+      const elTotal = document.getElementById('cacfp-total'); if(elTotal) elTotal.textContent = cacfpTotal.toFixed(1);
+      // Division calculations
+      const elKitchenCalc = document.getElementById('cacfp-kitchen-calc'); if(elKitchenCalc) elKitchenCalc.textContent = (cacfpTotal>0 ? `${kitchen.toFixed(1)} ÷ ${cacfpTotal.toFixed(1)} = ${(kitchenPct*100).toFixed(2)}%` : `${kitchen.toFixed(1)} ÷ ${cacfpTotal.toFixed(1)} = 0.00%`);
+      const elAdminCalc = document.getElementById('cacfp-admin-calc'); if(elAdminCalc) elAdminCalc.textContent = (cacfpTotal>0 ? `${admin.toFixed(1)} ÷ ${cacfpTotal.toFixed(1)} = ${(adminPct*100).toFixed(2)}%` : `${admin.toFixed(1)} ÷ ${cacfpTotal.toFixed(1)} = 0.00%`);
+      const elKitchenPctDisplay = document.getElementById('cacfp-kitchen-pct-display'); if(elKitchenPctDisplay) elKitchenPctDisplay.textContent = (kitchenPct*100).toFixed(2) + '%';
+      const elAdminPctDisplay = document.getElementById('cacfp-admin-pct-display'); if(elAdminPctDisplay) elAdminPctDisplay.textContent = (adminPct*100).toFixed(2) + '%';
+      // Dollar amounts from weekly salary input (left-side Weekly Salary)
+      const weeklySalary = parseFloat(document.getElementById('id_weekly_salary')?.value || 0) || 0;
+      const elWeeklyDisplay = document.getElementById('cacfp-weekly-display'); if(elWeeklyDisplay) elWeeklyDisplay.textContent = weeklySalary.toFixed(2);
+      const kitchenAmt = weeklySalary * kitchenPct;
+      const adminAmt = weeklySalary * adminPct;
+      const elKitchenAmt = document.getElementById('cacfp-kitchen-amt'); if(elKitchenAmt) elKitchenAmt.textContent = `$${kitchenAmt.toFixed(2)}`;
+      const elAdminAmt = document.getElementById('cacfp-admin-amt'); if(elAdminAmt) elAdminAmt.textContent = `$${adminAmt.toFixed(2)}`;
+      const elKitchenDollarCalc = document.getElementById('cacfp-kitchen-dollar-calc'); if(elKitchenDollarCalc) elKitchenDollarCalc.textContent = `${weeklySalary.toFixed(2)} × ${(kitchenPct*100).toFixed(2)}% = $${kitchenAmt.toFixed(2)}`;
+      const elAdminDollarCalc = document.getElementById('cacfp-admin-dollar-calc'); if(elAdminDollarCalc) elAdminDollarCalc.textContent = `${weeklySalary.toFixed(2)} × ${(adminPct*100).toFixed(2)}% = $${adminAmt.toFixed(2)}`;
+    }
+    // Toggle AM/PM visibility in body time cells for mobile view
+    function toggleAmPmBodyLabels(){
+      try{
+        const isMobile = window.matchMedia && window.matchMedia('(max-width: 999px)').matches;
+        document.querySelectorAll('.grid-wrap table tbody td.time-label').forEach(cell => {
+          const full = cell.dataset.fullTime || cell.textContent || '';
+          if(!cell.dataset.fullTime) cell.dataset.fullTime = full.trim();
+          if(isMobile){
+            // remove AM/PM (case-insensitive), including variants like A.M./P.M.
+            cell.textContent = cell.dataset.fullTime.replace(/\s*(?:[Aa]\.?[Mm]\.?|[Pp]\.?[Mm]\.?)/g,'').trim();
+          } else {
+            cell.textContent = cell.dataset.fullTime;
+          }
+        });
+      }catch(e){ /* ignore */ }
+    }
+
+    let schedule = {};
+    try{ schedule = INITIAL_SCHEDULE || {}; } catch(e){ schedule = {}; }
+
+    function applyInitial(){
+        gridSlots.forEach(cell =>{
+            const day = cell.dataset.day; const time = cell.dataset.time;
+            const code = (schedule[day] && schedule[day][time]) || '';
+            if(code) setCellCode(cell, code, false);
+        });
+        updateHidden();
+    }
+
+    let activeCode = null; let isMouseDown = false;
+
+    // Only attach handlers to the desktop legend buttons (avoid binding mobile duplicates)
+    const legendButtons = Array.from(document.querySelectorAll('.legend-grid-wrap .code-btn')).filter(b => b.id !== 'clear-all-btn');
+    legendButtons.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+            const code = btn.dataset.code || '';
+            if(code === ''){ activeCode = null; legendButtons.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); return; }
+            if(activeCode === code){ activeCode = null; btn.classList.remove('active'); }
+            else { activeCode = code; legendButtons.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+        });
+    });
+
+    // Clear All button: remove codes from all slots (no confirmation)
+    const clearAllBtn = document.getElementById('clear-all-btn');
+    if(clearAllBtn){
+      clearAllBtn.addEventListener('click', ()=>{
+        gridSlots.forEach(cell => { if(cell.dataset.code) setCellCode(cell, '', false); });
+        updateHidden();
+        computeSummary();
+      });
+    }
+
+    function setCellCode(cell, code, update=true){
+        cell.dataset.code = code || '';
+        ['code-C','code-MS','code-CL','code-A','code-TR','code-TG','code-OT'].forEach(c => cell.classList.remove(c));
+        if(code){ cell.classList.add('code-' + code); cell.textContent = code; schedule[cell.dataset.day] = schedule[cell.dataset.day] || {}; schedule[cell.dataset.day][cell.dataset.time] = code; }
+        else { cell.textContent = ''; if(schedule[cell.dataset.day]){ delete schedule[cell.dataset.day][cell.dataset.time]; if(Object.keys(schedule[cell.dataset.day]).length===0) delete schedule[cell.dataset.day]; } }
+        if(update) updateHidden();
+      computeSummary();
+    }
+
+    function updateHidden(){ if(scheduleInput) scheduleInput.value = JSON.stringify(schedule); }
+
+    gridSlots.forEach(cell =>{
+      // helper to toggle/apply the active code for a single cell
+      const applyToggle = (ev) => {
+        try{ if(ev && ev.preventDefault) ev.preventDefault(); }catch(e){}
+        if(activeCode){ if(cell.dataset.code === activeCode) setCellCode(cell,''); else setCellCode(cell, activeCode); }
+        else { setCellCode(cell,''); }
+      };
+
+      // desktop mouse interactions
+      cell.addEventListener('mousedown', (e)=>{ e.preventDefault(); isMouseDown = true; applyToggle(e); });
+      cell.addEventListener('mouseenter', (e)=>{ if(isMouseDown){ if(activeCode) setCellCode(cell, activeCode); else setCellCode(cell,''); } });
+
+      // touch / mobile interactions: tap to apply, and touchstart to begin painting
+      cell.addEventListener('click', (e)=>{ applyToggle(e); });
+      cell.addEventListener('touchstart', (e)=>{ isMouseDown = true; applyToggle(e); }, {passive:false});
+    });
+
+    document.addEventListener('mouseup', ()=>{ isMouseDown = false; });
+    document.addEventListener('touchend', ()=>{ isMouseDown = false; });
+
+    // Initialize
+    applyInitial();
+    // Compute initial summary after applying schedule
+    computeSummary();
+    try{ if(typeof updateMobileColumnWidths === 'function') updateMobileColumnWidths(); }catch(e){}
+    try{ if(typeof toggleAmPmBodyLabels === 'function') toggleAmPmBodyLabels(); }catch(e){}
+
+    // Recompute on weekly salary input changes
+    const posWeekly = document.getElementById('id_weekly_salary'); if(posWeekly) posWeekly.addEventListener('input', computeSummary);
+
+    // Position picker: sync with hidden Django field `id_position`.
+    const kitchenForm = document.getElementById('kitchen-time-form');
+    let hiddenPosition = document.getElementById('id_position');
+    if(!hiddenPosition && kitchenForm){ hiddenPosition = document.createElement('input'); hiddenPosition.type = 'hidden'; hiddenPosition.name = 'position'; hiddenPosition.id = 'id_position'; kitchenForm.appendChild(hiddenPosition); }
+    const posPicker = document.getElementById('id_position_picker');
+    const posCustom = document.getElementById('id_position_custom');
+    function updateHiddenPosition(){ if(!hiddenPosition) return; if(posPicker.value === 'Custom'){ hiddenPosition.value = posCustom.value || ''; } else { hiddenPosition.value = posPicker.value || ''; } }
+    // initialize picker from existing hidden value
+    if(posPicker){
+      const initVal = hiddenPosition?.value || '';
+      if(initVal && ['Director','Cook','Teacher'].includes(initVal)){
+        posPicker.value = initVal;
+        posCustom.style.display = 'none';
+      } else if(initVal){
+        posPicker.value = 'Custom';
+        posCustom.style.display = '';
+        posCustom.value = initVal;
+      } else {
+        posPicker.value = '';
+        posCustom.style.display = 'none';
+      }
+      // wire events
+      posPicker.addEventListener('change', ()=>{ if(posPicker.value === 'Custom'){ posCustom.style.display = ''; posCustom.focus(); } else { posCustom.style.display = 'none'; } updateHiddenPosition(); });
+      posCustom.addEventListener('input', updateHiddenPosition);
+      // ensure hidden is set initially
+      updateHiddenPosition();
+    }
+
+    // Show/hide day columns based on week beginning / week ending inputs
+    const weekBeginInput = document.getElementById('id_week_beginning');
+    const weekEndInput = document.getElementById('id_week_ending');
+    const headerDayThs = Array.from(document.querySelectorAll('.grid-wrap table thead th[data-day]'));
+    const timeBeginInput = document.getElementById('id_time_begin');
+    const timeEndInput = document.getElementById('id_time_end');
+    const timeRows = Array.from(document.querySelectorAll('.grid-wrap table tbody tr[data-time]'));
+
+    function parseInputDate(s){ if(!s) return null; const parts = s.split('-').map(Number); if(parts.length!==3) return null; return new Date(parts[0], parts[1]-1, parts[2]); }
+
+    const dayKeyToWeekday = { mon:1, tue:2, wed:3, thu:4, fri:5, sat:6, sun:0 };
+
+    function rangeIncludesWeekday(startDate, endDate, weekday){
+      if(!startDate || !endDate) return true;
+      if(startDate > endDate){ const tmp = startDate; startDate = endDate; endDate = tmp; }
+      const cur = new Date(startDate);
+      while(cur <= endDate){ if(cur.getDay() === weekday) return true; cur.setDate(cur.getDate()+1); }
+      return false;
+    }
+
+    function updateDayVisibility(){
+      const startVal = weekBeginInput?.value || '';
+      const endVal = weekEndInput?.value || '';
+      const startDate = parseInputDate(startVal);
+      const endDate = parseInputDate(endVal);
+      headerDayThs.forEach(th => {
+        const key = th.dataset.day;
+        const weekday = dayKeyToWeekday[key];
+        let visible = true;
+        if(startDate || endDate){
+          if(startDate && endDate){ visible = rangeIncludesWeekday(startDate, endDate, weekday); }
+          else if(startDate && !endDate){ // only start: show weekdays that occur on/after start in near future
+            let found = false; const limit = new Date(startDate); limit.setDate(limit.getDate()+14); let cur = new Date(startDate);
+            while(cur <= limit){ if(cur.getDay() === weekday && cur >= startDate){ found = true; break; } cur.setDate(cur.getDate()+1); }
+            visible = found;
+          } else if(endDate && !startDate){ let found = false; const limit = new Date(endDate); limit.setDate(limit.getDate()-14); let cur = new Date(limit);
+            while(cur <= endDate){ if(cur.getDay() === weekday){ found = true; break; } cur.setDate(cur.getDate()+1); }
+            visible = found;
+          }
+        }
+        th.style.display = visible ? '' : 'none';
+        // hide/show corresponding cells
+        document.querySelectorAll('.grid-wrap table tbody td[data-day="'+key+'"]').forEach(td => td.style.display = visible ? '' : 'none');
+      });
+      // recompute summary after toggling visibility so totals match visible cells
+      computeSummary();
+      try{ if(typeof updateMobileColumnWidths === 'function') updateMobileColumnWidths(); }catch(e){}
+    }
+
+    if(weekBeginInput) weekBeginInput.addEventListener('change', updateDayVisibility);
+    if(weekEndInput) weekEndInput.addEventListener('change', updateDayVisibility);
+
+    // set initial visibility once on load
+    updateDayVisibility();
+    // Time visibility: show/hide rows based on time begin/end inputs
+    function parseTimeToMinutes(s){ if(!s) return null; const parts = s.split(':').map(Number); if(parts.length<2 || isNaN(parts[0]) || isNaN(parts[1])) return null; return parts[0]*60 + parts[1]; }
+
+    // Snap given time string to nearest 30-minute mark (HH:MM)
+    function snapTimeTo30(s){
+      if(!s) return s;
+      const parts = s.split(':').map(Number);
+      if(parts.length<2 || isNaN(parts[0]) || isNaN(parts[1])) return s;
+      const total = parts[0]*60 + parts[1];
+      let snapped = Math.round(total / 30) * 30;
+      const max = 24*60;
+      if(snapped >= max) snapped = max - 30; // cap to 23:30
+      const hh = Math.floor(snapped / 60).toString().padStart(2,'0');
+      const mm = (snapped % 60).toString().padStart(2,'0');
+      return `${hh}:${mm}`;
+    }
+
+    // Mobile-only: dynamically size visible day columns to evenly fill remaining width
+    function updateMobileColumnWidths(){
+      try{
+        if(!(window.matchMedia && window.matchMedia('(max-width: 999px)').matches)){
+          // clear any widths we previously set
+          document.querySelectorAll('.grid-wrap table thead th, .grid-wrap table tbody td').forEach(el=>{ try{ el.style.removeProperty('width'); }catch(e){} });
+          return;
+        }
+        const timeWidth = 72; // px for the first 'Time' column on mobile
+        const table = document.querySelector('.grid-wrap table');
+        if(!table) return;
+        const visibleThs = Array.from(table.querySelectorAll('thead th[data-day]')).filter(th => getComputedStyle(th).display !== 'none');
+        const visibleCount = visibleThs.length;
+        // set time column fixed width
+        const timeTh = table.querySelector('thead th:first-child');
+        if(timeTh) timeTh.style.setProperty('width', timeWidth + 'px', 'important');
+        if(visibleCount <= 0){
+          // reset others
+          table.querySelectorAll('thead th[data-day], tbody td[data-day]').forEach(el=> { try{ el.style.removeProperty('width'); }catch(e){} });
+          return;
+        }
+        const calcStr = `calc((100% - ${timeWidth}px) / ${visibleCount})`;
+        visibleThs.forEach(th => { th.style.setProperty('width', calcStr, 'important'); const day = th.dataset.day; table.querySelectorAll(`tbody td[data-day="${day}"]`).forEach(td => td.style.setProperty('width', calcStr, 'important')); });
+
+        // Verify widths applied; if they were blocked by stylesheet specificity, insert a <colgroup> fallback
+        try{
+          const testTh = visibleThs[0];
+          if(testTh){
+            const desiredPx = (table.clientWidth - timeWidth) / Math.max(1, visibleCount);
+            const appliedPx = testTh.getBoundingClientRect().width;
+            if(Math.abs(appliedPx - desiredPx) > 4){
+              // build a colgroup matching all header columns (including hidden ones)
+              const allThs = Array.from(table.querySelectorAll('thead th'));
+              const available = Math.max(0, table.clientWidth - timeWidth);
+              const per = Math.floor(available / Math.max(1, visibleCount));
+              const colgroup = document.createElement('colgroup');
+              allThs.forEach((th, idx) => {
+                const col = document.createElement('col');
+                if(idx === 0){ col.style.width = timeWidth + 'px'; }
+                else {
+                  if(getComputedStyle(th).display === 'none') col.style.width = '0px';
+                  else {
+                    // last visible column picks up remaining pixels
+                    const visibleIndex = Array.from(allThs.slice(1)).filter(x => getComputedStyle(x).display !== 'none').indexOf(th) + 1;
+                    if(visibleIndex === visibleCount){ // last visible
+                      const used = per * (visibleCount - 1);
+                      const lastWidth = Math.max(0, available - used);
+                      col.style.width = lastWidth + 'px';
+                    } else {
+                      col.style.width = per + 'px';
+                    }
+                  }
+                }
+                colgroup.appendChild(col);
+              });
+              // remove existing colgroup and insert our fallback
+              const existing = table.querySelector('colgroup'); if(existing) existing.remove();
+              table.insertBefore(colgroup, table.firstChild);
+            }
+          }
+        }catch(e){ console.debug('tt: colgroup fallback failed', e); }
+      }catch(err){ /* ignore */ }
+    }
+
+    function updateTimeVisibility(){
+      const startVal = timeBeginInput?.value || '';
+      const endVal = timeEndInput?.value || '';
+      const startMin = parseTimeToMinutes(startVal);
+      const endMin = parseTimeToMinutes(endVal);
+      timeRows.forEach(tr =>{
+        const rowTime = tr.dataset.time; // 'HH:MM'
+        const rowMin = parseTimeToMinutes(rowTime);
+        let visible = true;
+        if(startMin !== null && endMin !== null){
+          if(startMin <= endMin){ visible = (rowMin >= startMin && rowMin <= endMin); }
+          else { // wrap around midnight
+            visible = (rowMin >= startMin || rowMin <= endMin);
+          }
+        } else if(startMin !== null && endMin === null){ visible = (rowMin >= startMin); }
+        else if(endMin !== null && startMin === null){ visible = (rowMin <= endMin); }
+        tr.style.display = visible ? '' : 'none';
+      });
+      computeSummary();
+    }
+
+    // Enforce 30-minute increments and update visibility when changed
+    if(timeBeginInput){
+      timeBeginInput.setAttribute('step','1800');
+      timeBeginInput.addEventListener('change', ()=>{ timeBeginInput.value = snapTimeTo30(timeBeginInput.value); updateTimeVisibility(); });
+      timeBeginInput.addEventListener('blur', ()=>{ timeBeginInput.value = snapTimeTo30(timeBeginInput.value); });
+    }
+    if(timeEndInput){
+      timeEndInput.setAttribute('step','1800');
+      timeEndInput.addEventListener('change', ()=>{ timeEndInput.value = snapTimeTo30(timeEndInput.value); updateTimeVisibility(); });
+      timeEndInput.addEventListener('blur', ()=>{ timeEndInput.value = snapTimeTo30(timeEndInput.value); });
+    }
+    // initial time visibility
+    updateTimeVisibility();
+    try{ if(typeof updateMobileColumnWidths === 'function') updateMobileColumnWidths(); }catch(e){}
+
+    // Toggle the details summary text between "Show Details" and "Hide Details"
+    const cacfpDetails = document.getElementById('cacfp-details');
+    if(cacfpDetails){
+      const cacfpSummary = document.getElementById('cacfp-details-summary') || cacfpDetails.querySelector('summary');
+      const updateCacfpSummaryText = () => { if(cacfpSummary) cacfpSummary.textContent = (cacfpDetails.open ? 'Hide Details' : 'Show Details'); };
+      cacfpDetails.addEventListener('toggle', updateCacfpSummaryText);
+      // set initial text based on current state
+      updateCacfpSummaryText();
+      // wire the bottom-right Hide Details button to close the details
+      const cacfpHideBtn = document.getElementById('cacfp-hide-btn');
+      if(cacfpHideBtn){ cacfpHideBtn.addEventListener('click', ()=>{ cacfpDetails.open = false; }); }
+    }
+    // Ensure the hide button is positioned at the panel corner at runtime (override any conflicting rules)
+    (function(){
+      const hideBtn = document.getElementById('cacfp-hide-btn');
+      const panel = document.getElementById('cacfp-panel');
+      if(hideBtn && panel){
+        panel.style.position = panel.style.position || 'relative';
+        hideBtn.style.position = 'absolute';
+        hideBtn.style.right = '12px';
+        hideBtn.style.bottom = '12px';
+        hideBtn.style.zIndex = '9999';
+        hideBtn.style.display = (document.getElementById('cacfp-details')?.open ? 'inline-flex' : 'none');
+        // keep visibility in sync with details toggle
+        document.getElementById('cacfp-details')?.addEventListener('toggle', (e)=>{ hideBtn.style.display = e.target.open ? 'inline-flex' : 'none'; });
+      }
+    })();
+    // Mobile right panel: week beginning/ending and time beginning/ending
+    (function(){
+      const mobileContainer = document.getElementById('mobileControls');
+      const leftPane = document.querySelector('.left-pane');
+      const leftInputs = leftPane ? leftPane.querySelector('.inputs') : null;
+
+      let mobileRightPanel = document.getElementById('mobileRightPanel');
+      if(!mobileRightPanel){
+        mobileRightPanel = document.createElement('div');
+        mobileRightPanel.id = 'mobileRightPanel';
+        mobileRightPanel.className = 'mobile-right-panel';
+        mobileRightPanel.setAttribute('aria-hidden','true');
+        document.body.appendChild(mobileRightPanel);
+      }
+
+      const mq = window.matchMedia && window.matchMedia('(max-width: 999px)');
+
+      const weekBeginRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_week_beginning"]') ? leftPane.querySelector('.form-row label[for="id_week_beginning"]').closest('.form-row') : null) : null;
+      const weekEndRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_week_ending"]') ? leftPane.querySelector('.form-row label[for="id_week_ending"]').closest('.form-row') : null) : null;
+      const timeBeginRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_time_begin"]') ? leftPane.querySelector('.form-row label[for="id_time_begin"]').closest('.form-row') : null) : null;
+      const timeEndRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_time_end"]') ? leftPane.querySelector('.form-row label[for="id_time_end"]').closest('.form-row') : null) : null;
+
+      function updateRightControls(e){
+        const matches = (e && typeof e === 'object' && 'matches' in e) ? e.matches : (mq ? mq.matches : false);
+        if(!mobileContainer || !leftInputs) return;
+        if(matches){
+          [weekBeginRow, weekEndRow, timeBeginRow, timeEndRow].forEach(r => { if(r && !mobileRightPanel.contains(r)) mobileRightPanel.appendChild(r); });
+          if(!mobileContainer.contains(leftInputs)) mobileContainer.appendChild(leftInputs);
+          mobileRightPanel.removeAttribute('aria-hidden');
+        } else {
+          [weekBeginRow, weekEndRow, timeBeginRow, timeEndRow].forEach(r => { if(r && !leftInputs.contains(r)) leftInputs.appendChild(r); });
+          if(leftPane && !leftPane.contains(leftInputs)) leftPane.insertBefore(leftInputs, leftPane.firstChild);
+          mobileRightPanel.setAttribute('aria-hidden','true');
+          mobileRightPanel.classList.remove('open');
+        }
+      }
+
+      const mobileRightBtn = document.getElementById('mobile-right-btn');
+      function toggleRightPanel(e){
+        if(!mq || !mq.matches) return;
+        if(!mobileRightPanel) return;
+        const isOpen = mobileRightPanel.classList.toggle('open');
+        mobileRightPanel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        if(e && e.preventDefault) e.preventDefault();
+      }
+      if(mobileRightBtn) mobileRightBtn.addEventListener('click', toggleRightPanel);
+
+      // close panel when clicking outside
+      document.addEventListener('click', function(evt){
+        if(!mq || !mq.matches) return;
+        if(!mobileRightPanel.classList.contains('open')) return;
+        if(mobileRightPanel.contains(evt.target) || (mobileRightBtn && mobileRightBtn.contains(evt.target))) return;
+        mobileRightPanel.classList.remove('open'); mobileRightPanel.setAttribute('aria-hidden','true');
+      });
+
+      if(mq){ if(mq.addEventListener) mq.addEventListener('change', updateRightControls); else if(mq.addListener) mq.addListener(updateRightControls); }
+      setTimeout(()=>updateRightControls(mq), 0);
+    })();
+
+    // Populate template loader dropdown if server passed templates
+    try{
+      const templates = {{ kitchen_templates_json|default:'[]'|safe }};
+      const loader = document.getElementById('id_template_loader');
+      if(loader && Array.isArray(templates)){
+        templates.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.employee_name} — ${t.position || t.center_name}`;
+          loader.appendChild(opt);
+        });
+        loader.addEventListener('change', (e)=>{
+          const id = e.target.value;
+          const selectedHidden = document.getElementById('id_selected_template_id');
+          const saveBtn = document.getElementById('save-template-btn');
+          if(!id){
+            if(selectedHidden) selectedHidden.value = '';
+            if(saveBtn) saveBtn.textContent = 'Save as Template';
+            return;
+          }
+          const selected = templates.find(x => String(x.id) === String(id));
+          if(!selected){
+            if(selectedHidden) selectedHidden.value = '';
+            if(saveBtn) saveBtn.textContent = 'Save as Template';
+            return;
+          }
+          // mark selected template id so server will update instead of creating duplicates
+          if(selectedHidden) selectedHidden.value = selected.id;
+          if(saveBtn) saveBtn.textContent = 'Update Template';
+          // populate fields
+          const weeklyInput = document.getElementById('id_weekly_salary'); if(weeklyInput) weeklyInput.value = selected.weekly_salary || '0.00';
+          // center and employee name
+          const centerInput = document.getElementById('id_center_name'); if(centerInput) centerInput.value = selected.center_name || '';
+          const employeeInput = document.getElementById('id_employee_name'); if(employeeInput) employeeInput.value = selected.employee_name || '';
+          if(selected.time_begin){
+            try{ const v = (typeof snapTimeTo30 === 'function') ? snapTimeTo30(selected.time_begin) : selected.time_begin; if(typeof timeBeginInput !== 'undefined' && timeBeginInput) timeBeginInput.value = v; else document.getElementById('id_time_begin').value = v; }catch(e){ if(selected.time_begin) document.getElementById('id_time_begin').value = selected.time_begin; }
+          }
+          if(selected.time_end){
+            try{ const v = (typeof snapTimeTo30 === 'function') ? snapTimeTo30(selected.time_end) : selected.time_end; if(typeof timeEndInput !== 'undefined' && timeEndInput) timeEndInput.value = v; else document.getElementById('id_time_end').value = v; }catch(e){ if(selected.time_end) document.getElementById('id_time_end').value = selected.time_end; }
+          }
+          // Update time row visibility to match the loaded time range
+          try{ if(typeof updateTimeVisibility === 'function') updateTimeVisibility(); }catch(e){}
+          // position -> sync hidden input via existing updateHiddenPosition function
+          const posHidden = document.getElementById('id_position');
+          if(posHidden) posHidden.value = selected.position || '';
+          // set visible picker
+          const posPicker = document.getElementById('id_position_picker');
+          const posCustom = document.getElementById('id_position_custom');
+          if(posPicker){
+            if(['Director','Cook','Teacher'].includes(selected.position)){
+              posPicker.value = selected.position;
+              if(posCustom) posCustom.style.display = 'none';
+            } else if(selected.position){
+              posPicker.value = 'Custom'; if(posCustom) { posCustom.style.display = ''; posCustom.value = selected.position; }
+            } else { posPicker.value = ''; if(posCustom) posCustom.style.display = 'none'; }
+          }
+          try{ if(typeof updateHiddenPosition === 'function') updateHiddenPosition(); }catch(e){}
+          // set week beginning/ending based on saved template's weekday mapping (previous week)
+          try{
+            const dayDates = selected.day_dates || [];
+            if(Array.isArray(dayDates) && dayDates.length){
+              // dayDates are ISO date strings mapped to the previous week by the server
+              const sorted = dayDates.slice().sort();
+              const begin = sorted[0];
+              const end = sorted[sorted.length-1];
+              const wkBeginInput = document.getElementById('id_week_beginning');
+              const wkEndInput = document.getElementById('id_week_ending');
+              if(wkBeginInput) wkBeginInput.value = begin;
+              if(wkEndInput) wkEndInput.value = end;
+            }
+          }catch(e){}
+          // ensure UI reflects visible days/time after changing week inputs
+          try{ if(typeof updateDayVisibility === 'function') updateDayVisibility(); }catch(e){}
+          // apply schedule grid
+          try{
+            schedule = selected.schedule_json || {};
+            // clear grid first
+            document.querySelectorAll('.grid-wrap .slot').forEach(cell => { cell.dataset.code = ''; cell.textContent = ''; ['code-C','code-MS','code-CL','code-A','code-TR','code-TG','code-OT'].forEach(c=>cell.classList.remove(c)); });
+            // apply schedule
+            Object.keys(schedule).forEach(dayKey => {
+              const timesForDay = schedule[dayKey] || {};
+              Object.keys(timesForDay).forEach(tm => {
+                const code = timesForDay[tm];
+                const cell = document.querySelector(`.grid-wrap .slot[data-day="${dayKey}"][data-time="${tm}"]`);
+                if(cell) { cell.dataset.code = code; if(code) cell.classList.add('code-' + code); cell.textContent = code || ''; }
+              });
+            });
+            updateHidden(); try{ computeSummary(); }catch(e){}
+          }catch(err){ console.warn('Error applying template schedule', err); }
+        });
+      }
+    }catch(e){ /* ignore */ }
+
+    // Mobile bottom nav + bubble legend behavior (mobile <1000px)
+    // Move only center/employee/position/salary rows into a bottom-left panel on mobile
+    (function(){
+      const mobileContainer = document.getElementById('mobileControls');
+      const leftPane = document.querySelector('.left-pane');
+      const leftInputs = leftPane ? leftPane.querySelector('.inputs') : null;
+
+      // create or find the mobile-left panel that will hold specific inputs
+      let mobileLeftPanel = document.getElementById('mobileLeftPanel');
+      if(!mobileLeftPanel){
+        mobileLeftPanel = document.createElement('div');
+        mobileLeftPanel.id = 'mobileLeftPanel';
+        mobileLeftPanel.className = 'mobile-left-panel';
+        mobileLeftPanel.setAttribute('aria-hidden','true');
+        document.body.appendChild(mobileLeftPanel);
+      }
+
+      const mq = window.matchMedia && window.matchMedia('(max-width: 999px)');
+
+      function findRowByLabel(forAttr){
+        if(!leftPane) return null;
+        const lbl = leftPane.querySelector('.form-row label[for="' + forAttr + '"]');
+        return lbl ? lbl.closest('.form-row') : null;
+      }
+
+      const centerRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_center_name"]') ? leftPane.querySelector('.form-row label[for="id_center_name"]').closest('.form-row') : null) : null;
+      const employeeRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_employee_name"]') ? leftPane.querySelector('.form-row label[for="id_employee_name"]').closest('.form-row') : null) : null;
+      const positionRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_position_picker"]') ? leftPane.querySelector('.form-row label[for="id_position_picker"]').closest('.form-row') : null) : null;
+      const salaryRow = leftPane ? (leftPane.querySelector('.form-row label[for="id_weekly_salary"]') ? leftPane.querySelector('.form-row label[for="id_weekly_salary"]').closest('.form-row') : null) : null;
+      const loaderRow = leftPane ? (leftPane.querySelector('.form-row select#id_template_loader') ? leftPane.querySelector('.form-row select#id_template_loader').closest('.form-row') : null) : null;
+      const saveRow = leftPane ? (leftPane.querySelector('#save-template-btn') ? leftPane.querySelector('#save-template-btn').closest('.form-row') : null) : null;
+
+      function updateControls(e){
+        const matches = (e && typeof e === 'object' && 'matches' in e) ? e.matches : (mq ? mq.matches : false);
+        if(!mobileContainer || !leftInputs) return;
+        if(matches){
+          // move specific rows into the bottom-left panel (include template loader)
+          [loaderRow, centerRow, employeeRow, positionRow, salaryRow, saveRow].forEach(r => { if(r && !mobileLeftPanel.contains(r)) mobileLeftPanel.appendChild(r); });
+          // move the remaining inputs container (it will now exclude the moved rows)
+          if(!mobileContainer.contains(leftInputs)) mobileContainer.appendChild(leftInputs);
+          mobileLeftPanel.removeAttribute('aria-hidden');
+        } else {
+          // move rows back into the left inputs area
+          [loaderRow, centerRow, employeeRow, positionRow, salaryRow, saveRow].forEach(r => { if(r && !leftInputs.contains(r)) leftInputs.appendChild(r); });
+          if(leftPane && !leftPane.contains(leftInputs)) leftPane.insertBefore(leftInputs, leftPane.firstChild);
+          mobileLeftPanel.setAttribute('aria-hidden','true');
+          mobileLeftPanel.classList.remove('open');
+        }
+      }
+
+      // toggle panel when left nav btn is pressed
+      const mobileLeftBtn = document.getElementById('mobile-left-btn');
+      function toggleLeftPanel(e){
+        if(!mq || !mq.matches) return;
+        if(!mobileLeftPanel) return;
+        const isOpen = mobileLeftPanel.classList.toggle('open');
+        mobileLeftPanel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        if(e && e.preventDefault) e.preventDefault();
+      }
+      if(mobileLeftBtn) mobileLeftBtn.addEventListener('click', toggleLeftPanel);
+
+      // close panel when clicking outside
+      document.addEventListener('click', function(evt){
+        if(!mq || !mq.matches) return;
+        if(!mobileLeftPanel.classList.contains('open')) return;
+        if(mobileLeftPanel.contains(evt.target) || (mobileLeftBtn && mobileLeftBtn.contains(evt.target))) return;
+        mobileLeftPanel.classList.remove('open'); mobileLeftPanel.setAttribute('aria-hidden','true');
+      });
+
+      if(mq){ if(mq.addEventListener) mq.addEventListener('change', updateControls); else if(mq.addListener) mq.addListener(updateControls); }
+      setTimeout(()=>updateControls(mq), 0);
+    })();
+    (function(){
+      function isMobileView(){ return window.matchMedia && window.matchMedia('(max-width: 999px)').matches; }
+      const legendPickerBtn = document.getElementById('legend-picker-btn');
+      const mobileLegend = document.getElementById('mobileLegend');
+      const mobileClear = document.getElementById('mobile-clear-all-btn');
+
+      function openLegend(){ if(!mobileLegend) return; mobileLegend.classList.add('open'); mobileLegend.setAttribute('aria-hidden','false'); if(legendPickerBtn) legendPickerBtn.setAttribute('aria-expanded','true'); }
+      function closeLegend(){ if(!mobileLegend) return; mobileLegend.classList.remove('open'); mobileLegend.setAttribute('aria-hidden','true'); if(legendPickerBtn) legendPickerBtn.setAttribute('aria-expanded','false'); }
+
+      if(legendPickerBtn){
+        const toggleHandler = function(e){
+          // only toggle when the mobile bottom nav is visible
+          const nav = document.getElementById('mobileBottomNav');
+          const navVisible = nav && getComputedStyle(nav).display !== 'none';
+          if(!navVisible) return;
+          if(mobileLegend && mobileLegend.classList.contains('open')) closeLegend(); else openLegend();
+          e.preventDefault();
+        };
+        legendPickerBtn.addEventListener('click', toggleHandler);
+        legendPickerBtn.addEventListener('touchstart', toggleHandler, {passive:false});
+      }
+
+      // Reuse legend button logic: wire mobile legend buttons to the existing handler
+      const mobileLegendBtns = Array.from(document.querySelectorAll('#mobileLegend .code-btn'));
+      mobileLegendBtns.forEach(btn => btn.addEventListener('click', function(e){ e.stopPropagation(); const code = btn.dataset.code || ''; // mimic clicking the desktop legend button
+        const matched = Array.from(document.querySelectorAll('.legend-grid-wrap .code-btn')).find(b => b.dataset.code === code);
+        if(matched) matched.click(); else { // if no desktop counterpart (clear), handle directly
+          if(code === ''){ activeCode = null; document.querySelectorAll('.legend-grid-wrap .code-btn').forEach(b=>b.classList.remove('active')); }
+        }
+        // small delay then close
+        setTimeout(closeLegend, 120);
+      }));
+
+      // mobile clear duplicates desktop clear behavior
+      if(mobileClear){ mobileClear.addEventListener('click', function(){ document.querySelectorAll('.grid-wrap .slot').forEach(cell => { if(getComputedStyle(cell).display !== 'none') setCellCode(cell, '', true); }); closeLegend(); }); }
+
+      // Keep nav hidden on desktop; ensure legend closed on desktop
+      const mq = window.matchMedia('(max-width: 999px)');
+      function updateNavVisibility(){ const nav = document.getElementById('mobileBottomNav'); if(!nav) return; if(mq.matches){ nav.setAttribute('aria-hidden','false'); } else { nav.setAttribute('aria-hidden','true'); closeLegend(); } }
+      if(mq.addEventListener) mq.addEventListener('change', updateNavVisibility); else if(mq.addListener) mq.addListener(updateNavVisibility);
+      updateNavVisibility();
+    })();
+
+    // Move the template loader select into a centered mobile container above the table on small screens
+    (function(){
+      const mq = window.matchMedia && window.matchMedia('(max-width: 999px)');
+      const mobileContainer = document.getElementById('table-loader-mobile');
+      const tableActions = mobileContainer ? mobileContainer.parentElement : null;
+      const loader = document.getElementById('id_template_loader');
+      let loaderOriginalParent = loader ? loader.parentNode : null;
+      let loaderOriginalNext = loader ? loader.nextSibling : null;
+      let loaderOriginalStyle = loader ? loader.getAttribute('style') : null;
+
+      function moveToMobile(){
+        if(!mobileContainer || !loader) return;
+        if(!mobileContainer.contains(loader)) mobileContainer.appendChild(loader);
+        // remove any inline width:100% !important so the select can be constrained by CSS
+        try{
+          const s = loader.getAttribute('style') || '';
+          const cleaned = s.replace(/width\s*:\s*100%\s*!important;?/i, '');
+          loader.setAttribute('style', cleaned + 'max-width:520px; display:block; margin:0 auto;');
+        }catch(err){}
+        // ensure the header row is visible (table row display)
+        try{ var loaderRow = mobileContainer.closest('tr'); if(loaderRow) loaderRow.style.display = 'table-row'; }catch(e){}
+        mobileContainer.setAttribute('aria-hidden','false');
+      }
+      function moveToOriginal(){
+        if(!loader || !loaderOriginalParent) return;
+        if(loaderOriginalParent.contains(loader)) return;
+        if(loaderOriginalNext && loaderOriginalNext.parentNode === loaderOriginalParent) loaderOriginalParent.insertBefore(loader, loaderOriginalNext);
+        else loaderOriginalParent.appendChild(loader);
+        // restore original inline style if present
+        if(loaderOriginalStyle !== null) loader.setAttribute('style', loaderOriginalStyle); else loader.removeAttribute('style');
+        if(mobileContainer) { try{ var row = mobileContainer.closest('tr'); if(row) row.style.display = 'none'; }catch(e){} mobileContainer.setAttribute('aria-hidden','true'); }
+        if(tableActions) tableActions.setAttribute('aria-hidden','true');
+      }
+
+      function handleMqChange(e){
+        if((e && e.matches) || (!e && mq && mq.matches)) moveToMobile(); else moveToOriginal();
+      }
+
+      // initial placement
+      handleMqChange();
+
+      if(mq){ if(mq.addEventListener) mq.addEventListener('change', handleMqChange); else if(mq.addListener) mq.addListener(handleMqChange); }
+    })();
+
+    // Ensure grid-wrap padding keeps table headers visible under the fixed loader on mobile
+    (function(){
+      function syncGridPadding(){
+        var tableActions = document.querySelector('.table-actions');
+        var gridWrap = document.querySelector('.grid-wrap');
+        if(!tableActions || !gridWrap) return;
+        var taStyle = getComputedStyle(tableActions);
+        // only adjust paddingTop when the actions bar is fixed (floating) in mobile
+        if(taStyle.display === 'none' || window.innerWidth > 999 || taStyle.position !== 'fixed'){
+          gridWrap.style.paddingTop = '';
+        } else {
+          var taRect = tableActions.getBoundingClientRect();
+          var gridRect = gridWrap.getBoundingClientRect();
+          var offset = Math.max(0, taRect.bottom - gridRect.top);
+          gridWrap.style.paddingTop = offset + 'px';
+        }
+
+        // Ensure grid-wrap has enough bottom padding so final rows can scroll above the fixed mobile nav
+        try{
+          var bottomNav = document.getElementById('mobileBottomNav');
+          if(bottomNav){
+            var bnStyle = getComputedStyle(bottomNav);
+            if(bnStyle.display !== 'none' && window.innerWidth <= 999){
+              var bnRect = bottomNav.getBoundingClientRect();
+              // small breathing room so content isn't flush against the bar
+              var extra = 12;
+              gridWrap.style.paddingBottom = (Math.ceil(bnRect.height) + extra) + 'px';
+            } else {
+              gridWrap.style.paddingBottom = '';
+            }
+          } else {
+            gridWrap.style.paddingBottom = '';
+          }
+        }catch(e){ /* ignore */ }
+      }
+      var ttTimer;
+      window.addEventListener('resize', function(){ clearTimeout(ttTimer); ttTimer = setTimeout(function(){ syncGridPadding(); try{ if(typeof updateMobileColumnWidths === 'function') updateMobileColumnWidths(); }catch(e){} try{ if(typeof toggleAmPmBodyLabels === 'function') toggleAmPmBodyLabels(); }catch(e){} }, 120); });
+      window.addEventListener('orientationchange', function(){ setTimeout(syncGridPadding, 120); });
+      if(window.ResizeObserver){
+        var ta = document.querySelector('.table-actions');
+        if(ta){ var ro = new ResizeObserver(syncGridPadding); ro.observe(ta); }
+      }
+      var mobileContainer = document.getElementById('table-loader-mobile');
+      if(mobileContainer){ var mo = new MutationObserver(syncGridPadding); mo.observe(mobileContainer, { attributes: true, childList: true, subtree: true }); }
+      setTimeout(syncGridPadding, 60);
+    })();
+
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  (function(){
+    const mq = window.matchMedia && window.matchMedia('(max-width: 999px)');
+    const loader = document.getElementById('id_template_loader');
+    if(!loader) return;
+    const loaderRow = loader.closest ? (loader.closest('.form-row') || loader) : loader;
+    const originalParent = loaderRow && loaderRow.parentNode ? loaderRow.parentNode : null;
+    const originalNext = loaderRow && loaderRow.nextSibling ? loaderRow.nextSibling : null;
+    let mobileLeftPanel = document.getElementById('mobileLeftPanel');
+    if(!mobileLeftPanel){
+      mobileLeftPanel = document.createElement('div');
+      mobileLeftPanel.id = 'mobileLeftPanel';
+      mobileLeftPanel.className = 'mobile-left-panel';
+      mobileLeftPanel.setAttribute('aria-hidden','true');
+      document.body.appendChild(mobileLeftPanel);
+    }
+
+    function placeLoader(){
+      try{
+        if(mq && mq.matches){
+          if(loaderRow && !mobileLeftPanel.contains(loaderRow)) mobileLeftPanel.appendChild(loaderRow);
+          mobileLeftPanel.setAttribute('aria-hidden','true');
+        } else {
+          if(originalParent && loaderRow && !originalParent.contains(loaderRow)){
+            if(originalNext && originalNext.parentNode === originalParent) originalParent.insertBefore(loaderRow, originalNext);
+            else originalParent.appendChild(loaderRow);
+          }
+        }
+        // remove stray copy inside table header if present
+        const tableMobile = document.getElementById('table-loader-mobile');
+        if(tableMobile && tableMobile.contains(loader) && (!mobileLeftPanel.contains(loader))){
+          try{ tableMobile.innerHTML = ''; }catch(_e){}
+        }
+      }catch(e){}
+    }
+
+    placeLoader();
+    if(mq){ if(mq.addEventListener) mq.addEventListener('change', placeLoader); else if(mq.addListener) mq.addListener(placeLoader); }
+    window.addEventListener('resize', function(){ try{ placeLoader(); }catch(e){} try{ if(typeof updateMobileColumnWidths === 'function') updateMobileColumnWidths(); }catch(e){} try{ if(typeof toggleAmPmBodyLabels === 'function') toggleAmPmBodyLabels(); }catch(e){} });
+  })();
+});
+</script>
+{% endblock %}

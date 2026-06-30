@@ -28,7 +28,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-e84gb%3c5fb5(s0!imu
 SECRET_KEY_FALLBACKS = [
     os.getenv("DJANGO_SECRET_KEY_FALLBACK", "django-insecure-e84gb%3c5fb5(s0!imu3b&n_=&@)c4j-+i%h1y!tt$e9l!+k=*"),
 ]
-DEBUG = False
+DEBUG = True
 ALLOWED_HOSTS = ['44.209.83.215', 'localhost', '127.0.0.1', 'tot-time.com', 'www.tot-time.com']
 
 # Application definition

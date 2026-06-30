@@ -81,6 +81,14 @@
             color: #eef1f3;
             opacity: 0.95;
         }
+        /* Back button (grey, clickable) */
+        .btn-square.btn-square-back {
+            background: #6c757d;
+            color: #ffffff;
+        }
+        .btn-square.btn-square-back .sb-nav-link-icon i {
+            color: #ffffff;
+        }
 
         /* Icon styling (unchanged) */
         .btn-square .sb-nav-link-icon {
@@ -155,6 +163,23 @@
                 overflow: visible !important;
                 text-overflow: clip !important;
             }
+
+            /* Meal options on mobile: switch to flex so Back can be ordered last */
+            #mealOptionsSubgrid.mobile-flex {
+                display: flex !important;
+                flex-wrap: wrap;
+                gap: 12px;
+                padding: 8px;
+                justify-content: center;
+            }
+            #mealOptionsSubgrid.mobile-flex .btn-square {
+                flex: 1 1 calc(50% - 12px);
+                max-width: calc(50% - 12px);
+            }
+            /* Make Back button appear last on small screens */
+            #mealOptionsSubgrid.mobile-flex .btn-square-back {
+                order: 99;
+            }
         }
 
         @media (max-width: 1000px) {
@@ -168,7 +193,7 @@
 {% block content %}
   
    <div class="container-fluid px-4">
-        <div class="dashboard-grid" style="min-height: 40vh;">
+       <div id="mainDashboardGrid" class="dashboard-grid" style="min-height: 40vh;">
                <a href="{% if show_inventory %}{% url 'inventory_list' %}{% else %}#{% endif %}" class="btn btn-primary btn-square {% if not show_inventory %}disabled-card{% endif %}" aria-label="Inventory" {% if not show_inventory %}aria-disabled="true" tabindex="-1"{% endif %}>
                    <div class="sb-nav-link-icon"><i class="fas fa-list"></i></div>
                    <span class="label">Inventory</span>
@@ -189,19 +214,124 @@
                    <span class="label">Recipes</span>
                </a>
 
-               <a href="{% if show_meal_count %}{% url 'meal_calculator' %}{% else %}#{% endif %}" class="btn btn-primary btn-square {% if not show_meal_count %}disabled-card{% endif %}" aria-label="Meal Calculator" {% if not show_meal_count %}aria-disabled="true" tabindex="-1"{% endif %}>
+               {% if show_meal_count %}
+               <button id="mealOptionsToggler" type="button" class="btn btn-primary btn-square" aria-label="Meal Calculator" aria-expanded="false" aria-controls="mealOptionsSubgrid" onclick="toggleMealOptions()">
                    <div class="sb-nav-link-icon"><i class="fas fa-calculator"></i></div>
-                   <span class="label">Meal Calculator</span>
-               </a>
+                   <span class="label">Meal Tools</span>
+               </button>
+               {% else %}
+               <button type="button" class="btn btn-primary btn-square disabled-card" aria-label="Meal Calculator" aria-disabled="true" tabindex="-1" disabled>
+                   <div class="sb-nav-link-icon"><i class="fas fa-calculator"></i></div>
+                   <span class="label">Meal Tools</span>
+               </button>
+               {% endif %}
 
                <a href="{% url 'account_settings' %}" class="btn btn-primary btn-square" aria-label="Account Settings">
                    <div class="sb-nav-link-icon"><i class="fas fa-user-cog"></i></div>
                    <span class="label">Account Settings</span>
                </a>
         </div>
+        <!-- Meal options subgrid (hidden by default; toggled by Meal Calculator) -->
+        <div id="mealOptionsSubgrid" class="dashboard-grid" style="display:none; margin-top:12px;">
+            <a href="{% url 'meal_calculator' %}" class="btn btn-primary btn-square" aria-label="Meal Calculator (open)">
+                <div class="sb-nav-link-icon"><i class="fas fa-calculator"></i></div>
+                <span class="label">Meal Calculator</span>
+            </a>
+            <a href="{% url 'kitchen_time' %}" class="btn btn-primary btn-square" aria-label="Kitchen Time">
+                <div class="sb-nav-link-icon"><i class="fas fa-clock"></i></div>
+                <span class="label">Kitchen Time</span>
+            </a>
+            <a href="{% url 'cacfp_meal_count' %}" class="btn btn-primary btn-square" aria-label="Meal Count">
+                <div class="sb-nav-link-icon"><i class="fas fa-list-ol"></i></div>
+                <span class="label">Meal Count</span>
+            </a>
+            <button type="button" id="mealBackBtn" class="btn btn-square btn-square-back" aria-label="Back to CACFP" title="Back to CACFP" onclick="closeMealOptions()">
+                <div class="sb-nav-link-icon"><i class="fas fa-arrow-left"></i></div>
+                <span class="label">Back</span>
+            </button>
+        </div>
    </div>
 {% endblock %}
 
 {% block scripts %}
+<script>
+    (function(){
+        window.toggleMealOptions = function(){
+            var grid = document.getElementById('mealOptionsSubgrid');
+            var main = document.getElementById('mainDashboardGrid');
+            var btn = document.getElementById('mealOptionsToggler');
+            if(!grid) return;
+            var computed = window.getComputedStyle(grid).display;
+            var isOpen = computed !== 'none';
+            if(isOpen){
+                // close: hide subgrid, show main
+                grid.style.display = 'none';
+                grid.classList.remove('mobile-flex');
+                if(main) main.style.display = 'grid';
+                if(btn) btn.setAttribute('aria-expanded','false');
+            } else {
+                // open: show only the subgrid (like opening a folder)
+                if(window.matchMedia('(max-width: 999px)').matches){
+                    grid.classList.add('mobile-flex');
+                    grid.style.display = 'flex';
+                } else {
+                    grid.classList.remove('mobile-flex');
+                    grid.style.display = 'grid';
+                }
+                if(main) main.style.display = 'none';
+                if(btn) btn.setAttribute('aria-expanded','true');
+                grid.scrollIntoView({behavior:'smooth', block:'center'});
+            }
+        };
 
+        // Close helper used by Back button to avoid navigation reload
+        window.closeMealOptions = function(){
+            var grid = document.getElementById('mealOptionsSubgrid');
+            var main = document.getElementById('mainDashboardGrid');
+            var btn = document.getElementById('mealOptionsToggler');
+            if(!grid) return;
+            var computed = window.getComputedStyle(grid).display;
+            if(computed !== 'none'){
+                grid.style.display = 'none';
+                grid.classList.remove('mobile-flex');
+                if(main) main.style.display = 'grid';
+                if(btn) btn.setAttribute('aria-expanded','false');
+            }
+        };
+
+        // Close the subgrid when clicking outside it (and restore main grid)
+        document.addEventListener('click', function(e){
+            var grid = document.getElementById('mealOptionsSubgrid');
+            var main = document.getElementById('mainDashboardGrid');
+            var btn = document.getElementById('mealOptionsToggler');
+            if(!grid || !main || !btn) return;
+            var computed = window.getComputedStyle(grid).display;
+            if(computed !== 'none'){
+                if(!grid.contains(e.target) && !btn.contains(e.target)){
+                    grid.style.display = 'none';
+                    grid.classList.remove('mobile-flex');
+                    main.style.display = 'grid';
+                    btn.setAttribute('aria-expanded','false');
+                }
+            }
+        });
+
+        // Close with Escape key
+        document.addEventListener('keydown', function(e){
+            if(e.key === 'Escape'){
+                var grid = document.getElementById('mealOptionsSubgrid');
+                var main = document.getElementById('mainDashboardGrid');
+                var btn = document.getElementById('mealOptionsToggler');
+                if(!grid || !main || !btn) return;
+                var computed = window.getComputedStyle(grid).display;
+                if(computed !== 'none'){
+                    grid.style.display = 'none';
+                    grid.classList.remove('mobile-flex');
+                    if(main) main.style.display = 'grid';
+                    if(btn) btn.setAttribute('aria-expanded','false');
+                }
+            }
+        });
+    })();
+</script>
 {% endblock %}

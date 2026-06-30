@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Recipe, BreakfastRecipe, AMRecipe, PMRecipe, FruitRecipe, VegRecipe, WgRecipe, RecipeSimilarityGroup
+from .models import DailyMealCounts
 from django.contrib.auth.models import Group
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.db.models import Q, Subquery, IntegerField, Count, F, Sum, Max, Min, ExpressionWrapper, DurationField, Exists, OuterRef
@@ -1237,6 +1238,59 @@ def index_cacfp(request):
     response = render(request, 'tottimeapp/index_cacfp.html', permissions_context)
 
     # if query param present, persist preference for future requests
+    if param_minimal:
+        response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
+
+    return response
+
+
+@login_required(login_url='/login/')
+def cacfp_meal_count(request):
+    required_permission_id = 269
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    main_user = get_user_for_view(request)
+
+    # prefer cookie first, then query param
+    cookie_minimal = request.COOKIES.get('use_minimal_base') == '1'
+    param_minimal = request.GET.get('minimal') == '1'
+    use_minimal_base = param_minimal or cookie_minimal
+
+    # If we don't yet know the client's viewport, return a tiny sniffing page
+    if not (cookie_minimal or param_minimal):
+        sniff_html = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <script>
+        (function(){
+            var w = window.innerWidth || document.documentElement.clientWidth || screen.width;
+            var url = window.location.href;
+            if (w < 1000) {
+                document.cookie = "use_minimal_base=1; path=/; max-age=" + (60*60*24*365) + ";";
+                if (url.indexOf('minimal=1') === -1) {
+                    url += (url.indexOf('?') === -1 ? '?' : '&') + 'minimal=1';
+                }
+                window.location.replace(url);
+            } else {
+                url = url.replace(/([?&])minimal=1(&|$)/g, '$1').replace(/[?&]$/, '');
+                window.location.replace(url);
+            }
+        })();
+        </script>
+        <style>html,body{height:100%;margin:0;background:#fff}</style>
+        </head><body></body></html>"""
+        return HttpResponse(sniff_html)
+
+    # Choose base template
+    base_template = 'tottimeapp/base_minimal.html' if use_minimal_base else 'tottimeapp/base.html'
+    permissions_context['base_template'] = base_template
+
+    response = render(request, 'tottimeapp/cacfp_meal_count.html', {
+        **permissions_context,
+        'main_user': main_user,
+    })
+
+    # persist preference when query param present
     if param_minimal:
         response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
 
@@ -6776,6 +6830,229 @@ def meal_count(request):
         'selected_year': selected_year,
         **permissions_context,  # Include permission flags dynamically
     })
+
+
+@login_required(login_url='/login/')
+def kitchen_time(request):
+    """Render the kitchen time page for logged-in users."""
+    required_permission_id = None
+    permissions_context = check_permissions(request, required_permission_id)
+    if isinstance(permissions_context, HttpResponseRedirect):
+        return permissions_context
+
+    user = get_user_for_view(request)
+    from .forms import KitchenTimeForm
+    # Build default times (30-minute increments) spanning the full 24 hours (00:00 - 23:30)
+    times = []
+    start_dt = datetime.combine(date.today(), time(hour=0, minute=0))
+    end_dt = datetime.combine(date.today(), time(hour=23, minute=30))
+    cur = start_dt
+    while cur <= end_dt:
+        times.append({
+            'label': cur.strftime('%I:%M %p').lstrip('0'),
+            'value': cur.strftime('%H:%M')
+        })
+        cur += timedelta(minutes=30)
+
+    days = [
+        {'key': 'mon', 'label': 'Mon'},
+        {'key': 'tue', 'label': 'Tue'},
+        {'key': 'wed', 'label': 'Wed'},
+        {'key': 'thu', 'label': 'Thu'},
+        {'key': 'fri', 'label': 'Fri'},
+        {'key': 'sat', 'label': 'Sat'},
+        {'key': 'sun', 'label': 'Sun'},
+    ]
+
+    schedule_map = {}
+    initial_schedule_json = '{}'
+
+    if request.method == 'POST':
+        form = KitchenTimeForm(request.POST)
+        if form.is_valid():
+            # Parse posted schedule JSON (if present)
+            schedule_json = form.cleaned_data.get('schedule_json') or ''
+            try:
+                schedule_map = json.loads(schedule_json) if schedule_json else {}
+            except Exception:
+                schedule_map = {}
+            try:
+                initial_schedule_json = json.dumps(schedule_map)
+            except Exception:
+                initial_schedule_json = '{}'
+
+            # Additional inputs not in the form: weekly_salary, time_begin, time_end, and hidden position
+            weekly_salary_raw = request.POST.get('weekly_salary') or request.POST.get('id_weekly_salary') or '0'
+            try:
+                weekly_salary = Decimal(str(weekly_salary_raw))
+            except Exception:
+                weekly_salary = Decimal('0')
+
+            time_begin_raw = request.POST.get('time_begin') or request.POST.get('id_time_begin')
+            time_end_raw = request.POST.get('time_end') or request.POST.get('id_time_end')
+            from datetime import datetime as _dt
+            time_begin = None
+            time_end = None
+            try:
+                if time_begin_raw:
+                    time_begin = _dt.strptime(time_begin_raw, '%H:%M').time()
+            except Exception:
+                time_begin = None
+            try:
+                if time_end_raw:
+                    time_end = _dt.strptime(time_end_raw, '%H:%M').time()
+            except Exception:
+                time_end = None
+
+            # Position may be synced to hidden input named 'position' by client JS
+            position_val = request.POST.get('position') or form.cleaned_data.get('position') or ''
+
+            # Compute weekday keys from week_beginning/week_ending but only store which weekdays (mon..sun)
+            week_begin = form.cleaned_data.get('week_beginning')
+            week_end = form.cleaned_data.get('week_ending')
+            weekday_keys = []
+            if week_begin and week_end:
+                start = week_begin
+                end = week_end
+                if start > end:
+                    start, end = end, start
+                cur = start
+                mapping = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+                seen = set()
+                while cur <= end:
+                    k = mapping.get(cur.weekday())
+                    if k and k not in seen:
+                        weekday_keys.append(k)
+                        seen.add(k)
+                    cur = cur + timedelta(days=1)
+            elif week_begin or week_end:
+                single = week_begin or week_end
+                if single:
+                    mapping = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+                    weekday_keys = [mapping.get(single.weekday())]
+
+            # Save KitchenTime template. If a template id is supplied, update that template.
+            # Otherwise, avoid creating duplicates by updating an existing template with the same
+            # employee_name + position for this user if present; else create a new one.
+            try:
+                from .models import KitchenTime
+                selected_template_id = request.POST.get('selected_template_id') or ''
+                kt = None
+                if selected_template_id:
+                    kt = KitchenTime.objects.filter(id=selected_template_id, user=user, is_template=True).first()
+
+                emp_name = form.cleaned_data.get('employee_name') or ''
+                pos_val = position_val or ''
+
+                if not kt:
+                    # Look for an existing template with same employee+position to avoid duplicates
+                    kt = KitchenTime.objects.filter(user=user, employee_name=emp_name, position=pos_val, is_template=True).first()
+
+                if kt:
+                    # update existing template
+                    kt.center_name = form.cleaned_data.get('center_name') or ''
+                    kt.employee_name = emp_name
+                    kt.position = pos_val
+                    kt.weekly_salary = weekly_salary
+                    kt.schedule_json = schedule_map
+                    kt.time_begin = time_begin
+                    kt.time_end = time_end
+                    kt.days = weekday_keys
+                    kt.is_template = True
+                    kt.save()
+                    saved = True
+                    saved_id = kt.id
+                else:
+                    kt = KitchenTime.objects.create(
+                        user=user,
+                        center_name=form.cleaned_data.get('center_name') or '',
+                        employee_name=emp_name,
+                        position=pos_val,
+                        weekly_salary=weekly_salary,
+                        schedule_json=schedule_map,
+                        time_begin=time_begin,
+                        time_end=time_end,
+                        days=weekday_keys,
+                        is_template=True,
+                    )
+                    saved = True
+                    saved_id = kt.id
+            except Exception as e:
+                saved = False
+                saved_id = None
+
+            # provide list of saved templates for this user
+            try:
+                from .models import KitchenTime
+                def _serialize(kt):
+                    return {
+                        'id': kt.id,
+                        'employee_name': kt.employee_name,
+                        'position': kt.position or '',
+                        'center_name': kt.center_name or '',
+                        'weekly_salary': str(kt.weekly_salary) if kt.weekly_salary is not None else '0.00',
+                        'time_begin': kt.time_begin.strftime('%H:%M') if kt.time_begin else '',
+                        'time_end': kt.time_end.strftime('%H:%M') if kt.time_end else '',
+                        'days': kt.days or [],
+                        'schedule_json': kt.schedule_json or {},
+                        'day_dates': [d.isoformat() for d in kt.mapped_previous_week_dates()]
+                    }
+                templates_qs = KitchenTime.objects.filter(user=user, is_template=True).order_by('employee_name', 'position')
+                templates_list = [_serialize(k) for k in templates_qs]
+            except Exception:
+                templates_list = []
+
+            context = {
+                'user': user,
+                'form': form,
+                'submitted': True,
+                'saved': saved,
+                'saved_id': saved_id,
+                'times': times,
+                'days': days,
+                'schedule_map': schedule_map,
+                'initial_schedule_json': initial_schedule_json,
+                'kitchen_templates': templates_list,
+                'kitchen_templates_json': json.dumps(templates_list),
+                **permissions_context,
+            }
+            return render(request, 'tottimeapp/kitchen_time.html', context)
+    else:
+        form = KitchenTimeForm()
+
+    # load saved templates for this user to populate the loader dropdown
+    try:
+        from .models import KitchenTime
+        def _serialize(kt):
+            return {
+                'id': kt.id,
+                'employee_name': kt.employee_name,
+                'position': kt.position or '',
+                'center_name': kt.center_name or '',
+                'weekly_salary': str(kt.weekly_salary) if kt.weekly_salary is not None else '0.00',
+                'time_begin': kt.time_begin.strftime('%H:%M') if kt.time_begin else '',
+                'time_end': kt.time_end.strftime('%H:%M') if kt.time_end else '',
+                'days': kt.days or [],
+                'schedule_json': kt.schedule_json or {},
+                'day_dates': [d.isoformat() for d in kt.mapped_previous_week_dates()]
+            }
+        templates_qs = KitchenTime.objects.filter(user=user, is_template=True).order_by('employee_name', 'position')
+        templates_list = [_serialize(k) for k in templates_qs]
+    except Exception:
+        templates_list = []
+
+    context = {
+        'user': user,
+        'form': form,
+        'times': times,
+        'days': days,
+        'schedule_map': schedule_map,
+        'initial_schedule_json': json.dumps(schedule_map),
+        'kitchen_templates': templates_list,
+        'kitchen_templates_json': json.dumps(templates_list),
+        **permissions_context,
+    }
+    return render(request, 'tottimeapp/kitchen_time.html', context)
 
 def assign_rules_to_week(user, days_count=5, used_main_recipes=None, estimated_daily_students=1, force_ignore_inventory=False):
     """
@@ -16115,6 +16392,153 @@ def meal_calculator(request):
         response.set_cookie('use_minimal_base', '1', max_age=60*60*24*365, httponly=False, path='/')
 
     return response
+
+
+@login_required
+@require_POST
+def save_daily_meal_counts(request):
+    """API: save per-day counts for the active meal.
+
+    Expects JSON body: { date: 'YYYY-MM-DD', meal: 'breakfast'|'lunch'|'snack'|'am_snack'|'pm_snack', counts: {'1-2': int, '3-5': int, '6-12': int, '13-18': int}, active: bool }
+    If `active` is false the meal's four fields are set to NULL. If `meal` is 'snack' both am_snack and pm_snack prefixes are updated.
+    """
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        return JsonResponse({'error': 'invalid JSON'}, status=400)
+
+    date_str = payload.get('date')
+    if not date_str:
+        return JsonResponse({'error': 'missing date'}, status=400)
+
+    try:
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except Exception:
+        return JsonResponse({'error': 'invalid date format'}, status=400)
+
+    # Accept either a single meal payload or a `meals` array for batch saves.
+    meals_payload = None
+    if 'meals' in payload and isinstance(payload['meals'], list):
+        meals_payload = payload['meals']
+    else:
+        # Backwards-compatible single-meal body
+        meal = payload.get('meal')
+        counts = payload.get('counts') or {}
+        active = payload.get('active', True)
+        if not meal:
+            return JsonResponse({'error': 'missing meal'}, status=400)
+        meals_payload = [{ 'meal': meal, 'counts': counts, 'active': active }]
+
+    age_map = {'1-2': '1_2', '3-5': '3_5', '6-12': '6_12', '13-18': '13_18'}
+
+    # helper to translate a meal token to model prefixes. Expect frontend to send explicit prefixes when
+    # needed; otherwise fall back to sensible defaults.
+    def meal_to_prefixes(meal_token):
+        if not meal_token:
+            return []
+        if meal_token in ('breakfast', 'lunch', 'am_snack', 'pm_snack'):
+            return [meal_token]
+        # generic 'snack' maps to PM snack by default (UI that doesn't include am_snack shouldn't populate am)
+        if meal_token == 'snack':
+            return ['pm_snack']
+        return []
+
+    obj, created = DailyMealCounts.objects.get_or_create(user=request.user, date=date_obj)
+
+    for entry in meals_payload:
+        # Each entry can include either `prefixes` (explicit model prefixes) or `meal` token.
+        prefixes = entry.get('prefixes') or meal_to_prefixes(entry.get('meal'))
+        if not prefixes:
+            # nothing to do for this entry
+            continue
+        counts = entry.get('counts') or {}
+        active = entry.get('active', True)
+
+        for p in prefixes:
+            for k, s in age_map.items():
+                if not active:
+                    setattr(obj, f"{p}_{s}", None)
+                else:
+                    raw = counts.get(k)
+                    if raw is None or raw == '':
+                        setattr(obj, f"{p}_{s}", None)
+                    else:
+                        try:
+                            v = int(raw)
+                        except Exception:
+                            return JsonResponse({'error': f'invalid count for {k}'}, status=400)
+                        setattr(obj, f"{p}_{s}", v)
+
+    obj.save()
+    return JsonResponse({'status': 'ok', 'id': obj.id})
+
+
+@login_required
+@require_http_methods(["GET"])
+def monthly_meal_counts(request):
+    """API: return meal counts for each day of a month for the current viewing user.
+
+    Response JSON:
+    {
+        rows: [{ date: 'YYYY-MM-DD', breakfast: int|null, am_snack: int|null, lunch: int|null, pm_snack: int|null }, ...],
+        available_meals: ['breakfast','lunch',...],
+        totals: { breakfast: int, lunch: int, ... }
+    }
+    """
+    # parse year/month
+    try:
+        y = int(request.GET.get('year'))
+        m = int(request.GET.get('month'))
+    except Exception:
+        today = timezone.localdate()
+        y, m = today.year, today.month
+
+    try:
+        ndays = monthrange(y, m)[1]
+    except Exception:
+        return JsonResponse({'error': 'invalid year/month'}, status=400)
+
+    user = get_user_for_view(request)
+
+    meals = ['breakfast', 'am_snack', 'lunch', 'pm_snack']
+    rows = []
+    totals = {k: 0 for k in meals}
+    any_data = {k: False for k in meals}
+
+    field_map = {
+        'breakfast': ['breakfast_1_2','breakfast_3_5','breakfast_6_12','breakfast_13_18'],
+        'am_snack': ['am_snack_1_2','am_snack_3_5','am_snack_6_12','am_snack_13_18'],
+        'lunch': ['lunch_1_2','lunch_3_5','lunch_6_12','lunch_13_18'],
+        'pm_snack': ['pm_snack_1_2','pm_snack_3_5','pm_snack_6_12','pm_snack_13_18'],
+    }
+
+    for day in range(1, ndays + 1):
+        d = date(y, m, day)
+        drow = DailyMealCounts.objects.filter(user=user, date=d).first()
+        entry = {'date': d.isoformat()}
+        for meal in meals:
+            if not drow:
+                entry[meal] = None
+                continue
+            vals = [getattr(drow, f, None) for f in field_map[meal]]
+            if all(v is None for v in vals):
+                entry[meal] = None
+            else:
+                s = sum((v or 0) for v in vals)
+                entry[meal] = s
+                totals[meal] += s
+                # mark available if any field is non-null (zero counts still count as available)
+                any_data[meal] = any_data[meal] or any((v is not None) for v in vals)
+
+        # Only include the date if at least one meal has non-null data
+        row_has_data = any(entry.get(meal) is not None for meal in meals)
+        if row_has_data:
+            rows.append(entry)
+
+    available = [k for k, v in any_data.items() if v]
+    totals_out = {k: totals[k] for k in available}
+
+    return JsonResponse({'rows': rows, 'available_meals': available, 'totals': totals_out})
 
 @login_required
 def todays_menu(request):

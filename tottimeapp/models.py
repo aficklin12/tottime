@@ -1784,3 +1784,126 @@ class CurriculumActivity(models.Model):
             return 'fa-file-word'
         else:
             return 'fa-file'
+        
+class DailyMealCounts(models.Model):
+    """Store per-day counts for each age group and meal period.
+
+    This saves 4 age-groups x 4 meal periods = 16 integer fields per date.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    date = models.DateField()
+
+    # Breakfast
+    breakfast_1_2 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    breakfast_3_5 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    breakfast_6_12 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    breakfast_13_18 = models.PositiveIntegerField(null=True, blank=True, default=None)
+
+    # AM Snack
+    am_snack_1_2 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    am_snack_3_5 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    am_snack_6_12 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    am_snack_13_18 = models.PositiveIntegerField(null=True, blank=True, default=None)
+
+    # Lunch
+    lunch_1_2 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    lunch_3_5 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    lunch_6_12 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    lunch_13_18 = models.PositiveIntegerField(null=True, blank=True, default=None)
+
+    # PM Snack
+    pm_snack_1_2 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    pm_snack_3_5 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    pm_snack_6_12 = models.PositiveIntegerField(null=True, blank=True, default=None)
+    pm_snack_13_18 = models.PositiveIntegerField(null=True, blank=True, default=None)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (('user', 'date'),)
+        ordering = ['-date']
+
+    def total_for_meal(self, meal_prefix):
+        """Return the total count for a given meal prefix.
+
+        meal_prefix should be one of: 'breakfast','am_snack','lunch','pm_snack'
+        """
+        mapping = {
+            'breakfast': ['breakfast_1_2','breakfast_3_5','breakfast_6_12','breakfast_13_18'],
+            'am_snack': ['am_snack_1_2','am_snack_3_5','am_snack_6_12','am_snack_13_18'],
+            'lunch': ['lunch_1_2','lunch_3_5','lunch_6_12','lunch_13_18'],
+            'pm_snack': ['pm_snack_1_2','pm_snack_3_5','pm_snack_6_12','pm_snack_13_18'],
+        }
+        fields = mapping.get(meal_prefix, [])
+        total = 0
+        for f in fields:
+            v = getattr(self, f, None)
+            if v is None:
+                continue
+            total += v
+        return total
+
+    def __str__(self):
+        return f"{self.user} - {self.date}"
+
+class KitchenTime(models.Model):
+    """Save an employee's kitchen-time template for reuse.
+
+    - `position` and `weekly_salary` store the basic inputs.
+    - `schedule_json` stores the per-day/time codes (the same shape used by the form).
+    - `time_begin` / `time_end` store the visible time range.
+    - `days` stores which weekdays were selected (e.g. ["mon","tue","wed"]).
+    The helper `mapped_previous_week_dates` maps the saved weekdays to the
+    previous calendar week (Monday-Sunday) so templates apply to the prior
+    week's weekdays when reloading.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255, blank=True, null=True)
+    center_name = models.CharField(max_length=255, blank=True, null=True)
+    employee_name = models.CharField(max_length=255)
+    position = models.CharField(max_length=100, blank=True, null=True)
+    weekly_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    schedule_json = models.JSONField(blank=True, null=True, help_text='Per-day/time codes, keyed by day->time->code')
+    time_begin = models.TimeField(null=True, blank=True)
+    time_end = models.TimeField(null=True, blank=True)
+    days = models.JSONField(default=list, blank=True, help_text='List of day keys e.g., ["mon","tue"]')
+    is_template = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'kitchentime'
+        ordering = ['-created_at']
+        verbose_name = 'Kitchen Time'
+        verbose_name_plural = 'Kitchen Times'
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.center_name or 'No center'}"
+
+    @property
+    def schedule_data(self):
+        return self.schedule_json or {}
+
+    def mapped_previous_week_dates(self, ref_date=None):
+        """Return date objects for the saved weekdays mapped onto the previous week.
+
+        Example: if `days` == ['mon','tue','wed','thu','fri'] and today is
+        2026-06-15 (a Monday), the method returns the dates for Monday-Friday of
+        the previous week (7-11 days before the current week's Monday).
+        """
+        if not self.days:
+            return []
+        if ref_date is None:
+            ref_date = date.today()
+        # Monday of current week
+        start_of_current_week = ref_date - timedelta(days=ref_date.weekday())
+        previous_week_start = start_of_current_week - timedelta(weeks=1)
+        mapping = {'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6}
+        results = []
+        for d in self.days:
+            key = (d or '').strip().lower()[:3]
+            if key in mapping:
+                results.append(previous_week_start + timedelta(days=mapping[key]))
+        return results
